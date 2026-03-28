@@ -5,10 +5,26 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
+// Most reliable device detection:
+// pointer:coarse = touch/mobile hardware, pointer:fine = mouse/desktop hardware
+// This does NOT change when mobile browser switches to "desktop mode"
+function useIsMobileDevice() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isMobile;
+}
+
 export default function Header({ merchant, setSidebarOpen }: any) {
   const [theme, setTheme] = useState('dark');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const isMobileDevice = useIsMobileDevice();
 
   useEffect(() => {
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -51,9 +67,11 @@ export default function Header({ merchant, setSidebarOpen }: any) {
     <header className="sticky top-0 z-30 bg-white/80 dark:bg-[#111827]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 md:px-8 py-4 flex items-center justify-between transition-colors duration-500">
       
       <div className="flex items-center gap-4 flex-1">
-        <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300">
-          <Menu size={20} />
-        </button>
+        {isMobileDevice && (
+          <button onClick={() => setSidebarOpen(true)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300">
+            <Menu size={20} />
+          </button>
+        )}
         
         <div className="hidden md:flex relative group w-full max-w-md">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />

@@ -53,9 +53,25 @@ const EXCLUDED_BANKS = ['brac', 'pubali'];
 const IMAP_BANKS     = ['ebl', 'scb', 'mtb', 'ific', 'midland', 'dhaka', 'prime', 'asia', 'ucb', 'jamuna', 'city'];
 const SMS_BANKS      = ['ibbl', 'dbbl', 'ab', 'mercantile', 'national', 'ncc', 'sonali', 'agrani', 'tb'];
 
+// ─── Device Detection ─────────────────────────────────────────────────────────
+// viewport width দেখে decide করে — desktop mode on করলে viewport বড় হয়
+// তাই desktop mode এ desktop style, real mobile view এ mobile style
+function useIsMobileDevice() {
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+    return isMobile;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function GatewayManagerUI({ merchantId }: { merchantId: string }) {
+
+    const isMobile = useIsMobileDevice();
 
     // ── State ──────────────────────────────────────────────────────────────────
     const [loading,    setLoading]    = useState(true);
@@ -1367,12 +1383,12 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
             {/* ── Choice Modal ── */}
             {isChoiceModalOpen && (
                 <div
-                    className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-300"
+                    className={`fixed inset-0 z-[60] flex ${isMobile ? 'items-end' : 'items-center'} justify-center ${isMobile ? 'p-0' : 'p-4'} bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-300`}
                     onClick={() => setIsChoiceModalOpen(false)}
                 >
                     <div
                         onClick={(e) => e.stopPropagation()}
-                        className="bg-white dark:bg-[#111827] w-full md:w-[400px] rounded-t-[36px] md:rounded-[36px] shadow-2xl animate-in slide-in-from-bottom-10 border border-white/10 overflow-hidden flex flex-col p-8"
+                        className={`bg-white dark:bg-[#111827] w-full md:w-[400px] ${isMobile ? 'rounded-t-[36px]' : 'rounded-[36px]'} shadow-2xl animate-in ${isMobile ? 'slide-in-from-bottom-10' : 'zoom-in-95'} border border-white/10 overflow-hidden flex flex-col p-8`}
                     >
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase italic">Add Gateway</h2>
@@ -1419,12 +1435,12 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
             {/* ── Vault Import Modal ── */}
             {isVaultModalOpen && (
                 <div
-                    className="fixed inset-0 z-[60] flex items-end md:items-center justify-center bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-300"
+                    className={`fixed inset-0 z-[60] flex ${isMobile ? 'items-end' : 'items-center'} justify-center ${isMobile ? 'p-0' : 'p-4'} bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-300`}
                     onClick={() => setIsVaultModalOpen(false)}
                 >
                     <div
                         onClick={(e) => e.stopPropagation()}
-                        className="bg-[#F8FAFC] dark:bg-[#0B1120] w-full md:w-[500px] h-[85vh] md:h-auto md:max-h-[85vh] rounded-t-[36px] md:rounded-[36px] shadow-2xl animate-in slide-in-from-bottom-10 border border-white/10 overflow-hidden flex flex-col"
+                        className={`bg-[#F8FAFC] dark:bg-[#0B1120] w-full md:w-[500px] ${isMobile ? 'h-[85vh] rounded-t-[36px]' : 'h-auto max-h-[85vh] rounded-[36px]'} shadow-2xl animate-in ${isMobile ? 'slide-in-from-bottom-10' : 'zoom-in-95'} border border-white/10 overflow-hidden flex flex-col`}
                     >
                         {/* Vault Modal Header */}
                         <div className="flex justify-between items-center p-6 md:p-8 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[#111827]">
@@ -1550,12 +1566,12 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
             {/* ── Add / Edit Form Modal ── */}
             {isModalOpen && (
                 <div
-                    className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm p-0 md:p-4 animate-in fade-in duration-300"
+                    className={`fixed inset-0 z-50 flex ${isMobile ? 'items-end' : 'items-center'} justify-center ${isMobile ? 'p-0' : 'p-4'} bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-300`}
                     onClick={() => { setIsModalOpen(false); resetForm(); }}
                 >
                     <div
                         onClick={(e) => e.stopPropagation()}
-                        className="bg-[#F8FAFC] dark:bg-[#0B1120] w-full md:w-[550px] h-[92vh] md:h-auto md:max-h-[90vh] md:rounded-[32px] rounded-t-[32px] flex flex-col shadow-2xl animate-in slide-in-from-bottom-10 md:zoom-in-95 border border-white/20 dark:border-slate-800 overflow-hidden relative"
+                        className={`bg-[#F8FAFC] dark:bg-[#0B1120] w-full md:w-[550px] ${isMobile ? 'h-[92vh] rounded-t-[32px]' : 'h-auto max-h-[90vh] rounded-[32px]'} flex flex-col shadow-2xl animate-in ${isMobile ? 'slide-in-from-bottom-10' : 'zoom-in-95'} border border-white/20 dark:border-slate-800 overflow-hidden relative`}
                     >
                         {/* Form Modal Header */}
                         <div className="shrink-0 flex justify-between items-center px-6 pt-6 pb-4 bg-white dark:bg-[#111827] border-b border-slate-100 dark:border-slate-800 z-10">

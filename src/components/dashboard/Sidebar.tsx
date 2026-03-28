@@ -36,9 +36,25 @@ const menuItems = [
   { name: 'Support', icon: LifeBuoy, path: '/dashboard/support' },
 ];
 
+// Most reliable device detection:
+// pointer:coarse = touch/mobile hardware, pointer:fine = mouse/desktop hardware
+// This does NOT change when mobile browser switches to "desktop mode"
+function useIsMobileDevice() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isMobile;
+}
+
 export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
   const pathname = usePathname();
-  
+  const isMobileDevice = useIsMobileDevice();
+
   // Business Switcher States
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [activeBusiness, setActiveBusiness] = useState<any>(null);
@@ -95,12 +111,13 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
   };
 
   return (
-    <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col shadow-2xl md:shadow-none`}>
+    <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 transform ${(!isMobileDevice || isOpen) ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out flex flex-col ${isMobileDevice ? 'shadow-2xl' : 'shadow-none'}`}>
       
-      {/* Mobile Close Button */}
-      <button onClick={() => setIsOpen(false)} className="md:hidden absolute top-4 right-4 p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 z-50">
-        <X size={20} />
-      </button>
+      {isMobileDevice && (
+        <button onClick={() => setIsOpen(false)} className="absolute top-4 right-4 p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 z-50">
+          <X size={20} />
+        </button>
+      )}
 
       {/* Brand & Workspace Switcher */}
       <div className="p-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
