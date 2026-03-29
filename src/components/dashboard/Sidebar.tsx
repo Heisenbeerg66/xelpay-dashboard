@@ -16,7 +16,7 @@ const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
   
   // 🚀 NEW: Global Assets (Vault) - Highlighted for easy access
-  { name: 'Global Vault', icon: ServerCog, path: '/dashboard/vault', isHighlight: true },
+  { name: 'Global Vault', icon: ServerCog, path: '/dashboard/vault' },
   
   { name: 'Add New Business', icon: PlusCircle, path: '/dashboard/business/new' },
   { name: 'Brand Settings', icon: Settings, path: '/dashboard/brand' },
@@ -194,7 +194,10 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
         <div className="space-y-1.5">
           {menuItems.map((item) => {
-            const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
+            // FIX: Dashboard only active on exact match, other items use startsWith
+            const isActive = item.path === '/dashboard'
+              ? pathname === item.path
+              : pathname === item.path || pathname.startsWith(`${item.path}/`);
             
             return (
               <Link 
@@ -228,7 +231,8 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
             <p className="text-[10px] font-bold text-slate-400 truncate">ID: #{merchant.merchant_id_display}</p>
           </div>
         </div>
-        <button onClick={handleLogout} className="w-full mt-2 flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors">
+        {/* FIX: justify-center → justify-start to align with list items */}
+        <button onClick={handleLogout} className="w-full mt-2 flex items-center justify-start gap-2 px-4 py-3 text-sm font-bold text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors">
           <LogOut size={18} /> Sign Out
         </button>
       </div>
