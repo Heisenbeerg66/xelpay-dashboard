@@ -1318,8 +1318,8 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                                     {maskedNumber}
                                 </p>
                                 {gw.account_name && (
-                                    // ── Account Name: strict white (#FFFFFF) ───────
-                                    <p className="text-xs font-black text-white mt-1 uppercase tracking-widest">
+                                    // ── Account Name: visible in both light & dark mode ───────
+                                    <p className="text-xs font-black text-slate-700 dark:text-white mt-1 uppercase tracking-widest">
                                         {gw.account_name.toUpperCase()}
                                     </p>
                                 )}
