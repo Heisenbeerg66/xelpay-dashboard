@@ -207,12 +207,10 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
                 className={`flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold text-sm transition-all group ${
                   isActive 
                     ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' 
-                    : item.isHighlight 
-                      ? 'text-[#0D47A1] dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-[#0B1120] hover:text-blue-600 dark:hover:text-blue-500'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-[#0B1120] hover:text-blue-600 dark:hover:text-blue-500'
                 }`}
               >
-                <item.icon size={20} className={`${isActive ? 'text-white' : item.isHighlight ? 'text-blue-600' : 'text-slate-400 group-hover:text-blue-600'} transition-colors duration-300`} />
+                <item.icon size={20} className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-600'} transition-colors duration-300`} />
                 {item.name}
               </Link>
             );
