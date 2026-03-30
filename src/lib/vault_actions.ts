@@ -46,8 +46,6 @@ const encryptData = (text: string): string | null => {
 // VAULT ACTIONS  (Merchant Level)
 // ═════════════════════════════════════════════════════════════════════════════
 
-// ─── 1. Fetch All Vault Gateways ──────────────────────────────────────────────
-
 export async function getVaultGateways(merchantId: string) {
     try {
         const supabase = await getSupabase();
@@ -65,8 +63,6 @@ export async function getVaultGateways(merchantId: string) {
     }
 }
 
-// ─── 2. Save New Vault Gateway ────────────────────────────────────────────────
-
 export async function saveVaultGateway(payload: any) {
     try {
         const supabase = await getSupabase();
@@ -75,22 +71,9 @@ export async function saveVaultGateway(payload: any) {
         if (!user) throw new Error('Unauthorized access.');
 
         const {
-            category,
-            provider,
-            account_type,
-            account_number,
-            account_name,
-            branch,
-            routing_number,
-            crypto_network,
-            imap_email,
-            imap_password,
-            imap_bank_email,
-            api_key,
-            secret_key,
-            display_name,
-            min_amount,
-            max_amount,
+            category, provider, account_type, account_number, account_name,
+            branch, routing_number, crypto_network, imap_email, imap_password,
+            imap_bank_email, api_key, secret_key, display_name, min_amount, max_amount,
         } = payload;
 
         const safe_imap_pass  = imap_password ? encryptData(imap_password) : null;
@@ -132,8 +115,6 @@ export async function saveVaultGateway(payload: any) {
     }
 }
 
-// ─── 3. Update Existing Vault Gateway ────────────────────────────────────────
-
 export async function updateVaultGateway(id: string, payload: any) {
     try {
         const supabase = await getSupabase();
@@ -142,22 +123,9 @@ export async function updateVaultGateway(id: string, payload: any) {
         if (!user) throw new Error('Unauthorized');
 
         const {
-            category,
-            provider,
-            account_type,
-            account_number,
-            account_name,
-            branch,
-            routing_number,
-            crypto_network,
-            imap_email,
-            imap_password,
-            imap_bank_email,
-            api_key,
-            secret_key,
-            display_name,
-            min_amount,
-            max_amount,
+            category, provider, account_type, account_number, account_name,
+            branch, routing_number, crypto_network, imap_email, imap_password,
+            imap_bank_email, api_key, secret_key, display_name, min_amount, max_amount,
         } = payload;
 
         const finalProvider    = provider.toLowerCase();
@@ -180,7 +148,6 @@ export async function updateVaultGateway(id: string, payload: any) {
             max_amount:      parseFloat(max_amount) || null,
         };
 
-        // Only update encrypted fields when new values are provided
         if (imap_password) updateData.imap_password = encryptData(imap_password);
         if (api_key)       updateData.api_key       = encryptData(api_key);
         if (secret_key)    updateData.secret_key    = encryptData(secret_key);
@@ -200,29 +167,18 @@ export async function updateVaultGateway(id: string, payload: any) {
     }
 }
 
-// ─── 4. Delete Vault Gateway ──────────────────────────────────────────────────
-
 export async function deleteVaultGateway(id: string) {
     try {
         const supabase = await getSupabase();
-
-        const { error } = await supabase
-            .from('merchant_payment_vault')
-            .delete()
-            .eq('id', id);
-
+        const { error } = await supabase.from('merchant_payment_vault').delete().eq('id', id);
         if (error) throw new Error(error.message);
         return { success: true };
     } catch (error: any) {
         return { success: false, message: error.message };
     }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
+}// ═════════════════════════════════════════════════════════════════════════════
 // MASTER AUTOMATION ACTIONS  (Telegram & Device)
 // ═════════════════════════════════════════════════════════════════════════════
-
-// ─── Get Merchant Vault Settings ─────────────────────────────────────────────
 
 export async function getMerchantVaultSettings() {
     try {
@@ -243,8 +199,6 @@ export async function getMerchantVaultSettings() {
         return { success: false, message: error.message };
     }
 }
-
-// ─── Generate Device Connection Key ──────────────────────────────────────────
 
 export async function generateDeviceKey() {
     try {
@@ -267,8 +221,6 @@ export async function generateDeviceKey() {
     }
 }
 
-// ─── Generate Telegram Link Code ─────────────────────────────────────────────
-
 export async function generateTelegramCode() {
     try {
         const supabase = await getSupabase();
@@ -290,8 +242,6 @@ export async function generateTelegramCode() {
     }
 }
 
-// ─── Get Connected Master Device ─────────────────────────────────────────────
-
 export async function getConnectedDevice() {
     try {
         const supabase = await getSupabase();
@@ -303,16 +253,14 @@ export async function getConnectedDevice() {
             .from('merchant_devices_vault')
             .select('*')
             .eq('merchant_id', user.id)
-            .single(); // Only one master device per merchant
+            .single(); 
 
-        if (error && error.code !== 'PGRST116') throw error; // Ignore "no rows found"
+        if (error && error.code !== 'PGRST116') throw error; 
         return { success: true, data: data || null };
     } catch (error: any) {
         return { success: false, message: error.message };
     }
 }
-
-// ─── Delete / Disconnect Master Device ───────────────────────────────────────
 
 export async function deleteMerchantDevice() {
     try {
@@ -321,25 +269,14 @@ export async function deleteMerchantDevice() {
 
         if (!user) return { success: false, message: 'Unauthorized' };
 
-        // Step 1: Remove device record
-        await supabase
-            .from('merchant_devices_vault')
-            .delete()
-            .eq('merchant_id', user.id);
-
-        // Step 2: Clear connection key from merchants table
-        await supabase
-            .from('merchants')
-            .update({ device_connection_key: null })
-            .eq('id', user.id);
+        await supabase.from('merchant_devices_vault').delete().eq('merchant_id', user.id);
+        await supabase.from('merchants').update({ device_connection_key: null }).eq('id', user.id);
 
         return { success: true };
     } catch (error: any) {
         return { success: false, message: error.message };
     }
 }
-
-// ─── Get App Download Links ───────────────────────────────────────────────────
 
 export async function getAppDownloadLinks() {
     try {

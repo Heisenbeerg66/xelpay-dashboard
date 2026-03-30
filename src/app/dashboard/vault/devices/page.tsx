@@ -60,7 +60,6 @@ export default function MasterDevicesPage() {
             toast.info("Generating secure key first...");
             const res = await generateDeviceKey();
             if(res.success) {
-                // 🚀 Deep Linking: Replace 'yourapp' with your actual app scheme
                 window.location.href = `yourapp://connect?key=${res.key}`;
             }
         } else {
@@ -68,7 +67,6 @@ export default function MasterDevicesPage() {
         }
     };
 
-    // 🚀 Advanced Copy Function with Fallback for non-HTTPS (Local IP)
     const copyToClipboard = () => {
         const textToCopy = merchantData?.device_connection_key;
         if (!textToCopy) return;
@@ -78,7 +76,6 @@ export default function MasterDevicesPage() {
                 .then(() => toast.success("Key copied securely!"))
                 .catch(() => toast.error("Failed to copy!"));
         } else {
-            // Fallback for HTTP / Local IPs
             const textArea = document.createElement("textarea");
             textArea.value = textToCopy;
             textArea.style.position = "absolute";
@@ -109,7 +106,9 @@ export default function MasterDevicesPage() {
         setLoading(false);
     };
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#F4F7F9] dark:bg-[#0B1120]"><Loader2 className="animate-spin text-emerald-500" size={32} /></div>;return (
+    if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#F4F7F9] dark:bg-[#0B1120]"><Loader2 className="animate-spin text-emerald-500" size={32} /></div>;
+
+    return (
         <div className="p-4 md:p-8 w-full max-w-5xl mx-auto min-h-screen bg-[#F4F7F9] dark:bg-[#0B1120] font-sans relative overflow-hidden transition-colors duration-300">
             <Toaster position="top-center" richColors />
             
@@ -130,9 +129,7 @@ export default function MasterDevicesPage() {
                 <button onClick={() => setIsDownloadModalOpen(true)} className="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white px-4 md:px-6 py-2.5 md:py-3.5 rounded-[16px] font-bold flex items-center justify-center gap-2 transition-all shadow-xl shadow-emerald-500/20 active:scale-95 text-xs md:text-sm">
                     <Download size={18} strokeWidth={2.5} /> <span className="hidden sm:inline">Download App</span><span className="sm:hidden">Get App</span>
                 </button>
-            </div>
-
-            {/* Dynamic Content Area */}
+            </div>{/* Dynamic Content Area */}
             <div className="relative z-10 max-w-3xl mx-auto mt-4">
                 
                 {!activeDevice ? (
@@ -169,8 +166,8 @@ export default function MasterDevicesPage() {
                                 <div className="w-16 h-16 bg-emerald-50 dark:bg-[#0B1120] rounded-[20px] flex items-center justify-center text-emerald-500 border border-emerald-100 dark:border-slate-800 shadow-sm">
                                     <Cpu size={32} />
                                 </div>
-                                <span className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-full border border-emerald-200 dark:border-emerald-800">
-                                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" /> {activeDevice.status || 'Online'}
+                                <span className={`flex items-center gap-2 px-3 py-1.5 ${activeDevice.is_active ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800'} text-[10px] font-black uppercase tracking-widest rounded-full border`}>
+                                    <div className={`w-2 h-2 rounded-full ${activeDevice.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} /> {activeDevice.is_active ? 'Online' : 'Offline'}
                                 </span>
                             </div>
                             
@@ -186,6 +183,12 @@ export default function MasterDevicesPage() {
                                 </div>
                                 <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
                                     <div className={`h-full ${activeDevice.battery_level > 20 ? 'bg-emerald-500' : 'bg-red-500'}`} style={{width: `${activeDevice.battery_level || 0}%`}} />
+                                </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="font-bold text-slate-500 uppercase tracking-widest text-[10px] flex items-center gap-2"><RefreshCw size={14}/> Last Sync</span>
+                                    <span className="font-black text-slate-900 dark:text-white text-xs">
+                                        {activeDevice.last_sync ? new Date(activeDevice.last_sync).toLocaleString() : 'Never'}
+                                    </span>
                                 </div>
                             </div>
 
@@ -232,7 +235,6 @@ export default function MasterDevicesPage() {
                                     </div>
                                 </a>
                             )}
-                            
                             {downloadLinks.direct_apk && (
                                 <a href={downloadLinks.direct_apk} target="_blank" rel="noopener noreferrer" className="relative overflow-hidden w-full bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 hover:border-blue-500 transition-all p-5 rounded-[24px] flex items-center gap-5 group shadow-sm hover:shadow-md active:scale-[0.98]">
                                     <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-[16px] flex items-center justify-center shrink-0 border border-blue-200 dark:border-blue-800/50 group-hover:scale-110 transition-transform">
