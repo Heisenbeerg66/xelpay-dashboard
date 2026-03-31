@@ -26,7 +26,7 @@ export default function LegalPage() {
             
             <section className="space-y-8">
               <div>
-                <p>Welcome to Xelpay ("we," "our," or "us"). By registering an account, accessing our dashboard, utilizing our APIs, or interacting with any Xelpay services, you ("Merchant," "User," or "Client") agree to be strictly bound by these comprehensive Terms of Service. If you do not agree to every clause, you must immediately cease utilizing our platform.</p>
+                <p>Welcome to Xelpay ("we," "our," or "us"). By registering an account, accessing our dashboard, utilizing our APIs, or interacting with any Xelpay services (including Relay/SMS applications), you ("Merchant," "User," or "Client") agree to be strictly bound by these comprehensive Terms of Service. If you do not agree to every clause, you must immediately cease utilizing our platform.</p>
               </div>
 
               <div>
@@ -37,8 +37,8 @@ export default function LegalPage() {
               </div>
 
               <div>
-                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">2. Description of Service & Core Disclaimer</h3>
-                <p>Xelpay is a strictly technological infrastructure providing payment verification software, API bridging, and automation tools for Mobile Financial Services (MFS), Bank Transfers, and International Gateways.</p>
+                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">2. Core Disclaimer & "AS-IS" Warranty</h3>
+                <p>Xelpay is a strictly technological infrastructure providing payment verification software, API bridging, and SMS/IMAP automation tools. Our services are provided on an <strong>"AS-IS" and "AS-AVAILABLE"</strong> basis without explicit or implied warranties of absolute continuous functionality, given the reliance on third-party device capabilities, battery optimizations, and email server uptimes.</p>
                 <div className="mt-4 p-5 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-2xl flex gap-4 items-start">
                   <AlertTriangle className="text-red-600 shrink-0 mt-1" size={24} />
                   <div>
@@ -49,26 +49,24 @@ export default function LegalPage() {
               </div>
 
               <div>
-                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">3. Account Obligations, Age Restriction & Demo Mode</h3>
-                <ul className="list-disc pl-5 space-y-3">
-                  <li><strong>Age Restriction:</strong> You must be at least 18 years of age (or the age of legal majority in your jurisdiction) to create an account and operate a business using our services.</li>
-                  <li><strong>Accuracy of Information:</strong> You must provide truthful, current, and complete business information during registration. Use of pseudonyms for malicious intent is strictly prohibited.</li>
-                  <li><strong>Account Security:</strong> You are solely responsible for maintaining the absolute confidentiality of your login credentials, API keys, and assigned team member roles. Xelpay cannot be held liable for unauthorized access resulting from your negligence.</li>
-                  <li><strong>Demo Mode Constraints:</strong> Xelpay provides a "Demo Mode" exclusively for UI/UX evaluation and API integration testing. You must NEVER process real customer data, real phone numbers, or execute genuine financial transactions using Demo Mode credentials.</li>
+                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">3. MFS Provider & Bangladesh Bank Compliance</h3>
+                <p>By using our SMS reading (Relay App) or IMAP bridging automation, you explicitly acknowledge that:</p>
+                <ul className="list-disc pl-5 mt-2 space-y-3">
+                  <li><strong>Account Status:</strong> Utilizing Personal or Agent MFS accounts (e.g., bKash, Nagad, Rocket) for high-volume commercial transactions may violate the direct Terms of Service of the respective MFS operators or the regulatory guidelines set by Bangladesh Bank.</li>
+                  <li><strong>Zero Operator Liability:</strong> Xelpay acts strictly as an automated notification reader. We hold zero liability and offer no indemnity if your MFS or Bank accounts are flagged, restricted, frozen, or permanently terminated by the operators or regulatory authorities due to suspicious activity, transaction velocity, or commercial use of personal accounts.</li>
                 </ul>
               </div>
 
               <div>
-                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">4. Intellectual Property (IP) Rights</h3>
-                <p>All source code, UI/UX designs, API architectures, logos, and trademarks associated with Xelpay are the exclusive intellectual property of Xenverse IT. You are granted a limited, non-exclusive, revocable license to use our APIs for your business. You strictly agree not to copy, clone, reverse-engineer, decompile, or resell any part of our platform.</p>
+                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">4. Taxation & NBR Liability</h3>
+                <p>As Xelpay does not aggregate funds, you are operating as an independent business entity. You are <strong>solely responsible</strong> for calculating, collecting, and remitting all applicable Value Added Tax (VAT), Advance Income Tax (AIT), and any other corporate taxes to the National Board of Revenue (NBR), Bangladesh. Xelpay assumes zero legal or financial liability for your tax reporting or evasion.</p>
               </div>
 
               <div>
                 <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">5. Subscription, Billing & Strict Refund Policy</h3>
                 <ul className="list-disc pl-5 space-y-3">
-                  <li><strong>Free/Starter Tier:</strong> Xelpay may offer a free tier equipped with a strict monthly transaction quota. Upon exhaustion of this quota, automation services will instantly halt until the next billing cycle or an upgrade is initiated.</li>
-                  <li><strong>Paid Subscriptions:</strong> Premium capabilities (including Team Members, Custom Telegram Bots, International Gateways) mandate an active, recurring paid subscription.</li>
-                  <li><strong className="text-slate-900 dark:text-white">Strict No-Refund Policy:</strong> Due to the digital and infrastructural nature of our APIs, all subscription payments are <strong>strictly non-refundable</strong> once activated. Refunds are not issued for change of mind, unused quotas, or accounts banned due to policy violations. Exceptions are solely at our discretion, typically reserved only for catastrophic, unresolvable technical failures originating explicitly from Xelpay's servers within the first 48 hours of payment.</li>
+                  <li><strong>Free/Starter Tier:</strong> Xelpay may offer a free tier equipped with a strict monthly transaction quota. Upon exhaustion, automation services will instantly halt until the next billing cycle or an upgrade is initiated.</li>
+                  <li><strong className="text-slate-900 dark:text-white">Strict No-Refund Policy:</strong> Due to the digital, infrastructural nature of our APIs, all subscription payments are <strong>strictly non-refundable</strong> once activated. Refunds are not issued for change of mind, unused quotas, or accounts banned due to policy violations. Exceptions are solely at our discretion, typically reserved only for catastrophic, unresolvable technical failures originating explicitly from Xelpay's servers within the first 48 hours of payment.</li>
                 </ul>
               </div>
 
@@ -77,9 +75,8 @@ export default function LegalPage() {
                 <p>Xelpay maintains a zero-tolerance policy for abuse. You explicitly agree <strong>NOT</strong> to utilize Xelpay for any of the following:</p>
                 <ul className="list-disc pl-5 mt-3 space-y-2 text-slate-700 dark:text-slate-300">
                   <li>Processing payments for illegal goods, narcotics, adult content, unlicensed pharmaceuticals, or unauthorized gambling operations.</li>
-                  <li>Money laundering, terrorist financing, or attempting to obscure the origin of illegal funds.</li>
-                  <li>Executing scams, Ponzi schemes, fraudulent investment plans, or deceiving end-consumers.</li>
-                  <li>Intentionally overwhelming, reverse-engineering, or deploying DDoS attacks against Xelpay APIs or integrated third-party systems.</li>
+                  <li>Money laundering, terrorist financing, scams, Ponzi schemes, or deceiving end-consumers.</li>
+                  <li>Intentionally overwhelming, reverse-engineering, or deploying DDoS attacks against Xelpay APIs.</li>
                 </ul>
                 <p className="mt-4 font-black text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-4 rounded-xl text-sm border border-red-100 dark:border-red-900/30">
                   ENFORCEMENT: Any violation of this AUP will trigger an immediate, irreversible permanent ban of your merchant account, immediate revocation of API keys, and automatic disclosure of your data to local law enforcement, BFIU (Bangladesh Financial Intelligence Unit), and relevant banking authorities.
@@ -87,46 +84,35 @@ export default function LegalPage() {
               </div>
 
               <div>
-                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">7. Third-Party Integrations (IMAP & Telegram)</h3>
+                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">7. Intellectual Property & Termination Rights</h3>
                 <ul className="list-disc pl-5 space-y-3">
-                  <li><strong>Custom Telegram Bots:</strong> By supplying a Custom Telegram Bot Token to Xelpay, you grant our system explicit automated permission to dispatch webhook payloads and operational notifications through your bot.</li>
-                  <li><strong>IMAP Bank Synchronization:</strong> Utilizing our Bank Transfer verification requires IMAP access to your notification emails. You acknowledge that Xelpay will programmatically parse emails exclusively from specified banking domains on a read-only basis. We hold no liability for the broader security of your email provider.</li>
+                  <li><strong>IP Rights:</strong> All source code, Relay App APKs, UI/UX designs, API architectures, and trademarks associated with Xelpay are the exclusive intellectual property of Xenverse IT. You strictly agree not to copy, clone, reverse-engineer, or resell any part of our platform.</li>
+                  <li><strong>Termination:</strong> Xelpay reserves the right to suspend or permanently terminate your account and API access at any time, with or without prior notice, if your usage poses a severe security, legal, or operational risk to our infrastructure.</li>
                 </ul>
               </div>
 
               <div>
-                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">8. Termination & Suspension Rights</h3>
-                <p>Xelpay reserves the right to suspend or permanently terminate your account and API access at any time, with or without prior notice, if we suspect any breach of these Terms, unauthorized activities, or if your usage poses a severe security or operational risk to our infrastructure.</p>
-              </div>
-
-              <div>
-                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">9. Force Majeure, Limitation of Liability & Indemnification</h3>
+                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">8. Force Majeure & Limitation of Liability</h3>
                 <ul className="list-disc pl-5 space-y-3">
-                  <li><strong>Force Majeure:</strong> Xelpay shall not be liable for any failure or delay in performance due to circumstances beyond our reasonable control, including acts of God, natural disasters, internet shutdowns, telecom failures, third-party server downtimes, or government restrictions.</li>
-                  <li><strong>Limitation of Liability:</strong> Under no legal framework shall Xelpay, its founders, or Xenverse IT be held liable for your personal or business MFS/Bank accounts being restricted, frozen, or suspended by respective authorities due to transaction volume, velocity, or TOS violations.</li>
+                  <li><strong>Force Majeure:</strong> Xelpay shall not be liable for any failure or delay in performance due to circumstances beyond our reasonable control, including acts of God, internet shutdowns, telecom failures, or government restrictions.</li>
                   <li><strong className="text-slate-900 dark:text-white">Liability Cap:</strong> In no event shall Xelpay's aggregate liability for all claims related to the service exceed the total amount paid by you to Xelpay for the specific subscription during the ONE (1) month immediately preceding the claim.</li>
                 </ul>
-                <p className="mt-3">You agree to indemnify and hold Xelpay harmless from any claims, lawsuits, or demands filed by your customers or third parties arising from your specific business operations.</p>
               </div>
 
               <div>
-                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">10. Dispute Resolution & Class-Action Waiver</h3>
+                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">9. Dispute Resolution & Class-Action Waiver</h3>
                 <ul className="list-disc pl-5 space-y-3">
-                  <li><strong>Informal Resolution:</strong> Before filing any formal legal claim, you agree to attempt to resolve the dispute informally by contacting our support team.</li>
+                  <li><strong>Mandatory 30-Day Mediation:</strong> Before filing any formal legal claim or lawsuit against Xelpay or Xenverse IT, you are legally bound to submit your grievance in writing to our support email. You must allow a mandatory period of thirty (30) days for informal mediation and resolution.</li>
                   <li><strong>Class-Action Waiver:</strong> You explicitly agree that any disputes or claims against Xelpay must be brought in your individual capacity, and NOT as a plaintiff or class member in any purported class or representative proceeding.</li>
                 </ul>
               </div>
 
               <div>
-                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">11. Governing Law, Jurisdiction & Severability</h3>
-                <ul className="list-disc pl-5 space-y-3">
-                  <li><strong>Governing Law:</strong> These Terms shall be governed by and construed in accordance with the laws of the People's Republic of Bangladesh. Any disputes shall be subject to the exclusive jurisdiction of the courts located in Bangladesh.</li>
-                  <li><strong>Severability:</strong> If any provision of these Terms is found to be unenforceable or invalid by a court of competent jurisdiction, that provision shall be limited or eliminated to the minimum extent necessary, and the remaining provisions shall remain in full force and effect.</li>
-                </ul>
+                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">10. Governing Law & Jurisdiction</h3>
+                <p>These Terms shall be governed by and construed in accordance with the laws of the People's Republic of Bangladesh. Following the mandatory mediation period, any unresolved disputes shall be subject to the exclusive jurisdiction of the competent courts located in Dhaka, Bangladesh.</p>
               </div>
             </section>
-          </div>
-                    <div className="h-px bg-slate-200 dark:bg-slate-800 w-full my-8"></div>
+          </div>          <div className="h-px bg-slate-200 dark:bg-slate-800 w-full my-8"></div>
 
           {/* ============================== PART 2: PRIVACY POLICY ============================== */}
           <div>
@@ -176,8 +162,8 @@ export default function LegalPage() {
               </div>
 
               <div>
-                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">5. Data Security & Breach Notification</h3>
-                <p>We deploy modern cryptography to shield your information. Sensitive strings (like Bot Tokens and external API configurations) are encrypted within our databases. Communication between your servers and Xelpay is exclusively enforced over HTTPS/TLS protocols. In the highly unlikely event of a confirmed data breach that exposes your personal or API data, Xelpay commits to notifying affected merchants within 72 hours of verification.</p>
+                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">5. International Data Transfers</h3>
+                <p>As we utilize global cloud infrastructure networks (such as Vercel and Supabase), your personal information and transaction logs may be transferred to, processed, and maintained on servers located outside of Bangladesh. We ensure that our infrastructure partners adhere to strict, internationally recognized data security standards.</p>
               </div>
 
               <div>
@@ -186,17 +172,17 @@ export default function LegalPage() {
               </div>
 
               <div>
-                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">7. Data Retention & Account Deletion Rights</h3>
+                <h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-tight">7. Data Retention, AML Compliance & Account Deletion</h3>
                 <p>As the legal owner of your data, you possess the right to rectify, update, or completely purge your merchant profile. Should you decide to terminate your operations with Xelpay, you may submit a formal deletion request via our support channels.</p>
                 <p className="mt-3 font-bold text-slate-700 dark:text-slate-300">AML Compliance Notice:</p>
-                <p>Please note that to strictly comply with local Anti-Money Laundering (AML) regulations and financial intelligence requirements, Xelpay reserves the legally mandated right to retain basic transaction logs, IP history, and identification metadata for a period of up to Five (5) years after account termination before executing a complete data purge.</p>
+                <p>To strictly comply with the Anti-Money Laundering (AML) and Combating the Financing of Terrorism (CFT) guidelines mandated by the Bangladesh Financial Intelligence Unit (BFIU), Xelpay reserves the legally mandated right to retain basic transaction logs, IP history, and identification metadata for a period of up to Five (5) years post-account termination before executing a complete data purge.</p>
               </div>
             </section>
           </div>
 
           <div className="mt-16 pt-8 border-t-2 border-dashed border-slate-200 dark:border-slate-800 text-center">
              <p className="text-xs md:text-sm font-black text-slate-500 uppercase tracking-widest">
-               By checking the agreement box during registration or by utilizing our APIs, you legally bind yourself to the entirety of this document.
+               By checking the agreement box during registration or by utilizing our APIs/Relay Apps, you legally bind yourself to the entirety of this document.
              </p>
           </div>
 
