@@ -8,6 +8,17 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const BOT_TOKEN = process.env.XELPAY_BOT_TOKEN;
 
+// ─── ব্রাউজারে টেস্ট করার জন্য GET রিকোয়েস্ট (ALIVE চেকার) ───
+export async function GET() {
+    return NextResponse.json({ 
+        status: "success", 
+        message: "Telegram Webhook is ALIVE and Working! 🚀",
+        tip: "Now try sending a /start command from your Telegram Bot."
+    });
+}
+
+// ─── টেলিগ্রামের জন্য POST রিকোয়েস্ট (আসল লজিক) ───
+
 // টেলিগ্রামে নরমাল মেসেজ পাঠানোর ফাংশন
 async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
@@ -51,7 +62,7 @@ async function connectTelegram(code: string, chatId: string | number): Promise<s
     }
 
     // ৩. কোড ভুল হলে
-    return "❌ <b>Connection Failed!</b>\nThe connection code has expired or is invalid. Please generate a new link.";
+    return "❌ <b>Connection Failed!</b>\nThe connection code has expired or is invalid. Please generate a new link from your dashboard.";
 }
 
 export async function POST(req: Request) {
@@ -84,7 +95,7 @@ export async function POST(req: Request) {
                 const code = text.split(' ')[1]; 
 
                 if (!code) {
-                    await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\nPlease generate a valid connection link from your Dashboard.");
+                    await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\nPlease generate a valid connection link from your Xelpay Dashboard.");
                     return NextResponse.json({ status: 'no_code' });
                 }
 
