@@ -1,87 +1,115 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Webhook-এর জন্য Service Role Key লাগবে, কারণ এটা ব্যাকএন্ড-টু-ব্যাকএন্ড রিকোয়েস্ট
+// ডাটাবেস আপডেট করার জন্য Service Role Key লাগবে (যেহেতু এটা ব্যাকএন্ড রিকোয়েস্ট)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; // .env.local এ এটি রাখবেন
-
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
 const BOT_TOKEN = process.env.XELPAY_BOT_TOKEN;
 
-// টেলিগ্রামে মেসেজ পাঠানোর ফাংশন
-async function sendTelegramMessage(chatId: string | number, text: string) {
+// টেলিগ্রামে নরমাল মেসেজ পাঠানোর ফাংশন
+async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
     await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML' }),
+        body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
     });
+}
+
+// টেলিগ্রামের আগের মেসেজ এডিট করার ফাংশন (বাটন ক্লিক করার পর)
+async function editTelegramMessage(chatId: string | number, messageId: number, text: string) {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`;
+    await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text, parse_mode: 'HTML' }),
+    });
+}
+
+// ডাটাবেস থেকে বটের ইউজারনেম আনার ফাংশন
+async function getBotUsername() {
+    const { data } = await supabase.from('site_settings').select('value').eq('key_name', 'telegram').single();
+    return data?.value ? data.value.replace('@', '') : 'xelpay_alert_bot';
+}
+
+// কানেকশন লজিক (Vault বা Business চেক করে আপডেট করবে)
+async function connectTelegram(code: string, chatId: string | number): Promise<string> {
+    // ১. প্রথমে চেক করব Vault (merchants) এ আছে কিনা
+    const { data: merchantData } = await supabase.from('merchants').select('id').eq('telegram_link_code', code).single();
+    if (merchantData) {
+        await supabase.from('merchants').update({ telegram_chat_id: chatId.toString() }).eq('id', merchantData.id);
+        return "✅ <b>Successfully Connected to Vault!</b>\nYour master alerts will now be sent to this chat.";
+    }
+
+    // ২. Vault এ না পেলে চেক করব Business এ আছে কিনা
+    const { data: businessData } = await supabase.from('businesses').select('id, business_name').eq('telegram_link_code', code).single();
+    if (businessData) {
+        await supabase.from('businesses').update({ telegram_chat_id: chatId.toString() }).eq('id', businessData.id);
+        return `✅ <b>Successfully Connected to Business Workspace!</b>\nAlerts for <b>${businessData.business_name}</b> will now be sent here.`;
+    }
+
+    // ৩. কোড ভুল হলে
+    return "❌ <b>Connection Failed!</b>\nThe connection code has expired or is invalid. Please generate a new link.";
 }
 
 export async function POST(req: Request) {
     try {
         const body = await req.json();
 
-        // যদি মেসেজ না থাকে (যেমন এডিট করা মেসেজ বা অন্য ইভেন্ট), তাহলে ইগনোর করব
-        if (!body.message || !body.message.text) {
-            return NextResponse.json({ status: 'ignored' });
+        // ─── বাটন ক্লিক (Callback Query) হ্যান্ডেল করা ───
+        if (body.callback_query) {
+            const callbackQuery = body.callback_query;
+            const chatId = callbackQuery.message.chat.id;
+            const messageId = callbackQuery.message.message_id;
+            const data = callbackQuery.data; // উদাঃ "connect_dm_TG-XXXX"
+
+            if (data.startsWith('connect_dm_')) {
+                const code = data.replace('connect_dm_', '');
+                const resultMessage = await connectTelegram(code, chatId);
+                // মেসেজ এডিট করে সাকসেস মেসেজ দেখাবো
+                await editTelegramMessage(chatId, messageId, resultMessage);
+            }
+            return NextResponse.json({ status: 'success' });
         }
 
-        const chatId = body.message.chat.id;
-        const text = body.message.text.trim(); // মেসেজটি হবে এরকম: "/start TG-12345ABC"
+        // ─── নরমাল মেসেজ বা /start হ্যান্ডেল করা ───
+        if (body.message && body.message.text) {
+            const chatId = body.message.chat.id;
+            const chatType = body.message.chat.type; // 'private', 'group', 'supergroup'
+            const text = body.message.text.trim();
 
-        // যদি মেসেজটি /start দিয়ে শুরু হয়
-        if (text.startsWith('/start')) {
-            // "/start TG-12345ABC" থেকে স্পেসের পরের অংশ (কোড) আলাদা করা
-            const code = text.split(' ')[1]; 
+            if (text.startsWith('/start')) {
+                const code = text.split(' ')[1]; 
 
-            if (!code) {
-                await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\nPlease generate a valid connection link from your Xelpay Dashboard.");
-                return NextResponse.json({ status: 'no_code' });
+                if (!code) {
+                    await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\nPlease generate a valid connection link from your Dashboard.");
+                    return NextResponse.json({ status: 'no_code' });
+                }
+
+                // যদি ইউজার গ্রুপে বট অ্যাড করে, তবে সরাসরি গ্রুপেই কানেক্ট হয়ে যাবে
+                if (chatType === 'group' || chatType === 'supergroup') {
+                    const resultMessage = await connectTelegram(code, chatId);
+                    await sendTelegramMessage(chatId, resultMessage);
+                    return NextResponse.json({ status: 'connected_group' });
+                }
+
+                // যদি ইউজার পার্সোনাল মেসেজে বট স্টার্ট দেয়, তবে তাকে বাটন দেখাবো
+                const botUsername = await getBotUsername();
+                const replyMarkup = {
+                    inline_keyboard: [
+                        [{ text: "📩 Connect to THIS Chat", callback_data: `connect_dm_${code}` }],
+                        [{ text: "👥 Add to a GROUP instead", url: `https://t.me/${botUsername}?startgroup=${code}` }]
+                    ]
+                };
+
+                await sendTelegramMessage(chatId, "🤔 <b>Where do you want to receive alerts?</b>\n\nYou can receive alerts directly in this chat, or add me to a group to notify your whole team.", replyMarkup);
+                return NextResponse.json({ status: 'asked_user' });
             }
-
-            // ১. প্রথমে চেক করব এটা Vault (merchants) এর কোড কিনা
-            const { data: merchantData } = await supabase
-                .from('merchants')
-                .select('id')
-                .eq('telegram_link_code', code)
-                .single();
-
-            if (merchantData) {
-                // Vault-এ পাওয়া গেছে, তাই chat_id আপডেট করে দেব
-                await supabase
-                    .from('merchants')
-                    .update({ telegram_chat_id: chatId.toString() })
-                    .eq('id', merchantData.id);
-
-                await sendTelegramMessage(chatId, "✅ <b>Successfully Connected to Vault!</b>\nYour master alerts will now be sent to this chat. You can return to your dashboard.");
-                return NextResponse.json({ status: 'vault_connected' });
-            }
-
-            // ২. Vault এ না পেলে চেক করব Business টেবিলে আছে কিনা
-            const { data: businessData } = await supabase
-                .from('businesses')
-                .select('id, business_name')
-                .eq('telegram_link_code', code)
-                .single();
-
-            if (businessData) {
-                // Business-এ পাওয়া গেছে, তাই chat_id আপডেট করে দেব
-                await supabase
-                    .from('businesses')
-                    .update({ telegram_chat_id: chatId.toString() })
-                    .eq('id', businessData.id);
-
-                await sendTelegramMessage(chatId, `✅ <b>Successfully Connected to Business Workspace!</b>\nAlerts for <b>${businessData.business_name}</b> will now be sent here.`);
-                return NextResponse.json({ status: 'business_connected' });
-            }
-
-            // ৩. কোথাও কোডটি পাওয়া না গেলে
-            await sendTelegramMessage(chatId, "❌ <b>Connection Failed!</b>\nThe connection code has expired or is invalid. Please generate a new link from your dashboard.");
-            return NextResponse.json({ status: 'invalid_code' });
         }
 
-        return NextResponse.json({ status: 'success' });
+        return NextResponse.json({ status: 'ignored' });
 
     } catch (error) {
         console.error("Telegram Webhook Error:", error);
