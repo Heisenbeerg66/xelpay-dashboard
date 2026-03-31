@@ -4,16 +4,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Send, ArrowLeft, Bot, RefreshCw, CheckCircle2, ShieldCheck, Loader2, ExternalLink } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
-import { getMerchantVaultSettings, generateTelegramCode } from '@/lib/vault_actions';
+import { getMerchantVaultSettings, generateTelegramCode, getTelegramBotUsername } from '@/lib/vault_actions';
 
 export default function MasterTelegramPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
     const [merchantData, setMerchantData] = useState<any>(null);
-
-    // Replace this with your actual Bot Username
-    const OFFICIAL_BOT_USERNAME = "YourOfficialBotUsername"; 
+    const [botUsername, setBotUsername] = useState<string>('xelpay_alert_bot');
 
     useEffect(() => {
         fetchData();
@@ -21,8 +19,13 @@ export default function MasterTelegramPage() {
 
     const fetchData = async () => {
         setLoading(true);
-        const res = await getMerchantVaultSettings();
+        const [res, botRes] = await Promise.all([
+            getMerchantVaultSettings(),
+            getTelegramBotUsername()
+        ]);
+        
         if (res.success) setMerchantData(res.data);
+        if (botRes.success && botRes.username) setBotUsername(botRes.username.replace('@', ''));
         setLoading(false);
     };
 
@@ -41,7 +44,7 @@ export default function MasterTelegramPage() {
     if (loading) return <div className="min-h-[60vh] flex items-center justify-center bg-[#F4F7F9] dark:bg-[#0B1120]"><Loader2 className="animate-spin text-blue-600" size={32} /></div>;
 
     const isConnected = !!merchantData?.telegram_chat_id;
-    const telegramLink = `https://t.me/${OFFICIAL_BOT_USERNAME}?start=${merchantData?.telegram_link_code || ''}`;
+    const telegramLink = `https://t.me/${botUsername}?start=${merchantData?.telegram_link_code || ''}`;
 
     return (
         <div className="p-4 md:p-8 w-full max-w-6xl mx-auto min-h-screen bg-[#F4F7F9] dark:bg-[#0B1120] font-sans transition-colors duration-300">

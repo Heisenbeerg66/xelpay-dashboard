@@ -131,3 +131,19 @@ export async function importVaultDeviceToBusiness(businessId: string) {
         return { success: true, message: 'Device imported successfully to Business!' };
     } catch (error: any) { return { success: false, message: error.message }; }
 }
+
+export async function getTelegramBotUsername() {
+    try {
+        const supabase = await getSupabase();
+        const { data, error } = await supabase
+            .from('site_settings')
+            .select('value')
+            .eq('key_name', 'telegram')
+            .single();
+
+        if (error && error.code !== 'PGRST116') throw error;
+        return { success: true, username: data?.value || 'xelpay_alert_bot' };
+    } catch (error: any) {
+        return { success: false, message: error.message };
+    }
+}

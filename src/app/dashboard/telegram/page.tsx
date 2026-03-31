@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Send, Bot, RefreshCw, CheckCircle2, ShieldCheck, Loader2, ExternalLink, DownloadCloud, Building2, X } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
-import { getBusinessSettings, generateBusinessTelegramCode, importVaultTelegramToBusiness, getVaultDataForImport } from '@/lib/business_actions';
+import { getBusinessSettings, generateBusinessTelegramCode, importVaultTelegramToBusiness, getVaultDataForImport, getTelegramBotUsername } from '@/lib/business_actions';
 
 export default function BusinessTelegramPage() {
     const [loading, setLoading] = useState(true);
@@ -11,17 +11,21 @@ export default function BusinessTelegramPage() {
     const [importing, setImporting] = useState(false);
     const [businessId, setBusinessId] = useState<string | null>(null);
     const [businessData, setBusinessData] = useState<any>(null);
+    const [botUsername, setBotUsername] = useState<string>('xelpay_alert_bot');
 
     // Modal States
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [vaultData, setVaultData] = useState<any>(null);
 
-    const OFFICIAL_BOT_USERNAME = "YourOfficialBotUsername"; // Bot username
-
     const fetchBusinessData = async (id: string) => {
         setLoading(true);
-        const res = await getBusinessSettings(id);
+        const [res, botRes] = await Promise.all([
+            getBusinessSettings(id),
+            getTelegramBotUsername()
+        ]);
+        
         if (res.success) setBusinessData(res.data);
+        if (botRes.success && botRes.username) setBotUsername(botRes.username.replace('@', ''));
         setLoading(false);
     };
 
@@ -74,7 +78,7 @@ export default function BusinessTelegramPage() {
     if (!businessId) return <div className="min-h-screen flex items-center justify-center bg-[#F4F7F9] dark:bg-[#0B1120] text-slate-500 font-bold">Please select a Workspace.</div>;
 
     const isConnected = !!businessData?.telegram_chat_id;
-    const telegramLink = `https://t.me/${OFFICIAL_BOT_USERNAME}?start=${businessData?.telegram_link_code || ''}`;
+    const telegramLink = `https://t.me/${botUsername}?start=${businessData?.telegram_link_code || ''}`;
 
     return (
         <div className="p-4 md:p-8 w-full max-w-6xl mx-auto min-h-screen bg-[#F4F7F9] dark:bg-[#0B1120] font-sans transition-colors duration-300">
