@@ -89,14 +89,27 @@ export async function registerMerchantOAuth(payload: {
 }) {
   const { userId, email, fullName, planId, planPrice, referCode } = payload;
 
-  // Check if merchant already exists (Google re-auth case)
-  const { data: existing } = await supabaseAdmin
+  // ১. userId দিয়ে check — পুরনো user হলে alreadyExists return করো (re-login)
+  const { data: existingById } = await supabaseAdmin
     .from('merchants')
     .select('id')
     .eq('id', userId)
     .maybeSingle();
 
-  if (existing) return { alreadyExists: true };
+  if (existingById) return { alreadyExists: true };
+
+  // ২. Email দিয়ে check — ভিন্ন account এ এই email আগে থেকে registered কিনা
+  // এটা হয় যদি কেউ email/password দিয়ে আগে signup করেছে এখন Google দিয়ে try করছে
+  const { data: existingByEmail } = await supabaseAdmin
+    .from('merchants')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (existingByEmail) {
+    // এই email আগে থেকে অন্য account এ registered — block করো
+    return { error: 'Email already registered. Please login with your existing account.' };
+  }
 
   const merchantDisplayId = generate6DigitID();
   const accountStatus = planPrice === 0 ? 'active' : 'pending'; 

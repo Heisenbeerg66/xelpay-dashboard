@@ -99,6 +99,8 @@ function SignUpContent() {
   const planIdFromUrl = searchParams.get('plan');
   const refCodeFromUrl = searchParams.get('ref') || ''; 
   const mode = searchParams.get('mode');
+  // callback থেকে email_exists error এলে auto modal দেখাবে
+  const errorFromUrl = searchParams.get('error');
 
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -120,6 +122,16 @@ function SignUpContent() {
   const [privacyPolicyLink, setPrivacyPolicyLink] = useState('#');
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<any>(null);
+
+  // ── URL এ error param থাকলে সাথে সাথে error modal দেখাও ──
+  useEffect(() => {
+    if (errorFromUrl === 'email_exists') {
+      setErrorModal({
+        show: true,
+        message: 'An account with this Google email already exists. Please login instead.',
+      });
+    }
+  }, [errorFromUrl]);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -156,12 +168,14 @@ function SignUpContent() {
     const extraFeatures: string[] = Array.isArray(plan.features) ? plan.features : [];
     return [...columnFeatures.filter(Boolean) as string[], ...extraFeatures];
   };
-    const handleGoogleSignUp = async () => {
+
+  const handleGoogleSignUp = async () => {
     if (mode === 'demo') {
       toast.error("You don't need to create a new account in demo mode. Please login with demo@xelpay.com / demo123456", { duration: 5000 });
       return;
     }
     setGoogleLoading(true);
+    // source=signup পাঠাচ্ছি না — plan_id ও ref পাঠাচ্ছি যাতে callback signup flow বুঝবে
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -197,7 +211,7 @@ function SignUpContent() {
 
     const fullPhone = `${countryCode}${formData.phone.replace(/\s/g, '')}`;
     
-    // ১. ক্লায়েন্ট সাইডে আইডি ও ইমেইলের জন্য ডায়নামিক ডাটা জেনারেট করা
+    // ১. ক্লায়েন্ট সাইডে আইডি ও ইমেইলের জন্য ডায়নামিক ডাটা জেনারেট করা
     const generatedMerchantId = Math.floor(100000 + Math.random() * 900000).toString();
     const planStatusText = selectedPlan.price === 0 ? 'Active' : 'Pending';
     const planStatusColor = selectedPlan.price === 0 ? '#10b981' : '#f59e0b';
@@ -248,7 +262,8 @@ function SignUpContent() {
     }
     setLoading(false);
   };
-    return (
+
+  return (
     <div className="min-h-screen bg-white dark:bg-[#0B1120] md:bg-slate-50 md:dark:bg-[#0B1120] flex items-center justify-center md:p-12 transition-colors duration-500 font-sans">
       <Toaster position="top-center" richColors />
       <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-0 md:gap-8 items-start bg-white dark:bg-[#0B1120] md:bg-transparent md:dark:bg-transparent rounded-none md:rounded-[3rem]">
@@ -359,7 +374,8 @@ function SignUpContent() {
                 <input required type="tel" className="w-full px-4 py-3.5 bg-transparent outline-none font-medium text-sm text-slate-900 dark:text-white" placeholder="1712 345678" onChange={(e) => setFormData({...formData, phone: e.target.value})} />
               </div>
             </div>
-                        <div className="space-y-1.5">
+
+            <div className="space-y-1.5">
               <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider flex items-center gap-1">Security Password <span className="text-red-500">*</span></label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />

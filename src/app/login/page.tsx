@@ -44,6 +44,16 @@ function LoginContent() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<any>(null);
 
+  // callback থেকে error param এলে toast দেখাও
+  const errorParam = searchParams.get('error');
+  useEffect(() => {
+    if (errorParam === 'no_account') {
+      toast.error("No account found with this Google email. Please sign up first.", { duration: 6000 });
+    } else if (errorParam === 'suspended') {
+      toast.error("Your account has been suspended. Please contact support.", { duration: 6000 });
+    }
+  }, [errorParam]);
+
   useEffect(() => {
     if (mode === 'demo') {
       setEmail('demo@xelpay.com');
@@ -110,7 +120,7 @@ function LoginContent() {
 
         toast.success("Authentication successful! Redirecting...", { icon: '🔐' });
         
-        // ফাস্ট রাউটিংয়ের জন্য router.push ব্যবহার করা হয়েছে
+        // ফাস্ট রাউটিংয়ের জন্য router.push ব্যবহার করা হয়েছে
         setTimeout(() => {
           router.push('/dashboard');
         }, 1000);
@@ -131,9 +141,10 @@ function LoginContent() {
       return;
     }
     setGoogleLoading(true);
+    // source=login পাঠাচ্ছি যাতে callback জানে এটা login flow
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` }
+      options: { redirectTo: `${window.location.origin}/auth/callback?source=login` }
     });
     if (error) { toast.error(error.message); setGoogleLoading(false); }
   };
