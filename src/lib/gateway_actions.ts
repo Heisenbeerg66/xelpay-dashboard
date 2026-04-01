@@ -80,7 +80,7 @@ export async function importGatewayFromVault(business_id: string, vault_gateway:
         const { data, error } = await supabase
             .from('business_gateways')
             .insert({
-                business_id,
+                business_id: business_id,
                 vault_gateway_id: vault_gateway.id,
                 category:         vault_gateway.category,
                 provider:         vault_gateway.provider,
@@ -161,7 +161,7 @@ export async function savePaymentGateway(payload: any) {
         const { data: businessData, error: bridgeError } = await supabase
             .from('business_gateways')
             .insert({
-                business_id,
+                business_id: business_id,
                 vault_gateway_id:         null,
                 category:                 category.toLowerCase(),
                 provider:                 finalProvider,
