@@ -75,33 +75,53 @@ function LoginContent() {
     }
 
     if (authData.user) {
-      const { data: merchant } = await supabase.from('merchants').select('status, is_demo').eq('id', authData.user.id).single();
+      try {
+        const { data: merchant, error: merchantError } = await supabase.from('merchants').select('status, is_demo').eq('id', authData.user.id).single();
 
-      if (mode === 'demo' && merchant?.is_demo !== true) {
-        await supabase.auth.signOut();
-        toast.error("This account is not a demo account. Please use the demo credentials provided.");
-        setLoading(false);
-        recaptchaRef.current?.reset();
-        setCaptchaToken(null);
-        return;
+        if (merchantError) {
+          console.error("Merchant check error:", merchantError);
+        }
+
+        if (mode === 'demo' && merchant?.is_demo !== true) {
+          await supabase.auth.signOut();
+          toast.error("This account is not a demo account. Please use the demo credentials provided.");
+          setLoading(false);
+          recaptchaRef.current?.reset();
+          setCaptchaToken(null);
+          return;
+        }
+
+        if (merchant?.status === 'suspended') {
+          await supabase.auth.signOut();
+          const { data: settings } = await supabase.from('site_settings').select('value').eq('key_name', 'telegram').maybeSingle();
+          if (settings) setTelegramLink(settings.value);
+          setShowSuspendedModal(true);
+          setLoading(false);
+          return;
+        }
+
+        // FIX 9: Use server action to sync email verified — cannot be tampered
+        if (authData.user.email_confirmed_at) {
+          try {
+            await syncEmailVerified(authData.user.id);
+          } catch (syncError) {
+            console.error("Sync Email Error:", syncError);
+          }
+        }
+
+        toast.success("Authentication successful! Redirecting...", { icon: '🔐' });
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
+
+      } catch (err) {
+        console.error("Post-login process error:", err);
+        // Even if there is an error post-login, since auth succeeded, force redirect to dashboard
+        toast.success("Authentication successful! Redirecting...", { icon: '🔐' });
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 1000);
       }
-
-      if (merchant?.status === 'suspended') {
-        await supabase.auth.signOut();
-        const { data: settings } = await supabase.from('site_settings').select('value').eq('key_name', 'telegram').maybeSingle();
-        if (settings) setTelegramLink(settings.value);
-        setShowSuspendedModal(true);
-        setLoading(false);
-        return;
-      }
-
-      // FIX 9: Use server action to sync email verified — cannot be tampered
-      if (authData.user.email_confirmed_at) {
-        await syncEmailVerified(authData.user.id);
-      }
-
-      toast.success("Authentication successful! Redirecting...", { icon: '🔐' });
-      window.location.href = '/dashboard';
     }
   };
 
