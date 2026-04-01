@@ -1,11 +1,44 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { Mail, Lock, User, MapPin, CheckCircle, ArrowRight, X, AlertCircle, LogIn, Users, Loader2, EyeOff, Eye } from 'lucide-react';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { Mail, Lock, User, MapPin, CheckCircle, ArrowRight, X, AlertCircle, LogIn, Users, Loader2, EyeOff, Eye, ArrowLeft, Check } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Toaster, toast } from 'sonner';
+import ReCAPTCHA from 'react-google-recaptcha';
+import { registerMerchant } from '@/lib/auth';
+
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
+
+// Method label map (same as landing page)
+const methodLabels: Record<string, string> = {
+  mobile: 'Mobile Banking (bKash / Nagad / Rocket)',
+  bank: 'Bank Transfer via IMAP Sync',
+  international: 'International (Stripe / PayPal / Crypto)',
+};
+
+// FIX 7: Plan tag badge — same as landing page
+function PlanTagBadge({ tag }: { tag: string }) {
+  const colorMap: Record<string, { gradient: string; text: string }> = {
+    blue:   { gradient: 'from-blue-500 to-indigo-600',   text: 'text-white' },
+    green:  { gradient: 'from-emerald-500 to-teal-600',  text: 'text-white' },
+    orange: { gradient: 'from-orange-500 to-amber-500',  text: 'text-white' },
+    purple: { gradient: 'from-purple-500 to-violet-600', text: 'text-white' },
+    red:    { gradient: 'from-red-500 to-rose-600',      text: 'text-white' },
+    amber:  { gradient: 'from-amber-400 to-yellow-500',  text: 'text-slate-900' },
+  };
+  const parts = tag.split(':');
+  const label = parts[0].trim();
+  const colorKey = (parts[1] || 'blue').trim().toLowerCase();
+  const colors = colorMap[colorKey] || colorMap.blue;
+  return (
+    <div className={`absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r ${colors.gradient} ${colors.text} px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap flex items-center gap-1`}>
+      <span>{label.match(/^\p{Emoji}/u)?.[0] || '✦'}</span>
+      <span>{label.replace(/^\p{Emoji}\s*/u, '')}</span>
+    </div>
+  );
+}
 
 // --- Reusable Modals ---
 const ErrorModal = ({ isOpen, message, onClose }: any) => {
@@ -29,16 +62,32 @@ const ErrorModal = ({ isOpen, message, onClose }: any) => {
 const SuccessModal = ({ isOpen, merchantId, onClose }: any) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in zoom-in-95">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-8 text-center border border-slate-100 dark:border-slate-800 shadow-2xl">
-        <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle size={36} /></div>
-        <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2 uppercase tracking-tight">Success!</h3>
-        <p className="text-slate-500 text-sm font-medium mb-6">Account created. Please check your email to verify your account.</p>
-        <div className="bg-slate-50 dark:bg-[#0B1120] p-4 rounded-2xl mb-8 border border-slate-100 dark:border-slate-800">
-           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Your Merchant ID</span>
-           <span className="text-2xl font-black text-blue-600">#{merchantId}</span>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-8 text-center border border-green-100 dark:border-green-900/30 shadow-2xl animate-in zoom-in-95 duration-300">
+        <div className="relative w-20 h-20 mx-auto mb-6">
+          <div className="absolute inset-0 bg-green-100 dark:bg-green-900/30 rounded-full animate-ping opacity-30"></div>
+          <div className="relative w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center shadow-inner">
+            <CheckCircle size={40} strokeWidth={2} />
+          </div>
         </div>
-        <button onClick={onClose} className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all">Go to Login</button>
+        <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2 uppercase tracking-tight">Welcome Aboard! 🎉</h3>
+        <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-6 leading-relaxed px-2">
+          Your XelPay merchant account has been created successfully. Please verify your email to activate your account.
+        </p>
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-5 rounded-2xl mb-6 border border-blue-100 dark:border-blue-800/50 shadow-sm">
+          <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest block mb-2">Your Merchant ID</span>
+          <span className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-wider">#{merchantId}</span>
+          <p className="text-[10px] text-slate-500 font-medium mt-2">Keep this ID safe — you'll need it for support</p>
+        </div>
+        <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-4 mb-6 text-left">
+          <AlertCircle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700 dark:text-amber-400 font-semibold leading-relaxed">
+            A verification email has been sent to your inbox. Please check your email and click the verification link before logging in.
+          </p>
+        </div>
+        <button onClick={onClose} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-600/30 hover:bg-blue-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+          <LogIn size={18} /> Go to Login
+        </button>
       </div>
     </div>
   );
@@ -51,10 +100,10 @@ function SignUpContent() {
   const refCodeFromUrl = searchParams.get('ref') || ''; 
   const mode = searchParams.get('mode');
 
-  // --- States ---
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [errorModal, setErrorModal] = useState({ show: false, message: '' });
   const [tempMerchantId, setTempMerchantId] = useState('');
@@ -65,10 +114,13 @@ function SignUpContent() {
   
   const [countryCode, setCountryCode] = useState('+880');
   const [formData, setFormData] = useState({
-    fullName: '', phone: '', email: '', password: '', address: '', referCode: refCodeFromUrl
+    fullName: '', phone: '', email: '', password: '', confirmPassword: '', address: '', referCode: refCodeFromUrl
   });
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [privacyPolicyLink, setPrivacyPolicyLink] = useState('#');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<any>(null);
 
-  // --- Fetch Plans ---
   useEffect(() => {
     const fetchPlans = async () => {
       const { data } = await supabase.from('plans').select('*').order('serial', { ascending: true });
@@ -81,15 +133,44 @@ function SignUpContent() {
     fetchPlans();
   }, [planIdFromUrl]);
 
-  const generate6DigitID = () => Math.floor(100000 + Math.random() * 900000).toString();
+  useEffect(() => {
+    const fetchPrivacyLink = async () => {
+      const { data } = await supabase.from('site_settings').select('value').eq('key_name', 'privacy_policy').maybeSingle();
+      if (data?.value) setPrivacyPolicyLink(data.value);
+    };
+    fetchPrivacyLink();
+  }, []);
 
-  // --- Google OAuth ---
+  // FIX 7: Build full feature list same as landing page
+  const buildPlanFeatures = (plan: any): string[] => {
+    if (!plan) return [];
+    const transactionLabel =
+      (plan.transaction_limit_monthly ?? 100) === 0
+        ? 'Unlimited transactions / month'
+        : `${(plan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`;
+
+    const columnFeatures: (string | null)[] = [
+      transactionLabel,
+      `${plan.business_limit ?? 1} business${(plan.business_limit ?? 1) > 1 ? 'es' : ''}`,
+      ...(Array.isArray(plan.allowed_method) ? plan.allowed_method : ['mobile']).map(
+        (m: string) => methodLabels[m] ?? m
+      ),
+      plan.is_team_allowed
+        ? `Team access — up to ${plan.allowed_team_members ?? 1} members`
+        : 'Single user only',
+      `${plan.device_limit ?? 1} device${(plan.device_limit ?? 1) > 1 ? 's' : ''}`,
+      plan.allowed_telegram_group ? 'Telegram group alerts' : null,
+      plan.is_custom_bot_allowed ? 'Custom Telegram bot' : null,
+    ];
+    const extraFeatures: string[] = Array.isArray(plan.features) ? plan.features : [];
+    return [...columnFeatures.filter(Boolean) as string[], ...extraFeatures];
+  };
+
   const handleGoogleSignUp = async () => {
     if (mode === 'demo') {
       toast.error("You don't need to create a new account in demo mode. Please login with demo@xelpay.com / demo123456", { duration: 5000 });
       return;
     }
-
     setGoogleLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -103,48 +184,35 @@ function SignUpContent() {
     }
   };
 
-  // --- Email/Pass Registration Logic ---
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // ✅ Demo Mode Restriction
     if (mode === 'demo') {
       toast.error("Demo Mode: No need to register. Please go to Login and use demo@xelpay.com / Password: demo123456", { duration: 5000 });
       return;
     }
-
+    if (!captchaToken) {
+      toast.error("Please complete the reCAPTCHA verification.");
+      return;
+    }
+    if (!agreedToTerms) {
+      toast.error("Please agree to the Terms & Conditions and Privacy Policy to continue.");
+      return;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match. Please re-enter.");
+      return;
+    }
     if (!selectedPlan) return alert("Please select a plan.");
     setLoading(true);
 
     const fullPhone = `${countryCode}${formData.phone.replace(/\s/g, '')}`;
 
-    // 1. Check Duplicates in Merchants Table
-    const { data: existingUser } = await supabase
-      .from('merchants')
-      .select('email, phone')
-      .or(`email.eq.${formData.email},phone.eq.${fullPhone}`)
-      .maybeSingle();
-
-    if (existingUser) {
-      setErrorModal({ 
-        show: true, 
-        message: existingUser.email === formData.email 
-          ? "This email is already registered. Please login." 
-          : "This phone number is already registered to another account."
-      });
-      setLoading(false);
-      return;
-    }
-
-    const merchantDisplayId = generate6DigitID();
-
-    // 2. Supabase Auth Signup
+    // 1. Supabase Auth Signup
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
-      options: {
-        data: { full_name: formData.fullName }
-      }
+      options: { data: { full_name: formData.fullName } }
     });
 
     if (authError) {
@@ -153,70 +221,97 @@ function SignUpContent() {
       return;
     }
 
-    // 3. Insert into Merchants Table (Using upsert with slug explicitly null)
     if (authData.user) {
-      const { error: dbError } = await supabase.from('merchants').upsert({
-        id: authData.user.id, 
-        merchant_id_display: merchantDisplayId,
-        slug: null, // explicitly null
-        name: formData.fullName, 
+      // FIX 9: Use server action — subscription_status decided server-side, cannot be tampered
+      const result = await registerMerchant({
+        userId: authData.user.id,
         email: formData.email,
+        fullName: formData.fullName,
         phone: fullPhone,
         address: formData.address,
-        currency: 'BDT',
-        status: 'pending', 
-        plan_id: selectedPlan.id,
-        referred_by: formData.referCode || null, 
-        is_demo: false
+        referCode: formData.referCode || null,
+        planId: selectedPlan.id,
+        planPrice: selectedPlan.price, // server decides active/pending based on this
       });
 
-      if (dbError) {
-        console.error("DB Insert Error:", dbError);
-        setErrorModal({ show: true, message: `System saved your auth but failed to create merchant profile. Contact support.` });
+      if (result.error) {
+        setErrorModal({ show: true, message: result.error });
       } else {
-        setTempMerchantId(merchantDisplayId);
+        setTempMerchantId(result.merchantDisplayId!);
         setShowSuccess(true);
       }
     }
     setLoading(false);
-  };return (
+  };
+
+  return (
     <div className="min-h-screen bg-white dark:bg-[#0B1120] md:bg-slate-50 md:dark:bg-[#0B1120] flex items-center justify-center md:p-12 transition-colors duration-500 font-sans">
       <Toaster position="top-center" richColors />
       <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-0 md:gap-8 items-start bg-white dark:bg-[#0B1120] md:bg-transparent md:dark:bg-transparent rounded-none md:rounded-[3rem]">
         
         {/* Left Side: Order Cart */}
-        <div className="lg:col-span-4 sticky top-0 md:top-28 z-20 bg-white dark:bg-[#0B1120] md:bg-transparent md:dark:bg-transparent p-6 md:p-0 border-b border-slate-100 dark:border-slate-800 md:border-0 shadow-sm md:shadow-none">
-          <div className="md:bg-white md:dark:bg-[#111827] md:rounded-3xl md:p-8 md:shadow-xl md:border md:border-slate-200 md:dark:border-slate-800">
+        {/* FIX 6: Show plan info on ALL screen sizes — removed hidden logic */}
+        <div className="lg:col-span-4 sticky top-0 lg:top-8 z-20 bg-white dark:bg-[#0B1120] md:bg-transparent md:dark:bg-transparent p-4 md:p-0 border-b border-slate-100 dark:border-slate-800 lg:border-0 shadow-sm lg:shadow-none">
+          <div className="bg-white dark:bg-[#111827] rounded-2xl lg:rounded-3xl p-5 md:p-8 shadow-md lg:shadow-xl border border-slate-200 dark:border-slate-800">
             
-            {/* Demo Mode Banner */}
             {mode === 'demo' && (
               <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-yellow-400 text-yellow-900 text-[10px] font-black px-6 py-1.5 rounded-b-xl uppercase tracking-widest shadow-lg whitespace-nowrap z-20 animate-pulse">
                 Demo Mode Active
               </div>
             )}
 
-            <div className="flex justify-between items-center mb-6 mt-4 md:mt-0">
+            {/* FIX 8: Back button on desktop cart */}
+            <div className="hidden lg:flex items-center gap-2 mb-5">
+              <Link href="/" className="flex items-center gap-1.5 text-slate-400 hover:text-blue-600 text-xs font-bold transition-colors">
+                <ArrowLeft size={14} /> Back to Home
+              </Link>
+            </div>
+
+            <div className="flex justify-between items-center mb-4">
               <Link href="/" className="flex items-center gap-1 group">
-                <span className="text-3xl md:text-4xl font-black text-blue-600 tracking-tighter group-hover:scale-105 transition-transform">X</span>
-                <span className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
+                <span className="text-2xl md:text-3xl font-black text-blue-600 tracking-tighter group-hover:scale-105 transition-transform">X</span>
+                <span className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
               </Link>
               <button onClick={() => setShowPlanSwitcher(true)} className="text-[10px] font-black bg-blue-50 dark:bg-blue-900/30 text-blue-600 px-3 py-1.5 rounded-full uppercase hover:bg-blue-600 hover:text-white transition-all">Change Plan</button>
             </div>
             
+            {/* FIX 6 & 7: Plan info shows on all screens. Shows transaction limit + key features in cart */}
             {selectedPlan ? (
-              <div className="p-5 md:p-6 bg-[#F8FAFC] dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 relative overflow-hidden">
+              <div className="p-4 md:p-5 bg-slate-50 dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-700 relative overflow-hidden">
                 <div className="absolute -right-6 -top-6 w-24 h-24 bg-blue-600/10 rounded-full blur-2xl"></div>
-                <h4 className="text-sm md:text-lg font-black text-slate-900 dark:text-white uppercase">{selectedPlan.name}</h4>
-                <div className="mt-2 mb-4 flex items-baseline gap-1">
-                  <span className="text-2xl md:text-3xl font-black text-blue-600">৳{selectedPlan.price}</span>
+                {selectedPlan.tag && (
+                  <span className="inline-flex items-center gap-1 bg-blue-600 text-white text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest mb-2">
+                    {selectedPlan.tag.split(':')[0]}
+                  </span>
+                )}
+                <h4 className="text-base md:text-lg font-black text-slate-900 dark:text-white uppercase">{selectedPlan.name}</h4>
+                <div className="mt-1 mb-3 flex items-baseline gap-1">
+                  <span className="text-2xl md:text-3xl font-black text-blue-600">
+                    {selectedPlan.price === 0 ? 'Free' : `৳${selectedPlan.price}`}
+                  </span>
                   <span className="text-[10px] font-bold text-slate-500 uppercase">/month</span>
                 </div>
-                <ul className="space-y-2 hidden md:block">
-                  {selectedPlan.features && (Array.isArray(selectedPlan.features) ? selectedPlan.features : JSON.parse(selectedPlan.features)).slice(0, 4).map((f: string, i: number) => (
+
+                {/* FIX 7: Show transaction limit + features in cart */}
+                <ul className="space-y-1.5">
+                  {/* Transaction limit always shown */}
+                  <li className="flex items-start gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                    <CheckCircle size={13} className="text-blue-500 shrink-0 mt-0.5" />
+                    {(selectedPlan.transaction_limit_monthly ?? 100) === 0
+                      ? 'Unlimited transactions / month'
+                      : `${(selectedPlan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`}
+                  </li>
+                  {/* Show up to 3 more features */}
+                  {(Array.isArray(selectedPlan.features) ? selectedPlan.features : []).slice(0, 3).map((f: string, i: number) => (
                     <li key={i} className="flex items-start gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-                      <CheckCircle size={14} className="text-green-500 shrink-0 mt-0.5" /> {f}
+                      <CheckCircle size={13} className="text-green-500 shrink-0 mt-0.5" /> {f}
                     </li>
                   ))}
+                  {selectedPlan.price === 0 && (
+                    <li className="flex items-start gap-2 text-xs font-medium text-green-600 dark:text-green-400">
+                      <CheckCircle size={13} className="shrink-0 mt-0.5" /> No payment required
+                    </li>
+                  )}
                 </ul>
               </div>
             ) : (
@@ -226,25 +321,40 @@ function SignUpContent() {
         </div>
 
         {/* Right Side: Signup Form */}
-        <div className="lg:col-span-8 md:bg-white md:dark:bg-[#111827] rounded-none md:rounded-[3rem] md:shadow-2xl p-6 md:p-12 md:border md:border-slate-200 md:dark:border-slate-800">
-          <div className="mb-10 text-center lg:text-left mt-2 md:mt-0">
+        <div className="lg:col-span-8 bg-white dark:bg-[#111827] rounded-none lg:rounded-[3rem] shadow-none lg:shadow-2xl p-5 md:p-12 border-0 lg:border lg:border-slate-200 lg:dark:border-slate-800">
+
+          {/* FIX 8: Back button on desktop form area (mobile handled in cart) */}
+          <div className="hidden lg:flex items-center gap-2 mb-6">
+            <button onClick={() => router.back()} className="flex items-center gap-1.5 text-slate-400 hover:text-blue-600 text-xs font-bold transition-colors">
+              <ArrowLeft size={14} /> Go Back
+            </button>
+          </div>
+
+          {/* FIX 8: Mobile back button */}
+          <div className="flex lg:hidden items-center gap-2 mb-4 mt-1">
+            <Link href="/" className="flex items-center gap-1.5 text-slate-500 hover:text-blue-600 text-xs font-bold transition-colors">
+              <ArrowLeft size={14} /> Home
+            </Link>
+          </div>
+
+          <div className="mb-8 text-center lg:text-left">
             <h2 className="text-2xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Create Account</h2>
             <p className="text-slate-500 font-medium mt-2 text-sm md:text-base">Enter your personal details to get started.</p>
           </div>
 
-          <form onSubmit={handleSignUp} className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6">
+          <form onSubmit={handleSignUp} className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
             <div className="space-y-1.5 md:col-span-2">
-              <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider">Full Name (Personal)</label>
+              <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider flex items-center gap-1">Full Name (Personal) <span className="text-red-500">*</span></label>
               <div className="relative"><User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input required className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#0B1120] md:dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium text-sm text-slate-900 dark:text-white" placeholder="e.g. Rahim Ahmed" onChange={(e) => setFormData({...formData, fullName: e.target.value})} /></div>
             </div>
             
             <div className="space-y-1.5 md:col-span-2">
-              <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider">Personal Email Address</label>
+              <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider flex items-center gap-1">Personal Email Address <span className="text-red-500">*</span></label>
               <div className="relative"><Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input required type="email" className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#0B1120] md:dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium text-sm text-slate-900 dark:text-white" placeholder="rahim@gmail.com" onChange={(e) => setFormData({...formData, email: e.target.value})} /></div>
             </div>
 
             <div className="space-y-1.5 md:col-span-2">
-              <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider">Mobile Number</label>
+              <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider flex items-center gap-1">Mobile Number <span className="text-red-500">*</span></label>
               <div className="flex bg-slate-50 dark:bg-[#0B1120] md:dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all">
                 <select value={countryCode} onChange={(e) => setCountryCode(e.target.value)} className="bg-transparent border-r border-slate-200 dark:border-slate-800 px-3 py-3.5 outline-none text-sm font-bold text-slate-700 dark:text-slate-300 cursor-pointer appearance-none shrink-0">
                   <option value="+880">🇧🇩 +880</option>
@@ -256,19 +366,13 @@ function SignUpContent() {
               </div>
             </div>
 
-            {/* ✅ Password Field with Generator and AutoComplete */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider">Security Password</label>
+              <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider flex items-center gap-1">Security Password <span className="text-red-500">*</span></label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  required type={showPassword ? "text" : "password"} 
-                  name="password" autoComplete="new-password" 
-                  placeholder="••••••••" 
-                  value={formData.password}
+                <input required type={showPassword ? "text" : "password"} name="password" autoComplete="new-password" placeholder="••••••••" value={formData.password}
                   className="w-full pl-12 pr-12 py-3.5 bg-slate-50 dark:bg-[#0B1120] md:dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium text-sm text-slate-900 dark:text-white" 
-                  onChange={(e) => setFormData({...formData, password: e.target.value})} 
-                />
+                  onChange={(e) => setFormData({...formData, password: e.target.value})} />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -277,27 +381,41 @@ function SignUpContent() {
                  <span className={`text-[9px] font-bold ${formData.password.length >= 8 && /[A-Z]/.test(formData.password) && /[0-9]/.test(formData.password) ? 'text-green-500' : 'text-slate-400'}`}>
                    Min 8 chars, 1 uppercase, 1 number
                  </span>
-                 <button type="button" 
-                    onClick={() => {
-                      const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-                      let gen = "";
-                      for(let i=0; i<14; i++) gen += chars.charAt(Math.floor(Math.random() * chars.length));
-                      gen = "Xp9!" + gen.slice(4); 
-                      setFormData({...formData, password: gen});
-                      setShowPassword(true);
-                    }} 
-                    className="text-[10px] font-black text-blue-600 hover:underline uppercase tracking-widest cursor-pointer">
+                 <button type="button" onClick={() => {
+                   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+                   let gen = "";
+                   for(let i=0; i<14; i++) gen += chars.charAt(Math.floor(Math.random() * chars.length));
+                   gen = "Xp9!" + gen.slice(4); 
+                   setFormData({...formData, password: gen, confirmPassword: gen});
+                   setShowPassword(true);
+                 }} className="text-[10px] font-black text-blue-600 hover:underline uppercase tracking-widest cursor-pointer">
                    Generate Strong
                  </button>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider">City / Address</label>
+              <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider flex items-center gap-1">Confirm Password <span className="text-red-500">*</span></label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input required type={showConfirmPassword ? "text" : "password"} name="confirm-password" autoComplete="new-password" placeholder="••••••••" value={formData.confirmPassword}
+                  className={`w-full pl-12 pr-12 py-3.5 bg-slate-50 dark:bg-[#0B1120] md:dark:bg-[#111827] border rounded-xl outline-none focus:ring-1 transition-all font-medium text-sm text-slate-900 dark:text-white ${formData.confirmPassword && formData.password !== formData.confirmPassword ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-blue-500'}`}
+                  onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} />
+                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                <p className="text-[10px] text-red-500 font-bold ml-1">Passwords do not match</p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider flex items-center gap-1">City / Address <span className="text-red-500">*</span></label>
               <div className="relative"><MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input required className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#0B1120] md:dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-medium text-sm text-slate-900 dark:text-white" placeholder="Dhaka, Bangladesh" onChange={(e) => setFormData({...formData, address: e.target.value})} /></div>
             </div>
 
-            <div className="space-y-1.5 md:col-span-2">
+            <div className="space-y-1.5">
               <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider">Referral Code (Optional)</label>
               <div className="relative">
                 <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -305,7 +423,24 @@ function SignUpContent() {
               </div>
             </div>
 
-            <div className="md:col-span-2 pt-4">
+            <div className="md:col-span-2 flex justify-center">
+              <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={(token) => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme="light" />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="flex items-start gap-3 cursor-pointer select-none group">
+                <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="w-4 h-4 mt-0.5 rounded border-slate-300 accent-blue-600 cursor-pointer shrink-0" required />
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-400 leading-relaxed">
+                  I agree to the{' '}
+                  <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline" onClick={(e) => e.stopPropagation()}>Terms & Conditions</a>
+                  {' '}and{' '}
+                  <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline" onClick={(e) => e.stopPropagation()}>Privacy Policy</a>
+                  {' '}of XelPay. <span className="text-red-500">*</span>
+                </span>
+              </label>
+            </div>
+
+            <div className="md:col-span-2 pt-2">
                <button disabled={loading || !selectedPlan} className="w-full bg-blue-600 disabled:bg-blue-700 text-white py-4 rounded-xl font-bold text-base shadow-lg shadow-blue-600/30 hover:-translate-y-1 transition-all flex items-center justify-center gap-3">
                  {loading ? (
                    <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Creating Workspace...</>
@@ -316,10 +451,9 @@ function SignUpContent() {
             </div>
           </form>
 
-          {/* ✅ Demo Mode Hides Google Auth */}
           {mode !== 'demo' && (
             <>
-              <div className="flex items-center gap-4 my-8">
+              <div className="flex items-center gap-4 my-7">
                 <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Or continue with</span>
                 <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
@@ -343,25 +477,41 @@ function SignUpContent() {
       <SuccessModal isOpen={showSuccess} merchantId={tempMerchantId} onClose={() => router.push('/login')} />
       <ErrorModal isOpen={errorModal.show} message={errorModal.message} onClose={() => setErrorModal({ show: false, message: '' })} />
 
-      {/* Plan Selection Modal */}
+      {/* FIX 7: Plan Selection Modal — full-screen on mobile, card on desktop. Matches landing page pricing. */}
       {showPlanSwitcher && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-[#111827] w-full max-w-5xl rounded-[2rem] p-6 md:p-10 shadow-2xl border border-slate-200 dark:border-slate-800 relative overflow-hidden h-[90vh] md:h-auto overflow-y-auto">
-            <button onClick={() => setShowPlanSwitcher(false)} className="absolute top-6 right-6 p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:rotate-90 transition-all"><X size={24}/></button>
-            <div className="text-center mb-10 mt-4 md:mt-0"><h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Choose Your Business Plan</h3></div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {allPlans.map((p: any) => (
-                <div key={p.id} onClick={() => {setSelectedPlan(p); setShowPlanSwitcher(false);}} className={`relative p-8 rounded-3xl border-2 transition-all cursor-pointer group hover:-translate-y-1 ${selectedPlan?.id === p.id ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/10 shadow-lg' : 'border-slate-200 dark:border-slate-800 bg-[#F8FAFC] dark:bg-[#0B1120]'}`}>
-                   <h4 className="font-black text-lg text-slate-900 dark:text-white mb-1 uppercase tracking-tight">{p.name}</h4>
-                   <div className="flex items-baseline gap-1 mb-6"><span className="text-3xl font-black text-blue-600">৳{p.price}</span><span className="text-[10px] font-bold text-slate-400 uppercase">/mo</span></div>
-                   <ul className="space-y-3 mb-8">
-                    {p.features && (Array.isArray(p.features) ? p.features : JSON.parse(p.features)).map((f: string, i: number) => (
-                      <li key={i} className="flex gap-2 text-xs font-medium text-slate-600 dark:text-slate-400"><CheckCircle size={14} className="text-blue-600 shrink-0 mt-0.5"/> {f}</li>
-                    ))}
-                   </ul>
-                   <div className={`w-full py-3 rounded-xl font-bold text-sm text-center transition-all ${selectedPlan?.id === p.id ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50'}`}>Select Plan</div>
-                </div>
-              ))}
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
+          {/* FIX 7: Mobile = full screen bottom sheet; desktop = modal card */}
+          <div className="bg-white dark:bg-[#111827] w-full md:max-w-5xl md:rounded-[2rem] rounded-t-[2rem] md:rounded-b-[2rem] p-5 md:p-10 shadow-2xl border-t border-slate-200 dark:border-slate-800 md:border relative overflow-hidden max-h-[92vh] md:max-h-[85vh] overflow-y-auto">
+            <button onClick={() => setShowPlanSwitcher(false)} className="absolute top-4 right-4 md:top-6 md:right-6 p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:rotate-90 transition-all z-10"><X size={20}/></button>
+            <div className="text-center mb-8 mt-1 md:mt-0">
+              <h3 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Choose Your Business Plan</h3>
+            </div>
+            {/* FIX 7: Full plan cards like landing page */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {allPlans.map((p: any) => {
+                const allFeatures = buildPlanFeatures(p);
+                return (
+                  <div key={p.id} onClick={() => {setSelectedPlan(p); setShowPlanSwitcher(false);}}
+                    className={`relative p-7 rounded-3xl border-2 transition-all cursor-pointer hover:-translate-y-1 mt-4 ${selectedPlan?.id === p.id ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/10 shadow-lg' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0B1120]'}`}>
+                    {p.tag && <PlanTagBadge tag={p.tag} />}
+                    <h4 className="font-black text-lg text-slate-900 dark:text-white mb-1 uppercase tracking-tight">{p.name}</h4>
+                    <div className="flex items-baseline gap-1 mb-5">
+                      <span className="text-3xl font-black text-blue-600">{p.price === 0 ? 'Free' : `৳${p.price}`}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">/mo</span>
+                    </div>
+                    <ul className="space-y-2.5 mb-6">
+                      {allFeatures.map((f: string, i: number) => (
+                        <li key={i} className="flex gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                          <Check size={13} className="text-blue-500 shrink-0 mt-0.5"/> {f}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className={`w-full py-3 rounded-xl font-bold text-sm text-center transition-all ${selectedPlan?.id === p.id ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/30'}`}>
+                      {selectedPlan?.id === p.id ? '✓ Selected' : 'Select Plan'}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

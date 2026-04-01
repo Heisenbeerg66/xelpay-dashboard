@@ -41,29 +41,63 @@ const FaqItem = ({ question, answer }: any) => {
 };
 
 // --- Colorful Social SVG Icons ---
-const FacebookIcon = ({ size = 18 }: { size?: number }) => (
+const FacebookIcon = ({ size = 20 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="#1877F2">
     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
   </svg>
 );
 
-const YoutubeIcon = ({ size = 18 }: { size?: number }) => (
+const YoutubeIcon = ({ size = 20 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="#FF0000">
     <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
   </svg>
 );
 
-const TelegramIcon = ({ size = 18 }: { size?: number }) => (
+const TelegramIcon = ({ size = 20 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="#26A5E4">
     <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
   </svg>
 );
 
-const WhatsAppIcon = ({ size = 18 }: { size?: number }) => (
+const WhatsAppIcon = ({ size = 20 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="#25D366">
     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
   </svg>
 );
+
+// FIX 3: Mail icon for footer
+const MailIcon = ({ size = 20 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#EA4335" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="20" height="16" x="2" y="4" rx="2"/>
+    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+  </svg>
+);
+
+// FIX 2: Tag badge renderer — parses "POPULAR:blue" or "⭐ Best Value:green" format
+// DB column format: "text:color" where color = blue | green | orange | purple | red | amber
+// If no colon, renders with default blue gradient (backward compatible)
+function PlanTagBadge({ tag }: { tag: string }) {
+  const colorMap: Record<string, { gradient: string; text: string; glow: string }> = {
+    blue:   { gradient: 'from-blue-500 to-indigo-600',   text: 'text-white', glow: 'shadow-blue-500/40' },
+    green:  { gradient: 'from-emerald-500 to-teal-600',  text: 'text-white', glow: 'shadow-emerald-500/40' },
+    orange: { gradient: 'from-orange-500 to-amber-500',  text: 'text-white', glow: 'shadow-orange-500/40' },
+    purple: { gradient: 'from-purple-500 to-violet-600', text: 'text-white', glow: 'shadow-purple-500/40' },
+    red:    { gradient: 'from-red-500 to-rose-600',      text: 'text-white', glow: 'shadow-red-500/40' },
+    amber:  { gradient: 'from-amber-400 to-yellow-500',  text: 'text-slate-900', glow: 'shadow-amber-400/40' },
+  };
+
+  const parts = tag.split(':');
+  const label = parts[0].trim();
+  const colorKey = (parts[1] || 'blue').trim().toLowerCase();
+  const colors = colorMap[colorKey] || colorMap.blue;
+
+  return (
+    <div className={`absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r ${colors.gradient} ${colors.text} px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg ${colors.glow} whitespace-nowrap flex items-center gap-1.5 border border-white/20`}>
+      <span className="text-sm leading-none">{label.match(/^\p{Emoji}/u)?.[0] || '✦'}</span>
+      <span>{label.replace(/^\p{Emoji}\s*/u, '')}</span>
+    </div>
+  );
+}
 
 export default function LandingPageUI({ initialPlans, initialReviews, initialFaqs, initialSettings }: any) {
   const { theme, setTheme } = useTheme();
@@ -74,10 +108,10 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
   const sliderRef = useRef<HTMLDivElement>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const faqSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Close mobile menu when clicking outside
   useEffect(() => {
     if (!mobileMenuOpen) return;
     const handleClick = (e: MouseEvent) => {
@@ -92,7 +126,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
     };
   }, [mobileMenuOpen]);
 
-  // Auto Slider Logic (3 Seconds)
   useEffect(() => {
     if (!initialReviews || initialReviews.length === 0) return;
     const interval = setInterval(() => {
@@ -100,7 +133,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
         const { scrollLeft, scrollWidth, clientWidth } = sliderRef.current;
         const maxScroll = scrollWidth - clientWidth;
         const cardWidth = clientWidth > 768 ? 400 : window.innerWidth * 0.85;
-
         if (scrollLeft >= maxScroll - 10) {
           sliderRef.current.scrollTo({ left: 0, behavior: 'smooth' });
           setCurrentSlide(0);
@@ -114,12 +146,16 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
   }, [initialReviews]);
 
   const starterPlanId = initialPlans?.find((p: any) => p.serial === 0)?.id || '';
+  const handleLiveDemo = () => { router.push('/login?mode=demo'); };
 
-  const handleLiveDemo = () => {
-    router.push('/login?mode=demo');
+  const handleScrollToFaq = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMobileMenuOpen(false);
+    if (faqSectionRef.current) {
+      faqSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
-  // Method label map
   const methodLabels: Record<string, string> = {
     mobile: 'Mobile Banking (bKash / Nagad / Rocket)',
     bank: 'Bank Transfer via IMAP Sync',
@@ -135,7 +171,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
       <nav ref={mobileMenuRef} className="fixed w-full z-50 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
 
-          {/* Brand Logo */}
           <Link href="/" className="flex items-center gap-1 group">
             <span className="text-3xl md:text-4xl font-black text-blue-600 tracking-tighter group-hover:scale-105 transition-transform">X</span>
             <span className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
@@ -148,10 +183,12 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             <Link href="#pricing" className="hover:text-blue-600 transition text-slate-700 dark:text-slate-300">Pricing</Link>
             <Link href="#about" className="hover:text-blue-600 transition text-slate-700 dark:text-slate-300">About</Link>
             <Link href="#contact" className="hover:text-blue-600 transition text-slate-700 dark:text-slate-300">Help</Link>
+            <a href="#faq" onClick={handleScrollToFaq} className="hover:text-blue-600 transition text-slate-700 dark:text-slate-300 cursor-pointer">FAQs</a>
 
+            {/* FIX 1: Desktop theme icon — same style as mobile (round, colored) */}
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 text-blue-600 bg-slate-50 dark:bg-slate-800 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50 hover:scale-110 transition-all"
             >
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
@@ -164,180 +201,163 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             </Link>
           </div>
 
-          {/* Mobile Nav Actions */}
-          <div className="flex items-center gap-3 md:hidden">
+          {/* Mobile Nav icons */}
+          <div className="flex items-center gap-2 md:hidden">
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 rounded-lg"
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50"
             >
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            {/* White/real style profile icon */}
-            <Link href="/login" className="p-2 bg-slate-700 dark:bg-slate-700 rounded-lg border border-slate-600">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <Link href="/login" className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-md hover:bg-blue-700 transition">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="8" r="4" />
                 <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
               </svg>
             </Link>
-            <button
-              className="text-slate-900 dark:text-white p-1"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
+            <button className="text-slate-900 dark:text-white p-1" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden absolute top-20 left-0 w-full bg-white dark:bg-[#0B1120] border-b border-slate-200 dark:border-slate-800 p-6 flex flex-col gap-5 shadow-xl z-40 animate-in slide-in-from-top-2">
-            <Link href="/" onClick={() => setMobileMenuOpen(false)} className="font-bold text-slate-800 dark:text-white text-lg">Home</Link>
-            <Link href="#features" onClick={() => setMobileMenuOpen(false)} className="font-bold text-slate-800 dark:text-white text-lg">Features</Link>
-            <Link href="#pricing" onClick={() => setMobileMenuOpen(false)} className="font-bold text-slate-800 dark:text-white text-lg">Pricing</Link>
-            <Link href="#about" onClick={() => setMobileMenuOpen(false)} className="font-bold text-slate-800 dark:text-white text-lg">About</Link>
-            <Link href="#contact" onClick={() => setMobileMenuOpen(false)} className="font-bold text-slate-800 dark:text-white text-lg">Help Center</Link>
-            <div className="h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
-            <Link
-              href="/login"
-              onClick={() => setMobileMenuOpen(false)}
-              className="border-2 border-blue-600 text-blue-600 dark:text-blue-400 text-center py-3.5 rounded-xl font-bold text-lg"
-            >
-              Login Now
-            </Link>
-            <Link
-              href={starterPlanId ? `/signup?plan=${starterPlanId}` : '/signup'}
-              className="bg-blue-600 text-white text-center py-3.5 rounded-xl font-bold text-lg shadow-lg"
-            >
-              Start Free Trial
-            </Link>
+          <div className="md:hidden absolute top-20 left-0 w-full bg-white dark:bg-[#0d1526] border-b border-slate-200 dark:border-slate-800 shadow-2xl z-40 animate-in slide-in-from-top-2 duration-200">
+            <div className="px-5 pt-5 pb-3 flex flex-col gap-1">
+              {[
+                { href: '/', label: 'Home' },
+                { href: '#features', label: 'Features' },
+                { href: '#pricing', label: 'Pricing' },
+                { href: '#about', label: 'About' },
+                { href: '#contact', label: 'Help Center' },
+              ].map((item) => (
+                <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-slate-800 dark:text-slate-100 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all text-base">
+                  {item.label}
+                </Link>
+              ))}
+              <a href="#faq" onClick={handleScrollToFaq}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-slate-800 dark:text-slate-100 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all text-base cursor-pointer">
+                FAQs
+              </a>
+            </div>
+            <div className="mx-5 h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
+            <div className="px-5 pb-6 pt-3 flex flex-col gap-3">
+              <Link href="/login" onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-bold text-base border-2 border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-500 bg-blue-50/60 dark:bg-blue-900/20 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white transition-all">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                </svg>
+                Login Now
+              </Link>
+              <Link href={starterPlanId ? `/signup?plan=${starterPlanId}` : '/signup'} onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center gap-2 w-full bg-blue-600 text-white py-3.5 rounded-2xl font-bold text-base shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all">
+                <Zap size={18} /> Start Free Trial
+              </Link>
+            </div>
           </div>
         )}
       </nav>
 
       {/* ===================== 2. HERO SECTION ===================== */}
-      {/*
-        FIX: Mobile (true mobile) = single column, card hidden
-             Desktop mode on mobile browser (md+) = two columns, card visible, text/buttons compact
-      */}
+      {/* FIX 1: Hero text bigger on desktop */}
       <section className="pt-28 pb-12 md:pt-32 md:pb-16 px-4 md:px-6 max-w-7xl mx-auto text-center md:text-left grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-center">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-bold text-[10px] mb-4 uppercase tracking-widest border border-blue-100 dark:border-blue-800/50">
             <Zap size={12} /> The Ultimate Payment Solution
           </div>
 
-          {/* FIX: Reduced font sizes so hero text is compact in desktop mode on mobile */}
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white leading-[1.15] mb-4 tracking-tight">
-            Instant{' '}
-            <span className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-500 italic pr-2 py-1 leading-tight">
-              Payment Automation
-            </span>{' '}
-            for Your Business
+          {/* FIX 1: Larger hero text — text-4xl md:text-5xl lg:text-6xl */}
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white leading-[1.1] mb-5 tracking-tight">
+            Automate Your{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-500 italic">
+              Payments
+            </span>
+            <br className="hidden md:block" />
+            {' & '}Grow Your Business
           </h1>
 
-          <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mb-6 font-medium leading-relaxed max-w-lg mx-auto md:mx-0">
-            Automate verifications using your{' '}
+          <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 mb-6 font-medium leading-relaxed max-w-lg mx-auto md:mx-0">
+            Instant verification via your{' '}
             <span className="text-slate-900 dark:text-white font-black underline decoration-blue-500 decoration-2">
               Personal, Agent, or Merchant
             </span>{' '}
-            accounts. Receive funds directly without any third-party holding.
+            accounts. Receive funds directly — no third-party holding.
           </p>
 
-          {/* FIX: Buttons compact and side by side in desktop mode on mobile */}
           <div className="flex flex-row gap-2 md:gap-3 justify-center md:justify-start w-full mx-auto md:mx-0">
-            <Link
-              href={starterPlanId ? `/signup?plan=${starterPlanId}` : '/signup'}
-              className="flex-1 md:flex-none bg-blue-600 text-white px-4 py-3 md:px-6 md:py-3.5 rounded-xl font-bold text-sm shadow-xl shadow-blue-600/30 flex items-center justify-center gap-1.5 hover:-translate-y-1 transition-all"
-            >
+            <Link href={starterPlanId ? `/signup?plan=${starterPlanId}` : '/signup'}
+              className="flex-1 md:flex-none bg-blue-600 text-white px-4 py-3 md:px-6 md:py-3.5 rounded-xl font-bold text-sm shadow-xl shadow-blue-600/30 flex items-center justify-center gap-1.5 hover:-translate-y-1 transition-all">
               Get Started <ArrowRight size={16} />
             </Link>
-            <button
-              onClick={handleLiveDemo}
-              className="flex-1 md:flex-none bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 md:px-6 md:py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
-            >
+            <button onClick={handleLiveDemo}
+              className="flex-1 md:flex-none bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white px-4 py-3 md:px-6 md:py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm">
               <PlayCircle size={16} /> Live Demo
             </button>
           </div>
         </div>
 
-        {/*
-          FIX: Card is now visible on md+ (desktop mode on mobile browser triggers md: breakpoint)
-               Hidden only on true mobile (default hidden, md:flex)
-        */}
+        {/* Server Log Card */}
         <div className="hidden md:flex flex-col gap-3">
-          {/* Main Dark Log Card */}
-          <div className="relative bg-[#0f172a] p-5 rounded-3xl shadow-2xl border border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-transform duration-500">
-            {/* Animated top gradient bar */}
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-green-400 to-blue-500 animate-pulse"></div>
-
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-7 h-7 bg-blue-600/20 rounded-lg flex items-center justify-center">
-                  <Server size={14} className="text-blue-400" />
+          <div className="relative bg-white dark:bg-[#0f172a] p-4 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700/50 overflow-hidden transform hover:scale-[1.02] transition-transform duration-500">
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-500 via-green-400 to-blue-500 animate-pulse"></div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-blue-100 dark:bg-blue-600/20 rounded-lg flex items-center justify-center">
+                  <Server size={12} className="text-blue-600 dark:text-blue-400" />
                 </div>
-                <span className="text-white font-black text-xs uppercase tracking-wider">Live Server Log</span>
+                <span className="text-slate-700 dark:text-white font-black text-xs uppercase tracking-wider">Live Server Log</span>
               </div>
-              <span className="flex items-center gap-2 text-[10px] text-green-400 bg-green-900/30 px-3 py-1 rounded-full font-black uppercase border border-green-800/40 animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span> Online
+              <span className="flex items-center gap-1.5 text-[10px] text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2.5 py-1 rounded-full font-black uppercase border border-green-200 dark:border-green-800/40 animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-green-400 inline-block"></span> Online
               </span>
             </div>
-
-            {/* Transaction Rows */}
-            <div className="space-y-2">
-              {/* bKash verified */}
-              <div className="flex items-center gap-3 p-3 bg-slate-800/60 rounded-2xl border border-slate-700/40">
-                <div className="w-9 h-9 rounded-xl bg-pink-600/20 border border-pink-500/30 flex items-center justify-center shrink-0">
-                  <span className="text-pink-400 font-black text-xs">bK</span>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2.5 p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700/40">
+                <div className="w-8 h-8 rounded-lg bg-pink-100 dark:bg-pink-600/20 border border-pink-200 dark:border-pink-500/30 flex items-center justify-center shrink-0">
+                  <span className="text-pink-600 dark:text-pink-400 font-black text-[10px]">bK</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-black text-xs uppercase tracking-tight">Payment Verified</p>
-                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">bKash Merchant • ৳1,500</p>
+                  <p className="text-slate-800 dark:text-white font-black text-[11px] uppercase tracking-tight">Payment Verified</p>
+                  <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">bKash Merchant • ৳1,500</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="text-green-400 text-[10px] font-black block">Just now</span>
+                  <span className="text-green-600 dark:text-green-400 text-[10px] font-black block">Just now</span>
                   <div className="mt-1 w-2 h-2 bg-green-500 rounded-full ml-auto animate-ping"></div>
                 </div>
               </div>
-
-              {/* Webhook triggered */}
-              <div className="flex items-center gap-3 p-3 bg-blue-900/20 rounded-2xl border border-blue-700/30">
-                <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0">
-                  <Zap size={14} className="text-blue-400" />
+              <div className="flex items-center gap-2.5 p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-700/30">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-600/20 border border-blue-200 dark:border-blue-500/30 flex items-center justify-center shrink-0">
+                  <Zap size={12} className="text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-black text-xs uppercase tracking-tight">Webhook Triggered</p>
-                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">Order #XEL9921XP</p>
+                  <p className="text-slate-800 dark:text-white font-black text-[11px] uppercase tracking-tight">Webhook Triggered</p>
+                  <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">Order #XEL9921XP</p>
                 </div>
-                <span className="text-blue-400 text-[10px] font-black shrink-0">2s ago</span>
+                <span className="text-blue-600 dark:text-blue-400 text-[10px] font-black shrink-0">2s ago</span>
               </div>
-
-              {/* Nagad verified */}
-              <div className="flex items-center gap-3 p-3 bg-slate-800/60 rounded-2xl border border-slate-700/40">
-                <div className="w-9 h-9 rounded-xl bg-orange-600/20 border border-orange-500/30 flex items-center justify-center shrink-0">
-                  <span className="text-orange-400 font-black text-xs">NG</span>
+              <div className="flex items-center gap-2.5 p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700/40">
+                <div className="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-600/20 border border-orange-200 dark:border-orange-500/30 flex items-center justify-center shrink-0">
+                  <span className="text-orange-600 dark:text-orange-400 font-black text-[10px]">NG</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-black text-xs uppercase tracking-tight">Nagad Verified</p>
-                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">Personal • ৳850</p>
+                  <p className="text-slate-800 dark:text-white font-black text-[11px] uppercase tracking-tight">Nagad Verified</p>
+                  <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">Personal • ৳850</p>
                 </div>
-                <span className="text-green-400 text-[10px] font-black shrink-0">5s ago</span>
+                <span className="text-green-600 dark:text-green-400 text-[10px] font-black shrink-0">5s ago</span>
               </div>
-
-              {/* Stripe verified */}
-              <div className="flex items-center gap-3 p-3 bg-indigo-900/20 rounded-2xl border border-indigo-700/30">
-                <div className="w-9 h-9 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
-                  <span className="text-indigo-400 font-black text-xs">ST</span>
+              <div className="flex items-center gap-2.5 p-2.5 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-700/30">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-600/20 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center shrink-0">
+                  <span className="text-indigo-600 dark:text-indigo-400 font-black text-[10px]">ST</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-black text-xs uppercase tracking-tight">Stripe Payment</p>
-                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">International • $29.00</p>
+                  <p className="text-slate-800 dark:text-white font-black text-[11px] uppercase tracking-tight">Stripe Payment</p>
+                  <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-0.5">International • $29.00</p>
                 </div>
-                <span className="text-green-400 text-[10px] font-black shrink-0">12s ago</span>
+                <span className="text-green-600 dark:text-green-400 text-[10px] font-black shrink-0">12s ago</span>
               </div>
             </div>
           </div>
-
-          {/* Stats Row */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-center">
               <p className="text-blue-600 font-black text-lg">99.9%</p>
@@ -384,16 +404,11 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
         </div>
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
           {initialPlans?.map((plan: any) => {
-            const isPremium = plan.serial === 2;
-            const isPopular = plan.serial === 1;
-
-            // FIX: transaction_limit_monthly === 0 means Unlimited
             const transactionLabel =
               (plan.transaction_limit_monthly ?? 100) === 0
                 ? 'Unlimited transactions / month'
                 : `${(plan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`;
 
-            // Build features entirely from DB columns — no hardcoding
             const columnFeatures: (string | null)[] = [
               transactionLabel,
               `${plan.business_limit ?? 1} business${(plan.business_limit ?? 1) > 1 ? 'es' : ''}`,
@@ -408,61 +423,46 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
               plan.is_custom_bot_allowed ? 'Custom Telegram bot' : null,
             ];
 
-            // Extra plain-text notes from features JSONB (no duplicates of column data)
             const extraFeatures: string[] = Array.isArray(plan.features) ? plan.features : [];
-
             const allFeatures = [...columnFeatures.filter(Boolean) as string[], ...extraFeatures];
+            const planTag: string | null = plan.tag || null;
 
             return (
+              // FIX 2: Light mode — white card with blue border; dark mode — dark card
               <div
                 key={plan.id}
-                className={`p-8 md:p-10 rounded-3xl border md:border-2 transition-all hover:-translate-y-2 duration-300 flex flex-col relative ${
-                  isPremium
-                    ? 'border-blue-600 bg-slate-900 text-white shadow-2xl shadow-blue-600/20 dark:bg-[#111827]'
-                    : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800'
-                }`}
+                className="p-8 md:p-10 rounded-3xl border-2 border-blue-600 transition-all hover:-translate-y-2 duration-300 flex flex-col relative
+                  bg-white dark:bg-[#111827]
+                  shadow-xl shadow-blue-600/10
+                  mt-5"
               >
-                {isPremium && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap">
-                    ⭐ Popular
-                  </div>
-                )}
-                {isPopular && !isPremium && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap">
-                    🔥 Best Value
-                  </div>
-                )}
+                {/* FIX 2: Dynamic tag badge from DB — format "text:color" */}
+                {planTag && <PlanTagBadge tag={planTag} />}
 
-                <h3 className={`text-xl font-black uppercase tracking-tight ${!isPremium && 'text-slate-900 dark:text-white'}`}>
+                <h3 className="text-xl font-black uppercase tracking-tight text-slate-900 dark:text-white">
                   {plan.name}
                 </h3>
 
                 <div className="my-6 flex items-baseline gap-1">
-                  <span className={`text-4xl font-black ${!isPremium && 'text-slate-900 dark:text-white'}`}>
+                  <span className="text-4xl font-black text-blue-600">
                     {plan.price === 0 ? 'Free' : `৳${(plan.price).toLocaleString()}`}
                   </span>
-                  {plan.price > 0 && <span className="text-sm opacity-60 font-bold">/month</span>}
+                  {plan.price > 0 && <span className="text-sm text-slate-500 dark:text-slate-400 opacity-70 font-bold">/month</span>}
                 </div>
 
                 <ul className="space-y-3 mb-8 flex-1">
                   {allFeatures.map((f: string, i: number) => (
-                    <li
-                      key={i}
-                      className={`flex items-start gap-3 font-medium text-sm ${!isPremium && 'text-slate-600 dark:text-slate-300'}`}
-                    >
-                      <Check size={16} className={`shrink-0 mt-0.5 ${isPremium ? 'text-blue-400' : 'text-blue-600'}`} />
+                    <li key={i} className="flex items-start gap-3 font-medium text-sm text-slate-600 dark:text-slate-300">
+                      <Check size={16} className="shrink-0 mt-0.5 text-blue-500" />
                       {f}
                     </li>
                   ))}
                 </ul>
 
+                {/* Select button always blue */}
                 <Link
                   href={`/signup?plan=${plan.id}`}
-                  className={`w-full block py-3.5 text-center rounded-xl font-bold transition-all ${
-                    isPremium
-                      ? 'bg-blue-600 text-white shadow-lg hover:bg-blue-500'
-                      : 'bg-[#F8FAFC] dark:bg-[#0B1120] text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700'
-                  }`}
+                  className="w-full block py-3.5 text-center rounded-xl font-bold transition-all bg-blue-600 text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 hover:-translate-y-0.5"
                 >
                   {plan.price === 0 ? 'Start Free' : 'Select Plan'}
                 </Link>
@@ -477,24 +477,16 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
         <div className="max-w-7xl mx-auto text-center px-6">
           <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white mb-12 uppercase tracking-tight">Trusted by Merchants</h2>
         </div>
-
-        <div
-          ref={sliderRef}
+        <div ref={sliderRef}
           className="flex overflow-x-auto snap-x snap-mandatory gap-6 px-6 md:px-[calc((100vw-1280px)/2+24px)] pb-10"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {initialReviews?.map((r: any) => (
             <div key={r.id} className="snap-center shrink-0 w-[85vw] md:w-[420px] flex flex-col pt-4">
               <div className="relative bg-white dark:bg-[#111827] p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm text-left">
                 <p className="text-slate-700 dark:text-slate-300 mb-6 font-medium leading-relaxed">"{r.comment}"</p>
                 <div className="flex gap-1 text-amber-400">
                   {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      size={16}
-                      fill={i < (r.rating || 5) ? 'currentColor' : 'none'}
-                      strokeWidth={i < (r.rating || 5) ? 0 : 2}
-                    />
+                    <Star key={i} size={16} fill={i < (r.rating || 5) ? 'currentColor' : 'none'} strokeWidth={i < (r.rating || 5) ? 0 : 2} />
                   ))}
                 </div>
                 <div className="absolute -bottom-3 left-10 w-6 h-6 bg-white dark:bg-[#111827] border-b border-r border-slate-200 dark:border-slate-800 rotate-45 z-10"></div>
@@ -511,27 +503,22 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             </div>
           ))}
         </div>
-
         <div className="flex justify-center gap-2 mt-2">
           {initialReviews?.map((_: any, idx: number) => (
-            <div
-              key={idx}
-              className={`h-1.5 rounded-full transition-all duration-300 ${currentSlide === idx ? 'w-6 bg-blue-600' : 'w-2 bg-slate-300 dark:bg-slate-800'}`}
-            ></div>
+            <div key={idx} className={`h-1.5 rounded-full transition-all duration-300 ${currentSlide === idx ? 'w-6 bg-blue-600' : 'w-2 bg-slate-300 dark:bg-slate-800'}`}></div>
           ))}
         </div>
       </section>
 
       {/* ===================== 6. FAQ & CONTACT ===================== */}
       <section className="py-20 md:py-24 px-6 bg-white dark:bg-[#0B1120]">
-        <div className="max-w-3xl mx-auto mb-20 md:mb-24">
+        <div ref={faqSectionRef} className="max-w-3xl mx-auto mb-20 md:mb-24 scroll-mt-24">
           <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white mb-10 text-center uppercase tracking-tight">Common Questions</h2>
           <div className="space-y-2 bg-[#F8FAFC] dark:bg-[#111827] p-4 md:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
             {initialFaqs?.map((f: any) => <FaqItem key={f.id} question={f.question} answer={f.answer} />)}
           </div>
         </div>
 
-        {/* Need Help card */}
         <div id="contact" className="max-w-5xl mx-auto bg-blue-600 rounded-3xl p-8 md:p-16 text-center text-white relative overflow-hidden shadow-2xl shadow-blue-600/20">
           <div className="relative z-10 flex flex-col items-center">
             <div className="w-16 h-16 bg-white/20 rounded-2xl mb-6 flex items-center justify-center backdrop-blur-sm shadow-inner">
@@ -542,18 +529,12 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
               Our technical support team is available 24/7 to help you with your payment automation journey.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-              <a
-                href={initialSettings?.support_telegram}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-white text-blue-600 px-8 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:-translate-y-1 transition shadow-xl w-full sm:w-auto"
-              >
+              <a href={initialSettings?.support_telegram} target="_blank" rel="noopener noreferrer"
+                className="bg-white text-blue-600 px-8 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:-translate-y-1 transition shadow-xl w-full sm:w-auto">
                 <Send size={18} /> Join Telegram
               </a>
-              <a
-                href={`mailto:${initialSettings?.support_email}`}
-                className="bg-blue-700 border border-blue-400 px-8 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:-translate-y-1 transition w-full sm:w-auto"
-              >
+              <a href={`mailto:${initialSettings?.support_email}`}
+                className="bg-blue-700 border border-blue-400 px-8 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:-translate-y-1 transition w-full sm:w-auto">
                 <Mail size={18} /> Email Support
               </a>
             </div>
@@ -562,7 +543,7 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
         </div>
       </section>
 
-      {/* ===================== 7. FOOTER ===================== */}
+      {/* ===================== 7. FOOTER — Always dark (standard practice) ===================== */}
       <footer id="about" className="bg-[#0f172a] text-slate-400 py-20 px-6 border-t border-slate-800">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
           <div className="space-y-6 pr-4">
@@ -607,51 +588,46 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
               <li><Link href="/info/ticket" className="hover:text-white transition flex items-center gap-1.5 group"><ChevronRight size={14} className="text-slate-600 group-hover:text-blue-500 transition" /> Help Center</Link></li>
               <li><a href={`mailto:${initialSettings?.support_email}`} className="hover:text-white transition flex items-center gap-1.5 group"><ChevronRight size={14} className="text-slate-600 group-hover:text-blue-500 transition" /> Direct Support</a></li>
               <li><Link href="/info/affiliate" className="hover:text-white transition flex items-center gap-1.5 group"><ChevronRight size={14} className="text-slate-600 group-hover:text-blue-500 transition" /> Affiliate Program</Link></li>
-              <li><Link href="/#faq" className="hover:text-white transition flex items-center gap-1.5 group"><ChevronRight size={14} className="text-slate-600 group-hover:text-blue-500 transition" /> All FAQs</Link></li>
+              <li>
+                <a href="#faq" onClick={handleScrollToFaq} className="hover:text-white transition flex items-center gap-1.5 group cursor-pointer">
+                  <ChevronRight size={14} className="text-slate-600 group-hover:text-blue-500 transition" /> All FAQs
+                </a>
+              </li>
             </ul>
           </div>
         </div>
 
-        {/* Social Icons + Copyright */}
+        {/* FIX 3: Social icons — no card/bg, just icons. Mail icon added from support_email */}
         <div className="max-w-7xl mx-auto border-t border-slate-800 mt-16 pt-8 flex flex-col md:flex-row justify-between items-center gap-6 text-center">
-          <div className="flex gap-3">
-            <a
-              href={initialSettings?.facebook}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2.5 bg-slate-800 rounded-lg hover:scale-110 hover:bg-slate-700 transition shadow-sm"
-            >
-              <FacebookIcon size={18} />
+          <div className="flex gap-5 items-center">
+            <a href={initialSettings?.facebook} target="_blank" rel="noopener noreferrer"
+              className="hover:scale-125 hover:opacity-100 opacity-80 transition-all duration-200" title="Facebook">
+              <FacebookIcon size={22} />
             </a>
-            <a
-              href={initialSettings?.youtube}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2.5 bg-slate-800 rounded-lg hover:scale-110 hover:bg-slate-700 transition shadow-sm"
-            >
-              <YoutubeIcon size={18} />
+            <a href={initialSettings?.youtube} target="_blank" rel="noopener noreferrer"
+              className="hover:scale-125 hover:opacity-100 opacity-80 transition-all duration-200" title="YouTube">
+              <YoutubeIcon size={22} />
             </a>
-            <a
-              href={initialSettings?.support_telegram}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2.5 bg-slate-800 rounded-lg hover:scale-110 hover:bg-slate-700 transition shadow-sm"
-            >
-              <TelegramIcon size={18} />
+            <a href={initialSettings?.support_telegram} target="_blank" rel="noopener noreferrer"
+              className="hover:scale-125 hover:opacity-100 opacity-80 transition-all duration-200" title="Telegram">
+              <TelegramIcon size={22} />
             </a>
-            <a
-              href={initialSettings?.whatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-2.5 bg-slate-800 rounded-lg hover:scale-110 hover:bg-slate-700 transition shadow-sm"
-            >
-              <WhatsAppIcon size={18} />
+            <a href={initialSettings?.whatsapp} target="_blank" rel="noopener noreferrer"
+              className="hover:scale-125 hover:opacity-100 opacity-80 transition-all duration-200" title="WhatsApp">
+              <WhatsAppIcon size={22} />
+            </a>
+            {/* FIX 3: Email icon — same source as Need Help card */}
+            <a href={`mailto:${initialSettings?.support_email}`}
+              className="hover:scale-125 hover:opacity-100 opacity-80 transition-all duration-200" title="Email">
+              <MailIcon size={22} />
             </a>
           </div>
 
           <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">
             &copy; {new Date().getFullYear()} XelPay &bull; A product of{' '}
-            <span className="text-blue-500 opacity-100">Xenverse IT</span>
+            <a href={initialSettings?.xenverse_link || '#'} target="_blank" rel="noopener noreferrer" className="text-blue-500 opacity-100">
+              Xenverse IT
+            </a>
           </div>
 
           <div className="hidden md:flex gap-6 text-[10px] font-black uppercase tracking-widest opacity-60">

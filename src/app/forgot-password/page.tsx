@@ -1,29 +1,59 @@
 'use client';
 
-import { useState, Suspense } from 'react';
-import { Mail, ArrowLeft, Send, CheckCircle } from 'lucide-react';
+import { useState, Suspense, useEffect, useRef } from 'react';
+import { Mail, ArrowLeft, Send, CheckCircle, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Toaster, toast } from 'sonner';
 import { useSearchParams } from 'next/navigation';
+import ReCAPTCHA from 'react-google-recaptcha';
+
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
 
 function ForgotPasswordContent() {
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode');
-  
   const [email, setEmail] = useState(mode === 'demo' ? 'demo@xelpay.com' : '');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
 
+  // Robot Checker States (existing math captcha)
+  const [num1, setNum1] = useState(0);
+  const [num2, setNum2] = useState(0);
+  const [userCaptcha, setUserCaptcha] = useState('');
+
+  // FIX 10: Google reCAPTCHA
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<any>(null);
+
+  const generateCaptcha = () => {
+    setNum1(Math.floor(Math.random() * 10) + 1);
+    setNum2(Math.floor(Math.random() * 10) + 1);
+    setUserCaptcha('');
+  };
+
+  useEffect(() => { generateCaptcha(); }, []);
+
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // FIX 10: reCAPTCHA check
+    if (!captchaToken) {
+      toast.error("Please complete the reCAPTCHA verification.");
+      return;
+    }
+
+    if (parseInt(userCaptcha) !== num1 + num2) {
+      toast.error("Robot verification failed! Please calculate correctly.");
+      generateCaptcha();
+      recaptchaRef.current?.reset();
+      setCaptchaToken(null);
+      return;
+    }
+
     setLoading(true);
-    
-    // ✅ Demo Account Bypass Logic
     const { data: checkDemo } = await supabase.from('merchants').select('is_demo').eq('email', email.trim()).maybeSingle();
-    
     if (checkDemo?.is_demo || mode === 'demo') {
-      // ফেইক নেটওয়ার্ক ডিলে (যাতে আসল মনে হয়)
       setTimeout(() => {
         setSent(true);
         toast.success("Recovery link sent successfully!");
@@ -32,13 +62,11 @@ function ForgotPasswordContent() {
       return;
     }
 
-    // Normal User Reset Logic
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` });
     if (error) {
       toast.error(error.message);
+      recaptchaRef.current?.reset();
+      setCaptchaToken(null);
     } else {
       setSent(true);
       toast.success("Recovery link sent successfully!");
@@ -51,8 +79,12 @@ function ForgotPasswordContent() {
       <Toaster position="top-center" richColors />
       <div className="w-full max-w-md bg-white dark:bg-[#0B1120] md:bg-white md:dark:bg-[#111827] rounded-none md:rounded-[2.5rem] shadow-none md:shadow-2xl p-6 md:p-10 border-0 md:border border-slate-100 dark:border-slate-800 flex flex-col justify-center min-h-[80vh] md:min-h-0 relative z-10">
         
-        {/* Brand Logo */}
-        <div className="text-center mb-10"><Link href="/" className="inline-flex items-center gap-1 group"><span className="text-4xl font-black text-blue-600">X</span><span className="text-3xl font-bold text-slate-900 dark:text-white -ml-0.5">elPay</span></Link></div>
+        <div className="text-center mb-10">
+          <Link href="/" className="inline-flex items-center gap-1 group">
+            <span className="text-4xl font-black text-blue-600">X</span>
+            <span className="text-3xl font-bold text-slate-900 dark:text-white -ml-0.5">elPay</span>
+          </Link>
+        </div>
 
         {!sent ? (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -61,18 +93,38 @@ function ForgotPasswordContent() {
             
             <form onSubmit={handleReset} className="space-y-6">
               <div className="space-y-1.5">
+                <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider">Enter Your Email <span className="text-red-500">*</span></label>
                 <div className="relative group">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <input required type="email" value={email} placeholder="admin@xelpay.com" className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#0B1120] md:dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 font-medium text-sm text-slate-900 dark:text-white" onChange={(e) => setEmail(e.target.value)} />
                 </div>
               </div>
+
+              {/* Existing math robot checker */}
+              <div className="space-y-1.5">
+                 <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider">Verify human <span className="text-red-500">*</span></label>
+                 <div className="flex items-center gap-3">
+                   <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3.5 rounded-xl font-black text-slate-900 dark:text-white tracking-widest flex items-center gap-2 border border-slate-200 dark:border-slate-700">
+                     {num1} + {num2} =
+                   </div>
+                   <input required type="number" placeholder="?" value={userCaptcha} onChange={(e) => setUserCaptcha(e.target.value)} className="w-full px-4 py-3.5 bg-slate-50 dark:bg-[#0B1120] md:dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 font-bold text-sm text-slate-900 dark:text-white text-center" />
+                   <button type="button" onClick={generateCaptcha} className="p-3.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-blue-600 transition-colors"><RefreshCw size={18}/></button>
+                 </div>
+              </div>
+
+              {/* FIX 10: Google reCAPTCHA */}
+              <div className="flex justify-center">
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={RECAPTCHA_SITE_KEY}
+                  onChange={(token) => setCaptchaToken(token)}
+                  onExpired={() => setCaptchaToken(null)}
+                  theme="light"
+                />
+              </div>
               
               <button disabled={loading} className="w-full bg-blue-600 disabled:bg-blue-700 text-white py-4 rounded-xl font-bold text-base hover:-translate-y-1 transition-all flex items-center justify-center gap-3 shadow-lg shadow-blue-600/30">
-                {loading ? (
-                  <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Scanning...</>
-                ) : (
-                  <>Send Reset Link <Send size={18} /></>
-                )}
+                {loading ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Scanning...</> : <>Send Reset Link <Send size={18} /></>}
               </button>
             </form>
           </div>
