@@ -3,23 +3,26 @@ import { supabase } from '@/lib/supabase';
 import LandingPageUI from './LandingPageUI';
 import { Metadata } from 'next';
 
-// ✅ Best SEO Metadata for Production
 export const metadata: Metadata = {
-  title: 'XelPay - Ultimate Payment Automation Gateway',
-  description: 'Automate payment verifications using your Personal, Agent, or Merchant accounts. Secure, fast, and zero commission payment gateway in Bangladesh.',
+  title: 'XelPay - Ultimate Payment Automation Gateway in Bangladesh',
+  description: 'Automate payment verifications using your Personal, Agent, or Merchant accounts for bKash, Nagad, and Rocket. Secure, fast, and zero commission payment gateway.',
   openGraph: {
-    title: 'XelPay - Payment Automation',
-    description: 'Automate verifications using your Personal, Agent, or Merchant accounts.',
-    url: 'https://xelpay.com',
+    title: 'XelPay - Payment Automation Solution',
+    description: 'Automate verifications using your Personal, Agent, or Merchant accounts instantly.',
+    url: 'https://xelpay.site',
     siteName: 'XelPay',
     type: 'website',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'XelPay - Best Payment Automation Gateway',
+    description: 'Instant bKash, Nagad, and Rocket payment automation.',
+  }
 };
 
-export const revalidate = 3600; // 1 Hour Cache for super-fast loading
+export const revalidate = 3600;
 
 export default async function LandingPage() {
-  // ✅ Server-Side Fetching (No loading screens for users)
   const [plansRes, reviewsRes, faqsRes, settingsRes] = await Promise.all([
     supabase.from('plans').select('*').order('serial', { ascending: true }),
     supabase.from('reviews').select('*'),
@@ -27,7 +30,6 @@ export default async function LandingPage() {
     supabase.from('site_settings').select('key_name, value')
   ]);
 
-  // Settings Map
   const settingsMap = settingsRes.data?.reduce((acc: any, row: any) => {
     acc[row.key_name] = row.value;
     return acc;
