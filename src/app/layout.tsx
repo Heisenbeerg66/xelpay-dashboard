@@ -8,13 +8,14 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://xelpay.site'),
+  // গুগলে www সহ ইনডেক্সড তাই metadataBase আপডেট করা হয়েছে
+  metadataBase: new URL('https://www.xelpay.site'),
   title: {
     default: "XelPay | Automated Payment Gateway Bangladesh",
     template: "%s | XelPay"
   },
-  description: "Automate your personal bKash, Nagad, and Rocket payments instantly with XelPay. The most secure payment automation gateway in Bangladesh.",
-  keywords: ["XelPay", "Payment Gateway Bangladesh", "bKash Automation", "Nagad Automation", "Automated Payment Verification", "Rocket Payment Gateway"],
+  description: "Automate your personal bKash, Nagad, and Rocket payments instantly with XelPay. The most secure and zero-commission payment automation gateway in Bangladesh.",
+  keywords: ["XelPay", "Payment Gateway Bangladesh", "bKash Automation", "Nagad Automation", "Automated Payment Verification", "Rocket Payment Gateway", "Payment Automation Solutions"],
   icons: {
     icon: [
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
@@ -25,16 +26,17 @@ export const metadata: Metadata = {
   },
   manifest: "/site.webmanifest",
   alternates: {
-    canonical: 'https://xelpay.site',
+    // সার্চ কনসোলে www ভার্সনটি ইনডেক্সড তাই এখানেও www সেট করা হলো
+    canonical: 'https://www.xelpay.site',
   },
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://xelpay.site',
+    url: 'https://www.xelpay.site',
     siteName: 'XelPay Technologies',
     images: [
       {
-        url: '/og-image.png', // আপনার পাবলিক ফোল্ডারে একটি ইমেজ থাকলে তার নাম দিন
+        url: '/og-image.png',
         width: 1200,
         height: 630,
         alt: 'XelPay Payment Automation',

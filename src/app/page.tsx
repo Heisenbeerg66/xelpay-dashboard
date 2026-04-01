@@ -4,19 +4,20 @@ import LandingPageUI from './LandingPageUI';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'XelPay - Ultimate Payment Automation Gateway in Bangladesh',
-  description: 'Automate payment verifications using your Personal, Agent, or Merchant accounts for bKash, Nagad, and Rocket. Secure, fast, and zero commission payment gateway.',
+  // টাইটেল আরও আকর্ষণীয় করা হয়েছে
+  title: 'XelPay - Best Automated Payment Gateway in Bangladesh (bKash, Nagad, Rocket)',
+  description: 'Instant automated payment verification for bKash, Nagad, and Rocket. Use your Personal, Agent, or Merchant accounts with XelPay - the fastest secure payment automation gateway.',
   openGraph: {
-    title: 'XelPay - Payment Automation Solution',
-    description: 'Automate verifications using your Personal, Agent, or Merchant accounts instantly.',
-    url: 'https://xelpay.site',
+    title: 'XelPay - Instant Payment Automation Solution',
+    description: 'Verify bKash, Nagad, and Rocket payments automatically via your Personal, Agent, or Merchant accounts.',
+    url: 'https://www.xelpay.site',
     siteName: 'XelPay',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'XelPay - Best Payment Automation Gateway',
-    description: 'Instant bKash, Nagad, and Rocket payment automation.',
+    title: 'XelPay - Ultimate Payment Automation Solution',
+    description: 'Zero commission bKash, Nagad, and Rocket payment automation gateway.',
   }
 };
 
