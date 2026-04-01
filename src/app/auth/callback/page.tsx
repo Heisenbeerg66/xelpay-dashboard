@@ -13,87 +13,80 @@ function AuthCallbackContent() {
   useEffect(() => {
     const handleGoogleCallback = async () => {
       const code = searchParams.get('code');
-      // login page থেকে এলে source=login থাকবে
-      const source = searchParams.get('source');
+      const source = searchParams.get('source'); // 'login' হলে login flow
 
-      if (code) {
-        // ১. কোডটিকে সেশনে রূপান্তর করে কুকিতে সেভ করা
-        const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-
-        if (exchangeError || !exchangeData.session) {
-          console.error("Exchange Error:", exchangeError);
-          router.push('/login');
-          return;
-        }
-
-        const user = exchangeData.session.user;
-        const planId = searchParams.get('plan_id') || '1';
-        const referCode = searchParams.get('ref');
-        const fullName = user.user_metadata?.full_name || user.user_metadata?.name || 'XelPay Merchant';
-
-        // ── LOGIN FLOW: merchant না থাকলে error দিয়ে login এ ফেরত পাঠাও ──
-        if (source === 'login') {
-          const { data: merchant } = await supabase
-            .from('merchants')
-            .select('status')
-            .eq('id', user.id)
-            .maybeSingle();
-
-          if (!merchant) {
-            // Merchant নেই — sign out করে login page এ error সহ পাঠাও
-            await supabase.auth.signOut();
-            router.push('/login?error=no_account');
-            return;
-          }
-
-          // Suspended check
-          if (merchant.status === 'suspended') {
-            await supabase.auth.signOut();
-            router.push('/login?error=suspended');
-            return;
-          }
-
-          // সফল login — dashboard এ পাঠাও
-          setTimeout(() => {
-            router.push('/dashboard');
-          }, 1500);
-          return;
-        }
-
-        // ── SIGNUP FLOW: same email দিয়ে আগে account থাকলে block করো ──
-        try {
-          const result = await registerMerchantOAuth({
-            userId: user.id,
-            email: user.email!,
-            fullName: fullName,
-            planId: planId,
-            planPrice: 0,
-            referCode: referCode,
-          });
-
-          if (result.error) {
-            // Email already exists — sign out করে signup page এ error সহ পাঠাও
-            await supabase.auth.signOut();
-            router.push('/signup?error=email_exists');
-            return;
-          }
-
-          // alreadyExists = true মানে এটা re-login, dashboard এ পাঠাও
-          // (এই case signup flow তে হওয়ার কথা না, তবু safe থাকা ভালো)
-          setTimeout(() => {
-            router.push('/dashboard');
-          }, 1500);
-
-        } catch (err) {
-          console.error("Database Save Error:", err);
-          setTimeout(() => router.push('/dashboard'), 1500);
-        }
-
-      } else {
-        // কোড না থাকলে ডাইরেক্ট সেশন চেক
+      if (!code) {
+        // কোড না থাকলে session check করো
         const { data: { session } } = await supabase.auth.getSession();
-        if (session) router.push('/dashboard');
-        else router.push('/login');
+        if (session) router.replace('/dashboard');
+        else router.replace('/login');
+        return;
+      }
+
+      // ১. কোড থেকে session তৈরি করো
+      const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+      if (exchangeError || !exchangeData?.session) {
+        console.error('Exchange Error:', exchangeError);
+        router.replace('/login');
+        return;
+      }
+
+      const user = exchangeData.session.user;
+
+      // ── LOGIN FLOW ──
+      if (source === 'login') {
+        const { data: merchant, error: merchantError } = await supabase
+          .from('merchants')
+          .select('status, subscription_status, is_demo')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (!merchant) {
+          await supabase.auth.signOut();
+          router.replace('/login?error=no_account');
+          return;
+        }
+
+        if (merchant.status === 'suspended') {
+          await supabase.auth.signOut();
+          router.replace('/login?error=suspended');
+          return;
+        }
+
+        router.replace('/dashboard');
+        return;
+      }
+
+      // ── SIGNUP FLOW ──
+      const planId = searchParams.get('plan_id') || '1';
+      const referCode = searchParams.get('ref') || null;
+      const fullName = user.user_metadata?.full_name || user.user_metadata?.name || 'XelPay Merchant';
+
+      try {
+        const result = await registerMerchantOAuth({
+          userId: user.id,
+          email: user.email!,
+          fullName,
+          planId,
+          planPrice: 0,
+          referCode,
+        });
+
+        if (result.error) {
+          // Email already exists — sign out করে signup এ error পাঠাও
+          await supabase.auth.signOut();
+          router.replace('/signup?error=email_exists');
+          return;
+        }
+
+        // নতুন account বা existing — dashboard এ পাঠাও
+        router.replace('/dashboard');
+
+      } catch (err) {
+        console.error('registerMerchantOAuth error:', err);
+        // Error হলেও dashboard try করো (merchant হয়তো আগেই আছে)
+        router.replace('/dashboard');
       }
     };
 

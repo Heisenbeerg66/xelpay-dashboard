@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   LayoutDashboard, Receipt, MessageSquare, Wallet, Link as LinkIcon, 
   Settings, LineChart, Send, Users, Code, LifeBuoy, LogOut, X, 
@@ -11,23 +11,15 @@ import {
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
-// 🚀 UPDATED: Adjusted Menu Items for better Top-Tier UX
 const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-  
-  // 🚀 NEW: Global Assets (Vault) - Highlighted for easy access
   { name: 'Global Vault', icon: ServerCog, path: '/dashboard/vault' },
-  
   { name: 'Add New Business', icon: PlusCircle, path: '/dashboard/business/new' },
   { name: 'Brand Settings', icon: Settings, path: '/dashboard/brand' },
   { name: 'Transactions', icon: Receipt, path: '/dashboard/transactions' },
-  
-  // Changed name to reflect specific business connection
-  { name: 'Connected Gateways', icon: Wallet, path: '/dashboard/gateways' }, 
-  
-  { name: 'Devices / Automation', icon: Smartphone, path: '/dashboard/devices' }, // New option for devices
+  { name: 'Connected Gateways', icon: Wallet, path: '/dashboard/gateways' },
+  { name: 'Devices / Automation', icon: Smartphone, path: '/dashboard/devices' },
   { name: 'Telegram Alerts', icon: Send, path: '/dashboard/telegram' },
-  
   { name: 'Payment Links', icon: LinkIcon, path: '/dashboard/links' },
   { name: 'SMS Data', icon: MessageSquare, path: '/dashboard/sms' },
   { name: 'Reports', icon: LineChart, path: '/dashboard/reports' },
@@ -36,9 +28,6 @@ const menuItems = [
   { name: 'Support', icon: LifeBuoy, path: '/dashboard/support' },
 ];
 
-// Most reliable device detection:
-// pointer:coarse = touch/mobile hardware, pointer:fine = mouse/desktop hardware
-// This does NOT change when mobile browser switches to "desktop mode"
 function useIsMobileDevice() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -51,20 +40,58 @@ function useIsMobileDevice() {
   return isMobile;
 }
 
+// সব session, cache, localStorage clear করে sign out করার helper
+async function fullSignOut() {
+  try {
+    await supabase.auth.signOut({ scope: 'global' });
+  } catch (e) {
+    // ignore errors
+  }
+  // localStorage সব clear
+  localStorage.clear();
+  sessionStorage.clear();
+  // Hard redirect — Next.js router cache ও clear হয়ে যাবে
+  window.location.href = '/login';
+}
+
+// ৩০ মিনিট idle থাকলে auto logout
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
 export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
   const pathname = usePathname();
+  const router = useRouter();
   const isMobileDevice = useIsMobileDevice();
 
-  // Business Switcher States
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [activeBusiness, setActiveBusiness] = useState<any>(null);
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const switcherRef = useRef<HTMLDivElement>(null);
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ── 30 মিনিট idle auto-logout ──
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(async () => {
+      toast.error('Session expired due to inactivity. Please login again.');
+      await fullSignOut();
+    }, IDLE_TIMEOUT_MS);
+  }, []);
+
+  useEffect(() => {
+    const events = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
+    events.forEach(e => window.addEventListener(e, resetIdleTimer, { passive: true }));
+    resetIdleTimer(); // initial timer শুরু
+
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetIdleTimer));
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [resetIdleTimer]);
 
   useEffect(() => {
     const fetchBusinesses = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('businesses')
         .select('*')
         .eq('merchant_id', merchant.id)
@@ -73,8 +100,7 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
       if (data && data.length > 0) {
         setBusinesses(data);
         const savedBizId = localStorage.getItem('active_business_id');
-        const savedBiz = data.find(b => b.id === savedBizId);
-        
+        const savedBiz = data.find((b: any) => b.id === savedBizId);
         if (savedBiz) {
           setActiveBusiness(savedBiz);
         } else {
@@ -106,13 +132,13 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/login';
+    toast.loading('Signing out...');
+    await fullSignOut();
   };
 
   return (
     <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 transform ${(!isMobileDevice || isOpen) ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out flex flex-col ${isMobileDevice ? 'shadow-2xl' : 'shadow-none'}`}>
-      
+
       {isMobileDevice && (
         <button onClick={() => setIsOpen(false)} className="absolute top-4 right-4 p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 z-50">
           <X size={20} />
@@ -129,13 +155,18 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
         </div>
 
         <div className="relative" ref={switcherRef}>
-          <button 
+          <button
             onClick={() => setIsSwitcherOpen(!isSwitcherOpen)}
             className="w-full flex items-center justify-between bg-slate-50 dark:bg-[#0B1120] hover:bg-slate-100 dark:hover:bg-slate-800/50 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 transition-all group"
           >
             <div className="flex items-center gap-3 overflow-hidden">
               <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-inner">
-                {isLoading ? <Loader2 size={14} className="animate-spin" /> : activeBusiness ? (activeBusiness.logo_url ? <img src={activeBusiness.logo_url} className="w-full h-full object-cover rounded-lg" alt="logo" /> : <Building2 size={16} />) : <Building2 size={16} />}
+                {isLoading ? <Loader2 size={14} className="animate-spin" /> :
+                  activeBusiness ? (
+                    activeBusiness.logo_url
+                      ? <img src={activeBusiness.logo_url} className="w-full h-full object-cover rounded-lg" alt="logo" />
+                      : <Building2 size={16} />
+                  ) : <Building2 size={16} />}
               </div>
               <div className="text-left overflow-hidden">
                 <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none mb-1">Workspace</p>
@@ -150,13 +181,13 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
           {isSwitcherOpen && (
             <div className="absolute top-full left-0 w-full mt-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200 max-h-64 overflow-y-auto custom-scrollbar">
               <div className="px-3 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Your Businesses</div>
-              
+
               {businesses.length === 0 ? (
-                 <div className="px-4 py-3 text-sm font-medium text-slate-500">No business found.</div>
+                <div className="px-4 py-3 text-sm font-medium text-slate-500">No business found.</div>
               ) : (
                 businesses.map((biz) => (
-                  <button 
-                    key={biz.id} 
+                  <button
+                    key={biz.id}
                     onClick={() => handleBusinessChange(biz)}
                     className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-[#0B1120] transition-colors group"
                   >
@@ -174,9 +205,9 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
               )}
 
               <div className="h-px bg-slate-100 dark:bg-slate-800 my-2"></div>
-              
-              <Link 
-                href="/dashboard/business/new" 
+
+              <Link
+                href="/dashboard/business/new"
                 onClick={() => setIsSwitcherOpen(false)}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-[#0B1120] hover:text-blue-600 transition-colors"
               >
@@ -190,23 +221,22 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
         </div>
       </div>
 
-      {/* Navigation Menus */}
+      {/* Navigation */}
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
         <div className="space-y-1.5">
           {menuItems.map((item) => {
-            // FIX: Dashboard only active on exact match, other items use startsWith
             const isActive = item.path === '/dashboard'
               ? pathname === item.path
               : pathname === item.path || pathname.startsWith(`${item.path}/`);
-            
+
             return (
-              <Link 
-                key={item.name} 
-                href={item.path} 
-                onClick={() => setIsOpen(false)} 
+              <Link
+                key={item.name}
+                href={item.path}
+                onClick={() => setIsOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold text-sm transition-all group ${
-                  isActive 
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' 
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-[#0B1120] hover:text-blue-600 dark:hover:text-blue-500'
                 }`}
               >
@@ -229,8 +259,10 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
             <p className="text-[10px] font-bold text-slate-400 truncate">ID: #{merchant.merchant_id_display}</p>
           </div>
         </div>
-        {/* FIX: justify-center → justify-start to align with list items */}
-        <button onClick={handleLogout} className="w-full mt-2 flex items-center justify-start gap-2 px-4 py-3 text-sm font-bold text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors">
+        <button
+          onClick={handleLogout}
+          className="w-full mt-2 flex items-center justify-start gap-2 px-4 py-3 text-sm font-bold text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+        >
           <LogOut size={18} /> Sign Out
         </button>
       </div>

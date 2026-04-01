@@ -1,19 +1,17 @@
 'use client';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft, ShieldCheck, FileText, AlertTriangle, Globe,
-  ChevronDown, ChevronUp, Lock, Eye, Database, Server,
-  CreditCard, Users, Bell, Scale, Gavel, HelpCircle,
-  Smartphone, Mail, Cookie, Trash2, RefreshCw, UserCheck,
-  AlertCircle, BookOpen, Building2, Zap, Fingerprint, ShieldAlert,
-  Repeat, Ban, DollarSign, BarChart2, GitBranch, Headphones
+  ChevronDown, ChevronUp, Lock, Server,
+  CreditCard, Users, Scale, Gavel, HelpCircle,
+  Smartphone, Database, Trash2, RefreshCw, UserCheck,
+  AlertCircle, BookOpen, Building2, Zap, Fingerprint, ShieldAlert
 } from 'lucide-react';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 type Lang = 'en' | 'bn';
 
-// ─── Section Accordion ───────────────────────────────────────────────────────
 function SectionBlock({ title, children, icon: Icon, accent = 'blue' }: {
   title: string;
   children: React.ReactNode;
@@ -22,20 +20,18 @@ function SectionBlock({ title, children, icon: Icon, accent = 'blue' }: {
 }) {
   const [open, setOpen] = useState(true);
   const accentMap: Record<string, string> = {
-    blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600',
-    green: 'bg-green-50 dark:bg-green-900/20 text-green-600',
-    red: 'bg-red-50 dark:bg-red-900/20 text-red-600',
-    amber: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600',
+    blue:   'bg-blue-50 dark:bg-blue-900/20 text-blue-600',
+    green:  'bg-green-50 dark:bg-green-900/20 text-green-600',
+    red:    'bg-red-50 dark:bg-red-900/20 text-red-600',
+    amber:  'bg-amber-50 dark:bg-amber-900/20 text-amber-600',
     purple: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600',
     orange: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600',
-    teal: 'bg-teal-50 dark:bg-teal-900/20 text-teal-600',
-    rose: 'bg-rose-50 dark:bg-rose-900/20 text-rose-600',
   };
   return (
     <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-3 p-5 text-left bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+        className="w-full flex items-center justify-between gap-3 p-5 text-left bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors"
       >
         <div className="flex items-center gap-3">
           {Icon && (
@@ -43,21 +39,21 @@ function SectionBlock({ title, children, icon: Icon, accent = 'blue' }: {
               <Icon size={18} />
             </div>
           )}
-          <span className="font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight text-sm">{title}</span>
+          <span className="font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight text-sm md:text-base">{title}</span>
         </div>
         {open ? <ChevronUp size={18} className="text-slate-400 shrink-0" /> : <ChevronDown size={18} className="text-slate-400 shrink-0" />}
       </button>
-      {open && <div className="p-5 md:p-6 space-y-3 text-slate-600 dark:text-slate-400 text-sm leading-relaxed">{children}</div>}
+      {open && <div className="p-5 md:p-6 space-y-3 text-slate-600 dark:text-slate-400 text-sm md:text-base leading-relaxed">{children}</div>}
     </div>
   );
 }
 
 function InfoBox({ type, children }: { type: 'warning' | 'info' | 'danger' | 'success'; children: React.ReactNode }) {
   const styles = {
-    warning: 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900/30 text-amber-800 dark:text-amber-300',
-    info: 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-900/30 text-blue-800 dark:text-blue-300',
-    danger: 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30 text-red-700 dark:text-red-400',
-    success: 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30 text-green-800 dark:text-green-300',
+    warning: 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900/30 text-amber-700 dark:text-amber-400',
+    info:    'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-900/30 text-blue-700 dark:text-blue-300',
+    danger:  'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30 text-red-700 dark:text-red-400',
+    success: 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900/30 text-green-700 dark:text-green-400',
   };
   const icons = { warning: AlertTriangle, info: AlertCircle, danger: AlertTriangle, success: ShieldCheck };
   const Icon = icons[type];
@@ -69,938 +65,717 @@ function InfoBox({ type, children }: { type: 'warning' | 'info' | 'danger' | 'su
   );
 }
 
-// ─── ENGLISH CONTENT ─────────────────────────────────────────────────────────
-function EnglishContent() {
+// ─── ENGLISH TERMS CONTENT ────────────────────────────────────────────────────
+function EnglishTermsContent() {
   return (
-    <div className="space-y-14">
-      {/* ══════════ PART 1: TERMS OF SERVICE ══════════ */}
-      <div>
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-xl"><FileText size={22} /></div>
-          <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Terms of Service</h2>
-        </div>
-        <div className="space-y-4">
-          <p className="text-slate-600 dark:text-slate-400 text-sm md:text-base leading-relaxed">
-            Welcome to <strong className="text-slate-900 dark:text-white">Xelpay</strong> — a strictly B2B payment verification infrastructure operated by <strong className="text-slate-900 dark:text-white">Xenverse IT</strong>. By accessing or using the Xelpay platform, API, dashboard, or any associated services, you — the Merchant — unconditionally agree to every clause within this legally binding document. Please read it in its entirety before proceeding.
-          </p>
+    <div className="space-y-4">
+      <p className="text-slate-600 dark:text-slate-400 text-sm md:text-base leading-relaxed font-medium">
+        Welcome to <strong className="text-slate-900 dark:text-white">Xelpay</strong> — a product of <strong className="text-slate-900 dark:text-white">Xenverse IT</strong>. By registering an account, accessing our dashboard, utilizing our APIs, or interacting with any Xelpay service, you ("Merchant," "User," or "Client") legally agree to be fully bound by these Terms of Service. If you do not agree with any part of these Terms, you must immediately cease use of the platform.
+      </p>
 
-          <SectionBlock title="1. Right to Modify Terms & Policies" icon={RefreshCw} accent="blue">
-            <InfoBox type="info">
-              <strong>Authority Rights:</strong> Xelpay (Xenverse IT) reserves the absolute and unilateral right to modify, amend, update, or replace any part of these Terms of Service, Privacy Policy, Acceptable Use Policy, or any associated pricing and feature documentation at any time, with or without prior notice. Continued use of the platform following any such modification constitutes your unconditional acceptance of the updated terms.
-            </InfoBox>
-          </SectionBlock>
+      <SectionBlock title="1. Right to Modify Terms & Policies" icon={RefreshCw} accent="blue">
+        <InfoBox type="info">
+          <strong>Authority Rights:</strong> Xelpay (Xenverse IT) reserves the absolute and exclusive right to update, modify, or replace any part of these Terms of Service or Privacy Policy at any time, at our sole discretion. In the event of major or sensitive policy changes, we will make reasonable efforts to notify active users via dashboard alerts or email. However, it remains your sole legal responsibility to review this page periodically. Continued use of the platform after updates constitutes binding acceptance of the revised terms.
+        </InfoBox>
+      </SectionBlock>
 
-          <SectionBlock title="2. Description of Service & Core Disclaimer" icon={Server} accent="blue">
-            <p>Xelpay is a strictly technological infrastructure providing payment verification for Mobile Financial Services (MFS), bank transfers, and related digital payment methods in Bangladesh. Xelpay acts as a software intermediary — it reads, parses, and verifies incoming payment confirmation signals.</p>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">Crucial Financial Disclaimer</strong>
-              Xelpay is a software layer, <strong>NOT</strong> a bank, financial institution, digital wallet, payment aggregator, or money service business. Xelpay does not hold, move, send, receive, store, or settle any funds on behalf of any party under any circumstances whatsoever.
-            </InfoBox>
-          </SectionBlock>
+      <SectionBlock title="2. Description of Service & Core Disclaimer" icon={Server} accent="blue">
+        <p>Xelpay is a strictly technological infrastructure providing payment verification software, API bridging, and automation tools for Mobile Financial Services (MFS), Bank Transfers, and International Payment Gateways. Xelpay operates as a software middleware layer.</p>
+        <InfoBox type="danger">
+          <strong className="uppercase tracking-widest text-[11px] block mb-1">Crucial Financial Disclaimer</strong>
+          Xelpay is a software layer, <strong>NOT</strong> a bank, financial institution, digital wallet, payment aggregator, or money service business (MSB). We do not hold, process, touch, or act as a custodian for your actual monetary funds. All transactions are peer-to-peer and settle directly into your own personal or corporate MFS/Bank accounts. We bear zero liability for missing funds, failed transfers, or disputes between you and your customers. Xelpay is <strong>not licensed</strong> as a financial institution under the Bank Companies Act, 1991 (Bangladesh) or any equivalent foreign legislation.
+        </InfoBox>
+      </SectionBlock>
 
-          <SectionBlock title="3. Eligibility, Account Obligations, Age Restriction & Demo Mode" icon={UserCheck} accent="blue">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Age Restriction:</strong> You must be at least 18 years of age to register and use Xelpay. By creating an account, you represent and warrant that you meet this age requirement.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Business Eligibility:</strong> Xelpay is an exclusively B2B platform. You must be a validly registered business, sole proprietor, or authorized representative of a legal entity to use this service.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Accuracy of Information:</strong> You agree to provide complete, accurate, and truthful information during registration and to promptly update it as necessary.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Account Security:</strong> You are solely responsible for maintaining the confidentiality of your API keys, credentials, and dashboard access. You are liable for all activity conducted under your account.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">One Account Per Merchant:</strong> Each business entity is permitted to maintain only one active Xelpay merchant account. The creation of multiple accounts is a violation of these terms and may result in termination of all associated accounts.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Demo Mode Constraint:</strong> Xelpay may offer a demonstration or sandbox mode for integration testing purposes. Transactions processed in Demo Mode are entirely simulated and do not represent real financial activity. Using Demo Mode for live commercial transactions is strictly prohibited.</li>
-            </ul>
-          </SectionBlock>
+      <SectionBlock title="3. Eligibility, Account Obligations, Age Restriction & Demo Mode" icon={UserCheck} accent="blue">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Age Restriction:</strong> You must be at least 18 years of age — or the legal age of majority in your jurisdiction — to create an account and operate a business using Xelpay. By registering, you confirm you meet this requirement.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Business Eligibility:</strong> Xelpay is intended for legitimate business use only. You must be a lawfully registered business owner or sole proprietor operating within the bounds of applicable law.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Accuracy of Information:</strong> You must provide truthful, current, and complete business information during registration. Providing false, misleading, or fraudulent information is strictly prohibited and will result in immediate account termination and potential legal referral.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Account Security:</strong> You are solely responsible for maintaining the absolute confidentiality of your login credentials, API keys, Webhook secrets, and assigned team member roles. Xelpay cannot be held liable for unauthorized access resulting from your negligence, credential sharing, or compromise.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">One Account Per Merchant:</strong> Creating multiple accounts to circumvent usage limits, bans, or fees is strictly prohibited and may result in permanent ban of all associated accounts.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Demo Mode Constraints:</strong> Xelpay provides a "Demo Mode" exclusively for UI/UX evaluation and API integration testing. You must <strong className="text-red-600 dark:text-red-400">NEVER</strong> process real customer data, real phone numbers, or execute genuine financial transactions using Demo Mode credentials. Misuse of Demo Mode for real transactions may constitute fraud.</li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="4. Intellectual Property (IP) Rights" icon={BookOpen} accent="purple">
-            <p>All source code, UI/UX designs, API architectures, algorithms, logos, trademarks, trade secrets, and all other intellectual property associated with Xelpay and Xenverse IT are exclusively owned by Xenverse IT and are protected under applicable intellectual property laws.</p>
-            <ul className="list-disc pl-5 mt-3 space-y-2">
-              <li>You are granted a <strong>limited, non-exclusive, non-transferable, revocable license</strong> to use our API solely for your own legitimate business operations in accordance with our published documentation.</li>
-              <li>You strictly agree <strong>NOT</strong> to copy, clone, scrape, reverse-engineer, decompile, resell, or create derivative works based on any part of our platform.</li>
-              <li>Any unauthorized use of Xelpay's IP constitutes infringement and will be pursued through all available civil and criminal legal remedies.</li>
-              <li>Feedback, suggestions, or ideas submitted to Xelpay become our property and may be used without obligation or compensation to you.</li>
-            </ul>
-          </SectionBlock>
+      <SectionBlock title="4. Intellectual Property (IP) Rights" icon={BookOpen} accent="purple">
+        <p>All source code, UI/UX designs, API architectures, algorithms, logos, trademarks, trade names, and proprietary methodologies associated with Xelpay are the exclusive intellectual property of <strong className="text-slate-800 dark:text-slate-200">Xenverse IT</strong>, protected under the Copyright Act, 2000 (Bangladesh) and international IP treaties including the Berne Convention and TRIPS Agreement.</p>
+        <ul className="list-disc pl-5 mt-3 space-y-2">
+          <li>You are granted a <strong>limited, non-exclusive, non-transferable, revocable license</strong> to use our APIs solely for your own legitimate business operations.</li>
+          <li>You strictly agree <strong>NOT</strong> to copy, clone, scrape, reverse-engineer, decompile, disassemble, resell, sublicense, or create derivative works from any part of our platform.</li>
+          <li>Any unauthorized use of Xelpay's IP constitutes infringement and will be pursued through appropriate legal channels, including civil and criminal remedies.</li>
+          <li>Feedback, suggestions, or ideas submitted to Xelpay become our property and may be used without compensation or attribution.</li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="5. Subscription, Billing, Pricing, Add-On Services & Strict No-Refund Policy" icon={CreditCard} accent="blue">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Free/Starter Tier:</strong> Xelpay may offer a free or starter tier with limited features. Access to the free tier may be modified, restricted, or discontinued at any time without notice or compensation.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Paid Subscriptions:</strong> Access to premium features requires a paid subscription. Subscription fees are billed in advance on a recurring basis (monthly or annually, as selected).</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Pricing Changes:</strong> Xelpay reserves the right to modify subscription pricing at any time. Merchants on active paid plans will be notified of price changes with reasonable advance notice.</li>
-              <li>
-                <strong className="text-slate-800 dark:text-slate-200">Add-On Services & Usage-Based Billing:</strong> Certain features (e.g., high-volume SMS relay, extended log retention, priority support) are available as paid add-ons billed on a usage or flat-fee basis.
-                <InfoBox type="warning">
-                  <strong>Important:</strong> Enabling an Add-On service constitutes your binding agreement to the associated usage-based pricing. You are responsible for all charges accrued by your account.
-                </InfoBox>
-              </li>
-              <li><strong className="text-slate-800 dark:text-slate-200 uppercase">Strict No-Refund Policy:</strong> ALL payments made to Xelpay — including subscription fees, add-on charges, setup fees, and any other associated costs — are STRICTLY AND ABSOLUTELY NON-REFUNDABLE. This policy applies universally, regardless of usage, account termination reason, service downtime, or any other circumstance.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Chargebacks & Payment Disputes:</strong> Initiating a chargeback or payment dispute with your bank or payment provider without first exhausting Xelpay's internal dispute resolution process constitutes a material breach of these Terms and may result in an immediate, permanent account ban and pursuit of the disputed amount through legal channels.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Taxes:</strong> You are solely responsible for all applicable taxes, duties, levies, and other governmental charges arising from your use of and subscription to Xelpay services.</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="6. Acceptable Use Policy (AUP) & Prohibited Conduct" icon={AlertTriangle} accent="red">
-            <p>Xelpay maintains a <strong className="text-slate-800 dark:text-slate-200">zero-tolerance policy</strong> against platform abuse. The following activities are categorically and strictly prohibited on the Xelpay platform:</p>
-            <ul className="list-disc pl-5 mt-3 space-y-2 text-slate-700 dark:text-slate-300">
-              <li>Processing payments for illegal goods, narcotics, controlled substances, adult/pornographic content, unlicensed pharmaceuticals, unauthorized gambling services, or any other prohibited category under Bangladeshi law.</li>
-              <li>Money laundering, terrorist financing, proliferation financing, or any attempt to violate the Money Laundering Prevention Act, 2012, and the Anti-Terrorism Act, 2009 (Bangladesh).</li>
-              <li>Executing scams, Ponzi schemes, pyramid schemes, fraudulent investment plans, or any deceptive scheme targeting end-customers.</li>
-              <li>Intentionally overwhelming, stress-testing beyond authorized limits, reverse-engineering, or conducting DDoS attacks against Xelpay's APIs, servers, or connected third-party systems.</li>
-              <li>Unauthorized access or intrusion attempts against Xelpay's databases, administrative panels, or internal systems in violation of the Digital Security Act, 2018 (Bangladesh).</li>
-              <li>Impersonating Xelpay, Xenverse IT, or any Xelpay employee, partner, or affiliate.</li>
-              <li>Using Xelpay to facilitate human trafficking, child exploitation, or any crimes against persons.</li>
-              <li>Operating any sanction-listed entity or individual as defined by OFAC, UN Security Council sanctions lists, or Bangladesh Bank directives.</li>
-              <li>Using the platform to send unsolicited bulk communications (spam) to customers.</li>
-            </ul>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">Enforcement</strong>
-              Any violation of this AUP will trigger an immediate, irreversible, permanent ban of your merchant account, forfeiture of all subscription fees paid, immediate revocation of all API access, and referral to the appropriate Bangladeshi law enforcement and regulatory authorities.
-            </InfoBox>
-          </SectionBlock>
-
-          <SectionBlock title="7. Third-Party Integrations (IMAP, Telegram, SMS & External APIs)" icon={Smartphone} accent="blue">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Custom Telegram Bots:</strong> Xelpay supports integration with Telegram for real-time payment alerts. You are solely responsible for the security and management of your Telegram bot tokens. Xelpay is not responsible for unauthorized access to your Telegram bot.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">IMAP Bank Email Sync:</strong> When you connect a bank email account via IMAP, you grant Xelpay read-only access to that mailbox solely for the purpose of parsing payment confirmation emails. Xelpay does not store, forward, or process any other email content.</li>
-              <li>
-                <strong className="text-slate-800 dark:text-slate-200">SMS Relay & Device App — Critical Dependency:</strong>
-                <div className="mt-3">
-                  <InfoBox type="warning">
-                    <strong className="block mb-1">Critical Device & Connectivity Requirement:</strong>
-                    The uninterrupted and accurate functioning of the SMS Relay verification system is entirely contingent upon the Merchant maintaining a dedicated Android device with the Xelpay Relay App installed, continuously powered on, connected to a stable internet connection (minimum 5 Mbps), and with the corresponding SIM card active and functional at all times. Any failure of this device or connectivity is the Merchant's sole responsibility.
-                  </InfoBox>
-                </div>
-              </li>
-              <li>
-                <strong className="text-slate-800 dark:text-slate-200">MFS SMS Format Changes & Xelpay's Absolute Zero Liability:</strong>
-                <ul className="list-disc pl-5 mt-2 space-y-2">
-                  <li>MFS operators may, at their own discretion and without prior notice to Xelpay or the Merchant, unilaterally alter the structure, content, sender ID, or format of their payment confirmation SMS messages.</li>
-                  <li>Any such unilateral change to an MFS operator's SMS format will render Xelpay's parsing engine temporarily unable to verify payments from that operator until a software update is deployed.</li>
-                  <li><strong className="text-slate-800 dark:text-slate-200">Xelpay bears absolutely zero financial, legal, or operational liability</strong> for failed or missed payment verifications resulting from such third-party MFS operator format changes.</li>
-                </ul>
-              </li>
-              <li>
-                <strong className="text-slate-800 dark:text-slate-200">SMS Spoofing & False Positives — Zero Liability:</strong>
-                <div className="mt-3">
-                  <InfoBox type="danger">
-                    <strong className="uppercase tracking-widest text-[11px] block mb-1">Zero Liability — SMS Spoofing</strong>
-                    In the event that any person — whether a customer, third party, or malicious actor — sends a fabricated, spoofed, or otherwise counterfeit SMS to the Merchant's relay device that mimics a legitimate MFS payment confirmation, and Xelpay's parsing engine mistakenly verifies such a fabricated message as a genuine payment, Xelpay bears absolutely zero financial, legal, or compensatory liability for the resulting erroneous verification or any financial loss suffered by the Merchant.
-                  </InfoBox>
-                </div>
-              </li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Third-Party Service Disruptions:</strong> Xelpay holds no liability for downtime, data loss, or service disruptions caused by third-party services including but not limited to Telegram, IMAP email providers, SMS gateway operators, or cloud infrastructure providers.</li>
-              <li>
-                <strong className="text-slate-800 dark:text-slate-200">Webhook Delivery & Merchant Server Responsibility:</strong>
-                <ul className="list-disc pl-5 mt-2 space-y-2">
-                  <li>Xelpay does <strong>not</strong> guarantee delivery if your endpoint is unreachable, returning persistent errors, timing out, or is misconfigured by the Merchant.</li>
-                  <li>Failed webhook delivery attempts are logged in the Merchant dashboard for review and manual reconciliation.</li>
-                  <li><strong className="text-slate-800 dark:text-slate-200">Xelpay holds absolutely no liability</strong> for missed webhooks resulting from Merchant server downtime, misconfiguration, or infrastructure failures.</li>
-                </ul>
-              </li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="8. Service Level, Uptime & Downtime" icon={Server} accent="blue">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">No Uptime Guarantee:</strong> Xelpay does not provide or guarantee any specific uptime Service Level Agreement (SLA) unless explicitly stipulated in a separately executed Enterprise Agreement. The platform is provided on an "as-is" and "as-available" basis.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Scheduled Maintenance:</strong> Xelpay reserves the right to perform scheduled or emergency maintenance at any time, which may result in temporary service interruptions.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">No Liability for Downtime:</strong> Xelpay expressly disclaims any and all liability for business losses, missed transactions, or damages of any kind arising from platform downtime, whether scheduled or unscheduled.</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="9. Termination & Suspension Rights" icon={AlertCircle} accent="red">
-            <p>Xelpay reserves the unilateral right to <strong className="text-slate-800 dark:text-slate-200">immediately suspend or permanently terminate</strong> your merchant account and all associated API access, with or without prior notice, if we:</p>
-            <ul className="list-disc pl-5 mt-3 space-y-2">
-              <li>Suspect any breach of these Terms of Service or our Acceptable Use Policy.</li>
-              <li>Detect unusual, suspicious, or potentially fraudulent activity on your account.</li>
-              <li>Are required to do so by applicable law, court order, or regulatory authority.</li>
-              <li>Determine your usage poses a severe security, legal, or operational risk to Xelpay's infrastructure or other users.</li>
-              <li>Receive a valid law enforcement request or regulatory directive.</li>
-              <li>Determine that the Merchant has failed to comply with a KYC/Business Verification request as outlined in Section 15.</li>
-            </ul>
-            <p className="mt-3">Upon termination, your right to access the platform ceases immediately. All data associated with your account may be retained by Xelpay as required by applicable law and our AML obligations, as detailed in the Privacy Policy.</p>
-            <p className="mt-3">You may terminate your account voluntarily at any time by submitting a formal written request to our support team. Voluntary termination does not entitle you to any refund of fees paid.</p>
-          </SectionBlock>
-
-          <SectionBlock title="10. Force Majeure, Limitation of Liability & Indemnification" icon={Scale} accent="amber">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Force Majeure:</strong> Xelpay is not liable for any failure or delay in performance resulting from circumstances beyond our reasonable control, including but not limited to natural disasters, acts of God, war, terrorism, government actions, power failures, internet service disruptions, cyberattacks on third-party infrastructure, or any other force majeure event.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Limitation of Liability — MFS/Bank Account Issues:</strong> Xelpay bears absolutely zero liability for any issues originating from an MFS operator's or bank's own systems, including but not limited to transaction reversals, account freezes, fund holds, or regulatory actions taken by those financial institutions.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">General Liability Cap:</strong> To the maximum extent permitted by applicable law, Xelpay's aggregate liability to you for any claims arising from your use of the platform shall not exceed the total subscription fees paid by you to Xelpay in the three (3) months immediately preceding the event giving rise to the claim.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Exclusion of Consequential Damages:</strong> Under no circumstances shall Xelpay be liable for any indirect, incidental, special, consequential, exemplary, or punitive damages, including loss of profits, revenue, data, or business opportunities, even if advised of the possibility of such damages.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Indemnification:</strong> You agree to defend, indemnify, and hold harmless Xelpay, Xenverse IT, and all officers, directors, employees, contractors, and affiliates from and against any claims, damages, losses, liabilities, and expenses (including reasonable attorneys' fees) arising out of or relating to your use of the platform, your violation of these Terms, or your violation of any third-party rights.</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="11. Dispute Resolution, Arbitration & Class-Action Waiver" icon={Gavel} accent="purple">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Informal Resolution First:</strong> Before initiating any formal legal proceeding, both parties agree to first attempt in good faith to resolve any dispute informally by contacting Xelpay's support team and allowing a period of thirty (30) days for resolution.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Class-Action Waiver:</strong> You expressly and irrevocably waive any right to participate in or initiate any class action, collective action, or representative proceeding against Xelpay. All disputes must be resolved on an individual basis only.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Binding Arbitration:</strong> Any unresolved dispute, controversy, or claim arising out of or relating to these Terms shall be submitted to and finally resolved by binding arbitration under the rules of the relevant Bangladeshi arbitration authority, with proceedings conducted in Dhaka, Bangladesh, in the Bengali or English language.</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="12. Governing Law, Jurisdiction & Severability" icon={Building2} accent="blue">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Governing Law:</strong> These Terms of Service and all associated policies shall be governed by and construed in accordance with the laws of the People's Republic of Bangladesh, without regard to its conflict of law principles.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Jurisdiction:</strong> For any disputes not subject to arbitration, you consent to the exclusive jurisdiction of the courts of competent jurisdiction located in Dhaka, Bangladesh.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Severability:</strong> If any provision of these Terms is held by a court or arbitral tribunal of competent jurisdiction to be invalid, illegal, or unenforceable, that provision shall be limited or eliminated to the minimum extent necessary, and the remaining provisions shall continue in full force and effect.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Entire Agreement:</strong> These Terms, together with the Privacy Policy and all incorporated policies, constitute the entire and exclusive agreement between you and Xelpay concerning the subject matter herein and supersede all prior agreements.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Waiver:</strong> Xelpay's failure to enforce any right or provision of these Terms shall not be deemed a waiver of such right or provision.</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="13. Affiliate Program Terms" icon={Users} accent="green">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Eligibility:</strong> Participation in the Xelpay Affiliate Program is open to verified, active Xelpay merchants in good standing. Xelpay reserves the right to accept or reject any affiliate application at its sole discretion.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Commission Structure:</strong> Commission rates, payout structures, and minimum thresholds are published in the Affiliate Program documentation and are subject to change at Xelpay's sole discretion with prior notice.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Prohibited Promotion Methods:</strong> Affiliates are strictly prohibited from using spam, misleading advertising, pay-per-click bidding on Xelpay brand keywords, or any deceptive marketing practices to generate referrals.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Self-Referrals Prohibited:</strong> Creating duplicate accounts to refer yourself, or referring entities under your direct ownership or control, constitutes fraud and will result in immediate program termination and forfeiture of all earned commissions.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Commission Forfeiture:</strong> Commissions earned through fraudulent, deceptive, or policy-violating referrals will be forfeited in their entirety. Xelpay reserves the right to claw back previously paid commissions if a referral is subsequently found to be fraudulent.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Payment Threshold:</strong> Commission payouts are subject to a minimum earning threshold as published in the Affiliate Program documentation. Commissions below this threshold will roll over to the subsequent period.</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="14. Payment Links & Checkout Pages" icon={CreditCard} accent="blue">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Merchant Responsibility:</strong> Merchants who utilize Xelpay-generated payment links and hosted checkout pages are solely and exclusively responsible for the accuracy of all product descriptions, prices, and terms of sale presented to end-customers through those pages.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Customer Data on Checkout Pages:</strong> Xelpay collects only the minimum information necessary to facilitate payment verification on checkout pages. Merchants must ensure their use of checkout pages complies with all applicable data privacy laws.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Prohibited Content on Payment Links:</strong> Payment links and checkout pages must not be used to facilitate the sale of any prohibited goods or services as defined in Section 6 (AUP) of these Terms.</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="15. KYC & Business Verification" icon={Fingerprint} accent="orange">
-            <p>In strict compliance with the Bangladesh Financial Intelligence Unit (BFIU) directives, Anti-Money Laundering (AML) regulations, the Money Laundering Prevention Act, 2012, and the Anti-Terrorism Act, 2009, Xelpay reserves the right to request KYC (Know Your Customer) and business verification documentation from any Merchant at any time.</p>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Requested Documentation:</strong> This may include, but is not limited to, valid government-issued National ID (NID), Trade License, Certificate of Incorporation, TIN Certificate, VAT Registration, authorized signatory identification, and proof of business address.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Mandatory Compliance Obligation:</strong> Upon receiving a KYC or Business Verification request from Xelpay, the Merchant is obligated to provide all requested documentation within the specified timeframe. Failure to comply constitutes a material breach of these Terms.</li>
-              <li>
-                <strong className="text-slate-800 dark:text-slate-200">Consequences of Non-Compliance:</strong>
-                <InfoBox type="danger">
-                  <strong className="uppercase tracking-widest text-[11px] block mb-1">No Refund on KYC-Related Suspension</strong>
-                  Account suspension or termination arising from non-compliance with a KYC or Business Verification request does not entitle the Merchant to any refund of subscription fees or any other amounts paid under Section 5's strict no-refund policy.
-                </InfoBox>
-              </li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Data Handling of KYC Documents:</strong> All KYC and Business Verification documentation is handled with the highest level of security and retained strictly in accordance with Bangladesh Bank and BFIU regulatory mandates, as further detailed in the Privacy Policy.</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="16. Reversed Transactions, MFS Clawbacks & Operator Disputes" icon={ShieldAlert} accent="red">
-            <p>Xelpay's role is strictly limited to that of a technological verification intermediary. The platform verifies whether a payment confirmation signal was received; it does not hold, control, or guarantee any underlying funds.</p>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">Absolute Zero Liability — Transaction Reversals</strong>
-              In the event that any payment transaction that was previously verified and confirmed by Xelpay's system is subsequently reversed, recalled, clawed back, or disputed by the originating customer, sender, MFS operator, bank, or any other financial or regulatory authority, Xelpay bears absolutely zero financial, legal, or compensatory liability for such reversal or the resulting financial loss to the Merchant.
-            </InfoBox>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Merchant's Independent Risk Responsibility:</strong> The Merchant assumes full and independent financial risk for all commercial transactions conducted through their business, including the risk of customer-initiated chargebacks, MFS operator clawbacks, and regulatory fund freezes.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Dispute Resolution Between Merchant & Customer:</strong> Any dispute between a Merchant and an end-customer regarding a payment, refund, or service delivery is exclusively the responsibility of the Merchant to resolve through their own customer service and refund processes.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Cooperation in Investigations:</strong> While Xelpay bears no financial liability, we will reasonably cooperate with valid law enforcement or regulatory investigations by providing transaction log data as required by applicable Bangladeshi law.</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="17. Strict B2B Service — No End-Customer Support Obligation" icon={Users} accent="blue">
-            <p>Xelpay is an exclusively <strong className="text-slate-800 dark:text-slate-200">Business-to-Business (B2B)</strong> platform. Our contractual relationship, support obligations, and service commitments extend solely to the registered Merchant and not to any end-customer transacting through the Merchant's own platform or application.</p>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">No Direct Relationship with End-Customers:</strong> Xelpay has no direct legal, contractual, or service relationship with the end-customers of any Merchant. End-customers are the customers of the Merchant, not of Xelpay.</li>
-              <li>
-                <strong className="text-slate-800 dark:text-slate-200">No Support Obligation for End-Customers:</strong> Xelpay is under no obligation whatsoever to provide customer support, process refunds, handle complaints, or address queries from any end-customer of any Merchant.
-                <InfoBox type="info">
-                  <strong>Merchant Responsibility:</strong> It is the Merchant's sole and exclusive responsibility to provide adequate customer support, maintain their own refund policies, and comply with all applicable consumer protection laws in their jurisdiction when operating their business using the Xelpay infrastructure.
-                </InfoBox>
-              </li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Merchant Indemnification for End-Customer Claims:</strong> The Merchant agrees to fully indemnify, defend, and hold harmless Xelpay against any and all claims, legal proceedings, regulatory actions, or demands initiated by any end-customer arising from the Merchant's business operations, products, services, or failure to provide adequate customer support.</li>
-            </ul>
-          </SectionBlock>
-
-          {/* ─── NEW CLAUSES 18–25 (mapped from requested 9–16) ─── */}
-
-          <SectionBlock title="18. Webhook Idempotency & Double-Crediting Prevention" icon={Repeat} accent="teal">
-            <p>Xelpay's webhook delivery system may, under certain network conditions such as request timeouts or transient connectivity failures, automatically retry the delivery of a webhook notification to a Merchant's configured endpoint. This is a standard and expected behavior of our resilient delivery architecture.</p>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">Absolute Technical Responsibility — Merchant Developer Obligation</strong>
-              It is the <strong>absolute and non-delegable technical responsibility</strong> of the Merchant's development team to implement strict <strong>Idempotency</strong> logic within their webhook receiver endpoint. This requires the Merchant's system to track each unique Xelpay transaction reference ID and explicitly reject or ignore any duplicate webhook payload referencing an already-processed transaction. Failure to implement idempotency is a Merchant-side technical deficiency, and Xelpay shall bear <strong>absolutely zero financial, legal, or operational liability</strong> in the event that a Merchant double-credits, double-fulfills, or otherwise erroneously processes an end-customer order or account due to receiving and processing duplicate webhook deliveries.
-            </InfoBox>
-            <p className="mt-2">Xelpay provides a unique, immutable transaction reference identifier within every webhook payload specifically to facilitate idempotent processing. Merchants are required to leverage this identifier as the basis of their idempotency key.</p>
-          </SectionBlock>
-
-          <SectionBlock title="19. Regulatory Shutdown & Compliance-Mandated Service Termination" icon={Ban} accent="red">
-            <p>Xelpay operates in full compliance with all applicable laws and regulations of the People's Republic of Bangladesh. Certain core functionalities of the Xelpay platform — including but not limited to SMS-reading automation via the Relay App and IMAP-based bank email parsing — are dependent upon the continued legality and permissibility of such technical operations under Bangladeshi law and applicable regulatory frameworks.</p>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">Regulatory Shutdown — Zero Liability & Zero Refund</strong>
-              In the event that Bangladesh Bank, the Bangladesh Telecommunication Regulatory Commission (BTRC), the Bangladesh Financial Intelligence Unit (BFIU), or any other competent governmental or regulatory authority issues a directive, circular, order, or guideline that restricts, limits, prohibits, or otherwise renders impermissible the continued operation of SMS-reading automation, IMAP email scraping/parsing, or any other technical methodology upon which Xelpay's service delivery is dependent, <strong>Xelpay expressly reserves the unilateral and absolute right to immediately suspend, restrict, or permanently terminate the affected services or the entire platform, without any prior notice, and without any obligation to provide compensation, alternative services, or refunds of any kind</strong> to any Merchant or user.
-            </InfoBox>
-            <p className="mt-2">Merchants acknowledge and accept this inherent regulatory risk as a fundamental condition of using Xelpay's services. This provision shall also constitute a Force Majeure event under Section 10 of these Terms.</p>
-          </SectionBlock>
-
-          <SectionBlock title="20. Publicity & Marketing Rights" icon={Zap} accent="purple">
-            <p>By completing registration and activating a Xelpay merchant account, and subject to the opt-out mechanism described below, the Merchant grants Xelpay and Xenverse IT a <strong>non-exclusive, royalty-free, worldwide, sub-licensable license</strong> to use the Merchant's trading name, registered business name, brand name, and associated logo(s) for the following limited marketing purposes:</p>
-            <ul className="list-disc pl-5 mt-3 space-y-2">
-              <li>Inclusion in "Trusted By," "Our Merchants," or "Powered By" sections displayed on Xelpay's official website and marketing collateral.</li>
-              <li>Reference in case studies, press releases, or promotional materials as a client or integration partner of Xelpay, without disclosure of confidential business metrics.</li>
-              <li>Display in presentations to investors, partners, or regulatory bodies for the purpose of demonstrating platform adoption.</li>
-            </ul>
-            <InfoBox type="info">
-              <strong>Opt-Out Right:</strong> A Merchant may withdraw consent to this publicity license at any time by submitting a formal, written opt-out request to Xelpay's official support email address. Upon receipt and verification of the opt-out request, Xelpay will use commercially reasonable efforts to remove the Merchant's branding from new marketing materials within thirty (30) days. This opt-out does not apply retroactively to materials already published or distributed prior to the opt-out request.
-            </InfoBox>
-          </SectionBlock>
-
-          <SectionBlock title="21. Account Non-Transferability & AML Risk" icon={Lock} accent="red">
-            <p>A Xelpay merchant account is registered to, and intended exclusively for the use of, the specific legal entity or individual identified during the registration and KYC verification process. Xelpay accounts are <strong>strictly and absolutely non-transferable</strong>.</p>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Prohibited Transfer Actions:</strong> Merchants are expressly prohibited from selling, renting, leasing, lending, gifting, transferring ownership or control of, or otherwise alienating their Xelpay account, associated API keys, or access credentials to any third party, whether for consideration or gratuitously.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Business Restructuring:</strong> In the event of a legitimate corporate restructuring, merger, acquisition, or change of beneficial ownership, the Merchant must formally notify Xelpay in writing and submit to a full re-verification of KYC and business identity documentation before any change in account administration is permitted.</li>
-            </ul>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">Immediate Lifetime Ban — Unauthorized Transfer</strong>
-              Any unauthorized transfer, sale, rental, or change of effective control of a Xelpay account — detected through any means, including but not limited to device fingerprint changes, IP analysis, or third-party reports — will result in an <strong>immediate, permanent, and irrevocable lifetime ban</strong> of the account and all associated accounts, forfeiture of all data and subscription fees without refund, and referral to the Bangladesh Financial Intelligence Unit (BFIU) and relevant law enforcement authorities, given the serious Anti-Money Laundering (AML) and financial crime risks posed by unverified account transfers.
-            </InfoBox>
-          </SectionBlock>
-
-          <SectionBlock title="22. Underlying MFS/Bank Fees — Merchant's Sole Responsibility" icon={DollarSign} accent="amber">
-            <p>Xelpay's subscription and add-on fees are charged exclusively for access to and use of Xelpay's proprietary software infrastructure, API, dashboard, verification engine, and associated technical services. These fees do not include, cover, subsidize, or offset any fees, charges, or costs levied by third-party financial service providers or operators.</p>
+      <SectionBlock title="5. Subscription, Billing, Pricing, Add-On Services & Strict Refund Policy" icon={CreditCard} accent="amber">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Free/Starter Tier:</strong> Xelpay may offer a free tier equipped with a strict monthly transaction quota. Upon exhaustion of this quota, automation services will instantly halt until the next billing cycle or an upgrade is initiated. Xelpay reserves the right to modify, restrict, or discontinue the free tier at any time without prior notice.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Paid Subscriptions:</strong> Premium capabilities — including Team Members, Custom Telegram Bots, International Gateways, and higher transaction limits — require an active, recurring paid subscription. Subscription fees are charged in advance and automatically renew.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Pricing Changes:</strong> Xelpay reserves the right to change subscription pricing at any time. Active subscribers will be notified at least 7 days before a price change takes effect on their account.</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">Add-On Services & Usage-Based Billing:</strong> In addition to the base subscription plan, Xelpay reserves the right to charge separate, additional usage-based fees for specific "Add-On" services consumed beyond the base plan's included allowances. Such Add-On services may include, but are not limited to: outbound notification emails dispatched via Xelpay's own email infrastructure, premium SMS alerts delivered through Xelpay's third-party SMS gateway integrations, or any other resource-intensive features explicitly designated as usage-billed at the time of activation. Usage-based fees will be calculated based on actual consumption during the applicable billing period and will be clearly itemized on your invoice. By enabling and utilizing any Add-On service, you explicitly authorize Xelpay to charge the applicable usage-based fees to your registered payment method. Xelpay will endeavor to provide usage monitoring tools within the dashboard; however, it is the Merchant's sole responsibility to monitor their own Add-On consumption and manage usage accordingly. Xelpay shall bear no liability for unexpected charges resulting from unmonitored or unintended Add-On usage by the Merchant or their authorized team members.
             <InfoBox type="warning">
-              <strong>Merchant's Sole Financial Responsibility for Third-Party Fees:</strong> The Merchant is solely and exclusively responsible for bearing, understanding, and complying with all underlying third-party costs associated with their business operations, including but not limited to: MFS cash-out charges imposed by operators such as bKash, Nagad, Rocket, and Upay; MFS Person-to-Person (P2P) send money fees; inter-bank or intra-bank transfer fees; payment gateway processing fees; and all applicable Value Added Tax (VAT), Supplementary Duty (SD), and other taxes levied by third-party financial service providers or the Government of Bangladesh on such transactions.
+              <strong>Important:</strong> Enabling an Add-On service constitutes your binding agreement to the associated usage-based pricing. There are no refunds for Add-On charges already incurred and billed, consistent with our strict No-Refund Policy below.
             </InfoBox>
-            <p className="mt-2">Xelpay provides no representation, warranty, or guarantee regarding the fee structures of any third-party MFS operator or bank, which are subject to change at those operators' sole discretion.</p>
-          </SectionBlock>
+          </li>
+          <li><strong className="text-slate-800 dark:text-slate-200 uppercase">Strict No-Refund Policy:</strong> Due to the digital, API-based, and infrastructural nature of our services, all subscription payments are <strong className="text-red-600 dark:text-red-400">strictly non-refundable</strong> once activated and payment is processed. Refunds are NOT issued for: change of mind, partial usage, unused transaction quotas, feature misunderstandings, or accounts suspended/banned due to policy violations. The sole exception, at Xelpay's exclusive discretion, is a provable, catastrophic, and unresolvable technical failure originating explicitly from Xelpay's own servers, reported within 48 hours of the payment date, where no service was delivered whatsoever.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Chargebacks & Payment Disputes:</strong> Initiating a chargeback or payment dispute for a legitimate subscription charge constitutes a breach of these Terms, will result in immediate permanent account ban, and may be subject to a penalty recovery charge.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Taxes:</strong> You are solely responsible for all applicable taxes, VAT, duties, or levies arising from your use of Xelpay services in your jurisdiction.</li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="23. Dashboard Log Retention Limit & Data Export Responsibility" icon={BarChart2} accent="blue">
-            <p>To maintain optimal server performance, system stability, and efficient database operation, transaction and activity logs displayed within the active Xelpay Merchant Dashboard are subject to a <strong>rolling retention window</strong> for active dashboard visibility. Logs older than the active rolling window (currently ninety (90) days, subject to change with notice) may no longer be actively displayed or directly queryable through the dashboard interface.</p>
-            <InfoBox type="warning">
-              <strong>Merchant's Data Export Obligation:</strong> It is the Merchant's own sole and absolute responsibility to regularly and proactively export their transaction data (available in CSV or other supported formats) from the Xelpay Dashboard to their own secure, independent systems before the rolling retention window expires for dashboard visibility. Xelpay accepts no responsibility for any operational, financial, tax compliance, or legal consequences arising from a Merchant's failure to export and independently retain their own business data.
-            </InfoBox>
-            <p className="mt-2">For regulatory compliance purposes, Xelpay separately retains encrypted, backend transaction log archives for a period of <strong>five (5) years</strong> in accordance with the Money Laundering Prevention Act, 2012, and BFIU directives. This backend retention is for regulatory purposes only and does not constitute a data backup service for the Merchant's operational benefit. Access to these archived logs by the Merchant is not guaranteed and may only be provided pursuant to a valid legal or regulatory process.</p>
-          </SectionBlock>
+      <SectionBlock title="6. Acceptable Use Policy (AUP) & Prohibited Conduct" icon={AlertTriangle} accent="red">
+        <p>Xelpay maintains a <strong className="text-slate-800 dark:text-slate-200">zero-tolerance policy</strong> for abuse. You explicitly agree <strong>NOT</strong> to utilize Xelpay for any of the following prohibited activities:</p>
+        <ul className="list-disc pl-5 mt-3 space-y-2 text-slate-700 dark:text-slate-300">
+          <li>Processing payments for illegal goods, narcotics, controlled substances, adult/pornographic content, unlicensed pharmaceuticals, unauthorized gambling, or any other activity prohibited under Bangladeshi law or applicable international law.</li>
+          <li>Money laundering, terrorist financing, proliferation financing, or any attempt to obscure, disguise, or legitimize the origin of illegal funds — in violation of the Money Laundering Prevention Act, 2012 and Anti-Terrorism Act, 2009 (Bangladesh).</li>
+          <li>Executing scams, Ponzi schemes, pyramid schemes, fraudulent investment plans, multi-level marketing fraud, or any deceptive scheme targeting end-consumers.</li>
+          <li>Intentionally overwhelming, stress-testing beyond authorized limits, reverse-engineering, or deploying DDoS attacks against Xelpay APIs, servers, or integrated third-party systems.</li>
+          <li>Unauthorized access or intrusion attempts against Xelpay's databases, administrative panels, or any connected user's systems — in violation of the Digital Security Act, 2018 (Bangladesh) and Computer Fraud and Abuse Act (international context).</li>
+          <li>Impersonating Xelpay, Xenverse IT, or any Xelpay employee, partner, or affiliated entity.</li>
+          <li>Using Xelpay to facilitate human trafficking, child exploitation, or any crime against persons.</li>
+          <li>Operating any sanction-listed entity or individual as defined by OFAC, UN Security Council Sanctions Lists, or Bangladesh Bank directives.</li>
+          <li>Using the platform to send unsolicited bulk communications (spam) to customers or any third party.</li>
+        </ul>
+        <InfoBox type="danger">
+          <strong className="uppercase tracking-widest text-[11px] block mb-1">Enforcement Action</strong>
+          Any violation of this AUP will trigger an immediate, irreversible, permanent ban of your merchant account, immediate revocation of all API keys, and automatic disclosure of your data, transaction logs, and IP history to local law enforcement, BFIU (Bangladesh Financial Intelligence Unit), Cyber Crime Division, and any relevant banking authorities — without further notice to you.
+        </InfoBox>
+      </SectionBlock>
 
-          <SectionBlock title="24. API Versioning, Deprecation & Merchant Compatibility Obligation" icon={GitBranch} accent="teal">
-            <p>Xelpay is a continuously evolving software platform. To improve security, performance, and functionality, Xelpay reserves the right to release new versions of its APIs and to update, modify, or deprecate older API versions.</p>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Deprecation Notice:</strong> Xelpay will use commercially reasonable efforts to provide advance notice of significant API deprecation events through the Merchant Dashboard, email communications, and/or official developer documentation updates. The notice period for deprecation will vary based on the scope of change, but Xelpay provides no guaranteed minimum notice period.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Merchant's Absolute Compatibility Obligation:</strong> It is the Merchant's absolute and exclusive responsibility to ensure that their own application's codebase, integration logic, and technical infrastructure remain compatible with the current, supported version(s) of the Xelpay API at all times. This includes actively monitoring Xelpay's developer documentation and changelog for updates.</li>
-            </ul>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">Zero Liability — Broken Integrations from Outdated Merchant Code</strong>
-              Xelpay bears <strong>absolutely zero financial, legal, or operational liability</strong> for any service disruption, payment processing failure, missed transactions, business loss, or broken integration resulting from a Merchant's failure to update their code to maintain compatibility with current or updated Xelpay API versions. The obligation to maintain a current, compatible integration rests entirely with the Merchant's technical team.
-            </InfoBox>
-          </SectionBlock>
-
-          <SectionBlock title="25. Support SLA, Best-Effort Basis & Zero-Tolerance for Staff Harassment" icon={Headphones} accent="rose">
-            <p>Xelpay provides Merchant support services as a core component of our platform offering. However, except where explicitly and separately stipulated in a custom, individually negotiated Enterprise Service Agreement signed by an authorized representative of Xenverse IT, all support services are provided on a <strong>"best-effort" basis</strong> without any binding guarantee of specific response times, resolution times, or support channel availability.</p>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Best-Effort Support:</strong> Xelpay's support team strives to respond to and resolve Merchant inquiries as promptly as possible. Response times will vary based on inquiry volume, complexity, and priority level. Standard support does not guarantee any specific Service Level Agreement (SLA).</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Enterprise SLA:</strong> Merchants requiring guaranteed response times, dedicated account management, or enhanced support SLAs may inquire about Xelpay's Enterprise Agreement options.</li>
-            </ul>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">Zero-Tolerance Policy — Harassment of Support Staff</strong>
-              Xelpay maintains an absolute and unconditional <strong>zero-tolerance policy</strong> towards any form of verbal abuse, written abuse, threats, intimidation, harassment, discriminatory language, or any other form of hostile conduct directed at any Xelpay support staff member, employee, or contractor, through any communication channel, whether via in-app chat, email, social media, phone, or any other medium. Any Merchant or user who violates this policy will face an <strong>immediate, permanent, and irrevocable account ban</strong>, without any refund of fees paid, and Xelpay reserves the right to pursue appropriate legal remedies where such conduct constitutes a criminal offense under applicable Bangladeshi law.
-            </InfoBox>
-          </SectionBlock>
-
-        </div>
-      </div>
-
-      {/* ══════════ PART 2: PRIVACY POLICY ══════════ */}
-      <div>
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-2.5 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-xl"><Lock size={22} /></div>
-          <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Privacy Policy</h2>
-        </div>
-        <div className="space-y-4">
-          <p className="text-slate-600 dark:text-slate-400 text-sm md:text-base leading-relaxed">
-            Xelpay (Xenverse IT) is committed to protecting your privacy and handling your personal and business data with the highest standards of transparency, security, and legal compliance. This Privacy Policy explains, in detail, what data we collect, why we collect it, how we use it, and your rights regarding it.
-          </p>
-
-          <SectionBlock title="1. Comprehensive Information We Collect" icon={Database} accent="green">
-            <p className="font-semibold text-slate-700 dark:text-slate-300">We collect structured data across the following categories:</p>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Merchant Identification Data:</strong> Full legal name, business trading name, email address, phone number, business address, and other registration information.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Technical Integration Data:</strong> API keys (hashed), webhook endpoint URLs, configured MFS numbers, Telegram bot identifiers, and IMAP account metadata (not email content).</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Transaction & Payment Metadata:</strong> Transaction reference IDs, amounts, timestamps, MFS operator identifiers, verification status, and webhook delivery logs. We do not store actual payment credentials or PINs.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Device & App Metadata (Relay App):</strong> Device model, OS version, app version, and relay device connectivity status for SMS relay functionality.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Add-On Usage Data:</strong> Feature usage metrics for billing and system optimization purposes.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">KYC & Business Verification Documentation:</strong> Government-issued identity documents, trade licenses, and other business verification materials as required by law.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Usage & Log Data:</strong> IP addresses, browser/client type, access timestamps, API request logs, and error logs for security and performance monitoring.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Communications:</strong> Support tickets, email correspondence, and feedback submitted through our channels.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Affiliate & Referral Data:</strong> Referral codes, conversion events, and commission calculation data for Affiliate Program participants.</li>
-            </ul>
-            <div className="mt-4">
-              <InfoBox type="success">
-                <strong className="block mb-1">What We NEVER Collect:</strong>
-                Under absolutely no circumstances does Xelpay record, store, log, or intercept your bank account passwords, MFS app PIN codes, One-Time Passwords (OTPs), NID/Passport numbers (except during formal KYC verification), or the full content body of your bank emails beyond the parsed payment confirmation details.
+      <SectionBlock title="7. Third-Party Integrations (IMAP, Telegram, SMS & External APIs)" icon={Smartphone} accent="blue">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Custom Telegram Bots:</strong> By supplying a Custom Telegram Bot Token to Xelpay, you grant our system explicit, automated permission to dispatch webhook payloads and operational notifications through your bot. You are responsible for your bot's compliance with Telegram's Terms of Service.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">IMAP Bank Email Synchronization:</strong> Utilizing our Bank Transfer verification feature requires IMAP read-only access to your payment notification email inbox. You acknowledge that Xelpay will programmatically and exclusively parse emails from specified banking domains. We hold zero liability for the broader security of your email provider or any other emails in your inbox.</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">SMS Relay & Device App — Device & Internet Dependency:</strong> Our Android Relay application reads payment SMS messages on your device for automated verification. By installing and using this app, you consent to the collection of device metadata and relevant SMS content as described in our Privacy Policy. The app operates strictly in read-only mode and does not send, delete, or modify SMS messages.
+            <div className="mt-3">
+              <InfoBox type="warning">
+                <strong className="block mb-1">Critical Device & Connectivity Requirement:</strong>
+                The uninterrupted and accurate functioning of the SMS Relay verification system is entirely contingent upon the Merchant maintaining a dedicated Android device with: (a) a continuous, stable, and active mobile data or Wi-Fi internet connection; (b) the Xelpay Relay application running persistently in the foreground or background without interruption; and (c) the device powered on at all times during business operation hours. Xelpay holds <strong>absolutely zero liability</strong> for any missed, delayed, or failed payment verifications caused by — or resulting from — device power loss or shutdown, mobile network instability or internet connectivity drops, aggressive Android OS battery optimization, device memory management (RAM clearing), or any manufacturer-specific background app restrictions that terminate the Relay application process. It is the Merchant's sole operational responsibility to configure their device's battery optimization settings to exempt the Xelpay Relay application, maintain a reliable power supply, and ensure continuous internet connectivity on the relay device. Xelpay strongly recommends using a dedicated device exclusively for relay operations.
               </InfoBox>
             </div>
-          </SectionBlock>
-
-          <SectionBlock title="2. Legal Basis for Processing Personal Data" icon={Scale} accent="green">
-            <p>Xelpay processes your personal data under one or more of the following legal bases:</p>
-            <ul className="list-disc pl-5 mt-3 space-y-2">
-              <li><strong className="text-slate-800 dark:text-slate-200">Contractual Necessity:</strong> Processing is required to fulfill our obligations under the Terms of Service you have agreed to.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Legitimate Interests:</strong> For fraud prevention, platform security, and service improvement, where our interests do not override your fundamental rights.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Legal Obligation:</strong> To comply with AML regulations, BFIU directives, Bangladesh Bank guidelines, and other applicable laws.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Consent:</strong> For marketing communications, where explicitly provided and revocable at any time.</li>
+          </li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">MFS SMS Format Changes & Verification Failures:</strong> Xelpay's automated payment verification engine parses incoming SMS notifications from Mobile Financial Service (MFS) operators — including but not limited to bKash, Nagad, Rocket, and Upay — based on the specific SMS template formats and message structures that are active and known at the time of system development and configuration. You acknowledge and explicitly agree that:
+            <ul className="list-disc pl-5 mt-2 space-y-2">
+              <li>MFS operators may, at their own discretion and without prior notice to Xelpay or the Merchant, modify, restructure, reformat, or entirely replace the SMS notification templates they dispatch to their customers.</li>
+              <li>Any such unilateral change to an MFS operator's SMS format will render Xelpay's parsing engine temporarily unable to correctly extract transaction data, causing payment verifications to fail until Xelpay's technical team has been made aware of the change, developed a corresponding fix, tested the update, and deployed the patch to production systems.</li>
+              <li><strong className="text-slate-800 dark:text-slate-200">Xelpay bears absolutely no liability</strong> for any unverified, incorrectly verified, or missed payment transactions that occur during the period between an MFS operator's SMS format change and Xelpay's successful deployment of the corresponding system patch. The Merchant agrees to promptly notify Xelpay's support team upon detecting any pattern of unexpected verification failures, which may assist in identifying format changes more rapidly.</li>
             </ul>
-          </SectionBlock>
-
-          <SectionBlock title="3. Purpose of Data Utilization" icon={Eye} accent="green">
-            <p>Your data is used strictly for the following operational purposes:</p>
-            <ul className="list-disc pl-5 mt-3 space-y-2">
-              <li>To reliably authenticate users and maintain robust workspace security and session integrity.</li>
-              <li>To algorithmically verify incoming payments and fire real-time Webhook payloads to your configured endpoint.</li>
-              <li>To dispatch instant payment success/failure alerts via Telegram to your configured bot.</li>
-              <li>To identify transaction anomalies, proactively prevent platform abuse, spam, and financial fraud.</li>
-              <li>To generate analytics, reports, and dashboard metrics for your own business performance review.</li>
-              <li>To calculate, invoice, and collect usage-based fees for any activated Add-On services.</li>
-              <li>To process, review, and retain KYC and Business Verification documentation in compliance with AML and BFIU regulatory obligations.</li>
-              <li>To send transactional system emails, security alerts, and billing notices.</li>
-              <li>To fulfill our legal obligations under AML and fraud prevention regulations.</li>
-              <li>To improve our platform's features, fix bugs, and optimize system performance.</li>
+          </li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">SMS Spoofing & False Positive Verifications:</strong> Xelpay's verification engine operates entirely and exclusively upon the basis of SMS notifications received on the Merchant's registered relay device. The system has no independent ability to cross-verify received SMS against the actual internal ledger or transaction database of any MFS operator or banking institution.
+            <div className="mt-3">
+              <InfoBox type="danger">
+                <strong className="uppercase tracking-widest text-[11px] block mb-1">Zero Liability — SMS Spoofing & False Positives</strong>
+                In the event that any person — whether a customer, third party, or malicious actor — transmits, injects, or causes to be received on the Merchant's relay device any spoofed, fabricated, forged, simulated, or otherwise fraudulent SMS message that mimics a legitimate MFS payment notification, and Xelpay's system processes and verifies such fraudulent SMS as a valid completed payment ("False Positive"), <strong>Xelpay bears absolutely no legal, financial, or operational liability whatsoever</strong> for: any goods delivered, services rendered, or digital content released by the Merchant in reliance on such False Positive verification; any financial loss, revenue loss, or business loss suffered by the Merchant as a direct or indirect result of such False Positive; or any claims brought by the Merchant, their customers, or any third party arising from such an event. The Merchant is solely and entirely responsible for implementing their own independent verification procedures — including, but not limited to, manual cross-checking of large-value transactions directly with the MFS operator's official channels — before releasing high-value goods or services based on automated verifications. Reliance solely on Xelpay's automated verification for high-risk transactions is done entirely at the Merchant's own risk.
+              </InfoBox>
+            </div>
+          </li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Third-Party Service Availability:</strong> Xelpay does not guarantee the continuous availability of integrated third-party services (Telegram, MFS providers, banks, etc.). Downtime of these services is outside our control and does not constitute grounds for a refund or service credit.</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">Webhook Delivery & Merchant Server Outages:</strong> Xelpay makes best-effort attempts to deliver webhook payloads to your configured endpoints. In the event that your webhook endpoint is offline, unreachable, or returns HTTP 4xx or 5xx error status codes, Xelpay will attempt a limited number of automated retries as per our internal retry policy. However:
+            <ul className="list-disc pl-5 mt-2 space-y-2">
+              <li>Xelpay does <strong>not</strong> guarantee delivery if your endpoint is unavailable, returns persistent errors, times out, or is misconfigured by the Merchant.</li>
+              <li>Failed webhook delivery attempts are logged in the Merchant dashboard for a limited retention period for reference purposes.</li>
+              <li><strong className="text-slate-800 dark:text-slate-200">Xelpay holds absolutely no liability</strong> for any business loss, order processing failures, revenue loss, or downstream application failures resulting from permanently missed webhook deliveries caused by the Merchant's server downtime, infrastructure failures, misconfiguration, or network issues on the Merchant's end. It is the Merchant's sole responsibility to maintain a highly available, properly configured, and publicly accessible webhook endpoint and to implement their own reconciliation mechanisms — such as periodic polling of Xelpay's order status API — to account for any potential webhook delivery gaps.</li>
             </ul>
+          </li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="8. Service Level, Uptime & Downtime" icon={Server} accent="blue">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">No Uptime Guarantee:</strong> While Xelpay strives for maximum availability, we do not provide a formal Service Level Agreement (SLA) or uptime guarantee. The service is provided on a best-efforts basis.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Scheduled Maintenance:</strong> Xelpay may take the platform offline for scheduled maintenance. Where reasonably possible, maintenance will be scheduled during low-traffic hours, and notice will be given via dashboard alerts or email.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">No Liability for Downtime:</strong> Xelpay shall not be liable for any loss of revenue, business opportunity, or damages arising from planned or unplanned service interruptions.</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="9. Termination & Suspension Rights" icon={AlertCircle} accent="red">
+        <p>Xelpay reserves the unilateral right to <strong className="text-slate-800 dark:text-slate-200">suspend or permanently terminate</strong> your account and all associated API access at any time, with or without prior notice, if we:</p>
+        <ul className="list-disc pl-5 mt-3 space-y-2">
+          <li>Suspect any breach of these Terms of Service or our Acceptable Use Policy.</li>
+          <li>Detect unusual, suspicious, or potentially fraudulent activity on your account.</li>
+          <li>Are required to do so by applicable law, court order, or regulatory authority.</li>
+          <li>Determine your usage poses a severe security, legal, or operational risk to our infrastructure or other users.</li>
+          <li>Receive a valid law enforcement request or regulatory directive.</li>
+          <li>Determine that the Merchant has failed to comply with a KYC/Business Verification request as outlined in Section 15.</li>
+        </ul>
+        <p className="mt-3">Upon termination, your right to access the platform ceases immediately. You remain liable for all outstanding fees and obligations. No refund will be issued for any remaining subscription period upon ban due to policy violations.</p>
+        <p className="mt-3">You may terminate your account voluntarily at any time by submitting a formal request through our support channel. Voluntary termination does not entitle you to a refund of any pre-paid subscription amounts.</p>
+      </SectionBlock>
+
+      <SectionBlock title="10. Force Majeure, Limitation of Liability & Indemnification" icon={Scale} accent="amber">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Force Majeure:</strong> Xelpay shall not be liable for any failure or delay in performance due to circumstances beyond our reasonable control, including but not limited to: acts of God, natural disasters, internet shutdowns, national telecom outages, third-party server failures, cyberattacks on our infrastructure, power outages, pandemics, strikes, or government-mandated restrictions or actions.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Limitation of Liability — MFS/Bank Account Actions:</strong> Under no legal framework shall Xelpay, its founders, directors, or Xenverse IT be held liable for your personal or business MFS/Bank accounts being flagged, restricted, frozen, or suspended by respective financial institutions or authorities due to transaction volume, velocity, patterns, or violations of their own terms of service.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">General Liability Cap:</strong> In no event shall Xelpay's total aggregate liability for all claims related to the service exceed the total amount paid by you to Xelpay during the ONE (1) month immediately preceding the date on which the claim arose. This limitation applies regardless of the form of action, whether in contract, tort, or otherwise.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Exclusion of Consequential Damages:</strong> Xelpay shall not be liable for any indirect, incidental, special, consequential, exemplary, or punitive damages — including but not limited to loss of profits, loss of data, loss of business opportunity, or business interruption — even if advised of the possibility of such damages.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Indemnification:</strong> You agree to fully indemnify, defend, and hold Xelpay, Xenverse IT, and their officers, directors, employees, and agents harmless from and against any and all claims, lawsuits, liabilities, damages, losses, costs, and expenses (including reasonable legal fees) arising from: (a) your use or misuse of the platform; (b) your violation of these Terms; (c) your violation of any applicable law or regulation; (d) claims by your end-customers or third parties arising from your business operations.</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="11. Dispute Resolution, Arbitration & Class-Action Waiver" icon={Gavel} accent="purple">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Informal Resolution First:</strong> Before filing any formal legal claim, you agree to contact Xelpay's support team in good faith and make a genuine attempt to resolve the dispute amicably within thirty (30) days of written notice.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Class-Action Waiver:</strong> You explicitly agree that any disputes or claims against Xelpay must be brought in your individual capacity only, and <strong>NOT</strong> as a plaintiff or class member in any purported class action, collective action, or representative proceeding.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Binding Arbitration (where applicable):</strong> For international users, where permitted by local law, you agree that disputes not resolved informally will be submitted to binding arbitration rather than resolved in court.</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="12. Governing Law, Jurisdiction & Severability" icon={Building2} accent="blue">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Governing Law:</strong> These Terms shall be exclusively governed by and construed in accordance with the laws of the People's Republic of Bangladesh, including but not limited to the Contract Act, 1872; the Information and Communication Technology Act, 2006 (as amended); the Digital Security Act, 2018; and all applicable Bangladesh Bank regulations.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Jurisdiction:</strong> Any disputes arising under these Terms shall be subject to the exclusive jurisdiction of the courts of competent authority located within Bangladesh.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Severability:</strong> If any provision of these Terms is found to be unenforceable or invalid by a court of competent jurisdiction, that specific provision shall be limited or eliminated to the minimum extent necessary, and the remaining provisions shall remain in full force and effect.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Entire Agreement:</strong> These Terms, together with our Privacy Policy, constitute the entire agreement between you and Xelpay regarding your use of the platform and supersede all prior agreements, representations, or understandings.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Waiver:</strong> Xelpay's failure to enforce any right or provision of these Terms shall not constitute a waiver of that right or provision.</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="13. Affiliate Program Terms" icon={Users} accent="green">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Eligibility:</strong> Participation in the Xelpay Affiliate Program is open to registered merchants in good standing. Xelpay reserves the right to approve or reject affiliate applications at its sole discretion.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Commission Structure:</strong> Affiliate commissions are calculated based on the program's current rate structure, which may be modified by Xelpay at any time with reasonable notice.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Prohibited Promotion Methods:</strong> Affiliates must NOT engage in misleading advertising, spam, fake reviews, or any fraudulent method to generate referrals. Violations result in immediate disqualification and forfeiture of pending commissions.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Self-Referrals Prohibited:</strong> Using your own referral link to sign up secondary accounts for personal gain is strictly prohibited and constitutes fraud.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Commission Forfeiture:</strong> Commissions earned through fraudulent referrals, chargebacks, or referred accounts that violate our AUP will be forfeited and may be clawed back.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Payment Threshold:</strong> Affiliate commissions are disbursed upon reaching the minimum threshold as stated in the affiliate dashboard and are subject to applicable tax withholding.</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="14. Payment Links & Checkout Pages" icon={CreditCard} accent="blue">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Merchant Responsibility:</strong> You are solely responsible for the accuracy, legality, and appropriateness of all products, services, prices, and descriptions listed on payment pages generated via Xelpay. Xelpay is merely the technical infrastructure; we are not a party to the commercial transaction between you and your customers.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Customer Data on Checkout Pages:</strong> Any personal data your customers submit on your Xelpay-powered checkout pages is processed as per this Privacy Policy. You must ensure your own customers are aware of how their data is handled and maintain your own privacy disclosures where legally required.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Prohibited Content on Payment Links:</strong> Payment links must not be used to collect money for prohibited, illegal, or fraudulent purposes as outlined in Section 6 (AUP).</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="15. KYC & Business Verification" icon={Fingerprint} accent="orange">
+        <p>In strict compliance with the Bangladesh Financial Intelligence Unit (BFIU) directives, Anti-Money Laundering (AML) regulations, the Money Laundering Prevention Act, 2012, and the Anti-Terrorism Act, 2009 (Bangladesh), Xelpay expressly reserves the right to conduct Know Your Customer (KYC) and Business Verification procedures at any point during the lifecycle of a Merchant account — including, but not limited to, at the time of initial registration, upon a change in subscription tier, upon detection of unusual transaction patterns, or upon explicit request from any competent regulatory or law enforcement authority.</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Requested Documentation:</strong> Xelpay may, at its sole and absolute discretion, formally request the submission of one or more of the following KYC and business verification documents: valid Trade License or Business Registration Certificate, National Identity Card (NID) of the business owner(s) or authorized signatories, TIN (Taxpayer Identification Number) Certificate, relevant bank account details for verification purposes, and/or any other supporting documentation deemed reasonably necessary by Xelpay's compliance team to satisfy applicable AML and BFIU obligations.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Mandatory Compliance Obligation:</strong> The Merchant is legally obligated to respond to any KYC verification request from Xelpay within the timeframe specified in the formal request (which shall be no less than 72 hours from the date of the request, unless expedited by regulatory circumstances). All submitted documents must be genuine, current, legally valid, and unaltered. Submission of forged, falsified, or fraudulently obtained documentation constitutes a serious criminal offense under Bangladesh law and will result in immediate permanent account termination and mandatory referral to the appropriate law enforcement authorities.</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">Consequences of Non-Compliance:</strong> Failure or refusal to provide the requested KYC documentation within the stipulated timeframe will result in the immediate suspension of the Merchant's account and all associated API access, without any prior further notice. Extended non-compliance, or failure to provide satisfactory documentation upon review, will result in permanent account termination.
+            <InfoBox type="danger">
+              <strong className="uppercase tracking-widest text-[11px] block mb-1">No Refund on KYC-Triggered Suspension</strong>
+              Account suspension or termination arising from non-compliance with a KYC or Business Verification request does not entitle the Merchant to any refund of pre-paid subscription fees or Add-On charges, consistent with Xelpay's strict No-Refund Policy stated in Section 5.
+            </InfoBox>
+          </li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Data Handling of KYC Documents:</strong> All KYC documents submitted to Xelpay are handled and stored in strict accordance with our Privacy Policy (Part 2), subject to the mandatory AML-required data retention obligations outlined therein. KYC documents are accessible only by Xelpay's authorized compliance personnel on a strict need-to-know basis.</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="16. Reversed Transactions, MFS Clawbacks & Operator Disputes" icon={ShieldAlert} accent="red">
+        <p>Xelpay's role is strictly limited to that of a technological verification intermediary. The platform confirms the receipt of a payment notification and fires the corresponding webhook; it does not guarantee the finality, permanence, or irrevocability of any underlying financial transaction conducted through a third-party MFS provider, Bank, or payment gateway.</p>
+        <InfoBox type="danger">
+          <strong className="uppercase tracking-widest text-[11px] block mb-1">Absolute Zero Liability — Reversals, Clawbacks & Operator Disputes</strong>
+          In the event that any payment transaction that was previously verified and confirmed by Xelpay's system is subsequently reversed, recalled, frozen, disputed, or clawed back by the originating customer/sender, the relevant MFS operator (e.g., bKash, Nagad, Rocket), the Merchant's or customer's bank, any payment gateway provider, Bangladesh Bank, or any other competent financial or regulatory authority — for any reason whatsoever, including but not limited to: fraud investigations, unauthorized transaction claims, customer disputes, regulatory orders, or system reconciliation errors — <strong>Xelpay bears absolutely no legal, financial, or operational liability or responsibility</strong> for: any goods delivered, services rendered, digital content released, or access granted by the Merchant in reliance on the prior verification confirmation; any resulting financial loss, revenue loss, inventory loss, or business loss suffered by the Merchant; or any claims, lawsuits, or proceedings brought against the Merchant by their customers or any third party arising from such a reversal or clawback event.
+        </InfoBox>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Merchant's Independent Risk Obligation:</strong> It is the Merchant's sole and exclusive responsibility to maintain their own robust fraud prevention, order verification, and risk management policies — independent of Xelpay's automated verification — before releasing high-value goods, services, or irreversible digital deliverables. Xelpay's verification confirmation is a technical signal only and does not constitute a guarantee of payment finality or a warranty against future reversals.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Dispute Resolution Between Merchant & Customer:</strong> Any payment dispute, refund request, or chargeback initiated by the Merchant's end-customer is a matter strictly and exclusively between the Merchant and their customer (and/or the respective MFS operator or bank). Xelpay is not a party to any such dispute and is under no legal obligation to intervene, mediate, or provide any form of financial restitution in connection therewith.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Cooperation in Investigations:</strong> Notwithstanding the foregoing liability limitations, Xelpay will, where legally required or operationally feasible, cooperate with authorized regulatory and law enforcement investigations related to disputed transactions by providing relevant transaction log data held by our systems, subject to our Privacy Policy and applicable legal requirements.</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="17. Strict B2B Service — No End-Customer Support Obligation" icon={Users} accent="purple">
+        <p>Xelpay is an exclusively <strong className="text-slate-800 dark:text-slate-200">Business-to-Business (B2B)</strong> technology platform. The contractual relationship established by these Terms of Service exists solely and exclusively between Xelpay (Xenverse IT) and the registered Merchant entity.</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">No Direct Relationship with End-Customers:</strong> Xelpay has no direct legal, contractual, commercial, or financial relationship with any end-customer, buyer, or third party who transacts through the Merchant's Xelpay-powered payment interface or checkout page. End-customers are customers of the Merchant, not of Xelpay.</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">No Support Obligation for End-Customers:</strong> Xelpay is under <strong>absolutely no legal or contractual obligation</strong> to: respond to, investigate, or resolve any support inquiry, complaint, or claim submitted directly by a Merchant's end-customer; process, approve, or facilitate any refund, chargeback, or payment dispute on behalf of a Merchant's end-customer; or provide any form of customer service, dispute resolution, or after-sales support to the Merchant's end-customers in connection with their purchases or transactions.
             <InfoBox type="info">
-              Xelpay does <strong>NOT</strong> use your data for third-party advertising, profiling, or sale to data brokers under any circumstances.
+              <strong>Merchant Responsibility:</strong> It is the Merchant's sole and exclusive legal responsibility to provide adequate customer support, honor their own refund policies, and resolve all disputes with their end-customers directly. Xelpay's support channels are available exclusively to registered Merchants for platform-related technical issues and account management queries.
             </InfoBox>
-          </SectionBlock>
+          </li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Merchant Indemnification for End-Customer Claims:</strong> The Merchant explicitly agrees to fully indemnify, defend, and hold Xelpay harmless from and against any claim, lawsuit, regulatory complaint, or legal proceeding initiated by any of the Merchant's end-customers arising from — or in connection with — the Merchant's commercial operations, product or service quality, delivery failures, refund disputes, or any misrepresentation made by the Merchant to their customers, regardless of whether such activities utilized the Xelpay platform as a technical payment interface.</li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="4. Cookies & Tracking Technologies" icon={Cookie} accent="green">
-            <p>Xelpay uses the following technologies on our platform:</p>
-            <ul className="list-disc pl-5 mt-3 space-y-2">
-              <li><strong className="text-slate-800 dark:text-slate-200">Essential Session Cookies:</strong> Required for maintaining authenticated dashboard sessions. These are strictly necessary and cannot be disabled.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Preference Storage (LocalStorage):</strong> Used to store user interface preferences such as language selection and theme settings.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Security Tokens:</strong> CSRF and authentication tokens stored securely for session integrity.</li>
+      <SectionBlock title="18. Webhook Idempotency & Double-Crediting Prevention" icon={Zap} accent="purple">
+        <p>Xelpay's webhook delivery system is engineered to dispatch payment confirmation payloads upon verified transaction events. However, in scenarios involving network timeouts, transient connectivity failures between Xelpay's servers and the Merchant's endpoint, or the receipt of an ambiguous HTTP response code from the Merchant's server, Xelpay's system may, in accordance with its retry policy, automatically re-attempt the delivery of the same webhook payload one or more times within a defined retry window.</p>
+        <InfoBox type="danger">
+          <strong className="uppercase tracking-widest text-[11px] block mb-1">Absolute Merchant Responsibility — Idempotency Implementation</strong>
+          It is the <strong>absolute, non-delegable, and sole technical and legal responsibility</strong> of the Merchant's development team to implement robust <strong>idempotency logic</strong> within their webhook receiver endpoint. Idempotency, in this context, means that the Merchant's system must be architecturally designed to recognize and gracefully discard duplicate webhook deliveries carrying the same unique Transaction ID (TrxID) or Xelpay Order Reference, thereby ensuring that any given verified transaction is credited, fulfilled, or actioned only once, regardless of how many times the webhook notification is received. Xelpay bears <strong>absolutely zero legal, financial, or operational liability</strong> whatsoever for any instance of double-crediting, duplicate order fulfillment, duplicate digital content delivery, or any other form of duplicate financial or operational action taken by the Merchant's system as a result of the Merchant's failure to implement adequate idempotency safeguards. The financial and reputational consequences of double-crediting a Merchant's end-customers — including any resulting losses, disputes, or regulatory exposure — fall entirely and exclusively upon the Merchant. Xelpay's webhook documentation provides technical guidance on implementing idempotency, and the Merchant is solely responsible for ensuring their implementation is operationally sound.
+        </InfoBox>
+      </SectionBlock>
+
+      <SectionBlock title="19. Regulatory Shutdown, Government Directives & Force Majeure on Service Features" icon={Building2} accent="red">
+        <p>Xelpay operates in a regulated and rapidly evolving technological and regulatory environment. Several of Xelpay's core verification capabilities — specifically SMS-reading automation via the Android Relay application, IMAP-based bank email scraping and parsing, and related data extraction functionalities — depend upon regulatory permissions, operator compliance postures, and the absence of governmental or quasi-governmental restrictions that may be imposed at any future time without prior notice to Xelpay.</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Regulatory Authority:</strong> In the event that Bangladesh Bank, the Bangladesh Telecommunication Regulatory Commission (BTRC), the Ministry of Posts, Telecommunications and Information Technology, or any other competent governmental, quasi-governmental, judicial, or regulatory authority of Bangladesh or any other relevant jurisdiction issues a directive, circular, order, regulation, or policy — whether formal or informal — that prohibits, restricts, limits, conditions, or requires modification of Xelpay's SMS-reading automation, IMAP email scraping, automated transaction parsing, or any other feature or component of the Xelpay platform, Xelpay reserves the absolute and unilateral right to:</li>
+        </ul>
+        <ul className="list-disc pl-5 mt-2 ml-4 space-y-2">
+          <li>Immediately suspend, disable, modify, or permanently discontinue the affected service feature(s) with immediate effect and without any prior notice to the Merchant.</li>
+          <li>Modify, restrict, or fundamentally alter how the relevant feature operates to bring it into compliance with the applicable directive or regulatory requirement.</li>
+          <li>Permanently terminate the affected service offering entirely, where compliance is deemed impossible or commercially impractical by Xelpay at its sole discretion.</li>
+        </ul>
+        <InfoBox type="danger">
+          <strong className="uppercase tracking-widest text-[11px] block mb-1">Zero Liability & Zero Refund — Regulatory Shutdown</strong>
+          Xelpay shall bear <strong>absolutely no legal or financial liability</strong> of any nature — and no refunds, service credits, or compensatory payments of any kind shall be due or payable to the Merchant — in connection with any such regulatory-mandated suspension, modification, or permanent discontinuation of any service feature. The Merchant explicitly acknowledges and accepts that the risk of regulatory change affecting Xelpay's service capabilities is an inherent and foreseeable risk of operating a digital payment business in Bangladesh and that such events shall be treated as a Force Majeure occurrence under these Terms. The Merchant is solely responsible for maintaining contingency plans for their business operations that do not rely exclusively upon Xelpay's automated verification capabilities.
+        </InfoBox>
+      </SectionBlock>
+
+      <SectionBlock title="20. Publicity & Marketing Rights" icon={Users} accent="green">
+        <p>By registering a Xelpay merchant account and actively utilizing the Xelpay platform for your business operations, you hereby grant Xelpay (Xenverse IT) a <strong className="text-slate-800 dark:text-slate-200">non-exclusive, royalty-free, worldwide, perpetual (until opt-out), sublicensable license</strong> to use, display, and reproduce your registered business name, associated business brand name, and official business logo in the following limited contexts:</p>
+        <ul className="list-disc pl-5 mt-3 space-y-2">
+          <li>On Xelpay's official website, landing pages, and marketing materials, including but not limited to "Trusted By," "Our Partners," "Merchants," or equivalent sections showcasing businesses that utilize the Xelpay platform.</li>
+          <li>In Xelpay's case studies, promotional blog posts, social media content, press releases, investor materials, and sales collateral, to illustrate the breadth and legitimacy of Xelpay's merchant base.</li>
+          <li>In pitches, presentations, and materials prepared for potential business partners, investors, or regulatory bodies.</li>
+        </ul>
+        <InfoBox type="info">
+          <strong>Opt-Out Right:</strong> If you do not wish for your business name, brand, or logo to be used in any of the above promotional contexts, you may exercise your opt-out right at any time by submitting a formal written opt-out request to Xelpay's support team through the official support channel. Upon receipt and processing of a valid opt-out request, Xelpay will cease future use of your brand assets in new promotional materials within a commercially reasonable timeframe. This license does not grant Xelpay any right to use your brand assets in a manner that misrepresents your business, implies an exclusive partnership, or constitutes an endorsement of any third-party products or services.
+        </InfoBox>
+      </SectionBlock>
+
+      <SectionBlock title="21. Account Non-Transferability" icon={Lock} accent="red">
+        <p>Xelpay merchant accounts are issued to, and are for the exclusive use of, the specific registered business entity or individual sole proprietor that completed the account registration process. Xelpay accounts are, at all times, <strong className="text-slate-800 dark:text-slate-200">strictly and absolutely non-transferable</strong>.</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Prohibited Transfer Actions:</strong> Merchants are expressly prohibited from — and hereby agree not to — sell, transfer, assign, lease, rent, sublicense, gift, pledge, hypothecate, or in any other manner convey or attempt to convey ownership, access, or control of their Xelpay merchant account, associated API keys, Webhook secrets, or any account credentials to any third party, whether for consideration or otherwise.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Business Succession:</strong> In the event of a legitimate business acquisition, merger, or change of beneficial ownership of the Merchant's registered business entity, the Merchant must notify Xelpay in writing prior to completing any such transaction. Xelpay reserves the right to review the proposed transaction, require updated KYC documentation for the new controlling entity, and either approve the transition or, at its sole discretion, require the new entity to register a separate, independent Xelpay account.</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">Enforcement — Immediate Lifetime Ban:</strong> Any unauthorized transfer of, or attempt to transfer, a Xelpay merchant account will be treated as a critical, immediate security and AML compliance breach. Upon detection of any such unauthorized transfer — whether through account access pattern analysis, third-party reporting, or any other means — Xelpay will:
+            <ul className="list-disc pl-5 mt-2 space-y-1">
+              <li>Immediately impose a permanent, irrevocable lifetime ban on the transferred account and all associated API keys with immediate effect.</li>
+              <li>Permanently ban any new or existing accounts linked to the original registrant's verified identity and the identity of the unauthorized recipient.</li>
+              <li>Retain all account data in accordance with our AML data retention obligations and report the incident to BFIU and relevant authorities where legally required.</li>
             </ul>
-            <p className="mt-3">We do <strong>NOT</strong> deploy: third-party advertising cookies, cross-site tracking pixels, behavioral analytics scripts, or any third-party profiling technologies on our platform.</p>
-          </SectionBlock>
+            <InfoBox type="danger">
+              <strong className="uppercase tracking-widest text-[11px] block mb-1">AML Risk — Zero Tolerance</strong>
+              The strict prohibition on account transfers is a core AML compliance control. Unauthorized account transfers obscure beneficial ownership, enable circumvention of KYC controls, and create unacceptable money laundering and fraud risks — all of which Xelpay is legally obligated to prevent under Bangladeshi law. No refunds will be issued upon account termination due to unauthorized transfer.
+            </InfoBox>
+          </li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="5. Third-Party Data Sharing & Disclosure" icon={Users} accent="green">
-            <p><strong className="text-slate-800 dark:text-slate-200">Xelpay does NOT monetize or sell your personal data.</strong> Data is disclosed to third parties only under the following strictly limited circumstances:</p>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Infrastructure Providers:</strong> Cloud hosting and infrastructure partners (e.g., Vercel, Supabase) who process data solely on Xelpay's behalf under strict data processing agreements.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Legal & Regulatory Disclosure:</strong> When required by valid court order, law enforcement request, or regulatory directive under applicable Bangladeshi law.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Fraud Prevention:</strong> To competent fraud prevention agencies or financial intelligence units where legally required or permitted.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Business Transfer:</strong> In the event of a merger, acquisition, or sale of Xenverse IT's assets, data may be transferred to the acquiring entity, subject to equivalent privacy protections.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">With Your Explicit Consent:</strong> In any other circumstance where you have provided prior, explicit, and informed written consent.</li>
-            </ul>
-          </SectionBlock>
+      <SectionBlock title="22. Underlying MFS, Bank & Third-Party Transaction Fees" icon={CreditCard} accent="amber">
+        <p>Xelpay's subscription fees and any applicable Add-On service fees, as described in Section 5 of these Terms, exclusively cover access to and use of Xelpay's proprietary software infrastructure, payment verification engine, API services, dashboard, and associated technical support. These fees do <strong className="text-slate-800 dark:text-slate-200">NOT</strong> cover, include, absorb, or offset any third-party fees, charges, or costs associated with the underlying financial transactions conducted by the Merchant or their customers.</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Merchant's Sole Responsibility for Third-Party Fees:</strong> The Merchant is solely, exclusively, and entirely responsible for bearing all costs and fees imposed by third-party financial service providers in connection with their business transactions, including but not limited to: MFS cash-out charges (bKash cash-out fees, Nagad cash-out fees, Rocket cash-out fees, etc.); MFS person-to-person (P2P) send money fees or transfer charges; bank-to-bank transfer fees and BEFTN/RTGS charges; international payment gateway processing fees, currency conversion fees, and cross-border transaction charges; any merchant discount rates (MDR) applicable on payment gateway transactions; and all applicable taxes, levies, VAT, or duties payable to the Government of Bangladesh or any other tax authority on financial transactions.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Fee Structure Changes by Third Parties:</strong> Xelpay has no control over the fee structures, pricing policies, or terms of service of any MFS operator, bank, or payment gateway provider. Third-party fee changes are outside Xelpay's authority and will not constitute grounds for a reduction in Xelpay's subscription fees or any form of refund.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Merchant's Obligation to Verify Fees:</strong> It is the Merchant's sole responsibility to independently verify and remain current with the fee schedules of all third-party financial service providers they use in conjunction with the Xelpay platform, and to factor such fees appropriately into their business pricing and financial planning.</li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="6. Data Security & Breach Notification Protocol" icon={Lock} accent="green">
-            <p>Xelpay deploys multiple layers of security to protect your information:</p>
-            <ul className="list-disc pl-5 mt-3 space-y-2">
-              <li><strong className="text-slate-800 dark:text-slate-200">Encryption at Rest:</strong> All sensitive data stored in our databases is encrypted using industry-standard AES-256 encryption.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Encryption in Transit:</strong> All data transmission between your systems and Xelpay's infrastructure occurs exclusively over TLS 1.2 or higher encrypted connections.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Access Controls:</strong> Strict role-based access controls limit internal employee access to sensitive data on a need-to-know basis, with comprehensive audit logging.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Security Monitoring:</strong> Continuous automated monitoring for anomalous access patterns, intrusion attempts, and potential security threats.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Breach Notification:</strong> In the event of a confirmed data breach affecting your personal data, Xelpay will notify affected Merchants within seventy-two (72) hours of becoming aware of the breach, as required by applicable law.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Limitation:</strong> Notwithstanding the above, no system is impenetrable. Xelpay cannot guarantee absolute security against all possible threats and disclaims liability for breaches resulting from sophisticated state-sponsored attacks or zero-day vulnerabilities beyond our reasonable control.</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="7. Consent to Electronic Communications" icon={Bell} accent="green">
-            <p>By registering a Xelpay account, you explicitly and freely consent to receive electronic communications from Xelpay to your registered contact details, including:</p>
-            <ul className="list-disc pl-5 mt-3 space-y-2">
-              <li><strong className="text-slate-800 dark:text-slate-200">Transactional & Operational:</strong> Payment verification alerts, API status notifications, webhook delivery failure reports, and system security alerts. These are mandatory and cannot be opted out of while maintaining an active account.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">System Updates & Policy Changes:</strong> Notifications regarding updates to Terms of Service, Privacy Policy, API deprecation, and material platform changes.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Promotional & Marketing:</strong> Newsletters, feature announcements, and promotional offers. You may opt out of marketing communications at any time via the unsubscribe link in any such email or by contacting support.</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="8. Data Retention Policy" icon={Database} accent="green">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">Active Account Data:</strong> Retained for the full duration of your active subscription and account status.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">KYC & Business Verification Documents:</strong> Retained for a minimum of five (5) years from the date of submission, or longer if required by BFIU or Bangladesh Bank directives.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Post-Termination AML Retention:</strong> Following account termination, transaction records and KYC documentation are retained for a minimum of five (5) years to comply with the Money Laundering Prevention Act, 2012.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Add-On Usage Records:</strong> Retained for a minimum of three (3) years for billing dispute resolution and audit purposes.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Log Data:</strong> System access logs and API request logs are retained for up to ninety (90) days for active dashboard display, and up to five (5) years in encrypted backend archives for AML compliance.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Support Communications:</strong> Retained for up to two (2) years for quality assurance and dispute resolution purposes.</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="9. Your Data Rights & Account Deletion" icon={Trash2} accent="green">
-            <p>Subject to applicable law and our AML retention obligations, you possess the following rights regarding your personal data:</p>
-            <ul className="list-disc pl-5 mt-3 space-y-2">
-              <li><strong className="text-slate-800 dark:text-slate-200">Right of Access:</strong> Request a copy of the personal data Xelpay holds about you.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Right to Rectification:</strong> Request correction of inaccurate or incomplete personal data.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Right to Erasure ("Right to be Forgotten"):</strong> Request deletion of your personal data, subject to our legal retention obligations under AML regulations.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Right to Data Portability:</strong> Request your data in a structured, machine-readable format where technically feasible.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Right to Object:</strong> Object to the processing of your data based on legitimate interests.</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">Right to Withdraw Consent:</strong> Withdraw consent for marketing communications at any time, without affecting the lawfulness of prior processing.</li>
-            </ul>
-            <p className="mt-3">To exercise any of the above rights, contact us at our official support email. We will respond to verified requests within thirty (30) days, subject to identity verification requirements.</p>
-          </SectionBlock>
-
-          <SectionBlock title="10. Children's Privacy" icon={UserCheck} accent="red">
+      <SectionBlock title="23. Dashboard Log Retention Limits & Data Export Responsibility" icon={Database} accent="amber">
+        <p>To maintain optimal server performance, system stability, and cost-efficient infrastructure operations, Xelpay's merchant dashboard displays active transaction logs, order history, webhook delivery logs, and associated operational data on a <strong className="text-slate-800 dark:text-slate-200">limited rolling window basis</strong>. By default, the dashboard will display transactional and operational logs for the most recent rolling period, which is currently set at <strong className="text-slate-800 dark:text-slate-200">ninety (90) calendar days</strong> from the date of the transaction or event. Xelpay reserves the right to adjust this rolling display window at its sole discretion, with reasonable notice provided to active Merchants via dashboard notification.</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">Merchant's Data Export Responsibility:</strong> It is the Merchant's sole and absolute responsibility to regularly and proactively export their transaction data, order logs, and any other operational records they require for their own business accounting, reconciliation, tax compliance, auditing, or dispute resolution purposes, using the CSV export or equivalent data export functionality provided within the Xelpay dashboard. Xelpay will not be responsible for providing historical data that has aged beyond the active dashboard display window upon request.
             <InfoBox type="warning">
-              Xelpay services are strictly intended for users who are 18 years of age or older. We do not knowingly collect personal data from individuals under the age of 18. If we become aware that we have inadvertently collected data from a minor, we will take immediate steps to delete such data. If you believe we may have collected data from a minor, please contact us immediately.
+              <strong>Recommendation:</strong> Xelpay strongly recommends that Merchants establish a routine data export schedule — at minimum, on a monthly basis — to maintain a complete and up-to-date archive of their transaction history in their own secure storage systems. Failure to export data regularly may result in the permanent loss of dashboard-visible transaction records beyond the rolling retention window.
             </InfoBox>
-          </SectionBlock>
+          </li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Backend AML Retention (Non-Dashboard):</strong> Notwithstanding the limited dashboard display window described above, Xelpay's backend systems separately retain encrypted, immutable transaction logs and associated account activity records for a minimum period of <strong className="text-slate-800 dark:text-slate-200">Five (5) years</strong> following the transaction date, in strict compliance with AML regulatory requirements as detailed in the Privacy Policy. These backend-retained records are not directly accessible via the Merchant dashboard but may be made available to competent regulatory or law enforcement authorities upon valid legal request, or to the Merchant in connection with a specific formal compliance or dispute investigation, at Xelpay's discretion and subject to applicable law.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">No Liability for Dashboard Data Loss:</strong> Xelpay bears absolutely no liability for any business losses, accounting discrepancies, tax compliance issues, or any other consequences arising from the Merchant's failure to export and maintain their own records within the dashboard display window, regardless of the reason for such failure.</li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="11. International Data Transfers" icon={Globe} accent="green">
-            <p>Xelpay primarily operates from Bangladesh. However, due to our use of cloud infrastructure providers such as Vercel and Supabase, certain data may be processed on servers located in other countries, including but not limited to the United States and European Union member states.</p>
-            <p className="mt-3">We ensure that any such international transfer of data is conducted in compliance with applicable data protection laws and is subject to appropriate safeguards, including data processing agreements with our infrastructure providers that incorporate standard data protection clauses.</p>
-          </SectionBlock>
+      <SectionBlock title="24. API Versioning, Updates & Deprecation Policy" icon={Zap} accent="purple">
+        <p>Xelpay continuously invests in the improvement, security hardening, and capability expansion of its API infrastructure. As part of this ongoing development mandate, Xelpay expressly reserves the right to release new versions of its API, introduce breaking or non-breaking changes to existing API endpoints, modify API request or response schemas, and deprecate or permanently retire older API versions at any time.</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Deprecation Notice:</strong> Where operationally feasible and commercially reasonable, Xelpay will endeavor to provide advance notice of planned API version deprecations via dashboard notifications, email alerts, or API changelog updates. However, in cases involving critical security vulnerabilities, mandatory regulatory compliance changes, or other urgent operational necessities, Xelpay reserves the right to implement changes or deprecate API versions with immediate effect and without prior notice.</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">Merchant's Absolute Maintenance Responsibility:</strong> It is the <strong>absolute, non-delegable, and sole technical responsibility</strong> of the Merchant and their development team to actively monitor Xelpay's API changelog, version release notes, and deprecation announcements; update their integration code in a timely manner to remain compatible with current and supported API versions; and test their integration thoroughly following any API update or version migration.
+            <InfoBox type="danger">
+              <strong className="uppercase tracking-widest text-[11px] block mb-1">Zero Liability — Broken Integrations from Outdated Code</strong>
+              Xelpay bears <strong>absolutely zero legal, financial, or operational liability</strong> for any broken integrations, failed payment verifications, missed webhook deliveries, API authentication failures, data parsing errors, or any other technical malfunction or business disruption experienced by the Merchant as a direct or indirect result of the Merchant's failure to update their integration code to remain compatible with Xelpay's current API version. A Merchant's use of a deprecated or retired API version constitutes the Merchant's sole risk, and Xelpay is under no obligation to maintain backward compatibility with deprecated versions beyond any stated deprecation window.
+            </InfoBox>
+          </li>
+          <li><strong className="text-slate-800 dark:text-slate-200">No Refunds for Integration Failures:</strong> API version-related integration failures or service disruptions experienced by the Merchant due to outdated integration code do not constitute grounds for a refund of subscription fees or any other form of financial compensation from Xelpay.</li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="12. Contact & Data Protection Inquiries" icon={Mail} accent="green">
-            <p>For all privacy-related concerns, data access requests, account deletion requests, or to report a suspected data breach, please contact Xelpay's Data Protection team via our official support email address published on our website.</p>
-            <p className="mt-3">For legal notices or regulatory correspondence, include "LEGAL NOTICE" in the subject line of your communication to ensure proper routing and expedited handling by our compliance team.</p>
-          </SectionBlock>
-        </div>
-      </div>
+      <SectionBlock title="25. Support Policy, SLA & Zero-Tolerance for Staff Harassment" icon={ShieldAlert} accent="red">
+        <p>Xelpay provides merchant support services through its designated official support channels as communicated within the merchant dashboard. Xelpay is committed to providing responsive and helpful support to all Merchants; however, the following terms govern the nature, scope, and conduct expectations of the support relationship.</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">Best-Effort Support — No Guaranteed Response SLA:</strong> Unless the Merchant has entered into a separate, formally executed Enterprise Agreement with Xelpay that explicitly specifies binding response time Service Level Agreements (SLAs), all merchant support is provided strictly on a <strong>"best-effort" basis</strong>. Xelpay makes no binding guarantee regarding specific response times, resolution times, or the order in which support tickets are addressed. Support queue prioritization is at Xelpay's sole discretion. Standard support response times may vary depending on ticket volume, issue complexity, and staffing availability.</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">Scope of Support:</strong> Xelpay's support services cover platform-related technical issues, API integration assistance, account configuration guidance, and billing inquiries. Support does not extend to general software development consulting, custom feature development, debugging of the Merchant's own proprietary codebase (beyond direct Xelpay API integration issues), or any support for the Merchant's end-customers.</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">Zero-Tolerance Policy Against Support Staff Harassment:</strong> Xelpay maintains an absolute and non-negotiable zero-tolerance policy against any form of abusive, threatening, harassing, intimidating, defamatory, or discriminatory conduct directed by a Merchant (or any person acting on their behalf) toward any Xelpay support staff member, employee, contractor, or representative, through any communication channel.
+            <InfoBox type="danger">
+              <strong className="uppercase tracking-widest text-[11px] block mb-1">Immediate Permanent Ban — Harassment of Support Staff</strong>
+              Prohibited conduct includes, without limitation: the use of abusive, vulgar, profane, or threatening language in written or verbal communications; the issuance of threats of physical harm, legal action used as intimidation (as distinct from legitimate legal correspondence), or public defamation; repeated harassment, trolling, or deliberately bad-faith communications designed to obstruct support operations; and any other behavior that a reasonable person would consider to constitute harassment or workplace abuse. Any single confirmed instance of harassment of Xelpay support staff will result in the <strong>immediate, permanent, and irrevocable termination</strong> of the Merchant's account and all associated API access, with no prior warning. This termination is non-negotiable, non-reversible, and will be treated as a policy violation under Section 6 (AUP). <strong>No refunds of any pre-paid subscription fees or Add-On charges will be issued upon termination under this policy</strong>, consistent with our strict No-Refund Policy.
+            </InfoBox>
+          </li>
+        </ul>
+      </SectionBlock>
     </div>
   );
 }
 
-// ─── BANGLA CONTENT ──────────────────────────────────────────────────────────
-function BanglaContent() {
+// ─── BANGLA TERMS CONTENT ─────────────────────────────────────────────────────
+function BanglaTermsContent() {
   return (
-    <div className="space-y-14" style={{ fontFamily: "'Noto Sans Bengali', 'SolaimanLipi', sans-serif" }}>
-      {/* ══════════ পার্ট ১: সেবার শর্তাবলী ══════════ */}
-      <div>
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-xl"><FileText size={22} /></div>
-          <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">সেবার শর্তাবলী</h2>
-        </div>
-        <div className="space-y-4">
-          <p className="text-slate-600 dark:text-slate-400 text-sm md:text-base leading-relaxed">
-            <strong className="text-slate-900 dark:text-white">Xelpay</strong> — <strong className="text-slate-900 dark:text-white">Xenverse IT</strong> পরিচালিত একটি কঠোরভাবে B2B পেমেন্ট ভেরিফিকেশন অবকাঠামো-তে আপনাকে স্বাগতম। Xelpay প্ল্যাটফর্ম, API, ড্যাশবোর্ড বা যেকোনো সংশ্লিষ্ট পরিষেবা অ্যাক্সেস বা ব্যবহার করে, আপনি — মার্চেন্ট — এই আইনগতভাবে বাধ্যকর দলিলের প্রতিটি ধারায় নিঃশর্তভাবে সম্মত হচ্ছেন।
-          </p>
+    <div className="space-y-4" style={{ fontFamily: "'Noto Sans Bengali', 'SolaimanLipi', sans-serif" }}>
+      <p className="text-slate-600 dark:text-slate-400 text-sm md:text-base leading-relaxed font-medium">
+        <strong className="text-slate-900 dark:text-white">Xelpay</strong> — <strong className="text-slate-900 dark:text-white">Xenverse IT</strong>-এর একটি পণ্য — এ আপনাকে স্বাগত জানাই। অ্যাকাউন্ট তৈরি করে, ড্যাশবোর্ড ব্যবহার করে, আমাদের API ব্যবহার করে, বা Xelpay-এর যেকোনো সেবা গ্রহণ করে আপনি ("মার্চেন্ট", "ব্যবহারকারী", বা "ক্লায়েন্ট") এই সেবার শর্তাবলীতে আইনগতভাবে সম্মত হচ্ছেন। আপনি যদি এই শর্তাবলীর কোনো অংশের সাথে দ্বিমত পোষণ করেন, তাহলে আপনাকে অবিলম্বে প্ল্যাটফর্ম ব্যবহার বন্ধ করতে হবে।
+      </p>
 
-          <SectionBlock title="১. শর্তাবলী পরিবর্তনের অধিকার" icon={RefreshCw} accent="blue">
-            <InfoBox type="info">
-              <strong>কর্তৃপক্ষের অধিকার:</strong> Xelpay (Xenverse IT) যেকোনো সময়, সম্পূর্ণরূপে নিজেদের বিবেচনায়, এই সেবার শর্তাবলী, গোপনীয়তা নীতি, গ্রহণযোগ্য ব্যবহার নীতি বা যেকোনো সংশ্লিষ্ট মূল্য নির্ধারণ ও ফিচার ডকুমেন্টেশনের যেকোনো অংশ পূর্ব নোটিশ সহ বা ছাড়াই পরিবর্তন, সংশোধন, আপডেট বা প্রতিস্থাপন করার একক ও পরম অধিকার সংরক্ষণ করে।
-            </InfoBox>
-          </SectionBlock>
+      <SectionBlock title="১. শর্তাবলী পরিবর্তনের অধিকার" icon={RefreshCw} accent="blue">
+        <InfoBox type="info">
+          <strong>কর্তৃপক্ষের অধিকার:</strong> Xelpay (Xenverse IT) যেকোনো সময়, সম্পূর্ণরূপে নিজেদের বিবেচনায়, এই সেবার শর্তাবলী বা গোপনীয়তা নীতির যেকোনো অংশ আপডেট, পরিবর্তন বা প্রতিস্থাপন করার একচেটিয়া এবং সম্পূর্ণ অধিকার সংরক্ষণ করে। বড় বা সংবেদনশীল নীতি পরিবর্তনের ক্ষেত্রে, আমরা ড্যাশবোর্ড সতর্কতা বা ইমেইলের মাধ্যমে সক্রিয় ব্যবহারকারীদের যুক্তিসংগতভাবে অবহিত করার চেষ্টা করব। তবে, এই পেজটি নিয়মিত পর্যালোচনা করা আপনার একান্ত আইনগত দায়িত্ব। আপডেটের পরে প্ল্যাটফর্ম ব্যবহার অব্যাহত রাখা সংশোধিত শর্তাবলী গ্রহণের বাধ্যতামূলক প্রমাণ হিসেবে গণ্য হবে।
+        </InfoBox>
+      </SectionBlock>
 
-          <SectionBlock title="২. সেবার বিবরণ ও মূল দায়মুক্তি" icon={Server} accent="blue">
-            <p>Xelpay হলো একটি সম্পূর্ণ প্রযুক্তিগত অবকাঠামো যা মোবাইল ফিনান্সিয়াল সার্ভিস (MFS), ব্যাংক ট্রান্সফার এবং বাংলাদেশে সংশ্লিষ্ট ডিজিটাল পেমেন্ট পদ্ধতির জন্য পেমেন্ট ভেরিফিকেশন প্রদান করে।</p>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">অত্যন্ত গুরুত্বপূর্ণ আর্থিক দায়মুক্তি</strong>
-              Xelpay এক​টি সফটওয়্যার লেয়ার — এটি কোনো ব্যাংক, আর্থিক প্রতিষ্ঠান, ডিজিটাল ওয়ালেট, পেমেন্ট অ্যাগ্রিগেটর বা মানি সার্ভিস বিজনেস <strong>নয়</strong>।
-            </InfoBox>
-          </SectionBlock>
+      <SectionBlock title="২. সেবার বিবরণ ও মূল দায়মুক্তি" icon={Server} accent="blue">
+        <p>Xelpay হলো একটি সম্পূর্ণ প্রযুক্তিগত অবকাঠামো যা মোবাইল ফিনান্সিয়াল সার্ভিস (MFS), ব্যাংক ট্রান্সফার এবং আন্তর্জাতিক পেমেন্ট গেটওয়ের জন্য পেমেন্ট যাচাইকরণ সফটওয়্যার, API ব্রিজিং এবং অটোমেশন সরঞ্জাম সরবরাহ করে। Xelpay একটি সফটওয়্যার মিডলওয়্যার লেয়ার হিসেবে কাজ করে।</p>
+        <InfoBox type="danger">
+          <strong className="uppercase tracking-widest text-[11px] block mb-1">অত্যন্ত গুরুত্বপূর্ণ আর্থিক দায়মুক্তি বিবৃতি</strong>
+          Xelpay একটি সফটওয়্যার লেয়ার — এটি কোনো ব্যাংক, আর্থিক প্রতিষ্ঠান, ডিজিটাল ওয়ালেট, পেমেন্ট অ্যাগ্রিগেটর বা মানি সার্ভিস বিজনেস (MSB) <strong>নয়</strong>। আমরা আপনার প্রকৃত অর্থ ধারণ, প্রক্রিয়া, স্পর্শ বা কাস্টোডিয়ান হিসেবে কাজ করি না। সমস্ত লেনদেন পিয়ার-টু-পিয়ার এবং সরাসরি আপনার নিজের ব্যক্তিগত বা কর্পোরেট MFS/ব্যাংক অ্যাকাউন্টে নিষ্পত্তি হয়। ব্যাংক কোম্পানি আইন, ১৯৯১ (বাংলাদেশ) বা কোনো সমতুল্য বিদেশী আইনের অধীনে Xelpay একটি আর্থিক প্রতিষ্ঠান হিসেবে <strong>লাইসেন্সপ্রাপ্ত নয়</strong>।
+        </InfoBox>
+      </SectionBlock>
 
-          <SectionBlock title="৩. যোগ্যতা, অ্যাকাউন্টের দায়িত্ব ও বয়স সীমাবদ্ধতা" icon={UserCheck} accent="blue">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">বয়স সীমাবদ্ধতা:</strong> নিবন্ধন ও ব্যবহারের জন্য আপনার বয়স কমপক্ষে ১৮ বছর হতে হবে।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">ব্যবসায়িক যোগ্যতা:</strong> Xelpay একটি সম্পূর্ণ B2B প্ল্যাটফর্ম।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">তথ্যের নির্ভুলতা:</strong> নিবন্ধনের সময় সম্পূর্ণ, সঠিক ও সত্য তথ্য প্রদান করতে আপনি সম্মত।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">অ্যাকাউন্টের নিরাপত্তা:</strong> আপনার API কী ও ড্যাশবোর্ড অ্যাক্সেসের গোপনীয়তা বজায় রাখা আপনার একক দায়িত্ব।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">একটি অ্যাকাউন্ট নীতি:</strong> প্রতিটি ব্যবসায়িক সত্তার জন্য শুধুমাত্র একটি সক্রিয় Xelpay মার্চেন্ট অ্যাকাউন্ট অনুমোদিত।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">ডেমো মোডের সীমাবদ্ধতা:</strong> ডেমো মোডে প্রক্রিয়াকৃত লেনদেন সম্পূর্ণরূপে সিমুলেটেড এবং লাইভ বাণিজ্যিক লেনদেনের জন্য এর ব্যবহার কঠোরভাবে নিষিদ্ধ।</li>
-            </ul>
-          </SectionBlock>
+      <SectionBlock title="৩. যোগ্যতা, অ্যাকাউন্টের দায়িত্ব ও বয়স সীমাবদ্ধতা" icon={UserCheck} accent="blue">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">বয়স সীমাবদ্ধতা:</strong> Xelpay ব্যবহার করে ব্যবসা পরিচালনা করতে আপনার বয়স অবশ্যই কমপক্ষে ১৮ বছর হতে হবে অথবা আপনার অধিক্ষেত্রে প্রাপ্তবয়স্কতার আইনি বয়স পূর্ণ হতে হবে। নিবন্ধন করে আপনি নিশ্চিত করছেন যে আপনি এই শর্ত পূরণ করেছেন।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">ব্যবসায়িক যোগ্যতা:</strong> Xelpay শুধুমাত্র বৈধ ব্যবসায়িক ব্যবহারের জন্য। আপনাকে অবশ্যই আইনগতভাবে নিবন্ধিত ব্যবসার মালিক বা এককভাবে পরিচালক হতে হবে।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">তথ্যের নির্ভুলতা:</strong> নিবন্ধনের সময় আপনাকে অবশ্যই সত্য, সঠিক এবং সম্পূর্ণ ব্যবসায়িক তথ্য প্রদান করতে হবে। মিথ্যা বা প্রতারণামূলক তথ্য প্রদান কঠোরভাবে নিষিদ্ধ।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">অ্যাকাউন্টের নিরাপত্তা:</strong> আপনার লগইন ক্রেডেনশিয়াল, API কী, ওয়েবহুক সিক্রেট এবং টিম সদস্যদের ভূমিকার সম্পূর্ণ গোপনীয়তা বজায় রাখা সম্পূর্ণরূপে আপনার দায়িত্ব।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">একটি অ্যাকাউন্ট নীতি:</strong> ব্যবহারের সীমা, নিষেধাজ্ঞা বা ফি এড়াতে একাধিক অ্যাকাউন্ট তৈরি করা কঠোরভাবে নিষিদ্ধ।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">ডেমো মোডের সীমাবদ্ধতা:</strong> Xelpay শুধুমাত্র UI/UX মূল্যায়ন এবং API ইন্টিগ্রেশন পরীক্ষার জন্য "ডেমো মোড" প্রদান করে। আপনাকে অবশ্যই ডেমো মোড ক্রেডেনশিয়াল ব্যবহার করে <strong className="text-red-600 dark:text-red-400">কখনোই</strong> বাস্তব গ্রাহক ডেটা বা প্রকৃত আর্থিক লেনদেন প্রক্রিয়া করা যাবে না।</li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="৪. মেধা সম্পত্তি অধিকার (IP Rights)" icon={BookOpen} accent="purple">
-            <p>Xelpay-এর সাথে সংযুক্ত সমস্ত সোর্স কোড, UI/UX ডিজাইন, API আর্কিটেকচার, অ্যালগরিদম, লোগো, ট্রেডমার্ক ও অন্যান্য মেধা সম্পত্তি Xenverse IT-এর একক মালিকানাধীন।</p>
-            <ul className="list-disc pl-5 mt-3 space-y-2">
-              <li>আপনাকে শুধুমাত্র আপনার নিজের বৈধ ব্যবসায়িক কার্যক্রমের জন্য আমাদের API ব্যবহার করার একটি <strong>সীমিত, অ-একচেটিয়া, হস্তান্তরযোগ্য নয় এমন, প্রত্যাহারযোগ্য লাইসেন্স</strong> প্রদান করা হয়।</li>
-              <li>আমাদের প্ল্যাটফর্মের যেকোনো অংশ কপি, ক্লোন, স্ক্র্যাপ, রিভার্স-ইঞ্জিনিয়ার, ডিকম্পাইল, পুনরায় বিক্রি বা ডেরিভেটিভ কাজ তৈরি <strong>না করতে</strong> আপনি কঠোরভাবে সম্মত।</li>
-              <li>Xelpay-এর IP-এর যেকোনো অননুমোদিত ব্যবহার লঙ্ঘন গঠন করে এবং দেওয়ানি ও ফৌজদারি আইনি প্রতিকারের মাধ্যমে বিচার করা হবে।</li>
-            </ul>
-          </SectionBlock>
+      <SectionBlock title="৪. মেধা সম্পত্তি অধিকার (IP Rights)" icon={BookOpen} accent="purple">
+        <p>Xelpay-এর সাথে সম্পর্কিত সমস্ত সোর্স কোড, UI/UX ডিজাইন, API আর্কিটেকচার, অ্যালগরিদম, লোগো, ট্রেডমার্ক এবং মালিকানাধীন পদ্ধতি <strong className="text-slate-800 dark:text-slate-200">Xenverse IT</strong>-এর একচেটিয়া মেধা সম্পত্তি, কপিরাইট আইন, ২০০০ (বাংলাদেশ) এবং বার্ন কনভেনশন ও TRIPS চুক্তি সহ আন্তর্জাতিক IP চুক্তির অধীনে সুরক্ষিত।</p>
+        <ul className="list-disc pl-5 mt-3 space-y-2">
+          <li>আপনাকে শুধুমাত্র আপনার নিজের বৈধ ব্যবসায়িক কার্যক্রমের জন্য আমাদের API ব্যবহার করার একটি <strong>সীমিত, অ-একচেটিয়া, অ-হস্তান্তরযোগ্য, প্রত্যাহারযোগ্য লাইসেন্স</strong> দেওয়া হয়েছে।</li>
+          <li>আমাদের প্ল্যাটফর্মের যেকোনো অংশ কপি, ক্লোন, স্ক্র্যাপ, রিভার্স-ইঞ্জিনিয়ার, ডিকম্পাইল, পুনরায় বিক্রি বা ডেরিভেটিভ কাজ তৈরি করা কঠোরভাবে <strong>নিষিদ্ধ</strong>।</li>
+          <li>Xelpay-এর IP-এর যেকোনো অননুমোদিত ব্যবহার লঙ্ঘন গঠন করে এবং দেওয়ানি ও ফৌজদারি প্রতিকার সহ উপযুক্ত আইনি পদক্ষেপের মাধ্যমে অনুসরণ করা হবে।</li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="৫. সাবস্ক্রিপশন, বিলিং, মূল্য নির্ধারণ, অ্যাড-অন সেবা ও কঠোর অ-ফেরতযোগ্য নীতি" icon={CreditCard} accent="blue">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">ফ্রি/স্টার্টার টায়ার:</strong> Xelpay সীমিত বৈশিষ্ট্য সহ একটি বিনামূল্যের বা স্টার্টার টায়ার অফার করতে পারে।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">পেইড সাবস্ক্রিপশন:</strong> প্রিমিয়াম বৈশিষ্ট্যে অ্যাক্সেসের জন্য একটি পেইড সাবস্ক্রিপশন প্রয়োজন।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">মূল্য পরিবর্তন:</strong> Xelpay যেকোনো সময় সাবস্ক্রিপশন মূল্য পরিবর্তনের অধিকার সংরক্ষণ করে।</li>
-              <li>
-                <strong className="text-slate-800 dark:text-slate-200">অ্যাড-অন সেবা ও ব্যবহার-ভিত্তিক বিলিং:</strong>
-                <div className="mt-3">
-                  <InfoBox type="warning">
-                    <strong>গুরুত্বপূর্ণ:</strong> একটি অ্যাড-অন সেবা সক্ষম করা সংশ্লিষ্ট ব্যবহার-ভিত্তিক মূল্য নির্ধারণে আপনার বাধ্যকর সম্মতি গঠন করে।
-                  </InfoBox>
-                </div>
-              </li>
-              <li><strong className="text-slate-800 dark:text-slate-200">কঠোর অ-ফেরতযোগ্য নীতি:</strong> Xelpay-কে করা সমস্ত পেমেন্ট সম্পূর্ণরূপে অ-ফেরতযোগ্য।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">চার্জব্যাক ও পেমেন্ট বিরোধ:</strong> অভ্যন্তরীণ বিরোধ নিষ্পত্তি প্রক্রিয়া শেষ না করে চার্জব্যাক শুরু করা এই শর্তের একটি বস্তুগত লঙ্ঘন।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">কর:</strong> আপনার অ্যাকাউন্ট কার্যক্রম থেকে উদ্ভূত সমস্ত প্রযোজ্য করের জন্য আপনি একাই দায়ী।</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="৬. গ্রহণযোগ্য ব্যবহার নীতি (AUP) ও নিষিদ্ধ আচরণ" icon={AlertTriangle} accent="red">
-            <p>Xelpay অপব্যবহারের বিরুদ্ধে <strong className="text-slate-800 dark:text-slate-200">শূন্য-সহনশীলতা নীতি</strong> বজায় রাখে।</p>
-            <ul className="list-disc pl-5 mt-3 space-y-2 text-slate-700 dark:text-slate-300">
-              <li>অবৈধ পণ্য, মাদকদ্রব্য, নিয়ন্ত্রিত পদার্থ, প্রাপ্তবয়স্ক/পর্নোগ্রাফিক বিষয়বস্তু, অ-লাইসেন্সপ্রাপ্ত ওষুধপত্র, অননুমোদিত জুয়া পরিষেবার জন্য পেমেন্ট প্রক্রিয়াকরণ।</li>
-              <li>মানি লন্ডারিং প্রতিরোধ আইন, ২০১২ এবং সন্ত্রাসবিরোধী আইন, ২০০৯ (বাংলাদেশ) লঙ্ঘন করে অর্থ পাচার করা।</li>
-              <li>স্ক্যাম, পন্জি স্কিম, পিরামিড স্কিম, প্রতারণামূলক বিনিয়োগ পরিকল্পনা পরিচালনা।</li>
-              <li>ইচ্ছাকৃতভাবে Xelpay API, সার্ভার বা সংযুক্ত তৃতীয় পক্ষের সিস্টেমের বিরুদ্ধে DDoS আক্রমণ পরিচালনা করা।</li>
-              <li>ডিজিটাল নিরাপত্তা আইন, ২০১৮ (বাংলাদেশ) লঙ্ঘন করে Xelpay-এর ডেটাবেস বা প্রশাসনিক প্যানেলে অননুমোদিত প্রবেশ।</li>
-              <li>মানব পাচার, শিশু শোষণ, বা ব্যক্তিদের বিরুদ্ধে যেকোনো অপরাধ সহজতর করতে প্ল্যাটফর্ম ব্যবহার করা।</li>
-              <li>OFAC, জাতিসংঘ নিরাপত্তা পরিষদের নিষেধাজ্ঞা তালিকা বা বাংলাদেশ ব্যাংকের নির্দেশ দ্বারা নিষিদ্ধ তালিকাভুক্ত কোনো সত্তা বা ব্যক্তির অ্যাকাউন্ট পরিচালনা করা।</li>
-            </ul>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">প্রয়োগমূলক পদক্ষেপ</strong>
-              এই AUP-এর যেকোনো লঙ্ঘন আপনার মার্চেন্ট অ্যাকাউন্টের তাৎক্ষণিক, অপরিবর্তনীয়, স্থায়ী নিষিদ্ধকরণ, সমস্ত API অ্যাক্সেস বাতিল এবং বাংলাদেশ আইন প্রয়োগকারী সংস্থার কাছে রেফারেল ঘটাবে।
-            </InfoBox>
-          </SectionBlock>
-
-          <SectionBlock title="৭. তৃতীয় পক্ষের ইন্টিগ্রেশন (IMAP, Telegram, SMS ও বাহ্যিক API)" icon={Smartphone} accent="blue">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">কাস্টম টেলিগ্রাম বট:</strong> আপনার Telegram বট টোকেনের নিরাপত্তা ও ব্যবস্থাপনার জন্য আপনি একাই দায়ী।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">IMAP ব্যাংক ইমেইল সিঙ্ক্রোনাইজেশন:</strong> Xelpay শুধুমাত্র পেমেন্ট নিশ্চিতকরণ ইমেইল পার্স করার উদ্দেশ্যে পঠন-কেবল অ্যাক্সেস ব্যবহার করে।</li>
-              <li>
-                <strong className="text-slate-800 dark:text-slate-200">SMS রিলে ও ডিভাইস অ্যাপ — গুরুত্বপূর্ণ নির্ভরতা:</strong>
-                <div className="mt-3">
-                  <InfoBox type="warning">
-                    <strong className="block mb-1">গুরুত্বপূর্ণ ডিভাইস ও সংযোগ প্রয়োজনীয়তা:</strong>
-                    SMS রিলে যাচাই সিস্টেমের নিরবচ্ছিন্ন ও নির্ভুল কার্যকারিতা সম্পূর্ণরূপে নির্ভর করে মার্চেন্টের একটি ডেডিকেটেড অ্যান্ড্রয়েড ডিভাইসে Xelpay রিলে অ্যাপ ইনস্টল করে সর্বদা চালু ও স্থিতিশীল ইন্টারনেটে সংযুক্ত রাখার উপর।
-                  </InfoBox>
-                </div>
-              </li>
-              <li>
-                <strong className="text-slate-800 dark:text-slate-200">MFS SMS ফরম্যাট পরিবর্তন ও Xelpay-এর সম্পূর্ণ শূন্য দায়বদ্ধতা:</strong>
-                <ul className="list-disc pl-5 mt-2 space-y-2">
-                  <li>MFS অপারেটররা তাদের নিজস্ব বিবেচনায় এবং Xelpay বা মার্চেন্টকে পূর্ববর্তী নোটিশ না দিয়ে তাদের SMS ফরম্যাট পরিবর্তন করতে পারে।</li>
-                  <li><strong className="text-slate-800 dark:text-slate-200">Xelpay সম্পূর্ণরূপে কোনো আর্থিক, আইনি বা অপারেশনাল দায়বদ্ধতা বহন করে না</strong> এই ধরনের তৃতীয় পক্ষের পরিবর্তনের ফলে ব্যর্থ বা মিস করা পেমেন্ট ভেরিফিকেশনের জন্য।</li>
-                </ul>
-              </li>
-              <li>
-                <strong className="text-slate-800 dark:text-slate-200">SMS স্পুফিং ও মিথ্যা ইতিবাচক — শূন্য দায়বদ্ধতা:</strong>
-                <div className="mt-3">
-                  <InfoBox type="danger">
-                    <strong className="uppercase tracking-widest text-[11px] block mb-1">শূন্য দায়বদ্ধতা — SMS স্পুফিং</strong>
-                    যেকোনো ব্যক্তি — গ্রাহক, তৃতীয় পক্ষ বা দুর্ভাবনাপ্রসূত কারো মাধ্যমে — মার্চেন্টের রিলে ডিভাইসে কোনো জাল, স্পুফড বা নকল SMS পাঠিয়ে Xelpay-কে একটি ভুয়া পেমেন্ট নিশ্চিতকরণ প্রেরণ করলে, Xelpay সেই ভুল ভেরিফিকেশনের জন্য কোনো আর্থিক, আইনি বা ক্ষতিপূরণমূলক দায়বদ্ধতা বহন করে না।
-                  </InfoBox>
-                </div>
-              </li>
-              <li><strong className="text-slate-800 dark:text-slate-200">ওয়েবহুক ডেলিভারি ও মার্চেন্ট সার্ভার দায়িত্ব:</strong> Xelpay মার্চেন্ট সার্ভার ডাউনটাইম বা ভুল কনফিগারেশনের কারণে মিস করা ওয়েবহুকের জন্য কোনো দায়বদ্ধতা বহন করে না।</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="৮. সেবার স্তর, আপটাইম ও ডাউনটাইম" icon={Server} accent="blue">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">আপটাইমের কোনো গ্যারান্টি নেই:</strong> পৃথক এন্টারপ্রাইজ চুক্তিতে স্পষ্টভাবে উল্লেখ না থাকলে Xelpay কোনো নির্দিষ্ট SLA প্রদান বা গ্যারান্টি দেয় না।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">নির্ধারিত রক্ষণাবেক্ষণ:</strong> Xelpay যেকোনো সময় রক্ষণাবেক্ষণ পরিচালনার অধিকার সংরক্ষণ করে।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">ডাউনটাইমের জন্য কোনো দায় নেই:</strong> প্ল্যাটফর্ম ডাউনটাইম থেকে উদ্ভূত ব্যবসায়িক ক্ষতির জন্য Xelpay কোনো দায়বদ্ধতা স্বীকার করে না।</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="৯. অ্যাকাউন্ট বাতিল ও স্থগিতকরণের অধিকার" icon={AlertCircle} accent="red">
-            <p>Xelpay যেকোনো সময়, পূর্ববর্তী নোটিশ সহ বা ছাড়াই আপনার অ্যাকাউন্ট এবং সমস্ত সংশ্লিষ্ট API অ্যাক্সেস অবিলম্বে স্থগিত বা স্থায়ীভাবে বাতিল করার একক অধিকার সংরক্ষণ করে।</p>
-            <ul className="list-disc pl-5 mt-3 space-y-2">
-              <li>আমরা এই শর্তাবলী বা AUP-এর যেকোনো লঙ্ঘন সন্দেহ করি।</li>
-              <li>আমরা আপনার অ্যাকাউন্টে অস্বাভাবিক, সন্দেহজনক বা সম্ভাব্য প্রতারণামূলক কার্যক্রম সনাক্ত করি।</li>
-              <li>প্রযোজ্য আইন, আদালতের আদেশ বা নিয়ন্ত্রক কর্তৃপক্ষ দ্বারা আমাদের তা করতে হয়।</li>
-              <li>আমরা নির্ধারণ করি যে আপনার ব্যবহার আমাদের অবকাঠামো বা অন্যান্য ব্যবহারকারীদের জন্য গুরুতর নিরাপত্তা, আইনি বা অপারেশনাল ঝুঁকি তৈরি করে।</li>
-              <li>মার্চেন্ট ধারা ১৫-তে বর্ণিত KYC/ব্যবসা যাচাই অনুরোধের সাথে সম্মতি করতে ব্যর্থ হয়েছে বলে আমরা নির্ধারণ করি।</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="১০. ফোর্স ম্যাজর, দায়ের সীমাবদ্ধতা ও ক্ষতিপূরণ" icon={Scale} accent="amber">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">ফোর্স ম্যাজর:</strong> আমাদের যুক্তিসঙ্গত নিয়ন্ত্রণের বাইরের পরিস্থিতি থেকে উদ্ভূত কোনো ব্যর্থতা বা বিলম্বের জন্য Xelpay দায়ী নয়।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">MFS/ব্যাংক অ্যাকাউন্ট সংক্রান্ত দায়ের সীমাবদ্ধতা:</strong> MFS অপারেটর বা ব্যাংকের নিজস্ব সিস্টেম থেকে উদ্ভূত যেকোনো সমস্যার জন্য Xelpay কোনো দায়বদ্ধতা বহন করে না।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">সাধারণ দায়ের সীমা:</strong> Xelpay-এর সামগ্রিক দায়বদ্ধতা দাবির পূর্ববর্তী তিন (৩) মাসে আপনার প্রদত্ত মোট সাবস্ক্রিপশন ফি-এর বেশি হবে না।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">পরোক্ষ ক্ষতি বাদ:</strong> Xelpay কোনো পরোক্ষ, আনুষঙ্গিক, বিশেষ বা পরিণতিমূলক ক্ষতির জন্য দায়ী থাকবে না।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">ক্ষতিপূরণ:</strong> আপনি Xelpay এবং Xenverse IT-কে আপনার ব্যবহার বা এই শর্তাবলীর লঙ্ঘন থেকে উদ্ভূত যেকোনো দাবি থেকে রক্ষা ও ক্ষতিপূরণ দিতে সম্মত।</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="১১. বিরোধ নিষ্পত্তি ও ক্লাস-অ্যাকশন পরিত্যাগ" icon={Gavel} accent="purple">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">প্রথমে অনানুষ্ঠানিক সমাধান:</strong> আনুষ্ঠানিক আইনি কার্যক্রম শুরুর আগে, উভয় পক্ষ Xelpay-এর সহায়তা দলের সাথে যোগাযোগ করে ৩০ দিনের মধ্যে সৎভাবে সমাধানের চেষ্টা করতে সম্মত।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">ক্লাস-অ্যাকশন পরিত্যাগ:</strong> আপনি Xelpay-এর বিরুদ্ধে যেকোনো ক্লাস অ্যাকশনে অংশগ্রহণের অধিকার স্পষ্টভাবে ও অপরিবর্তনীয়ভাবে পরিত্যাগ করেন।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">বাধ্যতামূলক সালিশি:</strong> যেকোনো অমীমাংসিত বিরোধ ঢাকা, বাংলাদেশে বাংলাদেশের প্রাসঙ্গিক সালিশি কর্তৃপক্ষের নিয়মের অধীনে বাধ্যতামূলক সালিশের মাধ্যমে সমাধান করা হবে।</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="১২. প্রযোজ্য আইন, এখতিয়ার ও বিভাজ্যতা" icon={Building2} accent="blue">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">প্রযোজ্য আইন:</strong> এই শর্তাবলী গণপ্রজাতন্ত্রী বাংলাদেশের আইন অনুযায়ী পরিচালিত ও ব্যাখ্যা করা হবে।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">এখতিয়ার:</strong> এই শর্তাবলীর অধীনে উদ্ভূত বিষয়গুলির জন্য আপনি ঢাকা, বাংলাদেশের আদালতের একক এখতিয়ারে সম্মত হন।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">বিভাজ্যতা:</strong> যদি কোনো ধারা অকার্যকর বা অপ্রয়োগযোগ্য বলে ঘোষণা করা হয়, বাকি ধারাগুলি পূর্ণ কার্যকারিতায় অব্যাহত থাকবে।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">সম্পূর্ণ চুক্তি:</strong> এই দলিল আপনার এবং Xelpay-এর মধ্যে সম্পূর্ণ এবং একমাত্র চুক্তি গঠন করে।</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="১৩. অ্যাফিলিয়েট প্রোগ্রামের শর্তাবলী" icon={Users} accent="green">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">যোগ্যতা:</strong> Xelpay অ্যাফিলিয়েট প্রোগ্রামে অংশগ্রহণ যাচাইকৃত, সক্রিয় Xelpay মার্চেন্টদের জন্য উন্মুক্ত।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">নিষিদ্ধ প্রচার পদ্ধতি:</strong> অ্যাফিলিয়েটরা স্প্যাম, বিভ্রান্তিকর বিজ্ঞাপন বা যেকোনো প্রতারণামূলক বিপণন অনুশীলন ব্যবহার করতে কঠোরভাবে নিষিদ্ধ।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">স্ব-রেফারেল নিষিদ্ধ:</strong> ডুপ্লিকেট অ্যাকাউন্ট তৈরি করে নিজেকে রেফার করা জালিয়াতি গঠন করে এবং প্রোগ্রাম থেকে তাৎক্ষণিক বহিষ্কারের ফলে হবে।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">কমিশন বাজেয়াপ্ত:</strong> প্রতারণামূলক রেফারেলের মাধ্যমে অর্জিত কমিশন সম্পূর্ণরূপে বাজেয়াপ্ত করা হবে।</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="১৪. পেমেন্ট লিংক ও চেকআউট পেজ" icon={CreditCard} accent="blue">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">মার্চেন্টের দায়িত্ব:</strong> মার্চেন্টরা Xelpay-জেনারেটেড পেমেন্ট লিংক ও হোস্টেড চেকআউট পেজের মাধ্যমে শেষ-গ্রাহকদের কাছে উপস্থাপিত সমস্ত পণ্যের বিবরণ, মূল্য ও বিক্রয়ের শর্তের সঠিকতার জন্য একাই দায়ী।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">পেমেন্ট লিংকে নিষিদ্ধ বিষয়বস্তু:</strong> পেমেন্ট লিংক ও চেকআউট পেজ ধারা ৬ (AUP)-তে সংজ্ঞায়িত নিষিদ্ধ পণ্য বা পরিষেবা বিক্রির সুবিধার জন্য ব্যবহার করা যাবে না।</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="১৫. KYC ও ব্যবসা যাচাইকরণ" icon={Fingerprint} accent="orange">
-            <p>বাংলাদেশ ফিনান্সিয়াল ইন্টেলিজেন্স ইউনিট (BFIU) নির্দেশিকা, অ্যান্টি-মানি লন্ডারিং (AML) বিধিমালা, মানি লন্ডারিং প্রতিরোধ আইন, ২০১২, এবং সন্ত্রাসবিরোধী আইন, ২০০৯-এর কঠোর সম্মতিতে, Xelpay যেকোনো সময় যেকোনো মার্চেন্টের কাছ থেকে KYC এবং ব্যবসা যাচাই ডকুমেন্টেশন অনুরোধ করার অধিকার সংরক্ষণ করে।</p>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">অনুরোধকৃত ডকুমেন্টেশন:</strong> এতে বৈধ সরকার-প্রদত্ত জাতীয় পরিচয়পত্র (NID), ট্রেড লাইসেন্স, নিবন্ধন সনদ, TIN সার্টিফিকেট এবং ব্যবসায়িক ঠিকানার প্রমাণ অন্তর্ভুক্ত থাকতে পারে।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">বাধ্যতামূলক সম্মতির দায়িত্ব:</strong> KYC অনুরোধ পাওয়ার পর নির্দিষ্ট সময়সীমার মধ্যে সমস্ত অনুরোধকৃত ডকুমেন্টেশন প্রদান করা মার্চেন্টের বাধ্যবাধকতা।</li>
-              <li>
-                <strong className="text-slate-800 dark:text-slate-200">অ-সম্মতির পরিণতি:</strong>
-                <InfoBox type="danger">
-                  <strong className="uppercase tracking-widest text-[11px] block mb-1">KYC-জনিত স্থগিতকরণে কোনো ফেরত নেই</strong>
-                  KYC বা ব্যবসা যাচাই অনুরোধের অ-সম্মতির কারণে অ্যাকাউন্ট স্থগিতকরণ বা বন্ধকরণ মার্চেন্টকে ধারা ৫-এ উল্লিখিত কঠোর অ-ফেরতযোগ্য নীতির অধীনে কোনো ফেরত পাওয়ার অধিকার দেয় না।
-                </InfoBox>
-              </li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="১৬. বিপরীত লেনদেন, MFS ক্ল্যাওব্যাক ও অপারেটর বিরোধ" icon={ShieldAlert} accent="red">
-            <p>Xelpay-এর ভূমিকা একটি প্রযুক্তিগত যাচাই মধ্যস্থতাকারীর মধ্যে কঠোরভাবে সীমাবদ্ধ।</p>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">সম্পূর্ণ শূন্য দায়বদ্ধতা — লেনদেন বিপরীতকরণ</strong>
-              Xelpay-এর সিস্টেম দ্বারা পূর্বে যাচাই ও নিশ্চিত করা যেকোনো পেমেন্ট লেনদেন যদি পরবর্তীতে মূল গ্রাহক/প্রেরক, MFS অপারেটর, ব্যাংক বা যেকোনো আর্থিক বা নিয়ন্ত্রক কর্তৃপক্ষ দ্বারা বিপরীত, প্রত্যাহার বা বিতর্কিত হয়, Xelpay সেই বিপরীতকরণ বা মার্চেন্টের ফলস্বরূপ আর্থিক ক্ষতির জন্য কোনো আর্থিক, আইনি বা ক্ষতিপূরণমূলক দায়বদ্ধতা বহন করে না।
-            </InfoBox>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">মার্চেন্টের স্বাধীন ঝুঁকি দায়িত্ব:</strong> মার্চেন্ট তাদের ব্যবসার মাধ্যমে পরিচালিত সমস্ত বাণিজ্যিক লেনদেনের জন্য পূর্ণ এবং স্বাধীন আর্থিক ঝুঁকি গ্রহণ করে।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">মার্চেন্ট ও গ্রাহকের মধ্যে বিরোধ নিষ্পত্তি:</strong> মার্চেন্ট ও শেষ-গ্রাহকের মধ্যে পেমেন্ট, ফেরত বা সেবা প্রদান সংক্রান্ত যেকোনো বিরোধ নিষ্পত্তি করা একান্তভাবে মার্চেন্টের দায়িত্ব।</li>
-            </ul>
-          </SectionBlock>
-
-          <SectionBlock title="১৭. কঠোর B2B সেবা — শেষ-গ্রাহক সহায়তার কোনো বাধ্যবাধকতা নেই" icon={Users} accent="blue">
-            <p>Xelpay একটি একচেটিয়া <strong className="text-slate-800 dark:text-slate-200">বিজনেস-টু-বিজনেস (B2B)</strong> প্ল্যাটফর্ম।</p>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">শেষ-গ্রাহকদের সাথে কোনো সম্পর্ক নেই:</strong> Xelpay-এর যেকোনো মার্চেন্টের শেষ-গ্রাহকদের সাথে কোনো সরাসরি আইনি, চুক্তিগত বা পরিষেবা সম্পর্ক নেই।</li>
-              <li>
-                <strong className="text-slate-800 dark:text-slate-200">শেষ-গ্রাহকদের জন্য কোনো সহায়তা বাধ্যবাধকতা নেই:</strong>
-                <InfoBox type="info">
-                  <strong>মার্চেন্টের দায়িত্ব:</strong> পর্যাপ্ত গ্রাহক সহায়তা প্রদান করা, নিজস্ব ফেরতের নীতি মেনে চলা এবং সমস্ত প্রযোজ্য ভোক্তা সুরক্ষা আইন মেনে চলা একান্তভাবে মার্চেন্টের দায়িত্ব।
-                </InfoBox>
-              </li>
-              <li><strong className="text-slate-800 dark:text-slate-200">শেষ-গ্রাহক দাবির জন্য মার্চেন্টের ক্ষতিপূরণ দায়িত্ব:</strong> মার্চেন্ট যেকোনো শেষ-গ্রাহকের দ্বারা উত্থাপিত যেকোনো দাবি থেকে Xelpay-কে সম্পূর্ণ ক্ষতিপূরণ দিতে এবং রক্ষা করতে সম্মত।</li>
-            </ul>
-          </SectionBlock>
-
-          {/* ─── নতুন ধারাসমূহ ১৮–২৫ ─── */}
-
-          <SectionBlock title="১৮. ওয়েবহুক আইডেম্পোটেন্সি ও দ্বি-ক্রেডিটিং প্রতিরোধ" icon={Repeat} accent="teal">
-            <p>Xelpay-এর ওয়েবহুক ডেলিভারি সিস্টেম নেটওয়ার্ক টাইমআউট বা ক্ষণস্থায়ী সংযোগ ব্যর্থতার ক্ষেত্রে মার্চেন্টের কনফিগার করা এন্ডপয়েন্টে ওয়েবহুক নোটিফিকেশন পুনরায় ডেলিভারি করার চেষ্টা করতে পারে।</p>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">পরম প্রযুক্তিগত দায়িত্ব — মার্চেন্ট ডেভেলপারের বাধ্যবাধকতা</strong>
-              মার্চেন্টের ডেভেলপমেন্ট টিমের <strong>পরম ও অ-প্রতিনিধিযোগ্য প্রযুক্তিগত দায়িত্ব</strong> হলো তাদের ওয়েবহুক রিসিভার এন্ডপয়েন্টে কঠোর <strong>আইডেম্পোটেন্সি (Idempotency)</strong> লজিক বাস্তবায়ন করা। প্রতিটি অনন্য Xelpay লেনদেন রেফারেন্স আইডি ট্র্যাক করতে হবে এবং ইতিমধ্যে প্রক্রিয়া করা লেনদেনের রেফারেন্স করা যেকোনো ডুপ্লিকেট ওয়েবহুক পেলোড স্পষ্টভাবে প্রত্যাখ্যান বা উপেক্ষা করতে হবে। আইডেম্পোটেন্সি বাস্তবায়নে ব্যর্থতা মার্চেন্ট-পক্ষের একটি প্রযুক্তিগত ত্রুটি, এবং Xelpay একজন শেষ-গ্রাহককে ডুপ্লিকেট ওয়েবহুক ডেলিভারি প্রক্রিয়াকরণের কারণে দ্বি-ক্রেডিটিং, দ্বি-পূরণ বা অন্যথায় ভুলভাবে প্রক্রিয়াকরণের ক্ষেত্রে <strong>কোনো আর্থিক, আইনি বা অপারেশনাল দায়বদ্ধতা বহন করবে না</strong>।
-            </InfoBox>
-            <p className="mt-2">Xelpay প্রতিটি ওয়েবহুক পেলোডে একটি অনন্য, অপরিবর্তনীয় লেনদেন রেফারেন্স আইডেন্টিফায়ার প্রদান করে। মার্চেন্টদের এই আইডেন্টিফায়ারকে তাদের আইডেম্পোটেন্সি কীর ভিত্তি হিসেবে ব্যবহার করতে হবে।</p>
-          </SectionBlock>
-
-          <SectionBlock title="১৯. নিয়ন্ত্রক বন্ধ ও সম্মতি-বাধ্যতামূলক পরিষেবা বাতিল" icon={Ban} accent="red">
-            <p>Xelpay গণপ্রজাতন্ত্রী বাংলাদেশের সমস্ত প্রযোজ্য আইন ও বিধিমালার সম্পূর্ণ সম্মতিতে পরিচালিত হয়। Xelpay প্ল্যাটফর্মের কিছু মূল কার্যকারিতা — বিশেষত রিলে অ্যাপের মাধ্যমে SMS-পঠন অটোমেশন এবং IMAP-ভিত্তিক ব্যাংক ইমেইল পার্সিং — বাংলাদেশ আইন ও নিয়ন্ত্রক কাঠামোর অধীনে এই ধরনের প্রযুক্তিগত কার্যক্রমের অব্যাহত বৈধতার উপর নির্ভরশীল।</p>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">নিয়ন্ত্রক বন্ধ — শূন্য দায় ও শূন্য ফেরত</strong>
-              বাংলাদেশ ব্যাংক, বাংলাদেশ টেলিযোগাযোগ নিয়ন্ত্রণ কমিশন (BTRC), বাংলাদেশ ফিনান্সিয়াল ইন্টেলিজেন্স ইউনিট (BFIU), বা অন্য যেকোনো সক্ষম সরকারি বা নিয়ন্ত্রক কর্তৃপক্ষ SMS-পঠন অটোমেশন, IMAP ইমেইল পার্সিং বা Xelpay-এর পরিষেবা প্রদানের উপর নির্ভরশীল অন্য যেকোনো প্রযুক্তিগত পদ্ধতি সীমাবদ্ধ, সীমিত, নিষিদ্ধ বা অনুমোদন অযোগ্য ঘোষণা করে এমন কোনো নির্দেশিকা, সার্কুলার, আদেশ বা নির্দেশনা জারি করলে, <strong>Xelpay স্পষ্টভাবে পূর্ব নোটিশ ছাড়াই, কোনো ক্ষতিপূরণ, বিকল্প পরিষেবা বা যেকোনো ধরনের অর্থ ফেরত প্রদানের বাধ্যবাধকতা ছাড়াই প্রভাবিত পরিষেবা বা সম্পূর্ণ প্ল্যাটফর্ম তাৎক্ষণিকভাবে স্থগিত, সীমাবদ্ধ বা স্থায়ীভাবে বাতিল করার একক ও পরম অধিকার সংরক্ষণ করে</strong>।
-            </InfoBox>
-            <p className="mt-2">মার্চেন্টরা Xelpay পরিষেবা ব্যবহারের একটি মৌলিক শর্ত হিসেবে এই অন্তর্নিহিত নিয়ন্ত্রক ঝুঁকি স্বীকার করে এবং গ্রহণ করে। এই বিধানটি এই শর্তাবলীর ধারা ১০-এর অধীনে একটি ফোর্স ম্যাজর ঘটনা হিসেবেও গণ্য হবে।</p>
-          </SectionBlock>
-
-          <SectionBlock title="২০. প্রচার ও বিপণন অধিকার" icon={Zap} accent="purple">
-            <p>নিবন্ধন সম্পন্ন করে এবং একটি Xelpay মার্চেন্ট অ্যাকাউন্ট সক্রিয় করে, এবং নিচে বর্ণিত অপ্ট-আউট প্রক্রিয়ার শর্তাধীনে, মার্চেন্ট Xelpay এবং Xenverse IT-কে নিম্নলিখিত সীমিত বিপণন উদ্দেশ্যে মার্চেন্টের ব্যবসায়িক নাম, ব্র্যান্ড নাম এবং সংশ্লিষ্ট লোগো ব্যবহার করার একটি <strong>অ-একচেটিয়া, রয়্যালটি-মুক্ত লাইসেন্স</strong> প্রদান করে:</p>
-            <ul className="list-disc pl-5 mt-3 space-y-2">
-              <li>Xelpay-এর অফিসিয়াল ওয়েবসাইটের "আমাদের বিশ্বস্ত মার্চেন্ট" বা "পাওয়ার্ড বাই" বিভাগে অন্তর্ভুক্তি।</li>
-              <li>গোপনীয় ব্যবসায়িক মেট্রিক্স প্রকাশ না করে কেস স্টাডি, প্রেস রিলিজ বা প্রচারমূলক সামগ্রীতে ক্লায়েন্ট বা ইন্টিগ্রেশন পার্টনার হিসেবে উল্লেখ।</li>
-              <li>প্ল্যাটফর্ম গ্রহণ প্রদর্শনের উদ্দেশ্যে বিনিয়োগকারী, অংশীদার বা নিয়ন্ত্রক সংস্থার কাছে উপস্থাপনায় প্রদর্শন।</li>
-            </ul>
-            <InfoBox type="info">
-              <strong>অপ্ট-আউট অধিকার:</strong> একজন মার্চেন্ট যেকোনো সময় Xelpay-এর অফিসিয়াল সহায়তা ইমেইলে একটি আনুষ্ঠানিক, লিখিত অপ্ট-আউট অনুরোধ জমা দিয়ে এই প্রচার লাইসেন্স থেকে সম্মতি প্রত্যাহার করতে পারেন। অপ্ট-আউট অনুরোধ প্রাপ্তি ও যাচাই করার পর, Xelpay ৩০ দিনের মধ্যে নতুন বিপণন সামগ্রী থেকে মার্চেন্টের ব্র্যান্ডিং অপসারণ করতে বাণিজ্যিকভাবে যুক্তিসঙ্গত প্রচেষ্টা ব্যবহার করবে।
-            </InfoBox>
-          </SectionBlock>
-
-          <SectionBlock title="২১. অ্যাকাউন্ট অহস্তান্তরযোগ্যতা ও AML ঝুঁকি" icon={Lock} accent="red">
-            <p>একটি Xelpay মার্চেন্ট অ্যাকাউন্ট নিবন্ধন ও KYC যাচাইকরণ প্রক্রিয়ার সময় শনাক্ত নির্দিষ্ট আইনি সত্তা বা ব্যক্তির নিবন্ধিত এবং একচেটিয়া ব্যবহারের উদ্দেশ্যে। Xelpay অ্যাকাউন্ট <strong>কঠোরভাবে ও সম্পূর্ণরূপে অহস্তান্তরযোগ্য</strong>।</p>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">নিষিদ্ধ হস্তান্তর কার্যক্রম:</strong> মার্চেন্টরা তাদের Xelpay অ্যাকাউন্ট, সংশ্লিষ্ট API কী বা অ্যাক্সেস ক্রেডেনশিয়াল কোনো তৃতীয় পক্ষের কাছে বিক্রি, ভাড়া দেওয়া, লিজ দেওয়া, ধার দেওয়া, উপহার দেওয়া, মালিকানা বা নিয়ন্ত্রণ হস্তান্তর বা অন্যথায় অপসারণ করতে স্পষ্টভাবে নিষিদ্ধ।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">ব্যবসায়িক পুনর্গঠন:</strong> বৈধ কর্পোরেট পুনর্গঠনের ক্ষেত্রে মার্চেন্টকে Xelpay-কে আনুষ্ঠানিকভাবে অবহিত করতে হবে এবং সম্পূর্ণ পুনরায় KYC যাচাইকরণে জমা দিতে হবে।</li>
-            </ul>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">তাৎক্ষণিক আজীবন নিষেধাজ্ঞা — অননুমোদিত হস্তান্তর</strong>
-              একটি Xelpay অ্যাকাউন্টের যেকোনো অননুমোদিত হস্তান্তর, বিক্রয়, ভাড়া বা কার্যকর নিয়ন্ত্রণ পরিবর্তন — যেকোনো উপায়ে সনাক্ত করা হলে — <strong>অ্যাকাউন্টের তাৎক্ষণিক, স্থায়ী ও অপরিবর্তনীয় আজীবন নিষেধাজ্ঞা</strong>, কোনো ফেরত ছাড়াই সমস্ত ডেটা ও সাবস্ক্রিপশন ফি বাজেয়াপ্তি এবং বাংলাদেশ ফিনান্সিয়াল ইন্টেলিজেন্স ইউনিট (BFIU) ও প্রাসঙ্গিক আইন প্রয়োগকারী সংস্থার কাছে রেফারেলের ফলে হবে।
-            </InfoBox>
-          </SectionBlock>
-
-          <SectionBlock title="২২. অন্তর্নিহিত MFS/ব্যাংক ফি — মার্চেন্টের একক দায়িত্ব" icon={DollarSign} accent="amber">
-            <p>Xelpay-এর সাবস্ক্রিপশন ও অ্যাড-অন ফি একচেটিয়াভাবে Xelpay-এর মালিকানাধীন সফটওয়্যার অবকাঠামো, API, ড্যাশবোর্ড, ভেরিফিকেশন ইঞ্জিন এবং সংশ্লিষ্ট প্রযুক্তিগত পরিষেবাগুলিতে অ্যাক্সেস ও ব্যবহারের জন্য চার্জ করা হয়।</p>
-            <InfoBox type="warning">
-              <strong>তৃতীয় পক্ষের ফি-এর জন্য মার্চেন্টের একক আর্থিক দায়িত্ব:</strong> তৃতীয় পক্ষের আর্থিক পরিষেবা প্রদানকারীদের সাথে সংশ্লিষ্ট সমস্ত অন্তর্নিহিত তৃতীয় পক্ষের খরচ বহন করা মার্চেন্টের একক ও একচেটিয়া দায়িত্ব। এর মধ্যে অন্তর্ভুক্ত রয়েছে: bKash, Nagad, Rocket, Upay-এর মতো অপারেটরদের MFS ক্যাশ-আউট চার্জ; MFS পার্সন-টু-পার্সন (P2P) সেন্ড মানি ফি; আন্তঃব্যাংক বা ইন্ট্রা-ব্যাংক ট্রান্সফার ফি; এবং বাংলাদেশ সরকার কর্তৃক আরোপিত মূল্য সংযোজন কর (ভ্যাট), সম্পূরক শুল্ক (SD) এবং অন্যান্য কর।
-            </InfoBox>
-          </SectionBlock>
-
-          <SectionBlock title="২৩. ড্যাশবোর্ড লগ রিটেনশন সীমা ও ডেটা এক্সপোর্ট দায়িত্ব" icon={BarChart2} accent="blue">
-            <p>সর্বোত্তম সার্ভার কার্যক্ষমতা, সিস্টেম স্থিতিশীলতা এবং দক্ষ ডেটাবেস অপারেশন বজায় রাখতে, সক্রিয় Xelpay মার্চেন্ট ড্যাশবোর্ডে প্রদর্শিত লেনদেন ও কার্যকলাপ লগসমূহ সক্রিয় ড্যাশবোর্ড দৃশ্যমানতার জন্য একটি <strong>রোলিং রিটেনশন উইন্ডো</strong>-র সাপেক্ষে। সক্রিয় রোলিং উইন্ডোর (বর্তমানে নব্বই (৯০) দিন, নোটিশ সহ পরিবর্তন সাপেক্ষে) চেয়ে পুরনো লগগুলি ড্যাশবোর্ড ইন্টারফেসে সক্রিয়ভাবে প্রদর্শিত বা সরাসরি কোয়েরি করা নাও যেতে পারে।</p>
-            <InfoBox type="warning">
-              <strong>মার্চেন্টের ডেটা এক্সপোর্ট বাধ্যবাধকতা:</strong> Xelpay ড্যাশবোর্ড থেকে নিয়মিত ও সক্রিয়ভাবে তাদের লেনদেন ডেটা (CSV বা অন্যান্য সমর্থিত ফরম্যাটে উপলব্ধ) তাদের নিজস্ব নিরাপদ, স্বাধীন সিস্টেমে রোলিং রিটেনশন উইন্ডো শেষ হওয়ার আগে এক্সপোর্ট করা মার্চেন্টের নিজের একক ও পরম দায়িত্ব।
-            </InfoBox>
-            <p className="mt-2">নিয়ন্ত্রক সম্মতির উদ্দেশ্যে, Xelpay আলাদাভাবে মানি লন্ডারিং প্রতিরোধ আইন, ২০১২ এবং BFIU নির্দেশিকা অনুসারে <strong>পাঁচ (৫) বছর</strong> মেয়াদের জন্য এনক্রিপ্টেড, ব্যাকএন্ড লেনদেন লগ আর্কাইভ সংরক্ষণ করে। এই ব্যাকএন্ড রিটেনশন শুধুমাত্র নিয়ন্ত্রক উদ্দেশ্যে এবং মার্চেন্টের অপারেশনাল সুবিধার জন্য ডেটা ব্যাকআপ সেবা গঠন করে না।</p>
-          </SectionBlock>
-
-          <SectionBlock title="২৪. API ভার্সনিং, অবচয় ও মার্চেন্ট সামঞ্জস্য বাধ্যবাধকতা" icon={GitBranch} accent="teal">
-            <p>Xelpay একটি ক্রমাগত বিকশিত সফটওয়্যার প্ল্যাটফর্ম। নিরাপত্তা, কার্যক্ষমতা এবং কার্যকারিতা উন্নত করতে, Xelpay তার API-এর নতুন সংস্করণ প্রকাশ করার এবং পুরনো API সংস্করণগুলি আপডেট, পরিবর্তন বা অবচয় করার অধিকার সংরক্ষণ করে।</p>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">অবচয় নোটিশ:</strong> Xelpay মার্চেন্ট ড্যাশবোর্ড, ইমেইল যোগাযোগ এবং অফিসিয়াল ডেভেলপার ডকুমেন্টেশন আপডেটের মাধ্যমে উল্লেখযোগ্য API অবচয় ঘটনার আগাম নোটিশ প্রদানের জন্য বাণিজ্যিকভাবে যুক্তিসঙ্গত প্রচেষ্টা ব্যবহার করবে।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">মার্চেন্টের পরম সামঞ্জস্য বাধ্যবাধকতা:</strong> মার্চেন্টের নিজস্ব অ্যাপ্লিকেশনের কোডবেস, ইন্টিগ্রেশন লজিক এবং প্রযুক্তিগত অবকাঠামো সর্বদা Xelpay API-এর বর্তমান, সমর্থিত সংস্করণের সাথে সামঞ্জস্যপূর্ণ রাখা মার্চেন্টের পরম ও একচেটিয়া দায়িত্ব।</li>
-            </ul>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">শূন্য দায়বদ্ধতা — মার্চেন্টের পুরনো কোড থেকে ভাঙা ইন্টিগ্রেশন</strong>
-              বর্তমান বা আপডেট করা Xelpay API সংস্করণের সাথে সামঞ্জস্য বজায় রাখতে তাদের কোড আপডেট করতে মার্চেন্টের ব্যর্থতার ফলে উদ্ভূত যেকোনো সেবা বিঘ্ন, পেমেন্ট প্রক্রিয়াকরণ ব্যর্থতা, মিস করা লেনদেন, ব্যবসায়িক ক্ষতি বা ভাঙা ইন্টিগ্রেশনের জন্য Xelpay <strong>কোনো আর্থিক, আইনি বা অপারেশনাল দায়বদ্ধতা বহন করে না</strong>।
-            </InfoBox>
-          </SectionBlock>
-
-          <SectionBlock title="২৫. সহায়তা SLA, সর্বোত্তম-প্রচেষ্টা ভিত্তি ও কর্মীদের হয়রানির বিরুদ্ধে শূন্য-সহনশীলতা" icon={Headphones} accent="rose">
-            <p>Xelpay আমাদের প্ল্যাটফর্ম অফারিংয়ের একটি মূল উপাদান হিসেবে মার্চেন্ট সহায়তা পরিষেবা প্রদান করে। তবে, একটি কাস্টম, পৃথকভাবে আলোচিত এন্টারপ্রাইজ সার্ভিস চুক্তিতে স্পষ্টভাবে উল্লেখ না থাকলে, সমস্ত সহায়তা পরিষেবা নির্দিষ্ট প্রতিক্রিয়া সময়ের কোনো বাধ্যকর গ্যারান্টি ছাড়াই <strong>"সর্বোত্তম-প্রচেষ্টা" ভিত্তিতে</strong> প্রদান করা হয়।</p>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">সর্বোত্তম-প্রচেষ্টা সহায়তা:</strong> Xelpay-এর সহায়তা দল যত দ্রুত সম্ভব মার্চেন্ট অনুসন্ধানে সাড়া দেওয়ার এবং সমাধান করার চেষ্টা করে। সাধারণ সহায়তা কোনো নির্দিষ্ট SLA গ্যারান্টি দেয় না।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">এন্টারপ্রাইজ SLA:</strong> গ্যারান্টিযুক্ত প্রতিক্রিয়া সময় বা উন্নত সহায়তা SLA প্রয়োজন মার্চেন্টরা Xelpay-এর এন্টারপ্রাইজ চুক্তির বিকল্পগুলি সম্পর্কে অনুসন্ধান করতে পারেন।</li>
-            </ul>
-            <InfoBox type="danger">
-              <strong className="uppercase tracking-widest text-[11px] block mb-1">শূন্য-সহনশীলতা নীতি — সহায়তা কর্মীদের হয়রানি</strong>
-              Xelpay যেকোনো যোগাযোগ চ্যানেলের মাধ্যমে যেকোনো Xelpay সহায়তা কর্মী, কর্মচারী বা ঠিকাদারের প্রতি যেকোনো ধরনের মৌখিক অপব্যবহার, লিখিত অপব্যবহার, হুমকি, ভয় দেখানো, হয়রানি, বৈষম্যমূলক ভাষা বা অন্যান্য বৈরী আচরণের বিরুদ্ধে একটি পরম ও নিঃশর্ত <strong>শূন্য-সহনশীলতা নীতি</strong> বজায় রাখে। এই নীতি লঙ্ঘনকারী যেকোনো মার্চেন্ট বা ব্যবহারকারী প্রদত্ত ফি ফেরত ছাড়াই <strong>তাৎক্ষণিক, স্থায়ী ও অপরিবর্তনীয় অ্যাকাউন্ট নিষেধাজ্ঞার</strong> মুখোমুখি হবেন, এবং এই ধরনের আচরণ বাংলাদেশের প্রযোজ্য আইনের অধীনে ফৌজদারি অপরাধ গঠন করলে Xelpay উপযুক্ত আইনি প্রতিকার অনুসরণ করার অধিকার সংরক্ষণ করে।
-            </InfoBox>
-          </SectionBlock>
-
-        </div>
-      </div>
-
-      {/* ══════════ পার্ট ২: গোপনীয়তা নীতি ══════════ */}
-      <div>
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-2.5 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-xl"><Lock size={22} /></div>
-          <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">গোপনীয়তা নীতি</h2>
-        </div>
-        <div className="space-y-4">
-          <p className="text-slate-600 dark:text-slate-400 text-sm md:text-base leading-relaxed">
-            Xelpay (Xenverse IT) <strong className="text-slate-900 dark:text-white">ডিজিটাল নিরাপত্তা আইন, ২০১৮</strong> এবং বাংলাদেশের প্রযোজ্য ডেটা সুরক্ষা বিধিমালা মেনে আপনার গোপনীয়তা রক্ষা এবং সর্বোচ্চ স্বচ্ছতা, নিরাপত্তা ও আইনগত সম্মতির সাথে আপনার ব্যক্তিগত ও ব্যবসায়িক ডেটা পরিচালনা করতে প্রতিশ্রুতিবদ্ধ।
-          </p>
-
-          <SectionBlock title="১. আমরা কী কী তথ্য সংগ্রহ করি" icon={Database} accent="green">
-            <p className="font-semibold text-slate-700 dark:text-slate-300">আমরা নিম্নলিখিত বিভাগে কাঠামোগত ডেটা সংগ্রহ করি:</p>
-            <ul className="list-disc pl-5 mt-3 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">মার্চেন্ট পরিচয় ডেটা:</strong> পূর্ণ আইনি নাম, ব্যবসায়িক ট্রেডিং নাম, ইমেইল ঠিকানা, ফোন নম্বর, ব্যবসায়িক ঠিকানা এবং অন্যান্য নিবন্ধন তথ্য।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">প্রযুক্তিগত ইন্টিগ্রেশন ডেটা:</strong> API কী (হ্যাশড), ওয়েবহুক এন্ডপয়েন্ট URL, কনফিগার করা MFS নম্বর, Telegram বট আইডেন্টিফায়ার এবং IMAP অ্যাকাউন্ট মেটাডেটা।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">লেনদেন ও পেমেন্ট মেটাডেটা:</strong> লেনদেন রেফারেন্স আইডি, পরিমাণ, টাইমস্ট্যাম্প, MFS অপারেটর আইডেন্টিফায়ার, যাচাই স্থিতি এবং ওয়েবহুক ডেলিভারি লগ।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">ডিভাইস ও অ্যাপ মেটাডেটা (রিলে অ্যাপ):</strong> SMS রিলে কার্যকারিতার জন্য ডিভাইস মডেল, OS সংস্করণ, অ্যাপ সংস্করণ এবং রিলে ডিভাইস সংযোগ স্থিতি।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">অ্যাড-অন ব্যবহারের ডেটা:</strong> বিলিং এবং সিস্টেম অপ্টিমাইজেশন উদ্দেশ্যে ফিচার ব্যবহার মেট্রিক্স।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">KYC ও ব্যবসা যাচাই দলিল:</strong> সরকার-প্রদত্ত পরিচয় দলিল, ট্রেড লাইসেন্স এবং আইন দ্বারা প্রয়োজনীয় অন্যান্য ব্যবসায়িক যাচাই উপকরণ।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">ব্যবহার ও লগ ডেটা:</strong> IP ঠিকানা, ব্রাউজার/ক্লায়েন্ট ধরন, অ্যাক্সেস টাইমস্ট্যাম্প, API অনুরোধ লগ এবং ত্রুটি লগ।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">যোগাযোগ:</strong> আমাদের চ্যানেলের মাধ্যমে জমা দেওয়া সহায়তা টিকেট, ইমেইল চিঠিপত্র এবং প্রতিক্রিয়া।</li>
-            </ul>
-            <div className="mt-4">
-              <InfoBox type="success">
-                <strong className="block mb-1">আমরা যা কখনও সংগ্রহ করি না:</strong>
-                Xelpay কখনোই আপনার ব্যাংক অ্যাকাউন্টের পাসওয়ার্ড, MFS অ্যাপ PIN কোড, OTP, NID/পাসপোর্ট নম্বর (আনুষ্ঠানিক KYC যাচাইকরণ ছাড়া) বা পার্স করা পেমেন্ট নিশ্চিতকরণ বিবরণের বাইরে আপনার ব্যাংক ইমেইলের পূর্ণ বিষয়বস্তু রেকর্ড, সংরক্ষণ, লগ বা আটকায় না।
+      <SectionBlock title="৫. সাবস্ক্রিপশন, বিলিং, মূল্য নির্ধারণ, অ্যাড-অন সেবা ও কঠোর অফেরতযোগ্য নীতি" icon={CreditCard} accent="amber">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">ফ্রি/স্টার্টার টায়ার:</strong> Xelpay একটি কঠোর মাসিক লেনদেন কোটা সহ বিনামূল্যের টায়ার অফার করতে পারে। এই কোটা শেষ হলে, পরবর্তী বিলিং চক্র বা আপগ্রেড না করা পর্যন্ত অটোমেশন সেবা তাৎক্ষণিকভাবে বন্ধ হয়ে যাবে।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">পেইড সাবস্ক্রিপশন:</strong> প্রিমিয়াম সুবিধাগুলি — টিম মেম্বার, কাস্টম টেলিগ্রাম বট, ইন্টারন্যাশনাল গেটওয়ে এবং উচ্চতর লেনদেন সীমা সহ — একটি সক্রিয়, পুনরাবৃত্তিমূলক পেইড সাবস্ক্রিপশন প্রয়োজন।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">মূল্য পরিবর্তন:</strong> Xelpay যেকোনো সময় সাবস্ক্রিপশনের মূল্য পরিবর্তন করার অধিকার সংরক্ষণ করে। সক্রিয় সাবস্ক্রাইবারদের তাদের অ্যাকাউন্টে কোনো মূল্য পরিবর্তন কার্যকর হওয়ার কমপক্ষে ৭ দিন আগে অবহিত করা হবে।</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">অ্যাড-অন সেবা ও ব্যবহার-ভিত্তিক বিলিং:</strong> বেস সাবস্ক্রিপশন প্ল্যানের পাশাপাশি, Xelpay নির্দিষ্ট "অ্যাড-অন" সেবার জন্য আলাদা, অতিরিক্ত ব্যবহার-ভিত্তিক ফি চার্জ করার অধিকার সংরক্ষণ করে — যা বেস প্ল্যানের অন্তর্ভুক্ত ভাতার বাইরে ব্যবহৃত হয়। এই ধরনের অ্যাড-অন সেবার মধ্যে অন্তর্ভুক্ত থাকতে পারে কিন্তু সীমাবদ্ধ নয়: Xelpay-এর নিজস্ব ইমেইল অবকাঠামোর মাধ্যমে প্রেরিত আউটবাউন্ড নোটিফিকেশন ইমেইল, Xelpay-এর তৃতীয় পক্ষের SMS গেটওয়ে ইন্টিগ্রেশনের মাধ্যমে ডেলিভার করা প্রিমিয়াম SMS সতর্কতা, বা সক্রিয়করণের সময় ব্যবহার-বিলযোগ্য হিসেবে স্পষ্টভাবে মনোনীত যেকোনো অন্যান্য রিসোর্স-নিবিড় বৈশিষ্ট্য। ব্যবহার-ভিত্তিক ফি প্রযোজ্য বিলিং পিরিয়ডে প্রকৃত ব্যবহারের উপর ভিত্তি করে গণনা করা হবে এবং আপনার চালানে স্পষ্টভাবে আইটেমাইজ করা হবে। যেকোনো অ্যাড-অন সেবা সক্ষম ও ব্যবহার করে, আপনি স্পষ্টভাবে Xelpay-কে আপনার নিবন্ধিত পেমেন্ট পদ্ধতিতে প্রযোজ্য ব্যবহার-ভিত্তিক ফি চার্জ করার অনুমোদন দিচ্ছেন।
+            <div className="mt-3">
+              <InfoBox type="warning">
+                <strong>গুরুত্বপূর্ণ:</strong> একটি অ্যাড-অন সেবা সক্ষম করা সংশ্লিষ্ট ব্যবহার-ভিত্তিক মূল্য নির্ধারণে আপনার বাধ্যতামূলক সম্মতির প্রমাণ গঠন করে। ইতিমধ্যে বিল করা অ্যাড-অন চার্জের জন্য কোনো ফেরত দেওয়া হয় না, নিচে উল্লিখিত আমাদের কঠোর অ-ফেরতযোগ্য নীতির সাথে সামঞ্জস্য রেখে।
               </InfoBox>
             </div>
-          </SectionBlock>
+          </li>
+          <li><strong className="text-slate-800 dark:text-slate-200">কঠোর অ-ফেরতযোগ্য নীতি:</strong> আমাদের পরিষেবার ডিজিটাল, API-ভিত্তিক এবং অবকাঠামোগত প্রকৃতির কারণে, একবার সক্রিয় হয়ে পেমেন্ট প্রক্রিয়া সম্পন্ন হলে সমস্ত সাবস্ক্রিপশন পেমেন্ট <strong className="text-red-600 dark:text-red-400">কঠোরভাবে অ-ফেরতযোগ্য</strong>।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">চার্জব্যাক ও পেমেন্ট বিরোধ:</strong> একটি বৈধ সাবস্ক্রিপশন চার্জের জন্য চার্জব্যাক বা পেমেন্ট বিরোধ শুরু করা এই শর্তাবলীর লঙ্ঘন গঠন করে এবং তাৎক্ষণিক স্থায়ী অ্যাকাউন্ট নিষিদ্ধকরণের ফলে হবে।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">কর:</strong> আপনার অধিক্ষেত্রে Xelpay সেবা ব্যবহারের ফলে উদ্ভূত সমস্ত প্রযোজ্য কর, ভ্যাট, শুল্ক বা চাঁদার জন্য আপনি সম্পূর্ণরূপে দায়ী।</li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="২. ব্যক্তিগত ডেটা প্রক্রিয়াকরণের আইনগত ভিত্তি" icon={Scale} accent="green">
-            <ul className="list-disc pl-5 mt-3 space-y-2">
-              <li><strong className="text-slate-800 dark:text-slate-200">চুক্তিগত প্রয়োজনীয়তা:</strong> আপনার সম্মত সেবার শর্তাবলীর অধীনে আমাদের বাধ্যবাধকতা পূরণের জন্য প্রক্রিয়াকরণ প্রয়োজনীয়।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">বৈধ স্বার্থ:</strong> জালিয়াতি প্রতিরোধ, প্ল্যাটফর্ম নিরাপত্তা এবং পরিষেবা উন্নতির জন্য।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">আইনগত বাধ্যবাধকতা:</strong> AML বিধিমালা, BFIU নির্দেশিকা এবং বাংলাদেশ ব্যাংক নির্দেশনা মেনে চলতে।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">সম্মতি:</strong> বিপণন যোগাযোগের জন্য, যেখানে স্পষ্টভাবে প্রদত্ত এবং যেকোনো সময় প্রত্যাহারযোগ্য।</li>
-            </ul>
-          </SectionBlock>
+      <SectionBlock title="৬. গ্রহণযোগ্য ব্যবহার নীতি (AUP) ও নিষিদ্ধ আচরণ" icon={AlertTriangle} accent="red">
+        <p>Xelpay অপব্যবহারের বিরুদ্ধে <strong className="text-slate-800 dark:text-slate-200">শূন্য-সহনশীলতা নীতি</strong> বজায় রাখে। আপনি স্পষ্টভাবে সম্মত হচ্ছেন যে নিম্নলিখিত নিষিদ্ধ কার্যক্রমের জন্য Xelpay ব্যবহার করবেন না:</p>
+        <ul className="list-disc pl-5 mt-3 space-y-2 text-slate-700 dark:text-slate-300">
+          <li>অবৈধ পণ্য, মাদকদ্রব্য, নিয়ন্ত্রিত পদার্থ, প্রাপ্তবয়স্ক/পর্নোগ্রাফিক বিষয়বস্তু, অ-লাইসেন্সপ্রাপ্ত ওষুধপত্র, অননুমোদিত জুয়া, বা বাংলাদেশের আইন বা প্রযোজ্য আন্তর্জাতিক আইনের অধীনে নিষিদ্ধ যেকোনো কার্যক্রমের জন্য পেমেন্ট প্রক্রিয়া করা।</li>
+          <li>মানি লন্ডারিং প্রতিরোধ আইন, ২০১২ এবং সন্ত্রাসবিরোধী আইন, ২০০৯ (বাংলাদেশ) লঙ্ঘন করে অর্থ পাচার, সন্ত্রাসী অর্থায়ন, বা অবৈধ অর্থের উৎস গোপন করার যেকোনো প্রচেষ্টা।</li>
+          <li>স্ক্যাম, পঞ্জি স্কিম, পিরামিড স্কিম, প্রতারণামূলক বিনিয়োগ পরিকল্পনা বা শেষ গ্রাহকদের লক্ষ্য করে যেকোনো প্রতারণামূলক স্কিম পরিচালনা করা।</li>
+          <li>ইচ্ছাকৃতভাবে Xelpay API, সার্ভার বা সংযুক্ত তৃতীয় পক্ষের সিস্টেমের বিরুদ্ধে DDoS আক্রমণ পরিচালনা করা।</li>
+          <li>ডিজিটাল নিরাপত্তা আইন, ২০১৮ (বাংলাদেশ) লঙ্ঘন করে Xelpay-এর ডেটাবেস বা প্রশাসনিক প্যানেলে অননুমোদিত অ্যাক্সেস প্রচেষ্টা।</li>
+          <li>Xelpay, Xenverse IT, বা যেকোনো Xelpay কর্মচারী, অংশীদার বা অনুমোদিত সত্তার ছদ্মবেশ ধারণ করা।</li>
+          <li>মানব পাচার, শিশু শোষণ, বা ব্যক্তিদের বিরুদ্ধে যেকোনো অপরাধ সহজতর করতে প্ল্যাটফর্ম ব্যবহার করা।</li>
+          <li>OFAC, জাতিসংঘ নিরাপত্তা পরিষদের নিষেধাজ্ঞা তালিকা বা বাংলাদেশ ব্যাংকের নির্দেশ দ্বারা নিষিদ্ধ তালিকাভুক্ত কোনো সত্তা বা ব্যক্তির পক্ষে পরিচালনা করা।</li>
+          <li>গ্রাহক বা যেকোনো তৃতীয় পক্ষকে অযাচিত বাল্ক যোগাযোগ (স্প্যাম) পাঠাতে প্ল্যাটফর্ম ব্যবহার করা।</li>
+        </ul>
+        <InfoBox type="danger">
+          <strong className="uppercase tracking-widest text-[11px] block mb-1">প্রয়োগমূলক পদক্ষেপ</strong>
+          এই AUP-এর যেকোনো লঙ্ঘন আপনার মার্চেন্ট অ্যাকাউন্টের তাৎক্ষণিক, অপরিবর্তনীয়, স্থায়ী নিষিদ্ধকরণ, সমস্ত API কী বাতিল এবং স্থানীয় আইন প্রয়োগকারী সংস্থা, BFIU (বাংলাদেশ ফিনান্সিয়াল ইন্টেলিজেন্স ইউনিট), সাইবার ক্রাইম বিভাগ এবং প্রাসঙ্গিক ব্যাংকিং কর্তৃপক্ষের কাছে আপনার ডেটা, লেনদেনের লগ এবং IP ইতিহাস স্বয়ংক্রিয়ভাবে প্রকাশ করার কারণ হবে — আপনাকে আর কোনো পূর্ববর্তী নোটিশ না দিয়েই।
+        </InfoBox>
+      </SectionBlock>
 
-          <SectionBlock title="৩. ডেটা ব্যবহারের উদ্দেশ্য" icon={Eye} accent="green">
-            <ul className="list-disc pl-5 space-y-2">
-              <li>ব্যবহারকারীদের নির্ভরযোগ্যভাবে প্রমাণীকরণ এবং শক্তিশালী ওয়ার্কস্পেস নিরাপত্তা বজায় রাখা।</li>
-              <li>আগত পেমেন্ট অ্যালগরিদমিকভাবে যাচাই করা এবং রিয়েল-টাইম ওয়েবহুক পেলোড পাঠানো।</li>
-              <li>আপনার সংযুক্ত টেলিগ্রামে তাৎক্ষণিক পেমেন্ট সফল/ব্যর্থতার সতর্কতা পাঠানো।</li>
-              <li>লেনদেনের অসঙ্গতি সনাক্ত করা এবং আর্থিক জালিয়াতি প্রতিরোধ করা।</li>
-              <li>আপনার ব্যবসায়িক কর্মক্ষমতা পর্যালোচনার জন্য বিশ্লেষণ, রিপোর্ট এবং ড্যাশবোর্ড মেট্রিক তৈরি করা।</li>
-              <li>যেকোনো সক্রিয় অ্যাড-অন সেবার জন্য ব্যবহার-ভিত্তিক ফি গণনা, চালান প্রদান এবং সংগ্রহ করা।</li>
-              <li>AML এবং BFIU নিয়ন্ত্রক বাধ্যবাধকতার সাথে সম্মতিতে KYC এবং ব্যবসা যাচাই ডকুমেন্টেশন প্রক্রিয়া, পর্যালোচনা এবং সংরক্ষণ করা।</li>
-              <li>AML এবং জালিয়াতি প্রতিরোধ বিধিমালার অধীনে আমাদের আইনগত বাধ্যবাধকতা পূরণ করা।</li>
+      <SectionBlock title="৭. তৃতীয় পক্ষের ইন্টিগ্রেশন (IMAP, Telegram, SMS ও বাহ্যিক API)" icon={Smartphone} accent="blue">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">কাস্টম টেলিগ্রাম বট:</strong> Xelpay-এ একটি কাস্টম টেলিগ্রাম বট টোকেন সরবরাহ করে, আপনি আপনার বটের মাধ্যমে ওয়েবহুক পেলোড এবং অপারেশনাল বিজ্ঞপ্তি পাঠানোর জন্য আমাদের সিস্টেমকে স্পষ্ট, স্বয়ংক্রিয় অনুমতি দিচ্ছেন। আপনি Telegram-এর সেবার শর্তাবলীর সাথে আপনার বটের সম্মতির জন্য দায়ী।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">IMAP ব্যাংক ইমেইল সিঙ্ক্রোনাইজেশন:</strong> আমাদের ব্যাংক ট্রান্সফার যাচাই বৈশিষ্ট্য ব্যবহার করতে আপনার পেমেন্ট বিজ্ঞপ্তি ইমেইল ইনবক্সে শুধুমাত্র পড়ার অ্যাক্সেস প্রয়োজন। আপনি স্বীকার করছেন যে Xelpay প্রোগ্রাম্যাটিকভাবে এবং একচেটিয়াভাবে নির্দিষ্ট ব্যাংকিং ডোমেন থেকে ইমেইল পার্স করবে। আমরা আপনার ইমেইল প্রদানকারীর ব্যাপক নিরাপত্তা বা আপনার ইনবক্সের অন্য যেকোনো ইমেইলের জন্য কোনো দায় বহন করি না।</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">SMS রিলে ও ডিভাইস অ্যাপ — ডিভাইস ও ইন্টারনেট নির্ভরতা:</strong> আমাদের অ্যান্ড্রয়েড রিলে অ্যাপ্লিকেশন স্বয়ংক্রিয় যাচাইয়ের জন্য আপনার ডিভাইসে পেমেন্ট SMS বার্তা পড়ে। এই অ্যাপটি ইনস্টল এবং ব্যবহার করে, আপনি আমাদের গোপনীয়তা নীতিতে বর্ণিত ডিভাইস মেটাডেটা এবং প্রাসঙ্গিক SMS বিষয়বস্তু সংগ্রহে সম্মত হচ্ছেন। অ্যাপটি শুধুমাত্র রিড-অনলি মোডে কাজ করে এবং SMS বার্তা পাঠায়, মুছে বা পরিবর্তন করে না।
+            <div className="mt-3">
+              <InfoBox type="warning">
+                <strong className="block mb-1">গুরুত্বপূর্ণ ডিভাইস ও সংযোগ প্রয়োজনীয়তা:</strong>
+                SMS রিলে যাচাই সিস্টেমের নিরবচ্ছিন্ন ও নির্ভুল কার্যকারিতা সম্পূর্ণরূপে নির্ভর করে মার্চেন্টের একটি ডেডিকেটেড অ্যান্ড্রয়েড ডিভাইস বজায় রাখার উপর, যেখানে থাকবে: (ক) একটি ক্রমাগত, স্থিতিশীল এবং সক্রিয় মোবাইল ডেটা বা Wi-Fi ইন্টারনেট সংযোগ; (খ) Xelpay রিলে অ্যাপ্লিকেশন বিঘ্নহীনভাবে ফোরগ্রাউন্ড বা ব্যাকগ্রাউন্ডে চলমান; এবং (গ) ব্যবসায়িক সময়ে সর্বদা ডিভাইস চালু থাকা। Xelpay নিম্নলিখিত কারণে কোনো মিসড, বিলম্বিত বা ব্যর্থ পেমেন্ট যাচাইয়ের জন্য <strong>সম্পূর্ণরূপে কোনো দায় বহন করে না</strong>: ডিভাইসের বিদ্যুৎ বিভ্রাট বা বন্ধ হওয়া, মোবাইল নেটওয়ার্ক অস্থিরতা বা ইন্টারনেট সংযোগ বিচ্ছিন্ন হওয়া, আগ্রাসী অ্যান্ড্রয়েড OS ব্যাটারি অপ্টিমাইজেশন, ডিভাইস মেমোরি ম্যানেজমেন্ট (RAM ক্লিয়ারিং), বা রিলে অ্যাপ্লিকেশন প্রক্রিয়া বন্ধ করে দেওয়া যেকোনো নির্মাতা-নির্দিষ্ট ব্যাকগ্রাউন্ড অ্যাপ বিধিনিষেধ। Xelpay দৃঢ়ভাবে একটি ডেডিকেটেড ডিভাইস একচেটিয়াভাবে রিলে অপারেশনের জন্য ব্যবহার করার পরামর্শ দেয়।
+              </InfoBox>
+            </div>
+          </li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">MFS SMS ফরম্যাট পরিবর্তন ও যাচাই ব্যর্থতা:</strong> Xelpay-এর স্বয়ংক্রিয় পেমেন্ট যাচাই ইঞ্জিন মোবাইল ফিনান্সিয়াল সার্ভিস (MFS) অপারেটরদের — bKash, Nagad, Rocket, Upay সহ — কাছ থেকে আসা ইনকামিং SMS বিজ্ঞপ্তি পার্স করে। আপনি স্বীকার করছেন এবং স্পষ্টভাবে সম্মত হচ্ছেন যে:
+            <ul className="list-disc pl-5 mt-2 space-y-2">
+              <li>MFS অপারেটররা তাদের নিজস্ব বিবেচনায় এবং Xelpay বা মার্চেন্টকে পূর্ববর্তী নোটিশ না দিয়ে তাদের গ্রাহকদের কাছে পাঠানো SMS বিজ্ঞপ্তি টেমপ্লেট পরিবর্তন, পুনর্গঠন, পুনর্বিন্যাস বা সম্পূর্ণরূপে প্রতিস্থাপন করতে পারে।</li>
+              <li>কোনো MFS অপারেটরের SMS ফরম্যাটে এই ধরনের একতরফা পরিবর্তন Xelpay-এর পার্সিং ইঞ্জিনকে সাময়িকভাবে লেনদেনের ডেটা সঠিকভাবে নিষ্কাশন করতে অক্ষম করবে, যার ফলে Xelpay-এর প্যাচ মোতায়েন সম্পন্ন না হওয়া পর্যন্ত পেমেন্ট যাচাই ব্যর্থ হবে।</li>
+              <li><strong className="text-slate-800 dark:text-slate-200">Xelpay সম্পূর্ণরূপে কোনো দায় বহন করে না</strong> MFS অপারেটরের SMS ফরম্যাট পরিবর্তন এবং Xelpay-এর সংশ্লিষ্ট সিস্টেম প্যাচ সফলভাবে মোতায়েনের মধ্যবর্তী সময়কালে যে কোনো অযাচাইকৃত, ভুলভাবে যাচাইকৃত বা মিসড পেমেন্ট লেনদেনের জন্য।</li>
             </ul>
+          </li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">SMS স্পুফিং ও মিথ্যা ইতিবাচক যাচাই:</strong> Xelpay-এর যাচাই ইঞ্জিন সম্পূর্ণ এবং একচেটিয়াভাবে মার্চেন্টের নিবন্ধিত রিলে ডিভাইসে প্রাপ্ত SMS বিজ্ঞপ্তির উপর ভিত্তি করে কাজ করে।
+            <div className="mt-3">
+              <InfoBox type="danger">
+                <strong className="uppercase tracking-widest text-[11px] block mb-1">শূন্য দায় — SMS স্পুফিং ও মিথ্যা ইতিবাচক</strong>
+                যে কোনো ব্যক্তি — গ্রাহক, তৃতীয় পক্ষ বা দুর্ভাবনাপ্রসূত কারুকলার মাধ্যমে — মার্চেন্টের রিলে ডিভাইসে কোনো স্পুফড, বানোয়াট, জাল, সিমুলেটেড বা অন্যথায় প্রতারণামূলক SMS বার্তা প্রেরণ করলে যা একটি বৈধ MFS পেমেন্ট বিজ্ঞপ্তি অনুকরণ করে, এবং Xelpay-এর সিস্টেম এই ধরনের প্রতারণামূলক SMS-কে একটি বৈধ সম্পন্ন পেমেন্ট হিসেবে প্রক্রিয়া ও যাচাই করলে ("মিথ্যা ইতিবাচক") — <strong>Xelpay এর জন্য কোনো আইনগত, আর্থিক বা পরিচালনগত দায় বহন করে না</strong>: মার্চেন্ট কর্তৃক এই ধরনের মিথ্যা ইতিবাচক যাচাইয়ের উপর নির্ভর করে প্রদত্ত পণ্য, সেবা বা ডিজিটাল বিষয়বস্তু; বা মার্চেন্টের আর্থিক ক্ষতি, রাজস্ব ক্ষতি বা ব্যবসায়িক ক্ষতির জন্য। উচ্চ-মূল্যের পণ্য বা সেবা প্রদানের আগে মার্চেন্টের স্বাধীনভাবে লেনদেন যাচাই করার একমাত্র দায়িত্ব রয়েছে।
+              </InfoBox>
+            </div>
+          </li>
+          <li><strong className="text-slate-800 dark:text-slate-200">তৃতীয় পক্ষের সেবার প্রাপ্যতা:</strong> Xelpay সমন্বিত তৃতীয় পক্ষের সেবা (Telegram, MFS প্রদানকারী, ব্যাংক ইত্যাদি)-এর ক্রমাগত প্রাপ্যতার গ্যারান্টি দেয় না। এই সেবাগুলির ডাউনটাইম আমাদের নিয়ন্ত্রণের বাইরে এবং ফেরত বা সেবা ক্রেডিটের ভিত্তি গঠন করে না।</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">ওয়েবহুক ডেলিভারি ও মার্চেন্ট সার্ভার আউটেজ:</strong> Xelpay আপনার কনফিগার করা এন্ডপয়েন্টে ওয়েবহুক পেলোড পৌঁছে দেওয়ার সর্বোত্তম প্রচেষ্টা করে। আপনার ওয়েবহুক এন্ডপয়েন্ট অফলাইন থাকলে বা HTTP 4xx বা 5xx ত্রুটি কোড ফেরত দিলে, Xelpay আমাদের অভ্যন্তরীণ রিট্রাই নীতি অনুযায়ী একটি সীমিত সংখ্যক স্বয়ংক্রিয় পুনরায় চেষ্টা করবে। তবে:
+            <ul className="list-disc pl-5 mt-2 space-y-2">
+              <li>আপনার এন্ডপয়েন্ট অনুপলব্ধ থাকলে, ক্রমাগত ত্রুটি ফেরত দিলে, টাইম আউট হলে, বা মার্চেন্ট কর্তৃক ভুলভাবে কনফিগার করা হলে Xelpay ডেলিভারির <strong>গ্যারান্টি দেয় না</strong>।</li>
+              <li><strong className="text-slate-800 dark:text-slate-200">মার্চেন্টের সার্ভার ডাউনটাইম বা নেটওয়ার্ক সমস্যার কারণে স্থায়ীভাবে মিসড ওয়েবহুক ডেলিভারির ফলে যেকোনো ব্যবসায়িক ক্ষতি বা রাজস্ব ক্ষতির জন্য Xelpay সম্পূর্ণরূপে কোনো দায় বহন করে না।</strong> মার্চেন্টের নিজস্ব রিকনসিলিয়েশন প্রক্রিয়া বজায় রাখা একমাত্র দায়িত্ব।</li>
+            </ul>
+          </li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="৮. সেবার স্তর, আপটাইম ও ডাউনটাইম" icon={Server} accent="blue">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">আপটাইমের কোনো গ্যারান্টি নেই:</strong> Xelpay সর্বোচ্চ প্রাপ্যতার জন্য প্রচেষ্টা করে, তবে আমরা কোনো আনুষ্ঠানিক SLA বা আপটাইম গ্যারান্টি প্রদান করি না।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">নির্ধারিত রক্ষণাবেক্ষণ:</strong> Xelpay নির্ধারিত রক্ষণাবেক্ষণের জন্য প্ল্যাটফর্ম অফলাইন নিতে পারে। যেখানে সম্ভব, রক্ষণাবেক্ষণ কম ট্র্যাফিকের সময়ে নির্ধারিত হবে এবং নোটিশ দেওয়া হবে।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">ডাউনটাইমের জন্য কোনো দায় নেই:</strong> পরিকল্পিত বা অপরিকল্পিত সার্ভিস বিঘ্নের ফলে রাজস্ব, ব্যবসায়িক সুযোগ বা ক্ষতির জন্য Xelpay দায়ী থাকবে না।</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="৯. অ্যাকাউন্ট বাতিল ও স্থগিতকরণের অধিকার" icon={AlertCircle} accent="red">
+        <p>Xelpay যেকোনো সময়, পূর্ববর্তী নোটিশ সহ বা ছাড়াই আপনার অ্যাকাউন্ট এবং সমস্ত সম্পর্কিত API অ্যাক্সেস <strong className="text-slate-800 dark:text-slate-200">স্থগিত বা স্থায়ীভাবে বাতিল</strong> করার একতরফা অধিকার সংরক্ষণ করে যদি:</p>
+        <ul className="list-disc pl-5 mt-3 space-y-2">
+          <li>আমরা এই শর্তাবলী বা AUP-এর যেকোনো লঙ্ঘন সন্দেহ করি।</li>
+          <li>আমরা আপনার অ্যাকাউন্টে অস্বাভাবিক, সন্দেহজনক বা সম্ভাব্য প্রতারণামূলক কার্যক্রম সনাক্ত করি।</li>
+          <li>প্রযোজ্য আইন, আদালতের আদেশ বা নিয়ন্ত্রক কর্তৃপক্ষ দ্বারা আমাদের তা করতে হয়।</li>
+          <li>আমরা নির্ধারণ করি যে আপনার ব্যবহার আমাদের অবকাঠামো বা অন্যান্য ব্যবহারকারীদের জন্য গুরুতর নিরাপত্তা বা আইনগত ঝুঁকি তৈরি করে।</li>
+          <li>মার্চেন্ট ধারা ১৫-তে বর্ণিত KYC/ব্যবসা যাচাই অনুরোধের সাথে সম্মতি করতে ব্যর্থ হয়েছে বলে আমরা নির্ধারণ করি।</li>
+        </ul>
+        <p className="mt-3">বাতিলের পরে, প্ল্যাটফর্মে আপনার অ্যাক্সেসের অধিকার তাৎক্ষণিকভাবে বন্ধ হয়। আপনি সমস্ত বকেয়া ফি এবং দায়বদ্ধতার জন্য দায়ী থাকবেন। নীতি লঙ্ঘনের কারণে নিষিদ্ধ হলে কোনো অবশিষ্ট সাবস্ক্রিপশন মেয়াদের জন্য কোনো ফেরত দেওয়া হবে না।</p>
+        <p className="mt-3">আপনি যেকোনো সময় আমাদের সাপোর্ট চ্যানেলের মাধ্যমে একটি আনুষ্ঠানিক অনুরোধ জমা দিয়ে স্বেচ্ছায় আপনার অ্যাকাউন্ট বন্ধ করতে পারেন। স্বেচ্ছামূলক বন্ধকরণ আপনাকে কোনো পূর্বপ্রদত্ত সাবস্ক্রিপশন পরিমাণ ফেরত পাওয়ার অধিকার দেয় না।</p>
+      </SectionBlock>
+
+      <SectionBlock title="১০. ফোর্স ম্যাজর, দায়ের সীমাবদ্ধতা ও ক্ষতিপূরণ" icon={Scale} accent="amber">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">ফোর্স ম্যাজর:</strong> আমাদের যুক্তিসংগত নিয়ন্ত্রণের বাইরের পরিস্থিতির — ঈশ্বরের কাজ, প্রাকৃতিক দুর্যোগ, ইন্টারনেট বন্ধ, জাতীয় টেলিকম বিভ্রাট, তৃতীয় পক্ষের সার্ভার ব্যর্থতা, সাইবার আক্রমণ, বিদ্যুৎ বিভ্রাট, মহামারী, ধর্মঘট, বা সরকার কর্তৃক আরোপিত বিধিনিষেধ বা পদক্ষেপ সহ — কারণে পারফরম্যান্সে ব্যর্থতা বা বিলম্বের জন্য Xelpay দায়ী থাকবে না।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">MFS/ব্যাংক অ্যাকাউন্ট সংক্রান্ত দায়ের সীমাবদ্ধতা:</strong> কোনো আইনি কাঠামোর অধীনে Xelpay, এর প্রতিষ্ঠাতা, পরিচালক বা Xenverse IT আপনার ব্যক্তিগত বা ব্যবসায়িক MFS/ব্যাংক অ্যাকাউন্ট ফ্ল্যাগ, সীমাবদ্ধ, হিমায়িত বা স্থগিত হওয়ার জন্য দায়ী থাকবে না।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">সাধারণ দায়ের সীমা:</strong> দাবি উত্থাপনের তারিখের আগে অবিলম্বে ONE (1) মাসে আপনি Xelpay-কে যে মোট অর্থ পরিশোধ করেছেন তার বেশি Xelpay-এর মোট দায় কোনো পরিস্থিতিতে হবে না।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">পরোক্ষ ক্ষতি বাদ:</strong> লাভের ক্ষতি, ডেটার ক্ষতি, ব্যবসায়িক সুযোগের ক্ষতি বা ব্যবসায়িক বাধা সহ যেকোনো পরোক্ষ, আনুষঙ্গিক, বিশেষ, পরিণামী বা শাস্তিমূলক ক্ষতির জন্য Xelpay দায়ী থাকবে না।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">ক্ষতিপূরণ:</strong> আপনি Xelpay, Xenverse IT এবং তাদের কর্মকর্তা, পরিচালক, কর্মচারী এবং প্রতিনিধিদের আপনার প্ল্যাটফর্ম ব্যবহার বা অপব্যবহার থেকে, এই শর্তাবলীর লঙ্ঘন থেকে, বা আপনার শেষ-গ্রাহক বা তৃতীয় পক্ষের দাবি থেকে উদ্ভূত সমস্ত দাবি, মামলা, দায়, ক্ষতি, খরচ এবং ব্যয় থেকে সম্পূর্ণরূপে ক্ষতিপূরণ দিতে, রক্ষা করতে এবং নির্দোষ রাখতে সম্মত হচ্ছেন।</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="১১. বিরোধ নিষ্পত্তি, সালিশি ও ক্লাস-অ্যাকশন পরিত্যাগ" icon={Gavel} accent="purple">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">প্রথমে অনানুষ্ঠানিক সমাধান:</strong> যেকোনো আনুষ্ঠানিক আইনি দাবি দাখিল করার আগে, আপনি সম্মত হচ্ছেন যে লিখিত নোটিশের ৩০ দিনের মধ্যে সৌহার্দ্যপূর্ণভাবে বিরোধ সমাধানের জন্য সদিচ্ছার সাথে Xelpay-এর সাপোর্ট টিমের সাথে যোগাযোগ করবেন।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">ক্লাস-অ্যাকশন পরিত্যাগ:</strong> আপনি স্পষ্টভাবে সম্মত হচ্ছেন যে Xelpay-এর বিরুদ্ধে যেকোনো বিরোধ বা দাবি শুধুমাত্র আপনার ব্যক্তিগত ক্ষমতায় আনতে হবে — কোনো ক্লাস অ্যাকশন বা প্রতিনিধি কার্যধারায় বাদী বা শ্রেণী সদস্য হিসেবে নয়।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">বাধ্যতামূলক সালিশি (যেখানে প্রযোজ্য):</strong> আন্তর্জাতিক ব্যবহারকারীদের জন্য, যেখানে স্থানীয় আইন দ্বারা অনুমোদিত, আপনি সম্মত হচ্ছেন যে অনানুষ্ঠানিকভাবে সমাধান না হওয়া বিরোধগুলি আদালতে নয়, বরং বাধ্যতামূলক সালিশিতে জমা দেওয়া হবে।</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="১২. প্রযোজ্য আইন, এখতিয়ার ও বিভাজ্যতা" icon={Building2} accent="blue">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">প্রযোজ্য আইন:</strong> এই শর্তাবলী গণপ্রজাতন্ত্রী বাংলাদেশের আইন — চুক্তি আইন, ১৮৭২; তথ্য ও যোগাযোগ প্রযুক্তি আইন, ২০০৬ (সংশোধিত); ডিজিটাল নিরাপত্তা আইন, ২০১৮; এবং সমস্ত প্রযোজ্য বাংলাদেশ ব্যাংক বিধিমালা সহ — এর দ্বারা একচেটিয়াভাবে নিয়ন্ত্রিত হবে।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">এখতিয়ার:</strong> এই শর্তাবলীর অধীনে উদ্ভূত যেকোনো বিরোধ বাংলাদেশে অবস্থিত সক্ষম কর্তৃপক্ষের আদালতের একচেটিয়া এখতিয়ারের অধীনে হবে।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">বিভাজ্যতা:</strong> যদি এই শর্তাবলীর কোনো বিধান অপ্রয়োগযোগ্য বা অবৈধ পাওয়া যায়, সেই বিধানটি ন্যূনতম পরিমাণে সীমিত বা বাদ দেওয়া হবে এবং অবশিষ্ট বিধানগুলি সম্পূর্ণ কার্যকর থাকবে।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">সম্পূর্ণ চুক্তি:</strong> এই শর্তাবলী, আমাদের গোপনীয়তা নীতির সাথে একত্রে, প্ল্যাটফর্ম ব্যবহার সংক্রান্ত আপনার এবং Xelpay-এর মধ্যে সম্পূর্ণ চুক্তি গঠন করে।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">পরিত্যাগ:</strong> Xelpay-এর কোনো অধিকার বা বিধান প্রয়োগ করতে ব্যর্থতা সেই অধিকার বা বিধানের পরিত্যাগ গঠন করবে না।</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="১৩. অ্যাফিলিয়েট প্রোগ্রামের শর্তাবলী" icon={Users} accent="green">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">যোগ্যতা:</strong> Xelpay অ্যাফিলিয়েট প্রোগ্রামে অংশগ্রহণ শুধুমাত্র ভালো অবস্থানে থাকা নিবন্ধিত মার্চেন্টদের জন্য উন্মুক্ত। Xelpay তার একক বিবেচনায় অ্যাফিলিয়েট আবেদন অনুমোদন বা প্রত্যাখ্যান করার অধিকার সংরক্ষণ করে।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">কমিশন কাঠামো:</strong> অ্যাফিলিয়েট কমিশন প্রোগ্রামের বর্তমান হার কাঠামোর উপর ভিত্তি করে গণনা করা হয়, যা যুক্তিসংগত নোটিশের সাথে Xelpay দ্বারা যেকোনো সময় পরিবর্তন করা যেতে পারে।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">নিষিদ্ধ প্রচার পদ্ধতি:</strong> অ্যাফিলিয়েটরা রেফারেল তৈরির জন্য বিভ্রান্তিকর বিজ্ঞাপন, স্প্যাম, ভুয়া রিভিউ বা যেকোনো প্রতারণামূলক পদ্ধতিতে নিযুক্ত হতে পারবেন না।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">স্ব-রেফারেল নিষিদ্ধ:</strong> ব্যক্তিগত লাভের জন্য নিজের রেফারেল লিঙ্ক ব্যবহার করে সেকেন্ডারি অ্যাকাউন্ট সাইন আপ করা কঠোরভাবে নিষিদ্ধ এবং প্রতারণা গঠন করে।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">কমিশন বাজেয়াপ্ত:</strong> প্রতারণামূলক রেফারেল বা AUP লঙ্ঘনকারী রেফার করা অ্যাকাউন্টের মাধ্যমে অর্জিত কমিশন বাজেয়াপ্ত করা হবে এবং ক্ল্যাওব্যাক করা হতে পারে।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">পেমেন্ট থ্রেশহোল্ড:</strong> অ্যাফিলিয়েট ড্যাশবোর্ডে উল্লিখিত ন্যূনতম থ্রেশহোল্ড পৌঁছানোর পরে অ্যাফিলিয়েট কমিশন বিতরণ করা হয় এবং প্রযোজ্য কর উইথহোল্ডিং সাপেক্ষে।</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="১৪. পেমেন্ট লিঙ্ক ও চেকআউট পেজ" icon={CreditCard} accent="blue">
+        <ul className="list-disc pl-5 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">মার্চেন্টের দায়িত্ব:</strong> Xelpay-এর মাধ্যমে তৈরি পেমেন্ট পেজে তালিকাভুক্ত সমস্ত পণ্য, সেবা, মূল্য এবং বিবরণের নির্ভুলতা, বৈধতা এবং উপযুক্ততার জন্য আপনি সম্পূর্ণরূপে দায়ী। Xelpay শুধুমাত্র প্রযুক্তিগত অবকাঠামো; আমরা আপনার এবং আপনার গ্রাহকদের মধ্যে বাণিজ্যিক লেনদেনের পক্ষ নই।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">চেকআউট পেজে গ্রাহক ডেটা:</strong> আপনার Xelpay-চালিত চেকআউট পেজে আপনার গ্রাহকরা যে ব্যক্তিগত ডেটা জমা দেন তা এই গোপনীয়তা নীতি অনুযায়ী প্রক্রিয়া করা হয়। আপনাকে নিশ্চিত করতে হবে যে আপনার নিজস্ব গ্রাহকরা সচেতন যে তাদের ডেটা কীভাবে পরিচালনা করা হয়।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">পেমেন্ট লিঙ্কে নিষিদ্ধ বিষয়বস্তু:</strong> পেমেন্ট লিঙ্ক ধারা ৬ (AUP)-এ উল্লিখিত নিষিদ্ধ, অবৈধ বা প্রতারণামূলক উদ্দেশ্যে অর্থ সংগ্রহের জন্য ব্যবহার করা যাবে না।</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="১৫. KYC ও ব্যবসা যাচাইকরণ" icon={Fingerprint} accent="orange">
+        <p>বাংলাদেশ ফিনান্সিয়াল ইন্টেলিজেন্স ইউনিট (BFIU) নির্দেশিকা, অ্যান্টি-মানি লন্ডারিং (AML) বিধিমালা, মানি লন্ডারিং প্রতিরোধ আইন, ২০১২ এবং সন্ত্রাসবিরোধী আইন, ২০০৯ (বাংলাদেশ)-এর কঠোর সম্মতিতে, Xelpay একটি মার্চেন্ট অ্যাকাউন্টের জীবনচক্রের যেকোনো পর্যায়ে Know Your Customer (KYC) এবং ব্যবসা যাচাইকরণ পদ্ধতি পরিচালনার অধিকার স্পষ্টভাবে সংরক্ষণ করে।</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">অনুরোধকৃত ডকুমেন্টেশন:</strong> Xelpay তার একক এবং সম্পূর্ণ বিবেচনায়, নিম্নলিখিত এক বা একাধিক KYC এবং ব্যবসা যাচাই দলিল জমা দেওয়ার আনুষ্ঠানিক অনুরোধ করতে পারে: বৈধ ট্রেড লাইসেন্স বা ব্যবসা নিবন্ধন সার্টিফিকেট, ব্যবসার মালিক(দের) বা অনুমোদিত স্বাক্ষরকারীদের জাতীয় পরিচয়পত্র (NID), TIN সার্টিফিকেট, যাচাইয়ের উদ্দেশ্যে প্রাসঙ্গিক ব্যাংক অ্যাকাউন্টের বিবরণ এবং/অথবা অন্য যেকোনো সহায়ক ডকুমেন্টেশন।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">বাধ্যতামূলক সম্মতির দায়িত্ব:</strong> মার্চেন্ট Xelpay-এর যেকোনো KYC যাচাই অনুরোধে আনুষ্ঠানিক অনুরোধে উল্লিখিত সময়সীমার মধ্যে সাড়া দিতে আইনগতভাবে বাধ্য (যা অনুরোধের তারিখ থেকে কমপক্ষে ৭২ ঘণ্টার কম হবে না)। জাল, মিথ্যা বা প্রতারণামূলকভাবে প্রাপ্ত ডকুমেন্টেশন জমা দেওয়া বাংলাদেশ আইনে একটি গুরুতর অপরাধ গঠন করে।</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">অ-সম্মতির পরিণতি:</strong> নির্ধারিত সময়সীমার মধ্যে অনুরোধকৃত KYC ডকুমেন্টেশন প্রদান করতে ব্যর্থ হলে বা অস্বীকার করলে মার্চেন্টের অ্যাকাউন্ট এবং সমস্ত সংশ্লিষ্ট API অ্যাক্সেস তাৎক্ষণিকভাবে স্থগিত করা হবে।
+            <InfoBox type="danger">
+              <strong className="uppercase tracking-widest text-[11px] block mb-1">KYC-জনিত স্থগিতকরণে কোনো ফেরত নেই</strong>
+              KYC বা ব্যবসা যাচাই অনুরোধের অ-সম্মতির কারণে অ্যাকাউন্ট স্থগিতকরণ বা বন্ধকরণ মার্চেন্টকে ধারা ৫-এ বর্ণিত Xelpay-এর কঠোর অ-ফেরতযোগ্য নীতির সাথে সামঞ্জস্য রেখে কোনো পূর্বপ্রদত্ত সাবস্ক্রিপশন ফি বা অ্যাড-অন চার্জ ফেরত পাওয়ার অধিকার দেয় না।
+            </InfoBox>
+          </li>
+          <li><strong className="text-slate-800 dark:text-slate-200">KYC দলিলের ডেটা পরিচালনা:</strong> Xelpay-এ জমা দেওয়া সমস্ত KYC দলিল আমাদের গোপনীয়তা নীতি অনুযায়ী কঠোরভাবে পরিচালনা এবং সংরক্ষণ করা হয়। KYC দলিলগুলি শুধুমাত্র Xelpay-এর অনুমোদিত সম্মতি কর্মীদের দ্বারা অ্যাক্সেসযোগ্য।</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="১৬. বিপরীত লেনদেন, MFS ক্ল্যাওব্যাক ও অপারেটর বিরোধ" icon={ShieldAlert} accent="red">
+        <p>Xelpay-এর ভূমিকা একটি প্রযুক্তিগত যাচাই মধ্যস্থতাকারীর মধ্যে কঠোরভাবে সীমাবদ্ধ। প্ল্যাটফর্ম একটি পেমেন্ট বিজ্ঞপ্তির প্রাপ্তি নিশ্চিত করে এবং সংশ্লিষ্ট ওয়েবহুক পাঠায়; এটি তৃতীয় পক্ষের MFS প্রদানকারী, ব্যাংক বা পেমেন্ট গেটওয়ের মাধ্যমে পরিচালিত যেকোনো অন্তর্নিহিত আর্থিক লেনদেনের চূড়ান্ততা, স্থায়িত্ব বা অপরিবর্তনীয়তার নিশ্চয়তা দেয় না।</p>
+        <InfoBox type="danger">
+          <strong className="uppercase tracking-widest text-[11px] block mb-1">সম্পূর্ণ শূন্য দায় — বিপরীতকরণ, ক্ল্যাওব্যাক ও অপারেটর বিরোধ</strong>
+          Xelpay-এর সিস্টেম দ্বারা পূর্বে যাচাই ও নিশ্চিত করা যেকোনো পেমেন্ট লেনদেন যদি পরবর্তীতে মূল গ্রাহক/প্রেরক, সংশ্লিষ্ট MFS অপারেটর (bKash, Nagad, Rocket), মার্চেন্টের বা গ্রাহকের ব্যাংক, যেকোনো পেমেন্ট গেটওয়ে প্রদানকারী, বাংলাদেশ ব্যাংক, বা অন্য যেকোনো সক্ষম আর্থিক বা নিয়ন্ত্রক কর্তৃপক্ষ কর্তৃক বিপরীত, প্রত্যাহার, হিমায়িত, বিতর্কিত বা ক্ল্যাওব্যাক করা হয় — যেকোনো কারণে — <strong>Xelpay এর জন্য কোনো আইনগত, আর্থিক বা পরিচালনগত দায় বহন করে না</strong>: মার্চেন্ট কর্তৃক প্রদত্ত পণ্য, সেবা বা ডিজিটাল বিষয়বস্তুর জন্য; বা মার্চেন্টের আর্থিক ক্ষতি, রাজস্ব ক্ষতি, ইনভেন্টরি ক্ষতি বা ব্যবসায়িক ক্ষতির জন্য।
+        </InfoBox>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">মার্চেন্টের স্বাধীন ঝুঁকি দায়িত্ব:</strong> উচ্চ-মূল্যের পণ্য, সেবা বা অপরিবর্তনীয় ডিজিটাল ডেলিভারেবল প্রকাশের আগে Xelpay-এর স্বয়ংক্রিয় যাচাইয়ের স্বাধীনে নিজস্ব শক্তিশালী জালিয়াতি প্রতিরোধ, অর্ডার যাচাই এবং ঝুঁকি ব্যবস্থাপনা নীতি বজায় রাখা মার্চেন্টের একমাত্র এবং একচেটিয়া দায়িত্ব। Xelpay-এর যাচাই নিশ্চিতকরণ শুধুমাত্র একটি প্রযুক্তিগত সংকেত এবং পেমেন্টের চূড়ান্ততার গ্যারান্টি নয়।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">মার্চেন্ট ও গ্রাহকের মধ্যে বিরোধ নিষ্পত্তি:</strong> মার্চেন্টের শেষ গ্রাহক কর্তৃক শুরু করা যেকোনো পেমেন্ট বিরোধ, ফেরতের অনুরোধ বা চার্জব্যাক সম্পূর্ণ এবং একচেটিয়াভাবে মার্চেন্ট এবং তাদের গ্রাহকের মধ্যকার বিষয়। Xelpay এই ধরনের যেকোনো বিরোধের পক্ষ নয়।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">তদন্তে সহযোগিতা:</strong> পূর্বোক্ত দায়ের সীমাবদ্ধতা সত্ত্বেও, Xelpay, যেখানে আইনগতভাবে প্রয়োজন বা অপারেশনালভাবে সম্ভব, বিতর্কিত লেনদেন সম্পর্কিত অনুমোদিত নিয়ন্ত্রক এবং আইন প্রয়োগকারী তদন্তে সহযোগিতা করবে।</li>
+        </ul>
+      </SectionBlock>
+
+      <SectionBlock title="১৭. কঠোর B2B সেবা — শেষ-গ্রাহক সহায়তার কোনো বাধ্যবাধকতা নেই" icon={Users} accent="purple">
+        <p>Xelpay একটি একচেটিয়া <strong className="text-slate-800 dark:text-slate-200">বিজনেস-টু-বিজনেস (B2B)</strong> প্রযুক্তি প্ল্যাটফর্ম। এই শর্তাবলী দ্বারা প্রতিষ্ঠিত চুক্তিগত সম্পর্ক সম্পূর্ণ এবং একচেটিয়াভাবে Xelpay (Xenverse IT) এবং নিবন্ধিত মার্চেন্ট সত্তার মধ্যে বিদ্যমান।</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">শেষ-গ্রাহকদের সাথে কোনো সরাসরি সম্পর্ক নেই:</strong> Xelpay-এর মার্চেন্টের Xelpay-চালিত পেমেন্ট ইন্টারফেস বা চেকআউট পেজের মাধ্যমে লেনদেন করা যেকোনো শেষ-গ্রাহক, ক্রেতা বা তৃতীয় পক্ষের সাথে কোনো সরাসরি আইনগত, চুক্তিগত, বাণিজ্যিক বা আর্থিক সম্পর্ক নেই। শেষ-গ্রাহকরা মার্চেন্টের গ্রাহক, Xelpay-এর নয়।</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">শেষ-গ্রাহকদের জন্য কোনো সহায়তার বাধ্যবাধকতা নেই:</strong> Xelpay মার্চেন্টের শেষ-গ্রাহক কর্তৃক সরাসরি জমা দেওয়া যেকোনো সহায়তা অনুসন্ধান, অভিযোগ বা দাবিতে সাড়া দিতে, তদন্ত করতে বা সমাধান করতে <strong>কোনো আইনগত বা চুক্তিগত বাধ্যবাধকতার অধীনে নেই</strong>।
             <InfoBox type="info">
-              Xelpay তৃতীয় পক্ষের বিজ্ঞাপন, প্রোফাইলিং বা ডেটা ব্রোকারের কাছে বিক্রির জন্য আপনার ডেটা <strong>ব্যবহার করে না</strong>।
+              <strong>মার্চেন্টের দায়িত্ব:</strong> পর্যাপ্ত গ্রাহক সহায়তা প্রদান করা, নিজস্ব ফেরতের নীতি মেনে চলা এবং শেষ-গ্রাহকদের সাথে সমস্ত বিরোধ সরাসরি সমাধান করা মার্চেন্টের একমাত্র আইনগত দায়িত্ব।
             </InfoBox>
-          </SectionBlock>
+          </li>
+          <li><strong className="text-slate-800 dark:text-slate-200">শেষ-গ্রাহক দাবির জন্য মার্চেন্টের ক্ষতিপূরণ:</strong> মার্চেন্ট স্পষ্টভাবে Xelpay-কে তাদের বাণিজ্যিক কার্যক্রম থেকে উদ্ভূত মার্চেন্টের শেষ-গ্রাহকদের কর্তৃক শুরু করা যেকোনো দাবি, মামলা বা আইনি কার্যধারা থেকে সম্পূর্ণরূপে ক্ষতিপূরণ দিতে এবং রক্ষা করতে সম্মত হচ্ছেন।</li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="৪. কুকিজ ও ট্র্যাকিং প্রযুক্তি" icon={Cookie} accent="green">
-            <ul className="list-disc pl-5 space-y-2">
-              <li><strong className="text-slate-800 dark:text-slate-200">অপরিহার্য সেশন কুকিজ:</strong> প্রমাণীকৃত ড্যাশবোর্ড সেশন বজায় রাখার জন্য প্রয়োজনীয়।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">পছন্দ স্টোরেজ (Local Storage):</strong> ভাষা নির্বাচন এবং থিম সেটিংস সংরক্ষণের জন্য।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">নিরাপত্তা টোকেন:</strong> সেশন অখণ্ডতার জন্য CSRF এবং প্রমাণীকরণ টোকেন।</li>
-            </ul>
-            <p className="mt-3">আমরা তৃতীয় পক্ষের বিজ্ঞাপন কুকিজ বা ক্রস-সাইট ট্র্যাকিং পিক্সেল <strong>ব্যবহার করি না</strong>।</p>
-          </SectionBlock>
+      <SectionBlock title="১৮. ওয়েবহুক আইডেম্পোটেন্সি ও ডাবল-ক্রেডিটিং প্রতিরোধ" icon={Zap} accent="purple">
+        <p>Xelpay-এর ওয়েবহুক ডেলিভারি সিস্টেম যাচাইকৃত লেনদেন ইভেন্টে পেমেন্ট নিশ্চিতকরণ পেলোড প্রেরণ করার জন্য ডিজাইন করা হয়েছে। তবে, নেটওয়ার্ক টাইমআউট বা Xelpay-এর সার্ভার এবং মার্চেন্টের এন্ডপয়েন্টের মধ্যে ক্ষণস্থায়ী সংযোগ ব্যর্থতার পরিস্থিতিতে, Xelpay-এর সিস্টেম তার রিট্রাই নীতি অনুযায়ী একই ওয়েবহুক পেলোডের ডেলিভারি স্বয়ংক্রিয়ভাবে পুনরায় প্রচেষ্টা করতে পারে।</p>
+        <InfoBox type="danger">
+          <strong className="uppercase tracking-widest text-[11px] block mb-1">মার্চেন্টের পরম দায়িত্ব — আইডেম্পোটেন্সি বাস্তবায়ন</strong>
+          মার্চেন্টের ডেভেলপমেন্ট টিমের <strong>একমাত্র, অপ্রত্যায়নযোগ্য এবং সম্পূর্ণ প্রযুক্তিগত ও আইনগত দায়িত্ব</strong> হলো তাদের ওয়েবহুক রিসিভার এন্ডপয়েন্টে শক্তিশালী <strong>আইডেম্পোটেন্সি লজিক</strong> বাস্তবায়ন করা। আইডেম্পোটেন্সি মানে হলো মার্চেন্টের সিস্টেম অবশ্যই একই অনন্য Transaction ID (TrxID) বহনকারী ডুপ্লিকেট ওয়েবহুক ডেলিভারি চিনতে এবং বাদ দিতে সক্ষমভাবে ডিজাইন করা হতে হবে, যাতে যেকোনো যাচাইকৃত লেনদেন মাত্র একবার ক্রেডিট বা পূরণ করা হয় — ওয়েবহুক বিজ্ঞপ্তি কতবার প্রাপ্ত হয় তা নির্বিশেষে। মার্চেন্টের পর্যাপ্ত আইডেম্পোটেন্সি সুরক্ষা বাস্তবায়নে ব্যর্থতার ফলে ডাবল-ক্রেডিটিং, ডুপ্লিকেট অর্ডার পূরণ, বা যেকোনো ডুপ্লিকেট আর্থিক কার্যক্রমের জন্য <strong>Xelpay সম্পূর্ণরূপে কোনো আইনগত, আর্থিক বা পরিচালনগত দায় বহন করে না।</strong>
+        </InfoBox>
+      </SectionBlock>
 
-          <SectionBlock title="৫. তৃতীয় পক্ষের সাথে ডেটা শেয়ারিং ও প্রকাশ" icon={Users} accent="green">
-            <p><strong className="text-slate-800 dark:text-slate-200">Xelpay আপনার ব্যক্তিগত ডেটা নগদীকরণ বা বিক্রি করে না।</strong> ডেটা শুধুমাত্র নিম্নলিখিত কঠোরভাবে সীমিত পরিস্থিতিতে তৃতীয় পক্ষের কাছে প্রকাশ করা হয়: অবকাঠামো প্রদানকারী (Vercel, Supabase), বৈধ আইনি ও নিয়ন্ত্রক প্রকাশ, জালিয়াতি প্রতিরোধ, ব্যবসায়িক হস্তান্তর এবং আপনার স্পষ্ট সম্মতির সাথে।</p>
-          </SectionBlock>
+      <SectionBlock title="১৯. নিয়ন্ত্রক শাটডাউন, সরকারি নির্দেশিকা ও সার্ভিস ফিচারে ফোর্স ম্যাজর" icon={Building2} accent="red">
+        <p>বাংলাদেশ ব্যাংক, বাংলাদেশ টেলিযোগাযোগ নিয়ন্ত্রণ কমিশন (BTRC), ডাক, টেলিযোগাযোগ ও তথ্যপ্রযুক্তি মন্ত্রণালয়, বা যেকোনো অন্যান্য সক্ষম সরকারি, আধা-সরকারি, বিচারিক বা নিয়ন্ত্রক কর্তৃপক্ষ যদি Xelpay-এর SMS-রিডিং অটোমেশন, IMAP ইমেইল স্ক্র্যাপিং, স্বয়ংক্রিয় লেনদেন পার্সিং, বা Xelpay প্ল্যাটফর্মের অন্য যেকোনো বৈশিষ্ট্য নিষিদ্ধ, সীমাবদ্ধ, বা পরিবর্তনের প্রয়োজন এমন কোনো নির্দেশিকা, সার্কুলার, আদেশ বা বিধিমালা জারি করে — Xelpay তাৎক্ষণিকভাবে প্রভাবিত সার্ভিস ফিচার(গুলি) স্থগিত, নিষ্ক্রিয়, পরিবর্তন বা স্থায়ীভাবে বন্ধ করার সম্পূর্ণ এবং একতরফা অধিকার সংরক্ষণ করে।</p>
+        <InfoBox type="danger">
+          <strong className="uppercase tracking-widest text-[11px] block mb-1">শূন্য দায় ও শূন্য ফেরত — নিয়ন্ত্রক শাটডাউন</strong>
+          যেকোনো এই ধরনের নিয়ন্ত্রক-বাধ্যতামূলক স্থগিতকরণ, পরিবর্তন বা সার্ভিস ফিচারের স্থায়ী বন্ধকরণের সাথে সংযুক্ত কোনো ধরনের <strong>কোনো আইনগত বা আর্থিক দায় Xelpay বহন করবে না</strong> — এবং মার্চেন্টকে কোনো ধরনের ফেরত, সার্ভিস ক্রেডিট বা ক্ষতিপূরণমূলক পেমেন্ট প্রদেয় বা প্রযোজ্য হবে না। মার্চেন্ট স্পষ্টভাবে স্বীকার করে এবং গ্রহণ করে যে এই ধরনের ঘটনাগুলি এই শর্তাবলীর অধীনে একটি ফোর্স ম্যাজর ঘটনা হিসেবে গণ্য হবে।
+        </InfoBox>
+      </SectionBlock>
 
-          <SectionBlock title="৬. ডেটা নিরাপত্তা ও লঙ্ঘন বিজ্ঞপ্তি প্রোটোকল" icon={Lock} accent="green">
-            <ul className="list-disc pl-5 space-y-2">
-              <li><strong className="text-slate-800 dark:text-slate-200">বিশ্রামে এনক্রিপশন:</strong> AES-256 এনক্রিপশন ব্যবহার করে সমস্ত সংবেদনশীল ডেটা এনক্রিপ্ট করা হয়।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">ট্রান্সিটে এনক্রিপশন:</strong> সমস্ত ডেটা ট্রান্সমিশন TLS 1.2 বা উচ্চতর এনক্রিপ্টেড সংযোগের মাধ্যমে।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">অ্যাক্সেস নিয়ন্ত্রণ:</strong> কঠোর ভূমিকা-ভিত্তিক অ্যাক্সেস নিয়ন্ত্রণ এবং ব্যাপক অডিট লগিং।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">লঙ্ঘন বিজ্ঞপ্তি:</strong> একটি নিশ্চিত ডেটা লঙ্ঘনের ক্ষেত্রে, Xelpay প্রভাবিত মার্চেন্টদের সত্তর দুই (৭২) ঘণ্টার মধ্যে অবহিত করবে।</li>
-            </ul>
-          </SectionBlock>
+      <SectionBlock title="২০. প্রচার ও মার্কেটিং অধিকার" icon={Users} accent="green">
+        <p>Xelpay মার্চেন্ট অ্যাকাউন্ট নিবন্ধন করে এবং আপনার ব্যবসায়িক কার্যক্রমের জন্য সক্রিয়ভাবে Xelpay প্ল্যাটফর্ম ব্যবহার করে, আপনি Xelpay (Xenverse IT)-কে নিম্নলিখিত সীমিত প্রেক্ষাপটে আপনার নিবন্ধিত ব্যবসার নাম, সংশ্লিষ্ট ব্র্যান্ড নাম এবং অফিসিয়াল ব্যবসায়িক লোগো ব্যবহার, প্রদর্শন এবং পুনরুৎপাদন করার একটি <strong className="text-slate-800 dark:text-slate-200">অ-একচেটিয়া, রয়্যালটি-মুক্ত, বিশ্বব্যাপী লাইসেন্স</strong> প্রদান করছেন:</p>
+        <ul className="list-disc pl-5 mt-3 space-y-2">
+          <li>Xelpay-এর অফিসিয়াল ওয়েবসাইট, ল্যান্ডিং পেজ এবং মার্কেটিং উপকরণে, "Trusted By," "আমাদের পার্টনার," "মার্চেন্ট" বা সমতুল্য বিভাগ সহ।</li>
+          <li>Xelpay-এর কেস স্টাডি, প্রচারমূলক ব্লগ পোস্ট, সোশ্যাল মিডিয়া বিষয়বস্তু, প্রেস রিলিজ, বিনিয়োগকারী উপকরণ এবং বিক্রয় সহায়তায়।</li>
+          <li>সম্ভাব্য ব্যবসায়িক অংশীদার, বিনিয়োগকারী বা নিয়ন্ত্রক সংস্থার জন্য প্রস্তুত উপস্থাপনা এবং উপকরণে।</li>
+        </ul>
+        <InfoBox type="info">
+          <strong>অপ্ট-আউটের অধিকার:</strong> আপনি যদি উপরোক্ত প্রচারমূলক প্রেক্ষাপটে আপনার ব্যবসার নাম, ব্র্যান্ড বা লোগো ব্যবহার না চান, তাহলে আপনি যেকোনো সময় অফিসিয়াল সাপোর্ট চ্যানেলের মাধ্যমে একটি আনুষ্ঠানিক লিখিত অপ্ট-আউট অনুরোধ জমা দিয়ে আপনার অপ্ট-আউট অধিকার প্রয়োগ করতে পারেন।
+        </InfoBox>
+      </SectionBlock>
 
-          <SectionBlock title="৭. ইলেকট্রনিক যোগাযোগে সম্মতি" icon={Bell} accent="green">
-            <ul className="list-disc pl-5 space-y-2">
-              <li><strong className="text-slate-800 dark:text-slate-200">লেনদেনগত ও অপারেশনাল:</strong> পেমেন্ট যাচাই সতর্কতা, API স্থিতি বিজ্ঞপ্তি এবং সিস্টেম নিরাপত্তা সতর্কতা।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">সিস্টেম আপডেট ও নীতি পরিবর্তন:</strong> সেবার শর্তাবলী এবং API অবচয়ের আপডেট সম্পর্কিত বিজ্ঞপ্তি।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">প্রচারমূলক ও মার্কেটিং:</strong> নিউজলেটার এবং ফিচার ঘোষণা। যেকোনো সময় অপ্ট-আউট করা যাবে।</li>
-            </ul>
-          </SectionBlock>
+      <SectionBlock title="২১. অ্যাকাউন্ট অ-হস্তান্তরযোগ্যতা" icon={Lock} accent="red">
+        <p>Xelpay মার্চেন্ট অ্যাকাউন্ট নির্দিষ্ট নিবন্ধিত ব্যবসায়িক সত্তা বা স্বতন্ত্র একক মালিকের জন্য জারি করা হয় এবং সর্বদা <strong className="text-slate-800 dark:text-slate-200">কঠোর এবং সম্পূর্ণরূপে অ-হস্তান্তরযোগ্য</strong>।</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">নিষিদ্ধ হস্তান্তর কার্যক্রম:</strong> মার্চেন্টরা তাদের Xelpay মার্চেন্ট অ্যাকাউন্ট, সংশ্লিষ্ট API কী, ওয়েবহুক সিক্রেট বা যেকোনো অ্যাকাউন্ট ক্রেডেনশিয়াল যেকোনো তৃতীয় পক্ষের কাছে বিক্রয়, হস্তান্তর, অ্যাসাইন, ইজারা, ভাড়া, সাবলাইসেন্স, উপহার বা অন্য যেকোনো উপায়ে হস্তান্তর করা বা হস্তান্তরের চেষ্টা করা থেকে স্পষ্টভাবে নিষিদ্ধ।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">ব্যবসায়িক উত্তরাধিকার:</strong> মার্চেন্টের নিবন্ধিত ব্যবসায়িক সত্তার বৈধ অধিগ্রহণ, একীভূতকরণ বা সুবিধাভোগী মালিকানার পরিবর্তনের ক্ষেত্রে, মার্চেন্টকে অবশ্যই কোনো এই ধরনের লেনদেন সম্পন্ন করার আগে Xelpay-কে লিখিতভাবে অবহিত করতে হবে।</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">প্রয়োগ — তাৎক্ষণিক আজীবন নিষিদ্ধকরণ:</strong> একটি Xelpay মার্চেন্ট অ্যাকাউন্টের যেকোনো অননুমোদিত হস্তান্তর বা হস্তান্তরের প্রচেষ্টা একটি গুরুতর, তাৎক্ষণিক নিরাপত্তা এবং AML সম্মতি লঙ্ঘন হিসেবে গণ্য করা হবে।
+            <InfoBox type="danger">
+              <strong className="uppercase tracking-widest text-[11px] block mb-1">AML ঝুঁকি — শূন্য সহনশীলতা</strong>
+              অ্যাকাউন্ট হস্তান্তরের উপর কঠোর নিষেধাজ্ঞা একটি মূল AML সম্মতি নিয়ন্ত্রণ। অননুমোদিত অ্যাকাউন্ট হস্তান্তর সুবিধাভোগী মালিকানা অস্পষ্ট করে, KYC নিয়ন্ত্রণ পরিহার সক্ষম করে এবং অগ্রহণযোগ্য মানি লন্ডারিং ও প্রতারণার ঝুঁকি তৈরি করে। অননুমোদিত হস্তান্তরের কারণে অ্যাকাউন্ট বন্ধকরণে কোনো ফেরত দেওয়া হবে না।
+            </InfoBox>
+          </li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="৮. ডেটা সংরক্ষণ নীতি" icon={Database} accent="green">
-            <ul className="list-disc pl-5 space-y-3">
-              <li><strong className="text-slate-800 dark:text-slate-200">সক্রিয় অ্যাকাউন্ট ডেটা:</strong> আপনার সক্রিয় সাবস্ক্রিপশন এবং অ্যাকাউন্ট স্থিতির সম্পূর্ণ সময়কালের জন্য সংরক্ষিত।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">KYC ও ব্যবসা যাচাই দলিল:</strong> জমা দেওয়ার তারিখ থেকে ন্যূনতম পাঁচ (৫) বছর সংরক্ষিত।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">অ্যাকাউন্ট বন্ধের পরে AML সংরক্ষণ:</strong> অ্যাকাউন্ট বাতিলের পর মানি লন্ডারিং প্রতিরোধ আইন, ২০১২ মেনে চলতে লেনদেন রেকর্ড ন্যূনতম পাঁচ (৫) বছর সংরক্ষিত।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">অ্যাড-অন ব্যবহারের রেকর্ড:</strong> বিলিং বিরোধ নিষ্পত্তি এবং নিরীক্ষার উদ্দেশ্যে ন্যূনতম তিন (৩) বছর সংরক্ষিত।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">লগ ডেটা:</strong> সিস্টেম অ্যাক্সেস লগ সক্রিয় ড্যাশবোর্ড প্রদর্শনের জন্য ৯০ দিন এবং AML সম্মতির জন্য এনক্রিপ্টেড ব্যাকএন্ড আর্কাইভে ৫ বছর সংরক্ষিত।</li>
-              <li><strong className="text-slate-800 dark:text-slate-200">সহায়তা যোগাযোগ:</strong> মান নিশ্চিতকরণ এবং বিরোধ নিষ্পত্তির উদ্দেশ্যে সর্বোচ্চ দুই (২) বছর সংরক্ষিত।</li>
-            </ul>
-          </SectionBlock>
+      <SectionBlock title="২২. অন্তর্নিহিত MFS, ব্যাংক ও তৃতীয় পক্ষের লেনদেন ফি" icon={CreditCard} accent="amber">
+        <p>Xelpay-এর সাবস্ক্রিপশন ফি এবং যেকোনো প্রযোজ্য অ্যাড-অন সার্ভিস ফি একচেটিয়াভাবে Xelpay-এর মালিকানাধীন সফটওয়্যার অবকাঠামো, পেমেন্ট যাচাই ইঞ্জিন, API সার্ভিস, ড্যাশবোর্ড এবং সংশ্লিষ্ট প্রযুক্তিগত সহায়তায় অ্যাক্সেস এবং ব্যবহার কভার করে। এই ফিগুলি মার্চেন্ট বা তাদের গ্রাহকদের দ্বারা পরিচালিত অন্তর্নিহিত আর্থিক লেনদেনের সাথে সম্পর্কিত কোনো তৃতীয় পক্ষের ফি, চার্জ বা খরচ কভার, অন্তর্ভুক্ত, শোষণ বা অফসেট <strong className="text-slate-800 dark:text-slate-200">করে না</strong>।</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">তৃতীয় পক্ষের ফির জন্য মার্চেন্টের একমাত্র দায়িত্ব:</strong> মার্চেন্ট তাদের ব্যবসায়িক লেনদেনের সাথে সংযুক্ত তৃতীয় পক্ষের আর্থিক সেবা প্রদানকারীদের দ্বারা আরোপিত সমস্ত খরচ এবং ফি বহন করার জন্য সম্পূর্ণরূপে দায়ী: MFS ক্যাশ-আউট চার্জ (bKash, Nagad, Rocket ক্যাশ-আউট ফি ইত্যাদি); MFS পার্সন-টু-পার্সন (P2P) সেন্ড মানি ফি বা ট্রান্সফার চার্জ; ব্যাংক-টু-ব্যাংক ট্রান্সফার ফি এবং BEFTN/RTGS চার্জ; আন্তর্জাতিক পেমেন্ট গেটওয়ে প্রক্রিয়াকরণ ফি এবং ক্রস-বর্ডার লেনদেন চার্জ; এবং আর্থিক লেনদেনে বাংলাদেশ সরকার বা যেকোনো অন্যান্য কর কর্তৃপক্ষকে প্রদেয় সমস্ত প্রযোজ্য কর, ভ্যাট বা শুল্ক।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">তৃতীয় পক্ষের ফি কাঠামোর পরিবর্তন:</strong> Xelpay-এর কোনো MFS অপারেটর, ব্যাংক বা পেমেন্ট গেটওয়ে প্রদানকারীর ফি কাঠামো বা মূল্য নির্ধারণ নীতির উপর কোনো নিয়ন্ত্রণ নেই। তৃতীয় পক্ষের ফি পরিবর্তন Xelpay-এর সাবস্ক্রিপশন ফি হ্রাস বা ফেরতের ভিত্তি গঠন করবে না।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">মার্চেন্টের ফি যাচাইয়ের দায়িত্ব:</strong> Xelpay প্ল্যাটফর্মের সাথে তারা যে সমস্ত তৃতীয় পক্ষের আর্থিক সেবা প্রদানকারী ব্যবহার করেন তাদের ফি শিডিউল স্বাধীনভাবে যাচাই করা এবং সর্বশেষ তথ্যের সাথে আপ-টু-ডেট থাকা মার্চেন্টের একমাত্র দায়িত্ব।</li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="৯. আপনার ডেটার অধিকার ও অ্যাকাউন্ট মুছে ফেলা" icon={Trash2} accent="green">
-            <p>প্রযোজ্য আইন এবং আমাদের AML সংরক্ষণ বাধ্যবাধকতার সাপেক্ষে, আপনার ব্যক্তিগত ডেটা সংক্রান্ত নিম্নলিখিত অধিকার রয়েছে: অ্যাক্সেসের অধিকার, সংশোধনের অধিকার, মুছে ফেলার অধিকার ("ভুলে যাওয়ার অধিকার"), ডেটা পোর্টেবিলিটির অধিকার, আপত্তির অধিকার এবং সম্মতি প্রত্যাহারের অধিকার। এই অধিকারগুলি প্রয়োগ করতে আমাদের অফিসিয়াল সহায়তা ইমেইলে যোগাযোগ করুন।</p>
-          </SectionBlock>
-
-          <SectionBlock title="১০. শিশুদের গোপনীয়তা" icon={UserCheck} accent="red">
+      <SectionBlock title="২৩. ড্যাশবোর্ড লগ সংরক্ষণ সীমা ও ডেটা রপ্তানির দায়িত্ব" icon={Database} accent="amber">
+        <p>সর্বোত্তম সার্ভার পারফরম্যান্স এবং খরচ-দক্ষ অবকাঠামো পরিচালনা বজায় রাখতে, Xelpay-এর মার্চেন্ট ড্যাশবোর্ড একটি <strong className="text-slate-800 dark:text-slate-200">সীমিত রোলিং উইন্ডো ভিত্তিতে</strong> সক্রিয় লেনদেনের লগ, অর্ডার ইতিহাস এবং সংশ্লিষ্ট অপারেশনাল ডেটা প্রদর্শন করে। ডিফল্টভাবে, ড্যাশবোর্ড বর্তমানে <strong className="text-slate-800 dark:text-slate-200">নব্বই (৯০) ক্যালেন্ডার দিনের</strong> সাম্প্রতিক রোলিং পিরিয়ডের লেনদেন এবং অপারেশনাল লগ প্রদর্শন করবে।</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">মার্চেন্টের ডেটা রপ্তানির দায়িত্ব:</strong> Xelpay ড্যাশবোর্ডের মধ্যে প্রদত্ত CSV রপ্তানি বা সমমানের ডেটা রপ্তানি কার্যকারিতা ব্যবহার করে তাদের নিজস্ব ব্যবসায়িক হিসাব, পুনর্মিলন, কর সম্মতি, অডিটিং বা বিরোধ সমাধানের উদ্দেশ্যে তাদের প্রয়োজনীয় লেনদেন ডেটা, অর্ডার লগ এবং যেকোনো অন্যান্য অপারেশনাল রেকর্ড নিয়মিত এবং সক্রিয়ভাবে রপ্তানি করা মার্চেন্টের একমাত্র এবং সম্পূর্ণ দায়িত্ব।
             <InfoBox type="warning">
-              Xelpay সেবাগুলি কঠোরভাবে ১৮ বছর বা তার বেশি বয়সী ব্যবহারকারীদের জন্য। আমরা ১৮ বছরের কম বয়সীদের কাছ থেকে জ্ঞাতসারে ব্যক্তিগত ডেটা সংগ্রহ করি না।
+              <strong>পরামর্শ:</strong> Xelpay দৃঢ়ভাবে মার্চেন্টদের একটি নিয়মিত ডেটা রপ্তানি সময়সূচী — ন্যূনতম মাসিক ভিত্তিতে — প্রতিষ্ঠা করার পরামর্শ দেয়। নিয়মিত ডেটা রপ্তানি করতে ব্যর্থতার ফলে রোলিং সংরক্ষণ উইন্ডোর বাইরের ড্যাশবোর্ড-দৃশ্যমান লেনদেনের রেকর্ড স্থায়ীভাবে হারিয়ে যেতে পারে।
             </InfoBox>
-          </SectionBlock>
+          </li>
+          <li><strong className="text-slate-800 dark:text-slate-200">ব্যাকএন্ড AML সংরক্ষণ (ড্যাশবোর্ড-বহির্ভূত):</strong> উপরে বর্ণিত সীমিত ড্যাশবোর্ড ডিসপ্লে উইন্ডো সত্ত্বেও, Xelpay-এর ব্যাকএন্ড সিস্টেম AML নিয়ন্ত্রক প্রয়োজনীয়তার কঠোর সম্মতিতে লেনদেনের তারিখ থেকে ন্যূনতম <strong className="text-slate-800 dark:text-slate-200">পাঁচ (৫) বছরের</strong> জন্য এনক্রিপ্টেড, অপরিবর্তনীয় লেনদেনের লগ আলাদাভাবে সংরক্ষণ করে। এই ব্যাকএন্ড-সংরক্ষিত রেকর্ডগুলি মার্চেন্ট ড্যাশবোর্ডের মাধ্যমে সরাসরি অ্যাক্সেসযোগ্য নয় কিন্তু বৈধ আইনি অনুরোধে সক্ষম নিয়ন্ত্রক বা আইন প্রয়োগকারী কর্তৃপক্ষকে উপলব্ধ করা হতে পারে।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">ড্যাশবোর্ড ডেটা লসের জন্য কোনো দায় নেই:</strong> ড্যাশবোর্ড ডিসপ্লে উইন্ডোর মধ্যে মার্চেন্টের নিজস্ব রেকর্ড রপ্তানি ও বজায় রাখতে ব্যর্থতার ফলে উদ্ভূত কোনো ব্যবসায়িক ক্ষতি, হিসাবের অসামঞ্জস্য বা কর সম্মতির সমস্যার জন্য Xelpay কোনো দায় বহন করে না।</li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="১১. আন্তর্জাতিক ডেটা স্থানান্তর" icon={Globe} accent="green">
-            <p>Xelpay প্রাথমিকভাবে বাংলাদেশ থেকে পরিচালিত হয়। তবে, Vercel এবং Supabase-এর মতো ক্লাউড অবকাঠামো প্রদানকারীদের ব্যবহারের কারণে নির্দিষ্ট ডেটা অন্য দেশের সার্ভারে প্রক্রিয়া করা হতে পারে। আমরা নিশ্চিত করি যে এই ধরনের আন্তর্জাতিক ডেটা স্থানান্তর প্রযোজ্য ডেটা সুরক্ষা আইন মেনে পরিচালিত হয়।</p>
-          </SectionBlock>
+      <SectionBlock title="২৪. API সংস্করণ, আপডেট ও অবচয় নীতি" icon={Zap} accent="purple">
+        <p>Xelpay তার API অবকাঠামোর ক্রমাগত উন্নতি এবং নতুন সংস্করণ প্রকাশের অধিকার সংরক্ষণ করে। Xelpay নতুন API সংস্করণ প্রকাশ, বিদ্যমান API এন্ডপয়েন্টে পরিবর্তন প্রবর্তন এবং পুরানো API সংস্করণ বাতিল বা স্থায়ীভাবে প্রত্যাহার করার অধিকার যেকোনো সময় সংরক্ষণ করে।</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">অবচয় নোটিশ:</strong> যেখানে অপারেশনালভাবে সম্ভব, Xelpay পরিকল্পিত API সংস্করণ অবচয়ের অগ্রিম নোটিশ প্রদানের চেষ্টা করবে। তবে, গুরুতর নিরাপত্তা দুর্বলতা বা জরুরি অপারেশনাল প্রয়োজনীয়তার ক্ষেত্রে, Xelpay তাৎক্ষণিকভাবে পরিবর্তন বাস্তবায়ন বা API সংস্করণ বাতিল করার অধিকার সংরক্ষণ করে।</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">মার্চেন্টের পরম রক্ষণাবেক্ষণ দায়িত্ব:</strong> Xelpay-এর API চেঞ্জলগ, সংস্করণ রিলিজ নোট এবং অবচয় ঘোষণা সক্রিয়ভাবে পর্যবেক্ষণ করা; বর্তমান এবং সমর্থিত API সংস্করণের সাথে সামঞ্জস্যপূর্ণ থাকতে সময়মতো ইন্টিগ্রেশন কোড আপডেট করা মার্চেন্ট এবং তাদের ডেভেলপমেন্ট টিমের <strong>একমাত্র, অপ্রত্যায়নযোগ্য এবং সম্পূর্ণ প্রযুক্তিগত দায়িত্ব</strong>।
+            <InfoBox type="danger">
+              <strong className="uppercase tracking-widest text-[11px] block mb-1">শূন্য দায় — পুরানো কোডের কারণে ভাঙা ইন্টিগ্রেশন</strong>
+              Xelpay-এর বর্তমান API সংস্করণের সাথে সামঞ্জস্যপূর্ণ থাকার জন্য মার্চেন্টের ইন্টিগ্রেশন কোড আপডেট করতে ব্যর্থতার প্রত্যক্ষ বা পরোক্ষ ফলে মার্চেন্টের অভিজ্ঞতা হওয়া ভাঙা ইন্টিগ্রেশন, ব্যর্থ পেমেন্ট যাচাই, মিসড ওয়েবহুক ডেলিভারি বা যেকোনো অন্যান্য প্রযুক্তিগত খারাপ কার্যকারিতার জন্য Xelpay <strong>সম্পূর্ণরূপে কোনো আইনগত, আর্থিক বা পরিচালনগত দায় বহন করে না।</strong>
+            </InfoBox>
+          </li>
+          <li><strong className="text-slate-800 dark:text-slate-200">ইন্টিগ্রেশন ব্যর্থতায় কোনো ফেরত নেই:</strong> পুরানো ইন্টিগ্রেশন কোডের কারণে মার্চেন্টের অভিজ্ঞতা হওয়া API সংস্করণ-সম্পর্কিত ইন্টিগ্রেশন ব্যর্থতা বা সার্ভিস বিঘ্ন সাবস্ক্রিপশন ফির ফেরত বা Xelpay-এর কাছ থেকে কোনো আর্থিক ক্ষতিপূরণের ভিত্তি গঠন করে না।</li>
+        </ul>
+      </SectionBlock>
 
-          <SectionBlock title="১২. যোগাযোগ ও ডেটা সুরক্ষা অনুসন্ধান" icon={Mail} accent="green">
-            <p>সমস্ত গোপনীয়তা-সংশ্লিষ্ট উদ্বেগ, ডেটা অ্যাক্সেসের অনুরোধ, অ্যাকাউন্ট মুছে ফেলার অনুরোধ, বা সন্দেহজনক ডেটা লঙ্ঘন রিপোর্ট করতে আমাদের ওয়েবসাইটে প্রকাশিত Xelpay-এর ডেটা সুরক্ষা দলের অফিসিয়াল সহায়তা ইমেইল ঠিকানায় যোগাযোগ করুন।</p>
-            <p className="mt-3">আইনি নোটিশ বা নিয়ন্ত্রক চিঠিপত্রের জন্য, আমাদের সম্মতি দলের দ্বারা যথাযথ রাউটিং ও ত্বরান্বিত পরিচালনা নিশ্চিত করতে আপনার যোগাযোগের বিষয় লাইনে "LEGAL NOTICE" অন্তর্ভুক্ত করুন।</p>
-          </SectionBlock>
-        </div>
-      </div>
+      <SectionBlock title="২৫. সহায়তা নীতি, SLA ও সহায়তা কর্মীদের হয়রানির বিরুদ্ধে শূন্য-সহনশীলতা" icon={ShieldAlert} accent="red">
+        <p>Xelpay মার্চেন্ট ড্যাশবোর্ডের মধ্যে যোগাযোগ করা তার নির্ধারিত অফিসিয়াল সাপোর্ট চ্যানেলের মাধ্যমে মার্চেন্ট সহায়তা সেবা প্রদান করে।</p>
+        <ul className="list-disc pl-5 mt-3 space-y-3">
+          <li><strong className="text-slate-800 dark:text-slate-200">সর্বোত্তম-প্রচেষ্টা সহায়তা — কোনো গ্যারান্টিযুক্ত রেসপন্স SLA নেই:</strong> যদি না মার্চেন্ট Xelpay-এর সাথে একটি পৃথক, আনুষ্ঠানিকভাবে কার্যকর এন্টারপ্রাইজ চুক্তিতে প্রবেশ করে থাকে যা স্পষ্টভাবে বাধ্যতামূলক রেসপন্স টাইম SLA উল্লেখ করে, সমস্ত মার্চেন্ট সহায়তা কঠোরভাবে <strong>"সর্বোত্তম-প্রচেষ্টা" ভিত্তিতে</strong> প্রদান করা হয়।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">সহায়তার পরিধি:</strong> Xelpay-এর সহায়তা সেবা প্ল্যাটফর্ম-সম্পর্কিত প্রযুক্তিগত সমস্যা, API ইন্টিগ্রেশন সহায়তা, অ্যাকাউন্ট কনফিগারেশন নির্দেশিকা এবং বিলিং অনুসন্ধান কভার করে। সহায়তা মার্চেন্টের শেষ-গ্রাহকদের জন্য সাধারণ সফটওয়্যার ডেভেলপমেন্ট পরামর্শ বা সহায়তা পর্যন্ত বিস্তৃত নয়।</li>
+          <li>
+            <strong className="text-slate-800 dark:text-slate-200">সহায়তা কর্মীদের হয়রানির বিরুদ্ধে শূন্য-সহনশীলতা নীতি:</strong> Xelpay যেকোনো যোগাযোগ চ্যানেলের মাধ্যমে যেকোনো Xelpay সহায়তা কর্মচারী, ঠিকাদার বা প্রতিনিধির প্রতি মার্চেন্ট (বা তাদের পক্ষে কাজ করা যেকোনো ব্যক্তি) কর্তৃক যেকোনো ধরনের অপমানজনক, হুমকিমূলক, হয়রানিমূলক, ভয়ভীতিমূলক, মানহানিকর বা বৈষম্যমূলক আচরণের বিরুদ্ধে একটি পরম এবং অ-আলোচনাযোগ্য শূন্য-সহনশীলতা নীতি বজায় রাখে।
+            <InfoBox type="danger">
+              <strong className="uppercase tracking-widest text-[11px] block mb-1">তাৎক্ষণিক স্থায়ী নিষিদ্ধকরণ — সহায়তা কর্মীদের হয়রানি</strong>
+              নিষিদ্ধ আচরণের মধ্যে অন্তর্ভুক্ত রয়েছে: লিখিত বা মৌখিক যোগাযোগে অপমানজনক, অশ্লীল বা হুমকিমূলক ভাষার ব্যবহার; শারীরিক ক্ষতির হুমকি প্রদান; বারবার হয়রানি বা ইচ্ছাকৃত খারাপ বিশ্বাসের যোগাযোগ। Xelpay সহায়তা কর্মীদের হয়রানির যেকোনো একটি নিশ্চিত ঘটনার ফলে কোনো পূর্ববর্তী সতর্কতা ছাড়াই মার্চেন্টের অ্যাকাউন্ট এবং সমস্ত সংশ্লিষ্ট API অ্যাক্সেসের <strong>তাৎক্ষণিক, স্থায়ী এবং অপরিবর্তনীয় বন্ধকরণ</strong> হবে। <strong>এই নীতির অধীনে বন্ধকরণে কোনো পূর্বপ্রদত্ত সাবস্ক্রিপশন ফি বা অ্যাড-অন চার্জ ফেরত দেওয়া হবে না।</strong>
+            </InfoBox>
+          </li>
+        </ul>
+      </SectionBlock>
     </div>
   );
 }
 
-// ─── MAIN PAGE ────────────────────────────────────────────────────────────────
-export default function LegalPage() {
+// ─── MAIN TERMS PAGE ──────────────────────────────────────────────────────────
+export default function TermsPage() {
   const [lang, setLang] = useState<Lang>('en');
+
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0B1120] md:bg-slate-50 md:dark:bg-[#0B1120]">
-      <div className="max-w-5xl mx-auto bg-white dark:bg-[#0B1120] md:dark:bg-[#111827] rounded-none md:rounded-3xl md:my-8 p-6 md:p-12 shadow-none md:shadow-2xl">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#0B1120] md:bg-slate-50 md:dark:bg-[#0B1120] md:py-12 md:px-6 transition-colors duration-500 font-sans">
+      <div className="max-w-5xl mx-auto bg-white dark:bg-[#0B1120] md:dark:bg-[#111827] rounded-none md:rounded-[2.5rem] shadow-none md:shadow-2xl border-0 md:border border-slate-200 dark:border-slate-800 p-6 md:p-14 min-h-[100dvh] md:min-h-0">
+
         {/* Back Link */}
-        <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 mb-8 group transition-colors">
+        <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 mb-6 transition-colors group">
           <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Home
         </Link>
 
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
-          <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-            {lang === 'en' ? 'Terms & Privacy' : 'শর্তাবলী ও গোপনীয়তা'}
-          </h1>
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-xl"><FileText size={28} /></div>
+            <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+              {lang === 'en' ? 'Terms of Service' : 'সেবার শর্তাবলী'}
+            </h1>
+          </div>
+
           {/* Language Toggle */}
           <div className="flex items-center gap-2 shrink-0">
             <Globe size={16} className="text-slate-400" />
-            <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+            <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 text-xs font-black">
               <button
                 onClick={() => setLang('en')}
-                className={`px-4 py-2 transition-colors uppercase tracking-widest text-xs font-black ${lang === 'en' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                className={`px-4 py-2 transition-colors uppercase tracking-widest ${lang === 'en' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
               >
                 English
               </button>
               <button
                 onClick={() => setLang('bn')}
-                className={`px-4 py-2 transition-colors text-xs font-black ${lang === 'bn' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                className={`px-4 py-2 transition-colors ${lang === 'bn' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
               >
                 বাংলা
               </button>
@@ -1008,103 +783,113 @@ export default function LegalPage() {
           </div>
         </div>
 
-        <p className="text-xs md:text-sm font-bold text-slate-500 uppercase tracking-widest mb-10">
+        <p className="text-xs md:text-sm font-bold text-slate-500 uppercase tracking-widest mb-10 pb-6 border-b border-slate-100 dark:border-slate-800/50">
           {lang === 'en' ? 'Last Updated: April 01, 2026 · Effective Immediately' : 'সর্বশেষ আপডেট: ১ এপ্রিল, ২০২৬ · তাৎক্ষণিকভাবে কার্যকর'}
         </p>
+
+        {/* Also see Privacy Policy link */}
+        <div className="mb-8 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-2xl flex items-center justify-between gap-4">
+          <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+            {lang === 'en' ? 'Also read our Privacy Policy for data handling information.' : 'ডেটা পরিচালনার তথ্যের জন্য আমাদের গোপনীয়তা নীতিও পড়ুন।'}
+          </p>
+          <Link href="/info/privacy" className="shrink-0 text-xs font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 border border-blue-300 dark:border-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors">
+            {lang === 'en' ? 'Privacy Policy →' : 'গোপনীয়তা নীতি →'}
+          </Link>
+        </div>
 
         {/* Table of Contents */}
         <div className="mb-10 p-5 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-200 dark:border-slate-700">
           <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
             <HelpCircle size={14} />
-            {lang === 'en' ? 'Quick Navigation' : 'দ্রুত নেভিগেশন'}
+            {lang === 'en' ? 'Quick Navigation — 25 Sections' : 'দ্রুত নেভিগেশন — ২৫টি অনুচ্ছেদ'}
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-xs font-semibold text-blue-600 dark:text-blue-400">
             {lang === 'en' ? (
               <>
-                <span>Part 1: Terms of Service (25 sections)</span>
-                <span>Part 2: Privacy Policy (12 sections)</span>
-                <span>· Eligibility & Age Restrictions (§3)</span>
-                <span>· Data We Collect & Legal Basis (PP §1–2)</span>
-                <span>· Billing, Add-On Services & No-Refund Policy (§5)</span>
-                <span>· Third-Party Sharing Rules (PP §5)</span>
-                <span>· Acceptable Use & AUP (§6)</span>
-                <span>· Your Data Rights (PP §9)</span>
-                <span>· Device & Internet Dependency — Relay App (§7)</span>
-                <span>· AML Retention Policy — 5 Years (PP §8)</span>
-                <span>· MFS SMS Format Changes & Liability (§7)</span>
-                <span>· Security & Breach Notification (PP §6)</span>
-                <span>· SMS Spoofing & False Positives (§7)</span>
-                <span>· Add-On Usage Data Retention — 3 Years (PP §8)</span>
-                <span>· Webhook & Merchant Server Outages (§7)</span>
-                <span>· KYC Document Collection & Retention (§15, PP §8)</span>
-                <span>· KYC & Business Verification (§15)</span>
-                <span>· Reversed Transactions & Clawbacks (§16)</span>
-                <span>· No End-Customer Support Obligation (§17)</span>
-                <span>· Webhook Idempotency & Double-Crediting (§18)</span>
-                <span>· Regulatory Shutdown & Force Majeure (§19)</span>
-                <span>· Publicity & Marketing Rights — Opt-Out (§20)</span>
-                <span>· Account Non-Transferability & AML Risk (§21)</span>
-                <span>· Underlying MFS/Bank Fees (§22)</span>
-                <span>· Dashboard Log Retention — 90 Days Active (§23)</span>
-                <span>· API Versioning & Deprecation (§24)</span>
-                <span>· Support SLA & Zero-Tolerance for Harassment (§25)</span>
-                <span>· Limitation of Liability (§10)</span>
-                <span>· Governing Law — Bangladesh (§12)</span>
+                <span>1 · Right to Modify Terms</span>
+                <span>14 · Payment Links & Checkout Pages</span>
+                <span>2 · Service Description & Disclaimer</span>
+                <span>15 · KYC & Business Verification</span>
+                <span>3 · Eligibility & Age Restriction</span>
+                <span>16 · Reversed Transactions & Clawbacks</span>
+                <span>4 · Intellectual Property Rights</span>
+                <span>17 · B2B Service — No End-Customer Support</span>
+                <span>5 · Billing, Add-Ons & No-Refund Policy</span>
+                <span>18 · Webhook Idempotency</span>
+                <span>6 · Acceptable Use Policy (AUP)</span>
+                <span>19 · Regulatory Shutdown & Force Majeure</span>
+                <span>7 · Third-Party Integrations & SMS Relay</span>
+                <span>20 · Publicity & Marketing Rights</span>
+                <span>8 · Service Level & Uptime</span>
+                <span>21 · Account Non-Transferability</span>
+                <span>9 · Termination & Suspension Rights</span>
+                <span>22 · Underlying MFS/Bank Fees</span>
+                <span>10 · Force Majeure & Liability Limits</span>
+                <span>23 · Dashboard Log Retention (90 Days)</span>
+                <span>11 · Dispute Resolution & Arbitration</span>
+                <span>24 · API Versioning & Deprecation</span>
+                <span>12 · Governing Law (Bangladesh)</span>
+                <span>25 · Support SLA & Zero Harassment Tolerance</span>
+                <span>13 · Affiliate Program Terms</span>
+                <span></span>
               </>
             ) : (
               <>
-                <span>পার্ট ১: সেবার শর্তাবলী (২৫টি অনুচ্ছেদ)</span>
-                <span>পার্ট ২: গোপনীয়তা নীতি (১২টি অনুচ্ছেদ)</span>
-                <span>· যোগ্যতা ও বয়স সীমাবদ্ধতা (ধারা ৩)</span>
-                <span>· ডেটা সংগ্রহ ও আইনগত ভিত্তি (নীতি ধারা ১–২)</span>
-                <span>· বিলিং, অ্যাড-অন সেবা ও অ-ফেরতযোগ্য নীতি (ধারা ৫)</span>
-                <span>· তৃতীয় পক্ষের শেয়ারিং নিয়ম (নীতি ধারা ৫)</span>
-                <span>· গ্রহণযোগ্য ব্যবহার নীতি (ধারা ৬)</span>
-                <span>· আপনার ডেটার অধিকার (নীতি ধারা ৯)</span>
-                <span>· ডিভাইস ও ইন্টারনেট নির্ভরতা — রিলে অ্যাপ (ধারা ৭)</span>
-                <span>· AML সংরক্ষণ নীতি — ৫ বছর (নীতি ধারা ৮)</span>
-                <span>· MFS SMS ফরম্যাট পরিবর্তন ও দায় (ধারা ৭)</span>
-                <span>· নিরাপত্তা ও লঙ্ঘন বিজ্ঞপ্তি (নীতি ধারা ৬)</span>
-                <span>· SMS স্পুফিং ও মিথ্যা ইতিবাচক (ধারা ৭)</span>
-                <span>· অ্যাড-অন ডেটা সংরক্ষণ — ৩ বছর (নীতি ধারা ৮)</span>
-                <span>· ওয়েবহুক ও মার্চেন্ট সার্ভার আউটেজ (ধারা ৭)</span>
-                <span>· KYC দলিল সংগ্রহ ও সংরক্ষণ (ধারা ১৫, নীতি ধারা ৮)</span>
-                <span>· KYC ও ব্যবসা যাচাইকরণ (ধারা ১৫)</span>
-                <span>· বিপরীত লেনদেন ও ক্ল্যাওব্যাক (ধারা ১৬)</span>
-                <span>· শেষ-গ্রাহক সহায়তার কোনো বাধ্যবাধকতা নেই (ধারা ১৭)</span>
-                <span>· ওয়েবহুক আইডেম্পোটেন্সি ও দ্বি-ক্রেডিটিং (ধারা ১৮)</span>
-                <span>· নিয়ন্ত্রক বন্ধ ও ফোর্স ম্যাজর (ধারা ১৯)</span>
-                <span>· প্রচার ও বিপণন অধিকার — অপ্ট-আউট (ধারা ২০)</span>
-                <span>· অ্যাকাউন্ট অহস্তান্তরযোগ্যতা ও AML ঝুঁকি (ধারা ২১)</span>
-                <span>· অন্তর্নিহিত MFS/ব্যাংক ফি (ধারা ২২)</span>
-                <span>· ড্যাশবোর্ড লগ রিটেনশন — ৯০ দিন সক্রিয় (ধারা ২৩)</span>
-                <span>· API ভার্সনিং ও অবচয় (ধারা ২৪)</span>
-                <span>· সহায়তা SLA ও হয়রানির বিরুদ্ধে শূন্য-সহনশীলতা (ধারা ২৫)</span>
-                <span>· দায়ের সীমাবদ্ধতা (ধারা ১০)</span>
-                <span>· প্রযোজ্য আইন — বাংলাদেশ (ধারা ১২)</span>
+                <span>ধারা ১ · শর্তাবলী পরিবর্তনের অধিকার</span>
+                <span>ধারা ১৪ · পেমেন্ট লিঙ্ক ও চেকআউট পেজ</span>
+                <span>ধারা ২ · সেবার বিবরণ ও দায়মুক্তি</span>
+                <span>ধারা ১৫ · KYC ও ব্যবসা যাচাইকরণ</span>
+                <span>ধারা ৩ · যোগ্যতা ও বয়স সীমাবদ্ধতা</span>
+                <span>ধারা ১৬ · বিপরীত লেনদেন ও ক্ল্যাওব্যাক</span>
+                <span>ধারা ৪ · মেধা সম্পত্তি অধিকার</span>
+                <span>ধারা ১৭ · B2B সেবা — শেষ-গ্রাহক সহায়তা নেই</span>
+                <span>ধারা ৫ · বিলিং, অ্যাড-অন ও অ-ফেরতযোগ্য নীতি</span>
+                <span>ধারা ১৮ · ওয়েবহুক আইডেম্পোটেন্সি</span>
+                <span>ধারা ৬ · গ্রহণযোগ্য ব্যবহার নীতি (AUP)</span>
+                <span>ধারা ১৯ · নিয়ন্ত্রক শাটডাউন ও ফোর্স ম্যাজর</span>
+                <span>ধারা ৭ · তৃতীয় পক্ষের ইন্টিগ্রেশন ও SMS রিলে</span>
+                <span>ধারা ২০ · প্রচার ও মার্কেটিং অধিকার</span>
+                <span>ধারা ৮ · সেবার স্তর ও আপটাইম</span>
+                <span>ধারা ২১ · অ্যাকাউন্ট অ-হস্তান্তরযোগ্যতা</span>
+                <span>ধারা ৯ · অ্যাকাউন্ট বাতিল ও স্থগিতকরণ</span>
+                <span>ধারা ২২ · অন্তর্নিহিত MFS/ব্যাংক ফি</span>
+                <span>ধারা ১০ · ফোর্স ম্যাজর ও দায়ের সীমাবদ্ধতা</span>
+                <span>ধারা ২৩ · ড্যাশবোর্ড লগ সংরক্ষণ (৯০ দিন)</span>
+                <span>ধারা ১১ · বিরোধ নিষ্পত্তি ও সালিশি</span>
+                <span>ধারা ২৪ · API সংস্করণ ও অবচয় নীতি</span>
+                <span>ধারা ১২ · প্রযোজ্য আইন (বাংলাদেশ)</span>
+                <span>ধারা ২৫ · সহায়তা SLA ও হয়রানি-বিরোধী নীতি</span>
+                <span>ধারা ১৩ · অ্যাফিলিয়েট প্রোগ্রামের শর্তাবলী</span>
+                <span></span>
               </>
             )}
           </div>
         </div>
 
         {/* Content */}
-        <div className="text-slate-600 dark:text-slate-400 font-medium leading-relaxed text-sm">
-          {lang === 'en' ? <EnglishContent /> : <BanglaContent />}
+        <div className="text-slate-600 dark:text-slate-400 font-medium leading-relaxed text-sm md:text-base">
+          {lang === 'en' ? <EnglishTermsContent /> : <BanglaTermsContent />}
         </div>
 
         {/* Footer */}
         <div className="mt-16 pt-8 border-t-2 border-dashed border-slate-200 dark:border-slate-800 text-center space-y-3">
           <p className="text-xs md:text-sm font-black text-slate-500 uppercase tracking-widest">
             {lang === 'en'
-              ? 'By checking the agreement box during registration or by utilizing our APIs, you confirm that you have read, understood, and unconditionally agree to this entire document.'
-              : 'নিবন্ধনের সময় চুক্তির বাক্সে চেক করে বা আমাদের API ব্যবহার করে, আপনি নিশ্চিত করছেন যে আপনি এই দলিলের সম্পূর্ণতার সাথে পড়েছেন, বুঝেছেন এবং নিঃশর্তভাবে সম্মত।'}
+              ? 'By checking the agreement box during registration or by utilizing our APIs, you legally bind yourself to the entirety of this document.'
+              : 'নিবন্ধনের সময় চুক্তির বাক্সে চেক করে বা আমাদের API ব্যবহার করে, আপনি এই দলিলের সম্পূর্ণতার সাথে আইনিভাবে নিজেকে আবদ্ধ করছেন।'}
           </p>
           <p className="text-[11px] text-slate-400 font-medium">
             {lang === 'en'
               ? '© 2026 Xenverse IT · Xelpay is a product of Xenverse IT · All Rights Reserved · Bangladesh'
               : '© ২০২৬ Xenverse IT · Xelpay হলো Xenverse IT-এর একটি পণ্য · সর্বস্বত্ব সংরক্ষিত · বাংলাদেশ'}
           </p>
+          <div className="pt-2">
+            <Link href="/privacy" className="text-xs font-bold text-blue-500 hover:text-blue-600 underline underline-offset-2">
+              {lang === 'en' ? 'View Privacy Policy →' : 'গোপনীয়তা নীতি দেখুন →'}
+            </Link>
+          </div>
         </div>
+
       </div>
     </div>
   );

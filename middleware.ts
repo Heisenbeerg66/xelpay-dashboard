@@ -3,9 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+    request: { headers: request.headers },
   });
 
   const supabase = createServerClient(
@@ -13,21 +11,15 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
-        },
+        get(name: string) { return request.cookies.get(name)?.value; },
         set(name: string, value: string, options: CookieOptions) {
           request.cookies.set({ name, value, ...options });
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          });
+          response = NextResponse.next({ request: { headers: request.headers } });
           response.cookies.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
           request.cookies.set({ name, value: '', ...options });
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          });
+          response = NextResponse.next({ request: { headers: request.headers } });
           response.cookies.set({ name, value: '', ...options });
         },
       },
@@ -36,21 +28,26 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  const isAuthPage = ['/login', '/signup', '/forgot-password', '/reset-password'].some(path => request.nextUrl.pathname.startsWith(path));
-  const isDashboard = request.nextUrl.pathname.startsWith('/dashboard');
-  const isCallback = request.nextUrl.pathname.startsWith('/auth/callback');
+  const pathname = request.nextUrl.pathname;
 
-  // 👉 ফিক্স: গুগল থেকে ফেরার সময় মিডলওয়্যার যেন বাধা না দেয়
-  if (isCallback) {
+  // এই পেজগুলোতে middleware কিছুই করবে না
+  const bypassPaths = ['/auth/', '/verify-success', '/auth/verify-success'];
+  if (bypassPaths.some(p => pathname.startsWith(p))) {
     return response;
   }
 
-  // লগইন ছাড়া ড্যাশবোর্ডে যেতে চাইলে লগইন পেজে পাঠাবে
+  const isAuthPage = ['/login', '/signup', '/forgot-password', '/reset-password'].some(
+    path => pathname.startsWith(path)
+  );
+  const isDashboard = pathname.startsWith('/dashboard');
+
+  // লগইন ছাড়া ড্যাশবোর্ডে গেলে লগইনে পাঠাবে
   if (!user && isDashboard) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // লগইন করা অবস্থায় Auth পেজগুলোতে যেতে চাইলে সরাসরি ড্যাশবোর্ডে পাঠাবে
+  // লগইন করা থাকলে auth পেজে গেলে ড্যাশবোর্ডে পাঠাবে
+  // কিন্তু শুধুমাত্র যখন user আছে — merchant check করবে না middleware তে
   if (user && isAuthPage) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
@@ -59,6 +56,11 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // 👉 ফিক্স: রাউট লিস্টে কলব্যাক অ্যাড করা হয়েছে
-  matcher: ['/dashboard/:path*', '/login', '/signup', '/forgot-password', '/reset-password', '/auth/callback'],
+  matcher: [
+    '/dashboard/:path*',
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+  ],
 };

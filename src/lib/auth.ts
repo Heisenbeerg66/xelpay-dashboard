@@ -2,10 +2,9 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Use service role for server-side operations (bypasses RLS securely)
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!, // never exposed to client
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
@@ -13,11 +12,11 @@ function generate6DigitID() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// র‍্যান্ডম কোড জেনারেট করার ফাংশন
 function generateRandomString(length: number) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
-  for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+  for (let i = 0; i < length; i++)
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
   return result;
 }
 
@@ -31,54 +30,78 @@ export async function registerMerchant(payload: {
   referCode: string | null;
   planId: string;
   planPrice: number;
-  merchantDisplayId: string; // <-- ইমেইল সিঙ্কের জন্য ক্লায়েন্ট থেকে আসছে
+  merchantDisplayId: string;
 }) {
   const { userId, email, fullName, phone, address, referCode, planId, planPrice, merchantDisplayId } = payload;
 
-  // Double-check duplicate (server-side — cannot be bypassed from client)
-  const { data: existing } = await supabaseAdmin
+  // ১. আগে userId দিয়ে check করো — duplicate signup হলে gracefully handle করো
+  const { data: existingById } = await supabaseAdmin
     .from('merchants')
-    .select('id')
-    .or(`email.eq.${email},phone.eq.${phone}`)
+    .select('id, merchant_id_display')
+    .eq('id', userId)
     .maybeSingle();
 
-  if (existing) {
-    return { error: 'Email or phone already registered.' };
+  if (existingById) {
+    // ইতিমধ্যে আছে — same merchantDisplayId return করো (idempotent)
+    return { merchantDisplayId: existingById.merchant_id_display };
+  }
+
+  // ২. Email বা phone duplicate check
+  const orFilter = phone
+    ? `email.eq.${email},phone.eq.${phone}`
+    : `email.eq.${email}`;
+
+  const { data: existingByContact } = await supabaseAdmin
+    .from('merchants')
+    .select('id')
+    .or(orFilter)
+    .maybeSingle();
+
+  if (existingByContact) {
+    return { error: 'Email or phone already registered. Please login.' };
   }
 
   const accountStatus = planPrice === 0 ? 'active' : 'pending';
-  
-  // টেলিগ্রাম এবং ডিভাইসের জন্য কোড জেনারেট
   const telegramCode = generateRandomString(12);
   const deviceKey = generateRandomString(24);
 
-  const { error } = await supabaseAdmin.from('merchants').upsert({
+  const { error } = await supabaseAdmin.from('merchants').insert({
     id: userId,
     merchant_id_display: merchantDisplayId,
     slug: null,
     name: fullName,
     email,
-    phone,
-    address,
+    phone: phone || null,
+    address: address || null,
     currency: 'BDT',
     status: accountStatus,
+    subscription_status: accountStatus,
     plan_id: planId,
     referred_by: referCode || null,
     is_demo: false,
-    subscription_status: accountStatus,
-    telegram_id_code: telegramCode,        // <-- স্টোর হচ্ছে
-    device_connection_key: deviceKey       // <-- স্টোর হচ্ছে
+    is_email_verified: false,
+    telegram_id_code: telegramCode,
+    device_connection_key: deviceKey,
   });
 
   if (error) {
-    console.error('[registerMerchant] DB error:', error);
+    console.error('[registerMerchant] DB error:', error.message, error.details);
+    // Duplicate key error — userId already exists (race condition)
+    if (error.code === '23505') {
+      const { data: race } = await supabaseAdmin
+        .from('merchants')
+        .select('merchant_id_display')
+        .eq('id', userId)
+        .maybeSingle();
+      if (race) return { merchantDisplayId: race.merchant_id_display };
+    }
     return { error: 'Failed to create merchant profile. Contact support.' };
   }
 
   return { merchantDisplayId };
 }
 
-// ─── REGISTER MERCHANT VIA GOOGLE OAUTH (called from /auth/callback) ───────
+// ─── REGISTER MERCHANT VIA GOOGLE OAUTH ────────────────────────────────────
 export async function registerMerchantOAuth(payload: {
   userId: string;
   email: string;
@@ -89,7 +112,7 @@ export async function registerMerchantOAuth(payload: {
 }) {
   const { userId, email, fullName, planId, planPrice, referCode } = payload;
 
-  // ১. userId দিয়ে check — পুরনো user হলে alreadyExists return করো (re-login)
+  // ১. userId দিয়ে check — পুরনো user হলে alreadyExists return করো
   const { data: existingById } = await supabaseAdmin
     .from('merchants')
     .select('id')
@@ -98,8 +121,7 @@ export async function registerMerchantOAuth(payload: {
 
   if (existingById) return { alreadyExists: true };
 
-  // ২. Email দিয়ে check — ভিন্ন account এ এই email আগে থেকে registered কিনা
-  // এটা হয় যদি কেউ email/password দিয়ে আগে signup করেছে এখন Google দিয়ে try করছে
+  // ২. Email দিয়ে check — অন্য account এ এই email আছে কিনা
   const { data: existingByEmail } = await supabaseAdmin
     .from('merchants')
     .select('id')
@@ -107,14 +129,11 @@ export async function registerMerchantOAuth(payload: {
     .maybeSingle();
 
   if (existingByEmail) {
-    // এই email আগে থেকে অন্য account এ registered — block করো
     return { error: 'Email already registered. Please login with your existing account.' };
   }
 
   const merchantDisplayId = generate6DigitID();
-  const accountStatus = planPrice === 0 ? 'active' : 'pending'; 
-
-  // টেলিগ্রাম এবং ডিভাইসের জন্য কোড জেনারেট
+  const accountStatus = planPrice === 0 ? 'active' : 'pending';
   const telegramCode = generateRandomString(12);
   const deviceKey = generateRandomString(24);
 
@@ -124,28 +143,32 @@ export async function registerMerchantOAuth(payload: {
     slug: null,
     name: fullName,
     email,
-    phone: null,        // <-- Google auth এ ফোন null থাকবে
-    address: null,      // <-- Google auth এ অ্যাড্রেস null থাকবে
+    phone: null,
+    address: null,
     currency: 'BDT',
-    status: accountStatus, 
+    status: accountStatus,
+    subscription_status: accountStatus,
     plan_id: planId,
     referred_by: referCode || null,
     is_demo: false,
-    subscription_status: accountStatus, 
-    is_email_verified: true, // Google accounts are pre-verified
-    telegram_id_code: telegramCode,        // <-- স্টোর হচ্ছে
-    device_connection_key: deviceKey       // <-- স্টোর হচ্ছে
+    is_email_verified: true, // Google accounts pre-verified
+    telegram_id_code: telegramCode,
+    device_connection_key: deviceKey,
   });
 
   if (error) {
-    console.error('[registerMerchantOAuth] DB error:', error);
+    console.error('[registerMerchantOAuth] DB error:', error.message, error.details);
+    if (error.code === '23505') {
+      // Race condition — already inserted
+      return { alreadyExists: true };
+    }
     return { error: 'Failed to create merchant profile.' };
   }
 
   return { merchantDisplayId };
 }
 
-// ─── SYNC EMAIL VERIFIED FLAG (called after login) ──────────────────────────
+// ─── SYNC EMAIL VERIFIED FLAG ──────────────────────────────────────────────
 export async function syncEmailVerified(userId: string) {
   await supabaseAdmin
     .from('merchants')
@@ -153,11 +176,11 @@ export async function syncEmailVerified(userId: string) {
     .eq('id', userId);
 }
 
-// ─── GET MERCHANT STATUS (for login gate checks) ────────────────────────────
+// ─── GET MERCHANT STATUS ───────────────────────────────────────────────────
 export async function getMerchantStatus(userId: string) {
   const { data } = await supabaseAdmin
     .from('merchants')
-    .select('status, is_demo')
+    .select('status, is_demo, subscription_status')
     .eq('id', userId)
     .single();
   return data;
