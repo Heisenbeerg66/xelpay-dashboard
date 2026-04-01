@@ -169,24 +169,39 @@ function SignUpContent() {
     return [...columnFeatures.filter(Boolean) as string[], ...extraFeatures];
   };
 
-  const handleGoogleSignUp = async () => {
-    if (mode === 'demo') {
-      toast.error("You don't need to create a new account in demo mode. Please login with demo@xelpay.com / demo123456", { duration: 5000 });
-      return;
-    }
-    setGoogleLoading(true);
-    // source=signup পাঠাচ্ছি না — plan_id ও ref পাঠাচ্ছি যাতে callback signup flow বুঝবে
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?plan_id=${selectedPlan?.id}&ref=${formData.referCode}`,
-      }
-    });
-    if (error) {
-      setErrorModal({ show: true, message: error.message });
-      setGoogleLoading(false);
-    }
-  };
+  // signup/page.tsx এর handleGoogleSignUp function টা এভাবে replace করো:
+
+const handleGoogleSignUp = async () => {
+  if (mode === 'demo') {
+    toast.error("You don't need to create a new account in demo mode.", { duration: 5000 });
+    return;
+  }
+  if (!selectedPlan) {
+    toast.error("Please select a plan first.");
+    return;
+  }
+
+  setGoogleLoading(true);
+
+  // Google redirect এর আগে plan info localStorage এ save করো
+  // কারণ Supabase OAuth flow এ custom query params হারিয়ে যায়
+  localStorage.setItem('oauth_plan_id', selectedPlan.id);
+  localStorage.setItem('oauth_plan_price', String(selectedPlan.price));
+  localStorage.setItem('oauth_refer_code', formData.referCode || '');
+  localStorage.setItem('oauth_source', 'signup');
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    },
+  });
+
+  if (error) {
+    setErrorModal({ show: true, message: error.message });
+    setGoogleLoading(false);
+  }
+};
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();

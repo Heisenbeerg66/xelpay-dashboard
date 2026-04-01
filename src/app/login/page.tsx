@@ -135,19 +135,31 @@ function LoginContent() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    if (mode === 'demo') {
-      toast.error("Google login disabled in demo mode. Please use demo@xelpay.com / demo123456");
-      return;
-    }
-    setGoogleLoading(true);
-    // source=login পাঠাচ্ছি যাতে callback জানে এটা login flow
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback?source=login` }
-    });
-    if (error) { toast.error(error.message); setGoogleLoading(false); }
-  };
+  // login/page.tsx এর handleGoogleLogin function টা এভাবে replace করো:
+
+const handleGoogleLogin = async () => {
+  if (mode === 'demo') {
+    toast.error("Google login disabled in demo mode.");
+    return;
+  }
+
+  setGoogleLoading(true);
+
+  // Login flow mark করো
+  localStorage.setItem('oauth_source', 'login');
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    },
+  });
+
+  if (error) {
+    toast.error(error.message);
+    setGoogleLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0B1120] md:bg-slate-50 md:dark:bg-[#0B1120] flex items-center justify-center p-4 md:p-8 transition-colors duration-500 font-sans">
