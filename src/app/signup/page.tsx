@@ -141,7 +141,6 @@ function SignUpContent() {
     fetchPrivacyLink();
   }, []);
 
-  // FIX 7: Build full feature list same as landing page
   const buildPlanFeatures = (plan: any): string[] => {
     if (!plan) return [];
     const transactionLabel =
@@ -207,12 +206,27 @@ function SignUpContent() {
     setLoading(true);
 
     const fullPhone = `${countryCode}${formData.phone.replace(/\s/g, '')}`;
+    
+    // ১. ক্লায়েন্ট সাইডে আইডি ও ইমেইলের জন্য ডায়নামিক ডাটা জেনারেট করা
+    const generatedMerchantId = Math.floor(100000 + Math.random() * 900000).toString();
+    const planStatusText = selectedPlan.price === 0 ? 'Active' : 'Pending';
+    const planStatusColor = selectedPlan.price === 0 ? '#10b981' : '#f59e0b';
+    const planPriceText = selectedPlan.price === 0 ? 'Free' : `৳${selectedPlan.price} / Month`;
 
-    // 1. Supabase Auth Signup
+    // ২. Supabase Auth Signup (data পাঠানো হচ্ছে ইমেইল টেমপ্লেটের জন্য)
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
-      options: { data: { full_name: formData.fullName } }
+      options: { 
+        data: { 
+          full_name: formData.fullName,
+          merchant_id: generatedMerchantId,
+          plan_name: selectedPlan.name,
+          plan_price: planPriceText,
+          status_text: planStatusText,
+          status_color: planStatusColor
+        } 
+      }
     });
 
     if (authError) {
@@ -222,7 +236,7 @@ function SignUpContent() {
     }
 
     if (authData.user) {
-      // FIX 9: Use server action — subscription_status decided server-side, cannot be tampered
+      // ৩. সার্ভার অ্যাকশনে ডাটা সেভ করা (একই merchant ID দিয়ে)
       const result = await registerMerchant({
         userId: authData.user.id,
         email: formData.email,
@@ -231,7 +245,8 @@ function SignUpContent() {
         address: formData.address,
         referCode: formData.referCode || null,
         planId: selectedPlan.id,
-        planPrice: selectedPlan.price, // server decides active/pending based on this
+        planPrice: selectedPlan.price,
+        merchantDisplayId: generatedMerchantId // <-- পাস করা হচ্ছে
       });
 
       if (result.error) {
@@ -242,15 +257,12 @@ function SignUpContent() {
       }
     }
     setLoading(false);
-  };
-
-  return (
+  };return (
     <div className="min-h-screen bg-white dark:bg-[#0B1120] md:bg-slate-50 md:dark:bg-[#0B1120] flex items-center justify-center md:p-12 transition-colors duration-500 font-sans">
       <Toaster position="top-center" richColors />
       <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-0 md:gap-8 items-start bg-white dark:bg-[#0B1120] md:bg-transparent md:dark:bg-transparent rounded-none md:rounded-[3rem]">
         
         {/* Left Side: Order Cart */}
-        {/* FIX 6: Show plan info on ALL screen sizes — removed hidden logic */}
         <div className="lg:col-span-4 sticky top-0 lg:top-8 z-20 bg-white dark:bg-[#0B1120] md:bg-transparent md:dark:bg-transparent p-4 md:p-0 border-b border-slate-100 dark:border-slate-800 lg:border-0 shadow-sm lg:shadow-none">
           <div className="bg-white dark:bg-[#111827] rounded-2xl lg:rounded-3xl p-5 md:p-8 shadow-md lg:shadow-xl border border-slate-200 dark:border-slate-800">
             
@@ -260,7 +272,6 @@ function SignUpContent() {
               </div>
             )}
 
-            {/* FIX 8: Back button on desktop cart */}
             <div className="hidden lg:flex items-center gap-2 mb-5">
               <Link href="/" className="flex items-center gap-1.5 text-slate-400 hover:text-blue-600 text-xs font-bold transition-colors">
                 <ArrowLeft size={14} /> Back to Home
@@ -275,7 +286,6 @@ function SignUpContent() {
               <button onClick={() => setShowPlanSwitcher(true)} className="text-[10px] font-black bg-blue-50 dark:bg-blue-900/30 text-blue-600 px-3 py-1.5 rounded-full uppercase hover:bg-blue-600 hover:text-white transition-all">Change Plan</button>
             </div>
             
-            {/* FIX 6 & 7: Plan info shows on all screens. Shows transaction limit + key features in cart */}
             {selectedPlan ? (
               <div className="p-4 md:p-5 bg-slate-50 dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-700 relative overflow-hidden">
                 <div className="absolute -right-6 -top-6 w-24 h-24 bg-blue-600/10 rounded-full blur-2xl"></div>
@@ -292,16 +302,13 @@ function SignUpContent() {
                   <span className="text-[10px] font-bold text-slate-500 uppercase">/month</span>
                 </div>
 
-                {/* FIX 7: Show transaction limit + features in cart */}
                 <ul className="space-y-1.5">
-                  {/* Transaction limit always shown */}
                   <li className="flex items-start gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
                     <CheckCircle size={13} className="text-blue-500 shrink-0 mt-0.5" />
                     {(selectedPlan.transaction_limit_monthly ?? 100) === 0
                       ? 'Unlimited transactions / month'
                       : `${(selectedPlan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`}
                   </li>
-                  {/* Show up to 3 more features */}
                   {(Array.isArray(selectedPlan.features) ? selectedPlan.features : []).slice(0, 3).map((f: string, i: number) => (
                     <li key={i} className="flex items-start gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
                       <CheckCircle size={13} className="text-green-500 shrink-0 mt-0.5" /> {f}
@@ -318,19 +325,15 @@ function SignUpContent() {
               <div className="h-32 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse"></div>
             )}
           </div>
-        </div>
-
-        {/* Right Side: Signup Form */}
+        </div>{/* Right Side: Signup Form */}
         <div className="lg:col-span-8 bg-white dark:bg-[#111827] rounded-none lg:rounded-[3rem] shadow-none lg:shadow-2xl p-5 md:p-12 border-0 lg:border lg:border-slate-200 lg:dark:border-slate-800">
 
-          {/* FIX 8: Back button on desktop form area (mobile handled in cart) */}
           <div className="hidden lg:flex items-center gap-2 mb-6">
             <button onClick={() => router.back()} className="flex items-center gap-1.5 text-slate-400 hover:text-blue-600 text-xs font-bold transition-colors">
               <ArrowLeft size={14} /> Go Back
             </button>
           </div>
 
-          {/* FIX 8: Mobile back button */}
           <div className="flex lg:hidden items-center gap-2 mb-4 mt-1">
             <Link href="/" className="flex items-center gap-1.5 text-slate-500 hover:text-blue-600 text-xs font-bold transition-colors">
               <ArrowLeft size={14} /> Home

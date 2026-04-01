@@ -23,8 +23,9 @@ export async function registerMerchant(payload: {
   referCode: string | null;
   planId: string;
   planPrice: number;
+  merchantDisplayId: string; // <-- ইমেইল সিঙ্কের জন্য ক্লায়েন্ট থেকে আসছে
 }) {
-  const { userId, email, fullName, phone, address, referCode, planId, planPrice } = payload;
+  const { userId, email, fullName, phone, address, referCode, planId, planPrice, merchantDisplayId } = payload;
 
   // Double-check duplicate (server-side — cannot be bypassed from client)
   const { data: existing } = await supabaseAdmin
@@ -37,11 +38,8 @@ export async function registerMerchant(payload: {
     return { error: 'Email or phone already registered.' };
   }
 
-  const merchantDisplayId = generate6DigitID();
-
-  // subscription_status: free plan → active, paid plan → pending
-  // Client CANNOT override this — decided server-side from plan price
-  const subscriptionStatus = planPrice === 0 ? 'active' : 'pending';
+  // subscription_status & status: free plan → active, paid plan → pending
+  const accountStatus = planPrice === 0 ? 'active' : 'pending';
 
   const { error } = await supabaseAdmin.from('merchants').upsert({
     id: userId,
@@ -52,11 +50,11 @@ export async function registerMerchant(payload: {
     phone,
     address,
     currency: 'BDT',
-    status: 'pending',
+    status: accountStatus, // <-- এখন ফ্রী প্ল্যান হলে এটিও active হবে
     plan_id: planId,
     referred_by: referCode || null,
     is_demo: false,
-    subscription_status: subscriptionStatus,
+    subscription_status: accountStatus, // <-- এটিও active হবে
   });
 
   if (error) {
@@ -88,7 +86,7 @@ export async function registerMerchantOAuth(payload: {
   if (existing) return { alreadyExists: true };
 
   const merchantDisplayId = generate6DigitID();
-  const subscriptionStatus = planPrice === 0 ? 'active' : 'pending';
+  const accountStatus = planPrice === 0 ? 'active' : 'pending'; // <-- আপডেট করা হয়েছে
 
   const { error } = await supabaseAdmin.from('merchants').insert({
     id: userId,
@@ -97,11 +95,11 @@ export async function registerMerchantOAuth(payload: {
     name: fullName,
     email,
     currency: 'BDT',
-    status: 'pending',
+    status: accountStatus, // <-- আপডেট করা হয়েছে
     plan_id: planId,
     referred_by: referCode || null,
     is_demo: false,
-    subscription_status: subscriptionStatus,
+    subscription_status: accountStatus, // <-- আপডেট করা হয়েছে
     is_email_verified: true, // Google accounts are pre-verified
   });
 
