@@ -1,31 +1,15 @@
 'use client';
 
-import { useEffect } from 'react';
 import { CheckCircle, LogIn, Home, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
 
-// Email verify করার পর এই পেজে আসে।
-// এখানে আসলে আমরা session sign out করে দেবো যাতে middleware
-// user কে dashboard এ auto-redirect না করে।
 export default function VerifySuccess() {
-  useEffect(() => {
-    // Verify link click করলে Supabase একটা session তৈরি করে।
-    // আমরা সেটা clear করে দিচ্ছি — user কে manually login করতে হবে।
-    const clearSession = async () => {
-      await supabase.auth.signOut({ scope: 'local' });
-      localStorage.clear();
-      sessionStorage.clear();
-    };
-    clearSession();
-  }, []);
-
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0B1120] md:bg-slate-50 md:dark:bg-[#0B1120] flex flex-col md:flex-row items-center justify-center font-sans">
-      <div className="w-full max-w-md bg-white dark:bg-[#0B1120] md:bg-white md:dark:bg-[#111827] md:rounded-[2.5rem] p-8 md:p-10 text-center shadow-none md:shadow-2xl border-0 md:border border-slate-100 dark:border-slate-800 relative overflow-hidden flex flex-col justify-center min-h-screen md:min-h-0">
+    <div className="min-h-screen bg-white dark:bg-[#0B1120] md:bg-slate-50 md:dark:bg-[#0B1120] flex flex-col items-center justify-center font-sans">
+      <div className="w-full max-w-md bg-white dark:bg-[#111827] md:rounded-[2.5rem] p-8 md:p-10 text-center shadow-none md:shadow-2xl border-0 md:border border-slate-100 dark:border-slate-800 relative overflow-hidden">
 
-        <div className="absolute -top-24 -left-24 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl hidden md:block"></div>
-        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-emerald-600/10 rounded-full blur-3xl hidden md:block"></div>
+        <div className="absolute -top-24 -left-24 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-emerald-600/10 rounded-full blur-3xl"></div>
 
         <div className="mb-8 flex justify-center">
           <CheckCircle size={80} strokeWidth={2} className="text-[#10B981]" />
@@ -39,17 +23,10 @@ export default function VerifySuccess() {
         </p>
 
         <div className="flex flex-col gap-4">
-          <Link
-            href="/login"
-            className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-600/30 hover:bg-blue-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
-          >
+          <Link href="/login" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-600/30 hover:bg-blue-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-2">
             <LogIn size={20} /> Login Now
           </Link>
-
-          <Link
-            href="/"
-            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-4 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
-          >
+          <Link href="/" className="w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-4 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2">
             <Home size={20} /> Back to Home
           </Link>
         </div>

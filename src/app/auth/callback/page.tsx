@@ -11,23 +11,22 @@ function AuthCallbackContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const handleGoogleCallback = async () => {
+    const handle = async () => {
       const code = searchParams.get('code');
       const source = searchParams.get('source'); // 'login' হলে login flow
 
       if (!code) {
-        // কোড না থাকলে session check করো
         const { data: { session } } = await supabase.auth.getSession();
         if (session) router.replace('/dashboard');
         else router.replace('/login');
         return;
       }
 
-      // ১. কোড থেকে session তৈরি করো
+      // Code থেকে session তৈরি করো
       const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
       if (exchangeError || !exchangeData?.session) {
-        console.error('Exchange Error:', exchangeError);
+        console.error('Exchange error:', exchangeError);
         router.replace('/login');
         return;
       }
@@ -36,20 +35,25 @@ function AuthCallbackContent() {
 
       // ── LOGIN FLOW ──
       if (source === 'login') {
-        const { data: merchant, error: merchantError } = await supabase
+        const { data: merchant } = await supabase
           .from('merchants')
-          .select('status, subscription_status, is_demo')
+          .select('id, status, subscription_status, is_demo')
           .eq('id', user.id)
           .maybeSingle();
 
         if (!merchant) {
+          // Merchant নেই — sign out করে login এ error সহ পাঠাও
           await supabase.auth.signOut();
+          localStorage.clear();
+          sessionStorage.clear();
           router.replace('/login?error=no_account');
           return;
         }
 
         if (merchant.status === 'suspended') {
           await supabase.auth.signOut();
+          localStorage.clear();
+          sessionStorage.clear();
           router.replace('/login?error=suspended');
           return;
         }
@@ -74,23 +78,24 @@ function AuthCallbackContent() {
         });
 
         if (result.error) {
-          // Email already exists — sign out করে signup এ error পাঠাও
+          // Email অন্য account এ আছে
           await supabase.auth.signOut();
+          localStorage.clear();
+          sessionStorage.clear();
           router.replace('/signup?error=email_exists');
           return;
         }
 
-        // নতুন account বা existing — dashboard এ পাঠাও
+        // নতুন account তৈরি হয়েছে বা আগেই ছিল → dashboard এ যাও
         router.replace('/dashboard');
 
       } catch (err) {
-        console.error('registerMerchantOAuth error:', err);
-        // Error হলেও dashboard try করো (merchant হয়তো আগেই আছে)
+        console.error('OAuth register error:', err);
         router.replace('/dashboard');
       }
     };
 
-    handleGoogleCallback();
+    handle();
   }, [router, searchParams]);
 
   return (

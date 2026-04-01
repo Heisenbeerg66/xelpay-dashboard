@@ -26,29 +26,42 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
-
   const pathname = request.nextUrl.pathname;
 
-  // এই পেজগুলোতে middleware কিছুই করবে না
-  const bypassPaths = ['/auth/', '/verify-success', '/auth/verify-success'];
-  if (bypassPaths.some(p => pathname.startsWith(p))) {
+  // এই paths এ middleware কিছু করে না
+  if (pathname.startsWith('/auth/') || pathname.startsWith('/api/')) {
     return response;
   }
+
+  const { data: { user } } = await supabase.auth.getUser();
 
   const isAuthPage = ['/login', '/signup', '/forgot-password', '/reset-password'].some(
     path => pathname.startsWith(path)
   );
   const isDashboard = pathname.startsWith('/dashboard');
 
-  // লগইন ছাড়া ড্যাশবোর্ডে গেলে লগইনে পাঠাবে
+  // লগইন ছাড়া dashboard → login এ পাঠাও
   if (!user && isDashboard) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // লগইন করা থাকলে auth পেজে গেলে ড্যাশবোর্ডে পাঠাবে
-  // কিন্তু শুধুমাত্র যখন user আছে — merchant check করবে না middleware তে
+  // লগইন আছে এবং auth page এ আসছে
   if (user && isAuthPage) {
+    // Merchant আছে কিনা check করো
+    const { data: merchant } = await supabase
+      .from('merchants')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!merchant) {
+      // Auth আছে কিন্তু merchant নেই → force signout করে signup এ পাঠাও
+      const url = new URL('/auth/force-signout', request.url);
+      url.searchParams.set('redirect', '/signup');
+      return NextResponse.redirect(url);
+    }
+
+    // Merchant আছে → dashboard এ পাঠাও
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 

@@ -18,17 +18,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // ইউজার না থাকলে লগইনে পাঠাবে
   if (!user) redirect('/login');
 
-  // ইউজারের মার্চেন্ট প্রোফাইল ফেচ করা হচ্ছে
   const { data: merchant } = await supabase
     .from('merchants')
     .select('*')
     .eq('id', user.id)
-    .single();
+    .maybeSingle();
 
-  if (!merchant) redirect('/login');
+  if (!merchant) {
+    // Auth আছে কিন্তু merchant নেই → force signout করে signup এ পাঠাও
+    redirect('/auth/force-signout?redirect=/signup');
+  }
 
   return (
     <DashboardClient merchant={merchant} user={user}>
