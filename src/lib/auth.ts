@@ -1,9 +1,9 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient} from '@supabase/ssr';
 
 // Use service role for server-side operations (bypasses RLS securely)
-const supabaseAdmin = createClient(
+const supabaseAdmin = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!, // never exposed to client
   { auth: { autoRefreshToken: false, persistSession: false } }
