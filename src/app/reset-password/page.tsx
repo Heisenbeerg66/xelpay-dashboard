@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Lock, Eye, EyeOff, CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -16,8 +16,6 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Supabase automatically handles the session when clicking the email link
-  // So we just need to update the user's password.
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -33,6 +31,7 @@ export default function ResetPassword() {
 
     setLoading(true);
 
+    // Supabase automatically updates the password for the user authenticated via the reset link
     const { error } = await supabase.auth.updateUser({
       password: password
     });
@@ -48,14 +47,11 @@ export default function ResetPassword() {
   };
 
   return (
-    // ✅ Outer container: Solid background on mobile, subtle background on desktop
-    <div className="min-h-screen bg-white dark:bg-[#0B1120] md:bg-slate-50 md:dark:bg-[#0B1120] flex items-center justify-center p-4 md:p-6 transition-colors duration-500 font-sans">
+    <div className="min-h-screen bg-white dark:bg-[#0B1120] md:bg-slate-50 md:dark:bg-[#0B1120] flex items-start md:items-center justify-center p-4 pt-12 md:pt-6 transition-colors duration-500 font-sans">
       <Toaster position="top-center" richColors />
       
-      {/* ✅ Inner container: fully blended on mobile, Pro Card on desktop */}
-      <div className="w-full max-w-md bg-white dark:bg-[#0B1120] md:bg-white md:dark:bg-[#111827] rounded-none md:rounded-[2.5rem] shadow-none md:shadow-2xl p-6 md:p-10 border-0 md:border md:border-slate-100 dark:border-slate-800 flex flex-col justify-center min-h-[80vh] md:min-h-0 relative z-10">
+      <div className="w-full max-w-md bg-white dark:bg-[#0B1120] md:bg-white md:dark:bg-[#111827] rounded-none md:rounded-[2.5rem] shadow-none md:shadow-2xl p-6 md:p-10 border-0 md:border md:border-slate-100 dark:border-slate-800 flex flex-col justify-start md:justify-center relative z-10">
         
-        {/* Brand Logo */}
         <div className="text-center mb-10 mt-4 md:mt-0">
           <Link href="/" className="inline-flex items-center gap-1 group mb-2">
             <span className="text-4xl font-black text-blue-600 tracking-tighter group-hover:scale-105 transition-transform">X</span>
@@ -72,15 +68,16 @@ export default function ResetPassword() {
             
             <form onSubmit={handleUpdatePassword} className="space-y-5">
               
-              {/* New Password Field */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider">New Password</label>
+                <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider flex items-center gap-1">
+                  New Password <span className="text-red-500">*</span>
+                </label>
                 <div className="relative group">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
                   <input 
                     required 
                     type={showPassword ? "text" : "password"} 
-                    placeholder="••••••••" 
+                    placeholder="Enter Your New Password" 
                     value={password}
                     className="w-full pl-12 pr-12 py-3.5 bg-slate-50 dark:bg-[#0B1120] md:dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:text-white placeholder:text-slate-400 transition-all font-medium text-sm" 
                     onChange={(e) => setPassword(e.target.value)} 
@@ -95,17 +92,18 @@ export default function ResetPassword() {
                 </div>
               </div>
 
-              {/* Confirm Password Field */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider">Confirm Password</label>
+                <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider flex items-center gap-1">
+                  Confirm Password <span className="text-red-500">*</span>
+                </label>
                 <div className="relative group">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
                   <input 
                     required 
                     type={showConfirmPassword ? "text" : "password"} 
-                    placeholder="••••••••" 
+                    placeholder="Confirm Your New Password" 
                     value={confirmPassword}
-                    className="w-full pl-12 pr-12 py-3.5 bg-slate-50 dark:bg-[#0B1120] md:dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:text-white placeholder:text-slate-400 transition-all font-medium text-sm" 
+                    className={`w-full pl-12 pr-12 py-3.5 bg-slate-50 dark:bg-[#0B1120] md:dark:bg-[#111827] border rounded-xl outline-none focus:ring-1 transition-all font-medium text-sm text-slate-900 dark:text-white ${confirmPassword && password !== confirmPassword ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : 'border-slate-200 dark:border-slate-800 focus:border-blue-500 focus:ring-blue-500'}`}
                     onChange={(e) => setConfirmPassword(e.target.value)} 
                   />
                   <button 

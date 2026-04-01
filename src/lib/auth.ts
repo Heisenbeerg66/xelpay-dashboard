@@ -13,6 +13,14 @@ function generate6DigitID() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// র‍্যান্ডম কোড জেনারেট করার ফাংশন
+function generateRandomString(length: number) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+  return result;
+}
+
 // ─── REGISTER MERCHANT (Email/Password) ────────────────────────────────────
 export async function registerMerchant(payload: {
   userId: string;
@@ -38,8 +46,11 @@ export async function registerMerchant(payload: {
     return { error: 'Email or phone already registered.' };
   }
 
-  // subscription_status & status: free plan → active, paid plan → pending
   const accountStatus = planPrice === 0 ? 'active' : 'pending';
+  
+  // টেলিগ্রাম এবং ডিভাইসের জন্য কোড জেনারেট
+  const telegramCode = generateRandomString(12);
+  const deviceKey = generateRandomString(24);
 
   const { error } = await supabaseAdmin.from('merchants').upsert({
     id: userId,
@@ -50,11 +61,13 @@ export async function registerMerchant(payload: {
     phone,
     address,
     currency: 'BDT',
-    status: accountStatus, // <-- এখন ফ্রী প্ল্যান হলে এটিও active হবে
+    status: accountStatus,
     plan_id: planId,
     referred_by: referCode || null,
     is_demo: false,
-    subscription_status: accountStatus, // <-- এটিও active হবে
+    subscription_status: accountStatus,
+    telegram_id_code: telegramCode,        // <-- স্টোর হচ্ছে
+    device_connection_key: deviceKey       // <-- স্টোর হচ্ছে
   });
 
   if (error) {
@@ -86,7 +99,11 @@ export async function registerMerchantOAuth(payload: {
   if (existing) return { alreadyExists: true };
 
   const merchantDisplayId = generate6DigitID();
-  const accountStatus = planPrice === 0 ? 'active' : 'pending'; // <-- আপডেট করা হয়েছে
+  const accountStatus = planPrice === 0 ? 'active' : 'pending'; 
+
+  // টেলিগ্রাম এবং ডিভাইসের জন্য কোড জেনারেট
+  const telegramCode = generateRandomString(12);
+  const deviceKey = generateRandomString(24);
 
   const { error } = await supabaseAdmin.from('merchants').insert({
     id: userId,
@@ -94,13 +111,17 @@ export async function registerMerchantOAuth(payload: {
     slug: null,
     name: fullName,
     email,
+    phone: null,        // <-- Google auth এ ফোন null থাকবে
+    address: null,      // <-- Google auth এ অ্যাড্রেস null থাকবে
     currency: 'BDT',
-    status: accountStatus, // <-- আপডেট করা হয়েছে
+    status: accountStatus, 
     plan_id: planId,
     referred_by: referCode || null,
     is_demo: false,
-    subscription_status: accountStatus, // <-- আপডেট করা হয়েছে
+    subscription_status: accountStatus, 
     is_email_verified: true, // Google accounts are pre-verified
+    telegram_id_code: telegramCode,        // <-- স্টোর হচ্ছে
+    device_connection_key: deviceKey       // <-- স্টোর হচ্ছে
   });
 
   if (error) {

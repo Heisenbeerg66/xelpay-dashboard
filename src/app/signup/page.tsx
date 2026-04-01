@@ -28,10 +28,12 @@ function PlanTagBadge({ tag }: { tag: string }) {
     red:    { gradient: 'from-red-500 to-rose-600',      text: 'text-white' },
     amber:  { gradient: 'from-amber-400 to-yellow-500',  text: 'text-slate-900' },
   };
+
   const parts = tag.split(':');
   const label = parts[0].trim();
   const colorKey = (parts[1] || 'blue').trim().toLowerCase();
   const colors = colorMap[colorKey] || colorMap.blue;
+
   return (
     <div className={`absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r ${colors.gradient} ${colors.text} px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap flex items-center gap-1`}>
       <span>{label.match(/^\p{Emoji}/u)?.[0] || '✦'}</span>
@@ -40,7 +42,6 @@ function PlanTagBadge({ tag }: { tag: string }) {
   );
 }
 
-// --- Reusable Modals ---
 const ErrorModal = ({ isOpen, message, onClose }: any) => {
   const router = useRouter();
   if (!isOpen) return null;
@@ -58,7 +59,6 @@ const ErrorModal = ({ isOpen, message, onClose }: any) => {
     </div>
   );
 };
-
 const SuccessModal = ({ isOpen, merchantId, onClose }: any) => {
   if (!isOpen) return null;
   return (
@@ -96,7 +96,7 @@ const SuccessModal = ({ isOpen, merchantId, onClose }: any) => {
 function SignUpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const planIdFromUrl = searchParams.get('plan'); 
+  const planIdFromUrl = searchParams.get('plan');
   const refCodeFromUrl = searchParams.get('ref') || ''; 
   const mode = searchParams.get('mode');
 
@@ -143,20 +143,12 @@ function SignUpContent() {
 
   const buildPlanFeatures = (plan: any): string[] => {
     if (!plan) return [];
-    const transactionLabel =
-      (plan.transaction_limit_monthly ?? 100) === 0
-        ? 'Unlimited transactions / month'
-        : `${(plan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`;
-
+    const transactionLabel = (plan.transaction_limit_monthly ?? 100) === 0 ? 'Unlimited transactions / month' : `${(plan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`;
     const columnFeatures: (string | null)[] = [
       transactionLabel,
       `${plan.business_limit ?? 1} business${(plan.business_limit ?? 1) > 1 ? 'es' : ''}`,
-      ...(Array.isArray(plan.allowed_method) ? plan.allowed_method : ['mobile']).map(
-        (m: string) => methodLabels[m] ?? m
-      ),
-      plan.is_team_allowed
-        ? `Team access — up to ${plan.allowed_team_members ?? 1} members`
-        : 'Single user only',
+      ...(Array.isArray(plan.allowed_method) ? plan.allowed_method : ['mobile']).map((m: string) => methodLabels[m] ?? m),
+      plan.is_team_allowed ? `Team access — up to ${plan.allowed_team_members ?? 1} members` : 'Single user only',
       `${plan.device_limit ?? 1} device${(plan.device_limit ?? 1) > 1 ? 's' : ''}`,
       plan.allowed_telegram_group ? 'Telegram group alerts' : null,
       plan.is_custom_bot_allowed ? 'Custom Telegram bot' : null,
@@ -164,8 +156,7 @@ function SignUpContent() {
     const extraFeatures: string[] = Array.isArray(plan.features) ? plan.features : [];
     return [...columnFeatures.filter(Boolean) as string[], ...extraFeatures];
   };
-
-  const handleGoogleSignUp = async () => {
+    const handleGoogleSignUp = async () => {
     if (mode === 'demo') {
       toast.error("You don't need to create a new account in demo mode. Please login with demo@xelpay.com / demo123456", { duration: 5000 });
       return;
@@ -185,7 +176,6 @@ function SignUpContent() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (mode === 'demo') {
       toast.error("Demo Mode: No need to register. Please go to Login and use demo@xelpay.com / Password: demo123456", { duration: 5000 });
       return;
@@ -213,7 +203,7 @@ function SignUpContent() {
     const planStatusColor = selectedPlan.price === 0 ? '#10b981' : '#f59e0b';
     const planPriceText = selectedPlan.price === 0 ? 'Free' : `৳${selectedPlan.price} / Month`;
 
-    // ২. Supabase Auth Signup (data পাঠানো হচ্ছে ইমেইল টেমপ্লেটের জন্য)
+    // ২. Supabase Auth Signup
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
@@ -225,7 +215,8 @@ function SignUpContent() {
           plan_price: planPriceText,
           status_text: planStatusText,
           status_color: planStatusColor
-        } 
+        },
+        emailRedirectTo: `${window.location.origin}/auth/verify-success`
       }
     });
 
@@ -236,7 +227,7 @@ function SignUpContent() {
     }
 
     if (authData.user) {
-      // ৩. সার্ভার অ্যাকশনে ডাটা সেভ করা (একই merchant ID দিয়ে)
+      // ৩. সার্ভার অ্যাকশনে ডাটা সেভ করা
       const result = await registerMerchant({
         userId: authData.user.id,
         email: formData.email,
@@ -246,9 +237,8 @@ function SignUpContent() {
         referCode: formData.referCode || null,
         planId: selectedPlan.id,
         planPrice: selectedPlan.price,
-        merchantDisplayId: generatedMerchantId // <-- পাস করা হচ্ছে
+        merchantDisplayId: generatedMerchantId
       });
-
       if (result.error) {
         setErrorModal({ show: true, message: result.error });
       } else {
@@ -257,7 +247,8 @@ function SignUpContent() {
       }
     }
     setLoading(false);
-  };return (
+  };
+    return (
     <div className="min-h-screen bg-white dark:bg-[#0B1120] md:bg-slate-50 md:dark:bg-[#0B1120] flex items-center justify-center md:p-12 transition-colors duration-500 font-sans">
       <Toaster position="top-center" richColors />
       <div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-0 md:gap-8 items-start bg-white dark:bg-[#0B1120] md:bg-transparent md:dark:bg-transparent rounded-none md:rounded-[3rem]">
@@ -305,9 +296,7 @@ function SignUpContent() {
                 <ul className="space-y-1.5">
                   <li className="flex items-start gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
                     <CheckCircle size={13} className="text-blue-500 shrink-0 mt-0.5" />
-                    {(selectedPlan.transaction_limit_monthly ?? 100) === 0
-                      ? 'Unlimited transactions / month'
-                      : `${(selectedPlan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`}
+                    {(selectedPlan.transaction_limit_monthly ?? 100) === 0 ? 'Unlimited transactions / month' : `${(selectedPlan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`}
                   </li>
                   {(Array.isArray(selectedPlan.features) ? selectedPlan.features : []).slice(0, 3).map((f: string, i: number) => (
                     <li key={i} className="flex items-start gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
@@ -325,11 +314,13 @@ function SignUpContent() {
               <div className="h-32 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse"></div>
             )}
           </div>
-        </div>{/* Right Side: Signup Form */}
+        </div>
+
+        {/* Right Side: Signup Form */}
         <div className="lg:col-span-8 bg-white dark:bg-[#111827] rounded-none lg:rounded-[3rem] shadow-none lg:shadow-2xl p-5 md:p-12 border-0 lg:border lg:border-slate-200 lg:dark:border-slate-800">
 
           <div className="hidden lg:flex items-center gap-2 mb-6">
-            <button onClick={() => router.back()} className="flex items-center gap-1.5 text-slate-400 hover:text-blue-600 text-xs font-bold transition-colors">
+            <button type="button" onClick={() => router.back()} className="flex items-center gap-1.5 text-slate-400 hover:text-blue-600 text-xs font-bold transition-colors">
               <ArrowLeft size={14} /> Go Back
             </button>
           </div>
@@ -368,8 +359,7 @@ function SignUpContent() {
                 <input required type="tel" className="w-full px-4 py-3.5 bg-transparent outline-none font-medium text-sm text-slate-900 dark:text-white" placeholder="1712 345678" onChange={(e) => setFormData({...formData, phone: e.target.value})} />
               </div>
             </div>
-
-            <div className="space-y-1.5">
+                        <div className="space-y-1.5">
               <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider flex items-center gap-1">Security Password <span className="text-red-500">*</span></label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -381,19 +371,19 @@ function SignUpContent() {
                 </button>
               </div>
               <div className="flex justify-between items-center px-1 mt-1">
-                 <span className={`text-[9px] font-bold ${formData.password.length >= 8 && /[A-Z]/.test(formData.password) && /[0-9]/.test(formData.password) ? 'text-green-500' : 'text-slate-400'}`}>
-                   Min 8 chars, 1 uppercase, 1 number
-                 </span>
-                 <button type="button" onClick={() => {
-                   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
-                   let gen = "";
-                   for(let i=0; i<14; i++) gen += chars.charAt(Math.floor(Math.random() * chars.length));
-                   gen = "Xp9!" + gen.slice(4); 
-                   setFormData({...formData, password: gen, confirmPassword: gen});
-                   setShowPassword(true);
-                 }} className="text-[10px] font-black text-blue-600 hover:underline uppercase tracking-widest cursor-pointer">
-                   Generate Strong
-                 </button>
+                <span className={`text-[9px] font-bold ${formData.password.length >= 8 && /[A-Z]/.test(formData.password) && /[0-9]/.test(formData.password) ? 'text-green-500' : 'text-slate-400'}`}>
+                  Min 8 chars, 1 uppercase, 1 number
+                </span>
+                <button type="button" onClick={() => {
+                  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+                  let gen = "";
+                  for(let i=0; i<14; i++) gen += chars.charAt(Math.floor(Math.random() * chars.length));
+                  gen = "Xp9!" + gen.slice(4);
+                  setFormData({...formData, password: gen, confirmPassword: gen});
+                  setShowPassword(true);
+                }} className="text-[10px] font-black text-blue-600 hover:underline uppercase tracking-widest cursor-pointer">
+                  Generate Strong
+                </button>
               </div>
             </div>
 
@@ -434,23 +424,19 @@ function SignUpContent() {
               <label className="flex items-start gap-3 cursor-pointer select-none group">
                 <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} className="w-4 h-4 mt-0.5 rounded border-slate-300 accent-blue-600 cursor-pointer shrink-0" required />
                 <span className="text-xs font-medium text-slate-600 dark:text-slate-400 leading-relaxed">
-                  I agree to the{' '}
-                  <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline" onClick={(e) => e.stopPropagation()}>Terms & Conditions</a>
-                  {' '}and{' '}
-                  <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline" onClick={(e) => e.stopPropagation()}>Privacy Policy</a>
-                  {' '}of XelPay. <span className="text-red-500">*</span>
+                  I agree to the <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline" onClick={(e) => e.stopPropagation()}>Terms & Conditions</a> and <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline" onClick={(e) => e.stopPropagation()}>Privacy Policy</a> of XelPay. <span className="text-red-500">*</span>
                 </span>
               </label>
             </div>
 
             <div className="md:col-span-2 pt-2">
-               <button disabled={loading || !selectedPlan} className="w-full bg-blue-600 disabled:bg-blue-700 text-white py-4 rounded-xl font-bold text-base shadow-lg shadow-blue-600/30 hover:-translate-y-1 transition-all flex items-center justify-center gap-3">
-                 {loading ? (
-                   <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Creating Workspace...</>
-                 ) : (
-                   <>Create Account <ArrowRight size={20} /></>
-                 )}
-               </button>
+              <button disabled={loading || !selectedPlan} className="w-full bg-blue-600 disabled:bg-blue-700 text-white py-4 rounded-xl font-bold text-base shadow-lg shadow-blue-600/30 hover:-translate-y-1 transition-all flex items-center justify-center gap-3">
+                {loading ? (
+                  <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Creating Workspace...</>
+                ) : (
+                  <>Create Account <ArrowRight size={20} /></>
+                )}
+              </button>
             </div>
           </form>
 
@@ -480,16 +466,13 @@ function SignUpContent() {
       <SuccessModal isOpen={showSuccess} merchantId={tempMerchantId} onClose={() => router.push('/login')} />
       <ErrorModal isOpen={errorModal.show} message={errorModal.message} onClose={() => setErrorModal({ show: false, message: '' })} />
 
-      {/* FIX 7: Plan Selection Modal — full-screen on mobile, card on desktop. Matches landing page pricing. */}
       {showPlanSwitcher && (
         <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
-          {/* FIX 7: Mobile = full screen bottom sheet; desktop = modal card */}
           <div className="bg-white dark:bg-[#111827] w-full md:max-w-5xl md:rounded-[2rem] rounded-t-[2rem] md:rounded-b-[2rem] p-5 md:p-10 shadow-2xl border-t border-slate-200 dark:border-slate-800 md:border relative overflow-hidden max-h-[92vh] md:max-h-[85vh] overflow-y-auto">
             <button onClick={() => setShowPlanSwitcher(false)} className="absolute top-4 right-4 md:top-6 md:right-6 p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:rotate-90 transition-all z-10"><X size={20}/></button>
             <div className="text-center mb-8 mt-1 md:mt-0">
               <h3 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Choose Your Business Plan</h3>
             </div>
-            {/* FIX 7: Full plan cards like landing page */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {allPlans.map((p: any) => {
                 const allFeatures = buildPlanFeatures(p);

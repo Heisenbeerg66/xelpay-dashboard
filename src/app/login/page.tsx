@@ -100,7 +100,6 @@ function LoginContent() {
           return;
         }
 
-        // FIX 9: Use server action to sync email verified — cannot be tampered
         if (authData.user.email_confirmed_at) {
           try {
             await syncEmailVerified(authData.user.id);
@@ -110,16 +109,17 @@ function LoginContent() {
         }
 
         toast.success("Authentication successful! Redirecting...", { icon: '🔐' });
+        
+        // ফাস্ট রাউটিংয়ের জন্য router.push ব্যবহার করা হয়েছে
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          router.push('/dashboard');
         }, 1000);
 
       } catch (err) {
         console.error("Post-login process error:", err);
-        // Even if there is an error post-login, since auth succeeded, force redirect to dashboard
         toast.success("Authentication successful! Redirecting...", { icon: '🔐' });
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          router.push('/dashboard');
         }, 1000);
       }
     }
@@ -154,7 +154,6 @@ function LoginContent() {
 
           {/* Left branding panel — desktop only */}
           <div className="hidden md:flex flex-col justify-between bg-blue-600 rounded-l-[2.5rem] p-10 min-w-[220px] text-white">
-            {/* FIX 8: Back button on desktop */}
             <Link href="/" className="flex items-center gap-2 text-white/70 hover:text-white text-xs font-bold transition-colors">
               <ArrowLeft size={16} /> Back to Home
             </Link>
@@ -185,10 +184,8 @@ function LoginContent() {
           </div>
 
           {/* Right / main form area */}
-          {/* FIX 5: Reduced top padding on mobile so content is higher up */}
           <div className="flex-1 p-6 md:p-10 flex flex-col justify-center">
 
-            {/* Mobile: back + logo row */}
             <div className="md:hidden flex items-center justify-between mb-6 mt-2">
               <Link href="/" className="flex items-center gap-1.5 text-slate-500 hover:text-blue-600 text-xs font-bold transition-colors">
                 <ArrowLeft size={15} /> Home
@@ -251,7 +248,6 @@ function LoginContent() {
                )}
             </form>
 
-            {/* FIX 5: Reduced margin between login button and Google section */}
             {mode !== 'demo' && (
               <>
                 <div className="relative my-5 text-center">
@@ -268,7 +264,6 @@ function LoginContent() {
                   )}
                 </button>
 
-                {/* FIX 5: Reduced margin */}
                 <p className="mt-5 text-center text-slate-500 text-sm font-medium">
                   New to XelPay? <Link href="/signup" className="text-blue-600 font-bold hover:text-blue-700 hover:underline ml-1">Create Account</Link>
                 </p>
