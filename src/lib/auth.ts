@@ -76,7 +76,7 @@ export async function registerMerchant(payload: {
     referred_by: referCode || null,
     is_demo: false,
     is_email_verified: false,
-    telegram_id_code: generateRandomString(12),
+    telegram_link_code: generateRandomString(12),
     device_connection_key: generateRandomString(24),
   });
 
