@@ -38,6 +38,12 @@ export async function middleware(request: NextRequest) {
 
   const isAuthPage = ['/login', '/signup', '/forgot-password', '/reset-password'].some(path => request.nextUrl.pathname.startsWith(path));
   const isDashboard = request.nextUrl.pathname.startsWith('/dashboard');
+  const isCallback = request.nextUrl.pathname.startsWith('/auth/callback');
+
+  // 👉 ফিক্স: গুগল থেকে ফেরার সময় মিডলওয়্যার যেন বাধা না দেয়
+  if (isCallback) {
+    return response;
+  }
 
   // লগইন ছাড়া ড্যাশবোর্ডে যেতে চাইলে লগইন পেজে পাঠাবে
   if (!user && isDashboard) {
@@ -53,5 +59,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/signup', '/forgot-password', '/reset-password'],
+  // 👉 ফিক্স: রাউট লিস্টে কলব্যাক অ্যাড করা হয়েছে
+  matcher: ['/dashboard/:path*', '/login', '/signup', '/forgot-password', '/reset-password', '/auth/callback'],
 };
