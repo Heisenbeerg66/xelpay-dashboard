@@ -3,10 +3,11 @@
 import { useEffect, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { registerMerchantOAuth } from '@/lib/auth';
-import { Loader2, UserX, LogIn, UserPlus } from 'lucide-react';
+import { Loader2, UserX, LogIn, UserPlus, Menu } from 'lucide-react';
+import { useTheme } from 'next-themes';
+import Link from 'next/link';
 
-// Fix 12: Theme-safe cache clear — শুধু auth-related keys clear করে, theme রাখে
+// শুধু Auth-related Keys Clear করে, 'theme' রেখে দেয়
 function clearAuthCache() {
   const KEEP_KEYS = ['theme', 'active_business_id'];
   const toRemove: string[] = [];
@@ -20,7 +21,7 @@ function clearAuthCache() {
   sessionStorage.clear();
 }
 
-// Fix 12: User Not Found Modal — minimal premium
+// User Not Found Modal 
 function UserNotFoundModal({ isOpen, onSignup, onLogin, onBackdrop }: {
   isOpen: boolean;
   onSignup: () => void;
@@ -40,16 +41,16 @@ function UserNotFoundModal({ isOpen, onSignup, onLogin, onBackdrop }: {
         <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-5">
           <UserX size={26} className="text-slate-500 dark:text-slate-400" />
         </div>
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Account Not Found</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">User Not Found</h3>
         <p className="text-slate-400 dark:text-slate-500 text-sm mb-7 leading-relaxed">
-          No XelPay account is linked to this Google account. Please register or log in with your existing account.
+          We couldn't find a XelPay account linked to this Google account. Please create an account or log in with your existing account.
         </p>
         <div className="flex flex-col gap-2.5">
           <button
             onClick={onSignup}
             className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-all"
           >
-            <UserPlus size={15} /> Register Now
+            <UserPlus size={15} /> Create An Account
           </button>
           <button
             onClick={onLogin}
@@ -89,62 +90,30 @@ function AuthCallbackContent() {
 
       const user = exchangeData.session.user;
 
-      // localStorage থেকে OAuth flow data পড়ো
-      const oauthSource = localStorage.getItem('oauth_source') || 'signup';
-      const oauthPlanId = localStorage.getItem('oauth_plan_id') || null;
-      const oauthPlanPrice = parseFloat(localStorage.getItem('oauth_plan_price') || '0');
-      const oauthReferCode = localStorage.getItem('oauth_refer_code') || null;
-
-      // Fix 12: theme ছাড়া বাকি oauth data clear করো
+      // Theme ছাড়া বাকি oauth data clear করা হচ্ছে
       localStorage.removeItem('oauth_plan_id');
       localStorage.removeItem('oauth_plan_price');
       localStorage.removeItem('oauth_refer_code');
       localStorage.removeItem('oauth_source');
 
-      // ── LOGIN FLOW ──
-      if (oauthSource === 'login') {
-        const { data: merchant } = await supabase
-          .from('merchants')
-          .select('id, status')
-          .eq('id', user.id)
-          .maybeSingle();
+      // ── LOGIN FLOW (শুধু Google Login-এর জন্য) ──
+      const { data: merchant } = await supabase
+        .from('merchants')
+        .select('id, status')
+        .eq('id', user.id)
+        .maybeSingle();
 
-        if (!merchant) {
-          // Fix 12: Sign out, clear auth cache (theme stays), show modal
-          await supabase.auth.signOut();
-          clearAuthCache();
-          setShowNotFound(true);
-          return;
-        }
-
-        if (merchant.status === 'suspended') {
-          await supabase.auth.signOut();
-          router.replace('/login?error=suspended');
-          return;
-        }
-
-        router.replace('/dashboard');
+      if (!merchant) {
+        // Merchant না থাকলে Sign out করে Auth Cache clear করো (theme থাকবে), তারপর Modal দেখাও
+        await supabase.auth.signOut();
+        clearAuthCache();
+        setShowNotFound(true);
         return;
       }
 
-      // ── SIGNUP FLOW ──
-      const fullName =
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
-        'XelPay Merchant';
-
-      const result = await registerMerchantOAuth({
-        userId: user.id,
-        email: user.email!,
-        fullName,
-        planId: oauthPlanId,
-        planPrice: oauthPlanPrice,
-        referCode: oauthReferCode,
-      });
-
-      if (result.error) {
+      if (merchant.status === 'suspended') {
         await supabase.auth.signOut();
-        router.replace('/signup?error=email_exists');
+        router.replace('/login?error=suspended');
         return;
       }
 
@@ -166,12 +135,11 @@ function AuthCallbackContent() {
 
   const handleBackdrop = () => {
     setShowNotFound(false);
-    router.replace('/signup');
+    router.replace('/login');
   };
 
   return (
     <>
-      {/* Fix 12: User Not Found Modal */}
       <UserNotFoundModal
         isOpen={showNotFound}
         onSignup={handleGoSignup}
@@ -179,26 +147,68 @@ function AuthCallbackContent() {
         onBackdrop={handleBackdrop}
       />
 
-      {/* Fix 16: Minimal premium callback UI */}
-      <div className="bg-white dark:bg-[#111827] p-10 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xl flex flex-col items-center">
-        <div className="relative mb-6">
-          <div className="w-12 h-12 rounded-full border-2 border-slate-200 dark:border-slate-700"></div>
-          <div className="w-12 h-12 rounded-full border-2 border-blue-600 border-t-transparent absolute top-0 left-0 animate-spin"></div>
-        </div>
-        <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5">Checking credentials</h2>
-        <p className="text-slate-400 text-sm text-center max-w-[220px] leading-relaxed">
-          Verifying your information securely...
-        </p>
+      {/* Minimal premium callback UI */}
+      <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#111827] p-10 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xl flex flex-col items-center">
+            <div className="relative mb-6">
+              <div className="w-12 h-12 rounded-full border-2 border-slate-200 dark:border-slate-700"></div>
+              <div className="w-12 h-12 rounded-full border-2 border-blue-600 border-t-transparent absolute top-0 left-0 animate-spin"></div>
+            </div>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5">Checking credentials</h2>
+            <p className="text-slate-400 text-sm text-center max-w-[220px] leading-relaxed">
+              Verifying your information securely...
+            </p>
+          </div>
       </div>
     </>
   );
 }
 
 export default function AuthCallback() {
+    const { resolvedTheme, setTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-[#0B1120] font-sans px-4">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0B1120] font-sans">
+      
+      {/* Header (শুধু মোবাইল ভিউয়ের জন্য) */}
+      <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 md:hidden">
+        <div className="h-16 flex items-center px-4 justify-between relative">
+          {/* Menu Button (শুধু দেখানোর জন্য) */}
+          <button
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all cursor-default"
+            aria-label="Menu"
+          >
+            <Menu size={18} />
+          </button>
+
+          {/* Branding */}
+          <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
+            <span className="text-2xl font-black text-blue-600 tracking-tighter">X</span>
+            <span className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
+          </Link>
+
+          {/* Theme Toggle */}
+          {mounted && (
+            <button
+              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+              aria-label="Toggle theme"
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none border ${resolvedTheme === 'dark' ? 'bg-blue-600 border-blue-500' : 'bg-slate-200 border-slate-300'}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${resolvedTheme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
+              <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none">{resolvedTheme === 'dark' ? '🌙' : ''}</span>
+              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none">{resolvedTheme !== 'dark' ? '☀️' : ''}</span>
+            </button>
+          )}
+        </div>
+      </header>
+
       <Suspense fallback={
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
           <p className="text-slate-400 text-xs uppercase tracking-widest">Loading...</p>
         </div>
