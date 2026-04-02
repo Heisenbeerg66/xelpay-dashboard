@@ -21,12 +21,10 @@ function AuthCallbackContent() {
         return;
       }
 
-      // Code → Session
       const { data: exchangeData, error: exchangeError } =
         await supabase.auth.exchangeCodeForSession(code);
 
       if (exchangeError || !exchangeData?.session) {
-        console.error('Exchange error:', exchangeError);
         router.replace('/login');
         return;
       }
@@ -39,7 +37,7 @@ function AuthCallbackContent() {
       const oauthPlanPrice = parseFloat(localStorage.getItem('oauth_plan_price') || '0');
       const oauthReferCode = localStorage.getItem('oauth_refer_code') || null;
 
-      // ব্যবহার শেষে clear করো
+      // Fix 16: theme ছাড়া বাকি oauth data clear করো
       localStorage.removeItem('oauth_plan_id');
       localStorage.removeItem('oauth_plan_price');
       localStorage.removeItem('oauth_refer_code');
@@ -54,6 +52,7 @@ function AuthCallbackContent() {
           .maybeSingle();
 
         if (!merchant) {
+          // Fix 16: Sign out কিন্তু localStorage clear করি না (theme থাকুক)
           await supabase.auth.signOut();
           router.replace('/login?error=no_account');
           return;
@@ -79,9 +78,9 @@ function AuthCallbackContent() {
         userId: user.id,
         email: user.email!,
         fullName,
-        planId: oauthPlanId,           // user যে plan select করেছিল
-        planPrice: oauthPlanPrice,     // সেই plan এর price
-        referCode: oauthReferCode || null,
+        planId: oauthPlanId,
+        planPrice: oauthPlanPrice,
+        referCode: oauthReferCode,
       });
 
       if (result.error) {
@@ -90,7 +89,6 @@ function AuthCallbackContent() {
         return;
       }
 
-      // alreadyExists মানে আগেই account আছে — dashboard এ যাও
       router.replace('/dashboard');
     };
 
@@ -98,13 +96,15 @@ function AuthCallbackContent() {
   }, [router, searchParams]);
 
   return (
-    <div className="bg-slate-50 dark:bg-[#111827] p-8 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl flex flex-col items-center animate-in zoom-in-95 duration-500">
-      <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-6" />
-      <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-        Setting Up Workspace...
-      </h2>
-      <p className="text-slate-500 font-medium text-sm mt-2 text-center max-w-[250px]">
-        Securing your session and preparing your merchant dashboard.
+    // Fix 16: Minimal premium callback UI
+    <div className="bg-white dark:bg-[#111827] p-10 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xl flex flex-col items-center">
+      <div className="relative mb-6">
+        <div className="w-12 h-12 rounded-full border-2 border-slate-200 dark:border-slate-700"></div>
+        <div className="w-12 h-12 rounded-full border-2 border-blue-600 border-t-transparent absolute top-0 left-0 animate-spin"></div>
+      </div>
+      <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5">Checking credentials</h2>
+      <p className="text-slate-400 text-sm text-center max-w-[220px] leading-relaxed">
+        Verifying your information securely...
       </p>
     </div>
   );
@@ -112,11 +112,11 @@ function AuthCallbackContent() {
 
 export default function AuthCallback() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#0B1120] font-sans px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-[#0B1120] font-sans px-4">
       <Suspense fallback={
-        <div className="flex flex-col items-center">
-          <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-          <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Initializing...</p>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          <p className="text-slate-400 text-xs uppercase tracking-widest">Loading...</p>
         </div>
       }>
         <AuthCallbackContent />

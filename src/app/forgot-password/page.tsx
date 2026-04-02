@@ -17,22 +17,14 @@ function ForgotPasswordContent() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
 
-  // Robot Checker States (existing math captcha)
-  const [num1, setNum1] = useState(0);
-  const [num2, setNum2] = useState(0);
-  const [userCaptcha, setUserCaptcha] = useState('');
+
 
   // FIX 10: Google reCAPTCHA
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<any>(null);
 
-  const generateCaptcha = () => {
-    setNum1(Math.floor(Math.random() * 10) + 1);
-    setNum2(Math.floor(Math.random() * 10) + 1);
-    setUserCaptcha('');
-  };
+ 
 
-  useEffect(() => { generateCaptcha(); }, []);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,13 +35,7 @@ function ForgotPasswordContent() {
       return;
     }
 
-    if (parseInt(userCaptcha) !== num1 + num2) {
-      toast.error("Robot verification failed! Please calculate correctly.");
-      generateCaptcha();
-      recaptchaRef.current?.reset();
-      setCaptchaToken(null);
-      return;
-    }
+    
 
     setLoading(true);
     const { data: checkDemo } = await supabase.from('merchants').select('is_demo').eq('email', email.trim()).maybeSingle();
@@ -100,18 +86,7 @@ function ForgotPasswordContent() {
                 </div>
               </div>
 
-              {/* Existing math robot checker */}
-              <div className="space-y-1.5">
-                 <label className="text-[11px] font-black text-slate-500 uppercase ml-1 tracking-wider">Verify human <span className="text-red-500">*</span></label>
-                 <div className="flex items-center gap-3">
-                   <div className="bg-slate-100 dark:bg-slate-800 px-4 py-3.5 rounded-xl font-black text-slate-900 dark:text-white tracking-widest flex items-center gap-2 border border-slate-200 dark:border-slate-700">
-                     {num1} + {num2} =
-                   </div>
-                   <input required type="number" placeholder="?" value={userCaptcha} onChange={(e) => setUserCaptcha(e.target.value)} className="w-full px-4 py-3.5 bg-slate-50 dark:bg-[#0B1120] md:dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 font-bold text-sm text-slate-900 dark:text-white text-center" />
-                   <button type="button" onClick={generateCaptcha} className="p-3.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-blue-600 transition-colors"><RefreshCw size={18}/></button>
-                 </div>
-              </div>
-
+              
               {/* FIX 10: Google reCAPTCHA */}
               <div className="flex justify-center">
                 <ReCAPTCHA
