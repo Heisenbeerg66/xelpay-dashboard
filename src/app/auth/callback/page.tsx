@@ -1,25 +1,11 @@
 'use client';
 
-import { useEffect, Suspense, useState } from 'react';
+import { useEffect, Suspense, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Loader2, UserX, LogIn, UserPlus, Menu } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
-
-// শুধু Auth-related Keys Clear করে, 'theme' রেখে দেয়
-function clearAuthCache() {
-  const KEEP_KEYS = ['theme', 'active_business_id'];
-  const toRemove: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && !KEEP_KEYS.includes(key)) {
-      toRemove.push(key);
-    }
-  }
-  toRemove.forEach(k => localStorage.removeItem(k));
-  sessionStorage.clear();
-}
 
 // User Not Found Modal 
 function UserNotFoundModal({ isOpen, onSignup, onLogin, onBackdrop }: {
@@ -68,9 +54,13 @@ function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showNotFound, setShowNotFound] = useState(false);
+  const isProcessed = useRef(false); // Strict Mode এ ২ বার রান হওয়া ঠেকানোর জন্য
 
   useEffect(() => {
     const handle = async () => {
+      // যদি আগে একবার রান হয়ে থাকে, তবে এখানেই থামিয়ে দাও (Strict Mode Fix)
+      if (isProcessed.current) return;
+      
       const code = searchParams.get('code');
 
       if (!code) {
@@ -80,33 +70,39 @@ function AuthCallbackContent() {
         return;
       }
 
-      const { data: exchangeData, error: exchangeError } =
-        await supabase.auth.exchangeCodeForSession(code);
+      isProcessed.current = true; // মার্ক করে দিলাম যে প্রসেস শুরু হয়েছে
 
-      if (exchangeError || !exchangeData?.session) {
-        router.replace('/login');
-        return;
+      let currentUser;
+      const { data: { session: existingSession } } = await supabase.auth.getSession();
+
+      if (existingSession) {
+        currentUser = existingSession.user;
+      } else {
+        const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        
+        if (exchangeError || !exchangeData?.session) {
+          router.replace('/login');
+          return;
+        }
+        currentUser = exchangeData.session.user;
       }
 
-      const user = exchangeData.session.user;
-
-      // Theme ছাড়া বাকি oauth data clear করা হচ্ছে
+      // শুধুমাত্র আনপ্রয়োজনীয় oauth স্টোরেজ রিমুভ করা হচ্ছে
       localStorage.removeItem('oauth_plan_id');
       localStorage.removeItem('oauth_plan_price');
       localStorage.removeItem('oauth_refer_code');
       localStorage.removeItem('oauth_source');
 
-      // ── LOGIN FLOW (শুধু Google Login-এর জন্য) ──
+      // ── LOGIN FLOW ──
       const { data: merchant } = await supabase
         .from('merchants')
         .select('id, status')
-        .eq('id', user.id)
+        .eq('id', currentUser.id)
         .maybeSingle();
 
       if (!merchant) {
-        // Merchant না থাকলে Sign out করে Auth Cache clear করো (theme থাকবে), তারপর Modal দেখাও
+        // মার্চেন্ট না থাকলে শুধু Supabase থেকে সাইন আউট করো (এটি থিম মুছবে না)
         await supabase.auth.signOut();
-        clearAuthCache();
         setShowNotFound(true);
         return;
       }
@@ -147,7 +143,6 @@ function AuthCallbackContent() {
         onBackdrop={handleBackdrop}
       />
 
-      {/* Minimal premium callback UI */}
       <div className="flex-1 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#111827] p-10 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xl flex flex-col items-center">
             <div className="relative mb-6">
@@ -178,7 +173,7 @@ export default function AuthCallback() {
       {/* Header (শুধু মোবাইল ভিউয়ের জন্য) */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 md:hidden">
         <div className="h-16 flex items-center px-4 justify-between relative">
-          {/* Menu Button (শুধু দেখানোর জন্য) */}
+          {/* Menu Button */}
           <button
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all cursor-default"
             aria-label="Menu"
