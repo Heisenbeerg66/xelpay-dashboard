@@ -18,21 +18,99 @@ const methodLabels: Record<string, string> = {
   international: 'International (Stripe / PayPal / Crypto)',
 };
 
-function PlanTagBadge({ tag }: { tag: string }) {
-  const colorMap: Record<string, { gradient: string; text: string }> = {
-    blue:   { gradient: 'from-blue-500 to-indigo-600', text: 'text-white' },
-    green:  { gradient: 'from-emerald-500 to-teal-600', text: 'text-white' },
-    orange: { gradient: 'from-orange-500 to-amber-500', text: 'text-white' },
-    purple: { gradient: 'from-purple-500 to-violet-600', text: 'text-white' },
-    red:    { gradient: 'from-red-500 to-rose-600', text: 'text-white' },
-    amber:  { gradient: 'from-amber-400 to-yellow-500', text: 'text-slate-900' },
+// ── Tag থেকে সব color বের করা (landing page এর মতো) ──
+function getPlanColors(tag: string | null): {
+  border: string;
+  borderSelected: string;
+  button: string;
+  buttonSelected: string;
+  price: string;
+  check: string;
+  badge: string;
+  badgeText: string;
+} {
+  if (!tag) return {
+    border: 'border-slate-200 dark:border-slate-700',
+    borderSelected: 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/10',
+    button: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+    buttonSelected: 'bg-blue-600 text-white',
+    price: 'text-blue-600',
+    check: 'text-blue-500',
+    badge: 'from-blue-500 to-indigo-600',
+    badgeText: 'text-white',
   };
+  const colorKey = (tag.split(':')[1] || 'blue').trim().toLowerCase();
+  const map: Record<string, ReturnType<typeof getPlanColors>> = {
+    blue: {
+      border: 'border-slate-200 dark:border-slate-700',
+      borderSelected: 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/10',
+      button: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+      buttonSelected: 'bg-blue-600 text-white',
+      price: 'text-blue-600',
+      check: 'text-blue-500',
+      badge: 'from-blue-500 to-indigo-600',
+      badgeText: 'text-white',
+    },
+    green: {
+      border: 'border-slate-200 dark:border-slate-700',
+      borderSelected: 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10',
+      button: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+      buttonSelected: 'bg-emerald-600 text-white',
+      price: 'text-emerald-600',
+      check: 'text-emerald-500',
+      badge: 'from-emerald-500 to-teal-600',
+      badgeText: 'text-white',
+    },
+    orange: {
+      border: 'border-slate-200 dark:border-slate-700',
+      borderSelected: 'border-orange-500 bg-orange-50/50 dark:bg-orange-900/10',
+      button: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+      buttonSelected: 'bg-orange-500 text-white',
+      price: 'text-orange-500',
+      check: 'text-orange-500',
+      badge: 'from-orange-500 to-amber-500',
+      badgeText: 'text-white',
+    },
+    purple: {
+      border: 'border-slate-200 dark:border-slate-700',
+      borderSelected: 'border-purple-500 bg-purple-50/50 dark:bg-purple-900/10',
+      button: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+      buttonSelected: 'bg-purple-600 text-white',
+      price: 'text-purple-600',
+      check: 'text-purple-500',
+      badge: 'from-purple-500 to-violet-600',
+      badgeText: 'text-white',
+    },
+    red: {
+      border: 'border-slate-200 dark:border-slate-700',
+      borderSelected: 'border-red-500 bg-red-50/50 dark:bg-red-900/10',
+      button: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+      buttonSelected: 'bg-red-600 text-white',
+      price: 'text-red-600',
+      check: 'text-red-500',
+      badge: 'from-red-500 to-rose-600',
+      badgeText: 'text-white',
+    },
+    amber: {
+      border: 'border-slate-200 dark:border-slate-700',
+      borderSelected: 'border-amber-400 bg-amber-50/50 dark:bg-amber-900/10',
+      button: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
+      buttonSelected: 'bg-amber-500 text-slate-900',
+      price: 'text-amber-500',
+      check: 'text-amber-500',
+      badge: 'from-amber-400 to-yellow-500',
+      badgeText: 'text-slate-900',
+    },
+  };
+  return map[colorKey] || map.blue;
+}
+
+function PlanTagBadge({ tag }: { tag: string }) {
+  const colors = getPlanColors(tag);
   const parts = tag.split(':');
   const label = parts[0].trim();
-  const colorKey = (parts[1] || 'blue').trim().toLowerCase();
-  const colors = colorMap[colorKey] || colorMap.blue;
   return (
-    <div className={`absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r ${colors.gradient} ${colors.text} px-4 py-1 rounded-full text-[10px] font-semibold uppercase tracking-widest shadow-lg whitespace-nowrap flex items-center gap-1`}>
+    <div className={`absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r ${colors.badge} ${colors.badgeText} px-4 py-1 rounded-full text-[10px] font-semibold uppercase tracking-widest shadow-lg whitespace-nowrap flex items-center gap-1`}>
       <span>{label.match(/^\p{Emoji}/u)?.[0] || '✦'}</span>
       <span>{label.replace(/^\p{Emoji}\s*/u, '')}</span>
     </div>
@@ -155,15 +233,10 @@ function SignUpContent() {
         .from('site_settings')
         .select('key_name, value')
         .in('key_name', ['privacy_policy', 'terms_condition']);
-
       if (data) {
         data.forEach((row: any) => {
-          if (row.key_name === 'privacy_policy' && row.value) {
-            setPrivacyPolicyLink(row.value);
-          }
-          if (row.key_name === 'terms_condition' && row.value) {
-            setTermsLink(row.value);
-          }
+          if (row.key_name === 'privacy_policy' && row.value) setPrivacyPolicyLink(row.value);
+          if (row.key_name === 'terms_condition' && row.value) setTermsLink(row.value);
         });
       }
     };
@@ -240,8 +313,13 @@ function SignUpContent() {
     setLoading(false);
   };
 
+  // ── Selected plan colors (sidebar card) ──
+  const selectedColors = getPlanColors(selectedPlan?.tag || null);
+
   const inputClass = "w-full px-4 py-3.5 bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm text-slate-900 dark:text-white placeholder:text-slate-400";
-  const labelClass = "text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-0.5 mb-1 block";return (
+  const labelClass = "text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-0.5 mb-1 block";
+
+  return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] font-sans transition-colors duration-300">
       <Toaster position="top-center" richColors />
 
@@ -261,17 +339,16 @@ function SignUpContent() {
           </Link>
 
           <div className="flex items-center gap-2.5">
-            {mounted && (
-              <button
-                onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-                aria-label="Toggle theme"
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none border ${resolvedTheme === 'dark' ? 'bg-blue-600 border-blue-500' : 'bg-slate-200 border-slate-300'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${resolvedTheme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
-                <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none">{resolvedTheme === 'dark' ? '🌙' : ''}</span>
-                <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none">{resolvedTheme !== 'dark' ? '☀️' : ''}</span>
-              </button>
-            )}
+            {/* Theme toggle — mounted check শুধু এখানে */}
+            <button
+              onClick={() => mounted && setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+              aria-label="Toggle theme"
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none border ${mounted && resolvedTheme === 'dark' ? 'bg-blue-600 border-blue-500' : 'bg-slate-200 border-slate-300'}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${mounted && resolvedTheme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
+              <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none">{mounted && resolvedTheme === 'dark' ? '🌙' : ''}</span>
+              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none">{mounted && resolvedTheme !== 'dark' ? '☀️' : ''}</span>
+            </button>
             <Link href="/login"
               className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-colors">
               <LogIn size={15} /> Login
@@ -306,6 +383,7 @@ function SignUpContent() {
       <div className="max-w-6xl mx-auto px-4 py-8 md:py-12 md:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
 
+          {/* ── Sidebar Plan Card ── */}
           <div className="lg:col-span-4 lg:sticky lg:top-24">
             <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 md:p-7 shadow-sm border border-slate-200 dark:border-slate-800">
 
@@ -324,27 +402,33 @@ function SignUpContent() {
               </div>
 
               {selectedPlan ? (
-                <div className="p-4 bg-slate-50 dark:bg-[#0B1120] rounded-xl border border-slate-200 dark:border-slate-700 relative overflow-hidden">
+                <div className={`p-4 bg-slate-50 dark:bg-[#0B1120] rounded-xl border-2 ${selectedColors.border} relative`}>
+                  {/* Tag badge */}
                   {selectedPlan.tag && (
-                    <span className="inline-flex items-center gap-1 bg-blue-600 text-white text-[9px] font-medium px-3 py-1 rounded-full uppercase tracking-widest mb-3">
-                      {selectedPlan.tag.split(':')[0]}
+                    <span className={`inline-flex items-center gap-1 bg-gradient-to-r ${selectedColors.badge} ${selectedColors.badgeText} text-[9px] font-semibold px-3 py-1 rounded-full uppercase tracking-widest mb-3`}>
+                      <span>{selectedPlan.tag.split(':')[0].match(/^\p{Emoji}/u)?.[0] || '✦'}</span>
+                      <span>{selectedPlan.tag.split(':')[0].replace(/^\p{Emoji}\s*/u, '')}</span>
                     </span>
                   )}
                   <h4 className="text-base font-semibold text-slate-900 dark:text-white">{selectedPlan.name}</h4>
                   <div className="mt-1 mb-3 flex items-baseline gap-1">
-                    <span className="text-2xl font-bold text-blue-600">
+                    {/* Price color matches tag */}
+                    <span className={`text-2xl font-bold ${selectedColors.price}`}>
                       {selectedPlan.price === 0 ? 'Free' : `৳${selectedPlan.price}`}
                     </span>
                     <span className="text-[10px] text-slate-400 uppercase">/month</span>
                   </div>
                   <ul className="space-y-1.5">
                     <li className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
-                      <CheckCircle size={12} className="text-blue-500 shrink-0 mt-0.5" />
-                      {(selectedPlan.transaction_limit_monthly ?? 100) === 0 ? 'Unlimited transactions / month' : `${(selectedPlan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`}
+                      {/* Check icon color matches tag */}
+                      <CheckCircle size={12} className={`${selectedColors.check} shrink-0 mt-0.5`} />
+                      {(selectedPlan.transaction_limit_monthly ?? 100) === 0
+                        ? 'Unlimited transactions / month'
+                        : `${(selectedPlan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`}
                     </li>
                     {(Array.isArray(selectedPlan.features) ? selectedPlan.features : []).slice(0, 3).map((f: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
-                        <CheckCircle size={12} className="text-green-500 shrink-0 mt-0.5" /> {f}
+                        <CheckCircle size={12} className={`${selectedColors.check} shrink-0 mt-0.5`} /> {f}
                       </li>
                     ))}
                     {selectedPlan.price === 0 && (
@@ -360,6 +444,7 @@ function SignUpContent() {
             </div>
           </div>
 
+          {/* ── Signup Form ── */}
           <div className="lg:col-span-8 bg-white dark:bg-[#111827] rounded-2xl p-5 md:p-10 shadow-sm border border-slate-200 dark:border-slate-800">
             <div className="mb-7">
               <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Create Account</h2>
@@ -509,6 +594,7 @@ function SignUpContent() {
       <SuccessModal isOpen={showSuccess} merchantId={tempMerchantId} onClose={() => router.push('/login')} />
       <ErrorModal isOpen={errorModal.show} message={errorModal.message} onClose={() => setErrorModal({ show: false, message: '' })} />
 
+      {/* ── Plan Switcher Modal ── */}
       {showPlanSwitcher && (
         <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white dark:bg-[#111827] w-full md:max-w-5xl md:rounded-2xl rounded-t-2xl p-5 md:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 relative overflow-hidden max-h-[92vh] overflow-y-auto">
@@ -520,24 +606,45 @@ function SignUpContent() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {allPlans.map((p: any) => {
                 const allFeatures = buildPlanFeatures(p);
+                const isSelected = selectedPlan?.id === p.id;
+                // ── Tag থেকে সব color ──
+                const colors = getPlanColors(p.tag || null);
                 return (
-                  <div key={p.id} onClick={() => { setSelectedPlan(p); setShowPlanSwitcher(false); }}
-                    className={`relative p-6 rounded-2xl border-2 transition-all cursor-pointer hover:-translate-y-0.5 mt-4 ${selectedPlan?.id === p.id ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120]'}`}>
+                  <div
+                    key={p.id}
+                    onClick={() => { setSelectedPlan(p); setShowPlanSwitcher(false); }}
+                    className={`relative p-6 rounded-2xl border-2 transition-all cursor-pointer hover:-translate-y-0.5 mt-4 ${
+                      isSelected
+                        ? colors.borderSelected
+                        : `${colors.border} bg-white dark:bg-[#0B1120]`
+                    }`}
+                  >
                     {p.tag && <PlanTagBadge tag={p.tag} />}
+
                     <h4 className="font-semibold text-base text-slate-900 dark:text-white mb-1">{p.name}</h4>
+
+                    {/* Price — tag color */}
                     <div className="flex items-baseline gap-1 mb-4">
-                      <span className="text-2xl font-bold text-blue-600">{p.price === 0 ? 'Free' : `৳${p.price}`}</span>
+                      <span className={`text-2xl font-bold ${colors.price}`}>
+                        {p.price === 0 ? 'Free' : `৳${p.price}`}
+                      </span>
                       <span className="text-[10px] text-slate-400 uppercase">/mo</span>
                     </div>
+
+                    {/* Features — check icon tag color */}
                     <ul className="space-y-2 mb-5">
                       {allFeatures.map((f: string, i: number) => (
                         <li key={i} className="flex gap-2 text-xs text-slate-500 dark:text-slate-400">
-                          <Check size={12} className="text-blue-500 shrink-0 mt-0.5" /> {f}
+                          <Check size={12} className={`${colors.check} shrink-0 mt-0.5`} /> {f}
                         </li>
                       ))}
                     </ul>
-                    <div className={`w-full py-2.5 rounded-xl text-sm text-center transition-all font-medium ${selectedPlan?.id === p.id ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
-                      {selectedPlan?.id === p.id ? '✓ Selected' : 'Select Plan'}
+
+                    {/* Button — tag color */}
+                    <div className={`w-full py-2.5 rounded-xl text-sm text-center transition-all font-medium ${
+                      isSelected ? colors.buttonSelected : colors.button
+                    }`}>
+                      {isSelected ? '✓ Selected' : 'Select Plan'}
                     </div>
                   </div>
                 );

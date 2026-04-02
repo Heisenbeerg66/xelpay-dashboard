@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'XelPay - Ultimate Payment Automation Solution',
-    description: 'Zero commission bKash, Nagad, and Rocket payment automation gateway.',
+    description: 'Zero commission bKash, Nagad, Rocket , Upay And Cellfin payment automation gateway.',
   }
 };
 

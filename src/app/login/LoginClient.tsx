@@ -132,11 +132,15 @@ function LoginContent() {
       return;
     }
     setGoogleLoading(true);
+
+    // 🔴 Security: Generating a random transaction ID and saving it to sessionStorage
+    const txId = crypto.randomUUID().replace(/-/g, '') + Date.now().toString(36);
+    sessionStorage.setItem('auth_tx', txId);
     localStorage.setItem('oauth_source', 'login');
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?tx=${txId}` }, // Adding txId to the URL
     });
     if (error) { toast.error(error.message); setGoogleLoading(false); }
   };

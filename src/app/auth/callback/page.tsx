@@ -54,23 +54,26 @@ function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showNotFound, setShowNotFound] = useState(false);
-  const isProcessed = useRef(false); // Strict Mode এ ২ বার রান হওয়া ঠেকানোর জন্য
+  const [isValidating, setIsValidating] = useState(true); // 🔴 Security: Initializing with loading hidden
+  const isProcessed = useRef(false);
 
   useEffect(() => {
     const handle = async () => {
-      // যদি আগে একবার রান হয়ে থাকে, তবে এখানেই থামিয়ে দাও (Strict Mode Fix)
       if (isProcessed.current) return;
       
       const code = searchParams.get('code');
+      const tx = searchParams.get('tx');
+      const savedTx = sessionStorage.getItem('auth_tx');
 
-      if (!code) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) router.replace('/dashboard');
-        else router.replace('/login');
-        return;
+      // 🔴 Security Check: If tx is missing, invalid, or mismatched, kick out immediately
+      if (!code || !tx || tx !== savedTx) {
+        sessionStorage.removeItem('auth_tx');
+        router.replace('/login');
+        return; // Early return prevents the loading screen from ever showing
       }
 
-      isProcessed.current = true; // মার্ক করে দিলাম যে প্রসেস শুরু হয়েছে
+      setIsValidating(false); // Validation passed, now we can show the checking UI
+      isProcessed.current = true;
 
       let currentUser;
       const { data: { session: existingSession } } = await supabase.auth.getSession();
@@ -87,7 +90,8 @@ function AuthCallbackContent() {
         currentUser = exchangeData.session.user;
       }
 
-      // শুধুমাত্র আনপ্রয়োজনীয় oauth স্টোরেজ রিমুভ করা হচ্ছে
+      // Cleanup
+      sessionStorage.removeItem('auth_tx');
       localStorage.removeItem('oauth_plan_id');
       localStorage.removeItem('oauth_plan_price');
       localStorage.removeItem('oauth_refer_code');
@@ -101,7 +105,6 @@ function AuthCallbackContent() {
         .maybeSingle();
 
       if (!merchant) {
-        // মার্চেন্ট না থাকলে শুধু Supabase থেকে সাইন আউট করো (এটি থিম মুছবে না)
         await supabase.auth.signOut();
         setShowNotFound(true);
         return;
@@ -134,6 +137,9 @@ function AuthCallbackContent() {
     router.replace('/login');
   };
 
+  // 🔴 Security: Renders nothing (blank white/dark background) if hit directly with bad URL
+  if (isValidating) return null;
+
   return (
     <>
       <UserNotFoundModal
@@ -151,7 +157,7 @@ function AuthCallbackContent() {
             </div>
             <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5">Checking credentials</h2>
             <p className="text-slate-400 text-sm text-center max-w-[220px] leading-relaxed">
-              Verifying your information securely...
+              Verifying your secure login request...
             </p>
           </div>
       </div>
@@ -202,12 +208,7 @@ export default function AuthCallback() {
         </div>
       </header>
 
-      <Suspense fallback={
-        <div className="flex-1 flex flex-col items-center justify-center gap-3">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-          <p className="text-slate-400 text-xs uppercase tracking-widest">Loading...</p>
-        </div>
-      }>
+      <Suspense fallback={null}>
         <AuthCallbackContent />
       </Suspense>
     </div>

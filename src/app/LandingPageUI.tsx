@@ -12,6 +12,13 @@ import {
   Wallet, TrendingUp, Bell, QrCode
 } from 'lucide-react';
 
+// ── WhatsApp deep link helper ──
+// Number যেকোনো format এ থাকুক (01..., +880..., 880...) — শুধু digits রেখে wa.me link বানায়
+function buildWhatsAppLink(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  return `https://wa.me/${digits}`;
+}
+
 const FeatureCard = ({ icon: Icon, title, desc }: any) => (
   <div className="group p-8 rounded-2xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-900/50 transition-all hover:-translate-y-1 duration-300 flex flex-col items-center text-center">
     <div className="w-14 h-14 rounded-xl bg-slate-50 dark:bg-slate-800 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300 flex items-center justify-center mb-5">
@@ -67,7 +74,6 @@ const MailIconSvg = ({ size = 20 }: { size?: number }) => (
   </svg>
 );
 
-// Tag badge — pricing card এ border color এর জন্যও use হয়
 function PlanTagBadge({ tag }: { tag: string }) {
   const colorMap: Record<string, { gradient: string; text: string }> = {
     blue:   { gradient: 'from-blue-500 to-indigo-600',   text: 'text-white' },
@@ -89,7 +95,6 @@ function PlanTagBadge({ tag }: { tag: string }) {
   );
 }
 
-// Fix 1: Tag color থেকে border, button, price, checkmark color বের করা
 function getPlanColors(tag: string | null): {
   border: string;
   button: string;
@@ -114,13 +119,13 @@ function getPlanColors(tag: string | null): {
   return map[colorKey] || map.blue;
 }
 
-// Section IDs for scroll tracking
 const SECTIONS = ['hero', 'features', 'pricing', 'reviews', 'faq', 'contact'];
 
 export default function LandingPageUI({ initialPlans, initialReviews, initialFaqs, initialSettings }: any) {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // ── mounted: শুধু theme toggle UI এর জন্য — পুরো page কে null করে না ──
   const [mounted, setMounted] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
 
@@ -128,18 +133,14 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
   const [currentSlide, setCurrentSlide] = useState(0);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const faqSectionRef = useRef<HTMLDivElement>(null);
-  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
-  // ── Fix 1: Default dark mode ──
   useEffect(() => {
     setMounted(true);
-    // First visit: default dark
     if (!localStorage.getItem('theme')) {
       setTheme('dark');
     }
   }, []);
 
-  // ── Fix 3: Scroll tracking → update URL hash ──
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY + 120;
@@ -203,8 +204,7 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
     international: 'International (Stripe / PayPal / Crypto)',
   };
 
-  if (!mounted) return null;
-
+  // ── mounted check নেই — page সবসময় render হয় ──
   return (
     <div className="min-h-screen bg-white dark:bg-[#0B1120] transition-colors duration-500 overflow-x-hidden">
 
@@ -228,16 +228,18 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
               <Link key={item.href} href={item.href} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">{item.label}</Link>
             ))}
             <a href="#faq" onClick={handleScrollToFaq} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium cursor-pointer">FAQs</a>
-            {/* Theme Switch */}
+
+            {/* Theme toggle — mounted check শুধু এখানে */}
             <button
-              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+              onClick={() => mounted && setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
               aria-label="Toggle theme"
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none border ${resolvedTheme === 'dark' ? 'bg-blue-600 border-blue-500' : 'bg-slate-200 border-slate-300'}`}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none border ${mounted && resolvedTheme === 'dark' ? 'bg-blue-600 border-blue-500' : 'bg-slate-200 border-slate-300'}`}
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${resolvedTheme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
-              <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px]">{resolvedTheme === 'dark' ? '🌙' : ''}</span>
-              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px]">{resolvedTheme !== 'dark' ? '☀️' : ''}</span>
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${mounted && resolvedTheme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
+              <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px]">{mounted && resolvedTheme === 'dark' ? '🌙' : ''}</span>
+              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px]">{mounted && resolvedTheme !== 'dark' ? '☀️' : ''}</span>
             </button>
+
             <Link href="/login" className="text-slate-700 dark:text-slate-300 hover:text-blue-600 transition font-medium">Login</Link>
             <Link href={starterPlanId ? `/signup?plan=${starterPlanId}` : '/signup'}
               className="bg-blue-600 text-white px-6 py-2.5 rounded-full shadow-lg shadow-blue-600/30 hover:scale-105 transition-transform font-medium text-sm">
@@ -247,12 +249,15 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
 
           {/* Mobile icons */}
           <div className="flex items-center gap-2 md:hidden">
+            {/* Theme toggle mobile */}
             <button
-              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+              onClick={() => mounted && setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
               aria-label="Toggle theme"
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none border ${resolvedTheme === 'dark' ? 'bg-blue-600 border-blue-500' : 'bg-slate-200 border-slate-300'}`}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none border ${mounted && resolvedTheme === 'dark' ? 'bg-blue-600 border-blue-500' : 'bg-slate-200 border-slate-300'}`}
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${resolvedTheme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${mounted && resolvedTheme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
+              <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px]">{mounted && resolvedTheme === 'dark' ? '🌙' : ''}</span>
+              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px]">{mounted && resolvedTheme !== 'dark' ? '☀️' : ''}</span>
             </button>
             <Link href="/login" className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-md">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -306,7 +311,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium text-[10px] mb-5 uppercase tracking-widest border border-blue-100 dark:border-blue-800/50">
             <Zap size={11} /> The Ultimate Payment Solution
           </div>
-          {/* Fix 2: Clean, not italic/ultra bold */}
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 dark:text-white leading-[1.12] mb-5 tracking-tight">
             Automate Your{' '}
             <span className="text-blue-600">Payments</span>
@@ -330,13 +334,9 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
           </div>
         </div>
 
-        {/* Fix 5: Payment illustration instead of server log */}
         <div className="hidden md:flex flex-col gap-3">
-          {/* Main Payment Dashboard Card */}
           <div className="relative bg-white dark:bg-[#0f172a] p-5 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700/50 overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-500 via-green-400 to-blue-500 animate-pulse"></div>
-            
-            {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center">
@@ -351,8 +351,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"></span> Live
               </span>
             </div>
-
-            {/* Balance Summary */}
             <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-4 mb-3 text-white">
               <p className="text-[10px] text-blue-200 uppercase tracking-widest mb-1">Total Collected Today</p>
               <p className="text-2xl font-black tracking-tight">৳ 48,250<span className="text-blue-300 text-base">.00</span></p>
@@ -361,8 +359,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                 <span className="text-[10px] text-green-300 font-medium">+12.5% from yesterday</span>
               </div>
             </div>
-
-            {/* Payment Methods Row */}
             <div className="grid grid-cols-3 gap-2 mb-3">
               {[
                 { label: 'bKash', amount: '৳24,500', color: 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/30', dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400' },
@@ -376,8 +372,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                 </div>
               ))}
             </div>
-
-            {/* Recent Transactions */}
             <div className="space-y-1.5">
               {[
                 { icon: '💳', label: 'bKash Payment Verified', amount: '+৳1,500', time: 'Just now', status: 'success' },
@@ -399,8 +393,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
               ))}
             </div>
           </div>
-
-          {/* Stats row */}
           <div className="grid grid-cols-3 gap-3">
             {[{ val: '99.9%', label: 'Uptime' }, { val: '<1s', label: 'Verify' }, { val: '25+', label: 'Methods' }].map(s => (
               <div key={s.label} className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-center">
@@ -456,15 +448,12 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             const extraFeatures: string[] = Array.isArray(plan.features) ? plan.features : [];
             const allFeatures = [...columnFeatures.filter(Boolean) as string[], ...extraFeatures];
             const planTag: string | null = plan.tag || null;
-            // Fix 1: Get all colors from tag
             const planColors = getPlanColors(planTag);
-
             return (
               <div key={plan.id}
                 className={`p-8 md:p-10 rounded-3xl border-2 ${planColors.border} transition-all hover:-translate-y-1 duration-300 flex flex-col relative bg-white dark:bg-[#111827] shadow-lg mt-5`}>
                 {planTag && <PlanTagBadge tag={planTag} />}
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{plan.name}</h3>
-                {/* Fix 1: price color matches tag */}
                 <div className="my-5 flex items-baseline gap-1">
                   <span className={`text-4xl font-bold ${planColors.price}`}>
                     {plan.price === 0 ? 'Free' : `৳${plan.price.toLocaleString()}`}
@@ -474,12 +463,10 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                 <ul className="space-y-3 mb-8 flex-1">
                   {allFeatures.map((f: string, i: number) => (
                     <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600 dark:text-slate-300">
-                      {/* Fix 1: checkmark color matches tag */}
                       <Check size={15} className={`shrink-0 mt-0.5 ${planColors.check}`} /> {f}
                     </li>
                   ))}
                 </ul>
-                {/* Fix 1: button color matches tag */}
                 <Link href={`/signup?plan=${plan.id}`}
                   className={`w-full block py-3.5 text-center rounded-xl font-medium text-sm transition-all ${planColors.button}`}>
                   {plan.price === 0 ? 'Start Free' : 'Select Plan'}
@@ -537,7 +524,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
           </div>
         </div>
 
-        {/* Fix 2: Need Help card — only Contact Us button → goes to /info/contact */}
         <div id="contact" className="max-w-5xl mx-auto bg-blue-600 rounded-3xl p-8 md:p-16 text-center text-white relative overflow-hidden shadow-2xl shadow-blue-600/20">
           <div className="relative z-10 flex flex-col items-center">
             <div className="w-14 h-14 bg-white/20 rounded-2xl mb-5 flex items-center justify-center">
@@ -559,14 +545,12 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
       {/* ── FOOTER ── */}
       <footer id="about" className="bg-[#0f172a] text-slate-400 py-20 px-6 border-t border-slate-800">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
-          {/* Brand */}
           <div className="lg:col-span-2 space-y-5 pr-4">
             <Link href="/" className="flex items-center gap-1">
               <span className="text-3xl font-black text-blue-600 tracking-tighter">X</span>
               <span className="text-2xl font-semibold text-white tracking-tight -ml-0.5">elPay</span>
             </Link>
             <p className="text-sm leading-relaxed">Empowering merchants with the most reliable payment automation in Bangladesh.</p>
-            {/* Fix 4: Support contact info */}
             <div className="pt-2 space-y-2">
               <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Contact Us</p>
               {initialSettings?.support_email && (
@@ -590,7 +574,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             </div>
           </div>
 
-          {/* Fix 3: Footer columns — Useful Links, Privacy Policy, Support */}
           {[
             { title: 'Useful Links', links: [
               { href: '/signup', label: 'Register' },
@@ -614,9 +597,7 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             ]},
           ].map(col => (
             <div key={col.title}>
-              <h4 className="text-white font-semibold text-[10px] uppercase tracking-widest mb-5">
-                {col.title}
-              </h4>
+              <h4 className="text-white font-semibold text-[10px] uppercase tracking-widest mb-5">{col.title}</h4>
               <ul className="space-y-3 text-sm">
                 {col.links.map(link => (
                   <li key={link.label}>
@@ -643,13 +624,19 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
               { href: initialSettings?.facebook, Icon: FacebookIcon },
               { href: initialSettings?.youtube, Icon: YoutubeIcon },
               { href: initialSettings?.support_telegram, Icon: TelegramIcon },
-              { href: initialSettings?.whatsapp, Icon: WhatsAppIcon },
+              // ── WhatsApp: number থেকে wa.me deep link ──
+              {
+                href: initialSettings?.whatsapp ? buildWhatsAppLink(initialSettings.whatsapp) : undefined,
+                Icon: WhatsAppIcon,
+              },
               { href: `mailto:${initialSettings?.support_email}`, Icon: MailIconSvg },
             ].map(({ href, Icon }, i) => (
-              <a key={i} href={href} target="_blank" rel="noopener noreferrer"
-                className="hover:scale-125 hover:opacity-100 opacity-70 transition-all duration-200">
-                <Icon size={22} />
-              </a>
+              href ? (
+                <a key={i} href={href} target="_blank" rel="noopener noreferrer"
+                  className="hover:scale-125 hover:opacity-100 opacity-70 transition-all duration-200">
+                  <Icon size={22} />
+                </a>
+              ) : null
             ))}
           </div>
           <div className="text-[10px] font-medium uppercase tracking-widest opacity-50">
