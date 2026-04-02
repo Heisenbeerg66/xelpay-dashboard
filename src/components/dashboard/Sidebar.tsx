@@ -40,15 +40,23 @@ function useIsMobileDevice() {
   return isMobile;
 }
 
-// সব session, cache, localStorage clear করে sign out করার helper
+// Fix 12: Theme-safe sign out — শুধু auth-related data clear, theme রাখে
 async function fullSignOut() {
   try {
     await supabase.auth.signOut({ scope: 'global' });
   } catch (e) {
     // ignore errors
   }
-  // localStorage সব clear
-  localStorage.clear();
+  // Fix 12: theme এবং অন্য non-auth keys রেখে বাকি সব clear করো
+  const KEEP_KEYS = ['theme'];
+  const toRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && !KEEP_KEYS.includes(key)) {
+      toRemove.push(key);
+    }
+  }
+  toRemove.forEach(k => localStorage.removeItem(k));
   sessionStorage.clear();
   // Hard redirect — Next.js router cache ও clear হয়ে যাবে
   window.location.href = '/login';

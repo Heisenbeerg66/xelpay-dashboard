@@ -5,7 +5,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
   // টাইটেল আরও আকর্ষণীয় করা হয়েছে
-  title: 'XelPay - Best Automated Payment Gateway in Bangladesh (bKash, Nagad, Rocket)',
+  title: 'XelPay - Best Automated Payment Gateway in Bangladesh (bKash, Nagad, Rocket,Upay,Cellfin ,etc)',
   description: 'Instant automated payment verification for bKash, Nagad, and Rocket. Use your Personal, Agent, or Merchant accounts with XelPay - the fastest secure payment automation gateway.',
   openGraph: {
     title: 'XelPay - Instant Payment Automation Solution',

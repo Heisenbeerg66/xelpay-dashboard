@@ -6,9 +6,10 @@ import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
 import {
   Menu, X, Moon, Sun, Check, Star, Zap, Shield, Smartphone, Globe,
-  FileText, CreditCard, ArrowRight, PlayCircle, Server, Send, Mail,
+  FileText, CreditCard, ArrowRight, PlayCircle, Send, Mail,
   ChevronDown, ChevronUp, HelpCircle, Code,
-  Link as LinkIcon, Database, Building2, BookOpen, ChevronRight
+  Link as LinkIcon, Database, Building2, BookOpen, ChevronRight,
+  Wallet, TrendingUp, Bell, QrCode
 } from 'lucide-react';
 
 const FeatureCard = ({ icon: Icon, title, desc }: any) => (
@@ -88,19 +89,29 @@ function PlanTagBadge({ tag }: { tag: string }) {
   );
 }
 
-// Tag color থেকে Tailwind border class বের করা
-function getPlanBorderClass(tag: string | null): string {
-  if (!tag) return 'border-slate-200 dark:border-slate-700';
-  const colorKey = (tag.split(':')[1] || 'blue').trim().toLowerCase();
-  const borderMap: Record<string, string> = {
-    blue:   'border-blue-500',
-    green:  'border-emerald-500',
-    orange: 'border-orange-500',
-    purple: 'border-purple-500',
-    red:    'border-red-500',
-    amber:  'border-amber-400',
+// Fix 1: Tag color থেকে border, button, price, checkmark color বের করা
+function getPlanColors(tag: string | null): {
+  border: string;
+  button: string;
+  price: string;
+  check: string;
+} {
+  if (!tag) return {
+    border: 'border-slate-200 dark:border-slate-700',
+    button: 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20',
+    price: 'text-blue-600',
+    check: 'text-blue-500',
   };
-  return borderMap[colorKey] || 'border-blue-500';
+  const colorKey = (tag.split(':')[1] || 'blue').trim().toLowerCase();
+  const map: Record<string, { border: string; button: string; price: string; check: string }> = {
+    blue:   { border: 'border-blue-500',   button: 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20',     price: 'text-blue-600',    check: 'text-blue-500'    },
+    green:  { border: 'border-emerald-500', button: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20', price: 'text-emerald-600', check: 'text-emerald-500' },
+    orange: { border: 'border-orange-500', button: 'bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20',   price: 'text-orange-500',  check: 'text-orange-500'  },
+    purple: { border: 'border-purple-500', button: 'bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/20',   price: 'text-purple-600',  check: 'text-purple-500'  },
+    red:    { border: 'border-red-500',    button: 'bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20',           price: 'text-red-600',     check: 'text-red-500'     },
+    amber:  { border: 'border-amber-400',  button: 'bg-amber-500 hover:bg-amber-600 text-slate-900 shadow-md shadow-amber-500/20', price: 'text-amber-500',   check: 'text-amber-500'   },
+  };
+  return map[colorKey] || map.blue;
 }
 
 // Section IDs for scroll tracking
@@ -217,11 +228,15 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
               <Link key={item.href} href={item.href} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">{item.label}</Link>
             ))}
             <a href="#faq" onClick={handleScrollToFaq} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium cursor-pointer">FAQs</a>
+            {/* Theme Switch */}
             <button
               onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50 hover:scale-110 transition-all"
+              aria-label="Toggle theme"
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none border ${resolvedTheme === 'dark' ? 'bg-blue-600 border-blue-500' : 'bg-slate-200 border-slate-300'}`}
             >
-              {resolvedTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${resolvedTheme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
+              <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px]">{resolvedTheme === 'dark' ? '🌙' : ''}</span>
+              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px]">{resolvedTheme !== 'dark' ? '☀️' : ''}</span>
             </button>
             <Link href="/login" className="text-slate-700 dark:text-slate-300 hover:text-blue-600 transition font-medium">Login</Link>
             <Link href={starterPlanId ? `/signup?plan=${starterPlanId}` : '/signup'}
@@ -234,9 +249,10 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
           <div className="flex items-center gap-2 md:hidden">
             <button
               onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50"
+              aria-label="Toggle theme"
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none border ${resolvedTheme === 'dark' ? 'bg-blue-600 border-blue-500' : 'bg-slate-200 border-slate-300'}`}
             >
-              {resolvedTheme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${resolvedTheme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
             </button>
             <Link href="/login" className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-md">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -314,44 +330,77 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
           </div>
         </div>
 
-        {/* Server Log Card */}
+        {/* Fix 5: Payment illustration instead of server log */}
         <div className="hidden md:flex flex-col gap-3">
-          <div className="relative bg-white dark:bg-[#0f172a] p-4 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700/50 overflow-hidden">
+          {/* Main Payment Dashboard Card */}
+          <div className="relative bg-white dark:bg-[#0f172a] p-5 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700/50 overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-500 via-green-400 to-blue-500 animate-pulse"></div>
-            <div className="flex items-center justify-between mb-3">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-blue-100 dark:bg-blue-600/20 rounded-lg flex items-center justify-center">
-                  <Server size={12} className="text-blue-600 dark:text-blue-400" />
+                <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center">
+                  <Wallet size={14} className="text-white" />
                 </div>
-                <span className="text-slate-700 dark:text-white font-semibold text-xs uppercase tracking-wider">Live Server Log</span>
+                <div>
+                  <p className="text-slate-800 dark:text-white font-bold text-xs">Payment Dashboard</p>
+                  <p className="text-slate-400 text-[10px]">Real-time tracking</p>
+                </div>
               </div>
-              <span className="flex items-center gap-1.5 text-[10px] text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2.5 py-1 rounded-full font-medium uppercase border border-green-200 dark:border-green-800/40 animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"></span> Online
+              <span className="flex items-center gap-1.5 text-[10px] text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2.5 py-1 rounded-full font-medium border border-green-200 dark:border-green-800/40 animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"></span> Live
               </span>
             </div>
+
+            {/* Balance Summary */}
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-4 mb-3 text-white">
+              <p className="text-[10px] text-blue-200 uppercase tracking-widest mb-1">Total Collected Today</p>
+              <p className="text-2xl font-black tracking-tight">৳ 48,250<span className="text-blue-300 text-base">.00</span></p>
+              <div className="flex items-center gap-1.5 mt-2">
+                <TrendingUp size={11} className="text-green-300" />
+                <span className="text-[10px] text-green-300 font-medium">+12.5% from yesterday</span>
+              </div>
+            </div>
+
+            {/* Payment Methods Row */}
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {[
+                { label: 'bKash', amount: '৳24,500', color: 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/30', dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400' },
+                { label: 'Nagad', amount: '৳18,750', color: 'bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800/30', dot: 'bg-orange-500', text: 'text-orange-600 dark:text-orange-400' },
+                { label: 'Stripe', amount: '$58.00', color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/30', dot: 'bg-blue-500', text: 'text-blue-600 dark:text-blue-400' },
+              ].map((m, i) => (
+                <div key={i} className={`${m.color} border rounded-xl p-2.5 text-center`}>
+                  <div className={`w-1.5 h-1.5 ${m.dot} rounded-full mx-auto mb-1`}></div>
+                  <p className={`text-[9px] font-bold ${m.text} uppercase tracking-wider`}>{m.label}</p>
+                  <p className="text-slate-700 dark:text-slate-200 text-[10px] font-black mt-0.5">{m.amount}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Recent Transactions */}
             <div className="space-y-1.5">
               {[
-                { abbr: 'bK', color: 'red', label: 'Payment Verified', sub: 'bKash Merchant • ৳1,500', time: 'Just now', ping: true },
-                { abbr: '⚡', color: 'blue', label: 'Webhook Triggered', sub: 'Order #XEL9921XP', time: '2s ago', ping: false },
-                { abbr: 'NG', color: 'yellow', label: 'Nagad Verified', sub: 'Personal • ৳850', time: '5s ago', ping: false },
-                { abbr: 'ST', color: 'green', label: 'Stripe Payment', sub: 'International • $29.00', time: '12s ago', ping: false },
+                { icon: '💳', label: 'bKash Payment Verified', amount: '+৳1,500', time: 'Just now', status: 'success' },
+                { icon: '🔔', label: 'Webhook → Order #XEL9921', amount: 'Sent', time: '2s ago', status: 'info' },
+                { icon: '💰', label: 'Nagad Personal Verified', amount: '+৳850', time: '5s ago', status: 'success' },
               ].map((item, i) => (
-                <div key={i} className={`flex items-center gap-2.5 p-2.5 bg-${item.color}-50 dark:bg-${item.color}-900/20 rounded-xl border border-${item.color}-100 dark:border-${item.color}-700/30`}>
-                  <div className={`w-8 h-8 rounded-lg bg-${item.color}-100 dark:bg-${item.color}-600/20 flex items-center justify-center shrink-0`}>
-                    <span className={`text-${item.color}-600 dark:text-${item.color}-400 font-semibold text-[10px]`}>{item.abbr}</span>
+                <div key={i} className="flex items-center gap-2.5 p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
+                  <div className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center shrink-0 text-sm shadow-sm">
+                    {item.icon}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-slate-800 dark:text-white font-medium text-[11px]">{item.label}</p>
-                    <p className="text-slate-500 dark:text-slate-400 text-[10px] mt-0.5">{item.sub}</p>
+                    <p className="text-slate-700 dark:text-slate-200 font-medium text-[10px] truncate">{item.label}</p>
+                    <p className="text-slate-400 text-[9px] mt-0.5">{item.time}</p>
                   </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-green-600 dark:text-green-400 text-[10px] font-medium block">{item.time}</span>
-                    {item.ping && <div className="mt-1 w-2 h-2 bg-green-500 rounded-full ml-auto animate-ping"></div>}
-                  </div>
+                  <span className={`text-[10px] font-bold ${item.status === 'success' ? 'text-green-600 dark:text-green-400' : 'text-blue-500'}`}>
+                    {item.amount}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
+
+          {/* Stats row */}
           <div className="grid grid-cols-3 gap-3">
             {[{ val: '99.9%', label: 'Uptime' }, { val: '<1s', label: 'Verify' }, { val: '25+', label: 'Methods' }].map(s => (
               <div key={s.label} className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-center">
@@ -407,16 +456,17 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             const extraFeatures: string[] = Array.isArray(plan.features) ? plan.features : [];
             const allFeatures = [...columnFeatures.filter(Boolean) as string[], ...extraFeatures];
             const planTag: string | null = plan.tag || null;
-            // Fix 5: border color from tag
-            const borderClass = getPlanBorderClass(planTag);
+            // Fix 1: Get all colors from tag
+            const planColors = getPlanColors(planTag);
 
             return (
               <div key={plan.id}
-                className={`p-8 md:p-10 rounded-3xl border-2 ${borderClass} transition-all hover:-translate-y-1 duration-300 flex flex-col relative bg-white dark:bg-[#111827] shadow-lg mt-5`}>
+                className={`p-8 md:p-10 rounded-3xl border-2 ${planColors.border} transition-all hover:-translate-y-1 duration-300 flex flex-col relative bg-white dark:bg-[#111827] shadow-lg mt-5`}>
                 {planTag && <PlanTagBadge tag={planTag} />}
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{plan.name}</h3>
+                {/* Fix 1: price color matches tag */}
                 <div className="my-5 flex items-baseline gap-1">
-                  <span className="text-4xl font-bold text-blue-600">
+                  <span className={`text-4xl font-bold ${planColors.price}`}>
                     {plan.price === 0 ? 'Free' : `৳${plan.price.toLocaleString()}`}
                   </span>
                   {plan.price > 0 && <span className="text-sm text-slate-400 font-medium">/month</span>}
@@ -424,12 +474,14 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                 <ul className="space-y-3 mb-8 flex-1">
                   {allFeatures.map((f: string, i: number) => (
                     <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600 dark:text-slate-300">
-                      <Check size={15} className="shrink-0 mt-0.5 text-blue-500" /> {f}
+                      {/* Fix 1: checkmark color matches tag */}
+                      <Check size={15} className={`shrink-0 mt-0.5 ${planColors.check}`} /> {f}
                     </li>
                   ))}
                 </ul>
+                {/* Fix 1: button color matches tag */}
                 <Link href={`/signup?plan=${plan.id}`}
-                  className="w-full block py-3.5 text-center rounded-xl font-medium text-sm transition-all bg-blue-600 text-white shadow-md shadow-blue-600/20 hover:bg-blue-700">
+                  className={`w-full block py-3.5 text-center rounded-xl font-medium text-sm transition-all ${planColors.button}`}>
                   {plan.price === 0 ? 'Start Free' : 'Select Plan'}
                 </Link>
               </div>
@@ -485,6 +537,7 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
           </div>
         </div>
 
+        {/* Fix 2: Need Help card — only Contact Us button → goes to /info/contact */}
         <div id="contact" className="max-w-5xl mx-auto bg-blue-600 rounded-3xl p-8 md:p-16 text-center text-white relative overflow-hidden shadow-2xl shadow-blue-600/20">
           <div className="relative z-10 flex flex-col items-center">
             <div className="w-14 h-14 bg-white/20 rounded-2xl mb-5 flex items-center justify-center">
@@ -494,16 +547,10 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             <p className="mb-8 opacity-90 max-w-xl text-sm leading-relaxed">
               Our technical support team is available 24/7 to help with your payment automation journey.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-              <a href={initialSettings?.support_telegram} target="_blank" rel="noopener noreferrer"
-                className="bg-white text-blue-600 px-8 py-3.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:-translate-y-0.5 transition shadow-xl w-full sm:w-auto">
-                <Send size={16} /> Join Telegram
-              </a>
-              <a href={`mailto:${initialSettings?.support_email}`}
-                className="bg-blue-700 border border-blue-400 px-8 py-3.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:-translate-y-0.5 transition w-full sm:w-auto">
-                <Mail size={16} /> Email Support
-              </a>
-            </div>
+            <Link href="/info/contact"
+              className="bg-white text-blue-600 px-10 py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:-translate-y-0.5 transition shadow-xl w-full sm:w-auto">
+              <HelpCircle size={16} /> Contact Us
+            </Link>
           </div>
           <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
         </div>
@@ -511,36 +558,64 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
 
       {/* ── FOOTER ── */}
       <footer id="about" className="bg-[#0f172a] text-slate-400 py-20 px-6 border-t border-slate-800">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
-          <div className="space-y-5 pr-4">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
+          {/* Brand */}
+          <div className="lg:col-span-2 space-y-5 pr-4">
             <Link href="/" className="flex items-center gap-1">
               <span className="text-3xl font-black text-blue-600 tracking-tighter">X</span>
               <span className="text-2xl font-semibold text-white tracking-tight -ml-0.5">elPay</span>
             </Link>
             <p className="text-sm leading-relaxed">Empowering merchants with the most reliable payment automation in Bangladesh.</p>
+            {/* Fix 4: Support contact info */}
+            <div className="pt-2 space-y-2">
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Contact Us</p>
+              {initialSettings?.support_email && (
+                <a href={`mailto:${initialSettings.support_email}`} className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors group">
+                  <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-blue-600/20 transition-colors">
+                    <Mail size={13} className="text-slate-500 group-hover:text-blue-400" />
+                  </div>
+                  {initialSettings.support_email}
+                </a>
+              )}
+              {initialSettings?.support_phone && (
+                <a href={`tel:${initialSettings.support_phone}`} className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors group">
+                  <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-blue-600/20 transition-colors">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 group-hover:text-blue-400">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.08 6.08l1.08-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                    </svg>
+                  </div>
+                  {initialSettings.support_phone}
+                </a>
+              )}
+            </div>
           </div>
+
+          {/* Fix 3: Footer columns — Useful Links, Privacy Policy, Support */}
           {[
-            { icon: Building2, title: 'Company', links: [
+            { title: 'Useful Links', links: [
+              { href: '/signup', label: 'Register' },
+              { href: '/login', label: 'Login' },
+              { href: '#pricing', label: 'Pricing' },
+              { href: '/info/affiliate', label: 'Affiliate Program' },
+              { href: '/info/reseller', label: 'Reseller Program' },
+            ]},
+            { title: 'Company & Legal', links: [
               { href: '/info/about', label: 'About XelPay' },
               { href: '/info/privacy', label: 'Privacy Policy' },
               { href: '/info/terms', label: 'Terms of Service' },
-              { href: '/info/reseller', label: 'Reseller Program' },
+              { href: '/info/status', label: 'System Status' },
             ]},
-            { icon: BookOpen, title: 'Developer', links: [
+            { title: 'Developer & Support', links: [
+              { href: '/info/contact', label: 'Contact Us' },
+              { href: '/info/ticket', label: 'Help Center' },
               { href: '/info/docs', label: 'Developer Guidance' },
               { href: '/info/api-reference', label: 'API Reference' },
-              { href: '/info/status', label: 'System Status' },
               { href: '/info/plugins', label: 'CMS Plugins' },
-            ]},
-            { icon: HelpCircle, title: 'Support', links: [
-              { href: '/info/ticket', label: 'Help Center' },
-              { href: `mailto:${initialSettings?.support_email}`, label: 'Direct Support' },
-              { href: '/info/affiliate', label: 'Affiliate Program' },
             ]},
           ].map(col => (
             <div key={col.title}>
-              <h4 className="text-white font-semibold text-[10px] uppercase tracking-widest mb-5 flex items-center gap-2">
-                <col.icon size={14} className="text-blue-600" /> {col.title}
+              <h4 className="text-white font-semibold text-[10px] uppercase tracking-widest mb-5">
+                {col.title}
               </h4>
               <ul className="space-y-3 text-sm">
                 {col.links.map(link => (
@@ -550,7 +625,7 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                     </Link>
                   </li>
                 ))}
-                {col.title === 'Support' && (
+                {col.title === 'Developer & Support' && (
                   <li>
                     <a href="#faq" onClick={handleScrollToFaq} className="hover:text-white transition flex items-center gap-1.5 group cursor-pointer">
                       <ChevronRight size={13} className="text-slate-700 group-hover:text-blue-500 transition" /> All FAQs
