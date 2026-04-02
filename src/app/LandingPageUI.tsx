@@ -331,10 +331,10 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             </div>
             <div className="space-y-1.5">
               {[
-                { abbr: 'bK', color: 'pink', label: 'Payment Verified', sub: 'bKash Merchant • ৳1,500', time: 'Just now', ping: true },
+                { abbr: 'bK', color: 'red', label: 'Payment Verified', sub: 'bKash Merchant • ৳1,500', time: 'Just now', ping: true },
                 { abbr: '⚡', color: 'blue', label: 'Webhook Triggered', sub: 'Order #XEL9921XP', time: '2s ago', ping: false },
-                { abbr: 'NG', color: 'orange', label: 'Nagad Verified', sub: 'Personal • ৳850', time: '5s ago', ping: false },
-                { abbr: 'ST', color: 'indigo', label: 'Stripe Payment', sub: 'International • $29.00', time: '12s ago', ping: false },
+                { abbr: 'NG', color: 'yellow', label: 'Nagad Verified', sub: 'Personal • ৳850', time: '5s ago', ping: false },
+                { abbr: 'ST', color: 'green', label: 'Stripe Payment', sub: 'International • $29.00', time: '12s ago', ping: false },
               ].map((item, i) => (
                 <div key={i} className={`flex items-center gap-2.5 p-2.5 bg-${item.color}-50 dark:bg-${item.color}-900/20 rounded-xl border border-${item.color}-100 dark:border-${item.color}-700/30`}>
                   <div className={`w-8 h-8 rounded-lg bg-${item.color}-100 dark:bg-${item.color}-600/20 flex items-center justify-center shrink-0`}>
