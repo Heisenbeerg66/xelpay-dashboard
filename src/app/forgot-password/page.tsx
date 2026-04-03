@@ -647,6 +647,19 @@ function ForgotPasswordContent() {
                 </div>
               )}
 
+              {step === 4 && (
+                <div className="text-center animate-in zoom-in-95 duration-500 py-4">
+                  <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle size={40} strokeWidth={1.5} /></div>
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">Password Updated!</h2>
+                  <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm leading-relaxed">Your password has been successfully reset. You can now securely login to your workspace.</p>
+                  <button onClick={handleSuccessLogin} className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-medium text-sm flex items-center justify-center shadow-lg hover:-translate-y-0.5 transition-all">Login Now</button>
+                </div>
+              )}
+            </>
+          )}
+
+        </div>
+      </div>
 
       <SuspendedModal isOpen={modalState === 'suspended'} telegramLink={telegramLink} onClose={() => setModalState('none')} />
       <PendingModal isOpen={modalState === 'pending'} telegramLink={telegramLink} onClose={() => setModalState('none')} />
