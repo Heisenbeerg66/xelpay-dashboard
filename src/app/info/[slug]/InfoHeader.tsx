@@ -69,10 +69,7 @@ export default function InfoHeader() {
           {menuOpen ? <X size={18} /> : <Menu size={18} />}
         </button>
 
-        <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
-          <span className="text-2xl font-black text-blue-600 tracking-tighter">X</span>
-          <span className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
-        </Link>
+        
 
         <ThemeToggle />
       </div>

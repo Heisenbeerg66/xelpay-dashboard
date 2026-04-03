@@ -209,10 +209,6 @@ function LoginContent() {
           <button onClick={() => setMenuOpen(!menuOpen)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all">
             {menuOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
-          <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
-            <span className="text-2xl font-black text-blue-600 tracking-tighter">X</span>
-            <span className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
-          </Link>
           <ThemeToggle />
         </div>
 

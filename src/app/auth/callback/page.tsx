@@ -7,6 +7,7 @@ import { UserX, LogIn, UserPlus, Menu, Sun, Moon } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
 
+// User Not Found Modal 
 function UserNotFoundModal({ isOpen, onSignup, onLogin, onBackdrop }: {
   isOpen: boolean;
   onSignup: () => void;
@@ -53,65 +54,54 @@ function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showNotFound, setShowNotFound] = useState(false);
-  const [isValidating, setIsValidating] = useState(true); 
   const isProcessed = useRef(false);
 
   useEffect(() => {
-    const handle = async () => {
+    const handleAuth = async () => {
+      // Prevent running twice in React Strict Mode
       if (isProcessed.current) return;
-      
-      const code = searchParams.get('code');
-      const tx = searchParams.get('tx');
-      const savedTx = sessionStorage.getItem('auth_tx');
-
-      // 🔴 Security: If it's a Google OAuth flow (has tx), strictly validate it
-      if (tx) {
-        if (tx !== savedTx) {
-          sessionStorage.removeItem('auth_tx');
-          router.replace('/login');
-          return;
-        }
-      } else {
-        // 🔴 Magic Link Fix: If no tx (Magic Link), but also no code or hash, kick out.
-        if (!code && !window.location.hash) {
-          router.replace('/login');
-          return;
-        }
-      }
-
-      setIsValidating(false); 
       isProcessed.current = true;
 
-      let currentUser;
-      const { data: { session: existingSession } } = await supabase.auth.getSession();
+      // 🔴 FIX 1: Give Supabase Client 500ms to auto-process Magic Link/PKCE code securely
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      if (existingSession) {
-        currentUser = existingSession.user;
-      } else if (code) {
-        const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        
-        if (exchangeError || !exchangeData?.session) {
-          router.replace('/login');
-          return;
+      // 🔴 FIX 2: Gracefully fetch the session (No manual code exchange conflict)
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      // 🔴 FIX 3: Fallback manual exchange if Supabase auto-processing failed
+      if (!session) {
+        const code = searchParams.get('code');
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          session = data?.session || null;
         }
-        currentUser = exchangeData.session.user;
       }
 
+      // Security Check: For Google OAuth only (Magic Link has no tx)
+      const tx = searchParams.get('tx');
+      const savedTx = sessionStorage.getItem('auth_tx');
+      if (tx && tx !== savedTx) {
+        sessionStorage.removeItem('auth_tx');
+        router.replace('/login');
+        return;
+      }
       sessionStorage.removeItem('auth_tx');
       localStorage.removeItem('oauth_plan_id');
       localStorage.removeItem('oauth_plan_price');
       localStorage.removeItem('oauth_refer_code');
       localStorage.removeItem('oauth_source');
 
-      if (!currentUser) {
+      // If absolutely no session could be established
+      if (!session) {
         router.replace('/login');
         return;
       }
 
+      // ── CHECK MERCHANT DATA ──
       const { data: merchant } = await supabase
         .from('merchants')
         .select('id, status')
-        .eq('id', currentUser.id)
+        .eq('id', session.user.id)
         .maybeSingle();
 
       if (!merchant) {
@@ -126,10 +116,11 @@ function AuthCallbackContent() {
         return;
       }
 
+      // ── SUCCESS: Redirect to Dashboard ──
       router.replace('/dashboard');
     };
 
-    handle();
+    handleAuth();
   }, [router, searchParams]);
 
   const handleGoSignup = () => {
@@ -146,8 +137,6 @@ function AuthCallbackContent() {
     setShowNotFound(false);
     router.replace('/login');
   };
-
-  if (isValidating) return null;
 
   return (
     <>
@@ -196,6 +185,8 @@ export default function AuthCallback() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0B1120] font-sans">
+      
+      {/* Header */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 md:hidden">
         <div className="h-16 flex items-center px-4 justify-between relative max-w-7xl mx-auto w-full">
           <button
@@ -204,10 +195,12 @@ export default function AuthCallback() {
           >
             <Menu size={18} />
           </button>
+
           <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
             <span className="text-2xl font-black text-blue-600 tracking-tighter">X</span>
             <span className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
           </Link>
+
           <ThemeToggle />
         </div>
       </header>

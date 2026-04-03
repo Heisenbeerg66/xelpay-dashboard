@@ -222,24 +222,50 @@ function ForgotPasswordContent() {
 
       {/* ── HEADER ── */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-        <div className="h-16 flex items-center px-4 md:px-8 justify-between relative max-w-7xl mx-auto w-full">
-          <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all">
-            {menuOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
-          {/* 🔴 Added onClick={clearSession} to all navigation links */}
-          <Link href="/" onClick={clearSession} className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex items-center gap-1">
-            <span className="text-2xl font-black text-blue-600 tracking-tighter">X</span>
-            <span className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
-          </Link>
-          <div className="hidden md:flex items-center gap-6 text-sm">
-            <Link href="/login" onClick={clearSession} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Login</Link>
-            <Link href="/signup" onClick={clearSession} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Register</Link>
-            <Link href="/info/contact" onClick={clearSession} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Support</Link>
-            <ThemeToggle />
+        <div className="h-16 relative max-w-7xl mx-auto w-full px-4 md:px-8">
+          
+          {/* ========================================== */}
+          {/* DESKTOP & TABLET VIEW (Hidden on Mobile)   */}
+          {/* ========================================== */}
+          <div className="hidden md:flex h-full items-center justify-between w-full">
+            {/* Logo / Branding */}
+            <Link href="/" onClick={clearSession} className="flex items-center gap-1">
+              <span className="text-2xl font-black text-blue-600 tracking-tighter">X</span>
+              <span className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
+            </Link>
+
+            {/* Navigation Links & Theme Toggle */}
+            <div className="flex items-center gap-6 text-sm">
+              <Link href="/login" onClick={clearSession} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Login</Link>
+              <Link href="/signup" onClick={clearSession} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Register</Link>
+              <Link href="/info/contact" onClick={clearSession} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Support</Link>
+              <ThemeToggle />
+            </div>
           </div>
-          <div className="md:hidden flex items-center"><ThemeToggle /></div>
+
+          {/* ========================================== */}
+          {/* MOBILE VIEW (Hidden on Desktop & Tablet)   */}
+          {/* ========================================== */}
+          <div className="flex md:hidden h-full items-center justify-between w-full">
+            {/* Hamburger Menu Button */}
+            <button 
+              onClick={() => setMenuOpen(!menuOpen)} 
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all"
+            >
+              {menuOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+
+            {/* Theme Toggle (Right Side) */}
+            <div className="flex items-center">
+              <ThemeToggle />
+            </div>
+          </div>
+
         </div>
 
+        {/* ========================================== */}
+        {/* MOBILE DROPDOWN MENU                     */}
+        {/* ========================================== */}
         {menuOpen && (
           <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0d1526] animate-in slide-in-from-top-2 duration-200">
             <div className="px-4 py-3 flex flex-col gap-1 max-w-7xl mx-auto w-full">

@@ -229,16 +229,18 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             ))}
             <a href="#faq" onClick={handleScrollToFaq} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium cursor-pointer">FAQs</a>
 
-            {/* Theme toggle — mounted check শুধু এখানে */}
-            <button
-              onClick={() => mounted && setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-              aria-label="Toggle theme"
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none border ${mounted && resolvedTheme === 'dark' ? 'bg-blue-600 border-blue-500' : 'bg-slate-200 border-slate-300'}`}
-            >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${mounted && resolvedTheme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
-              <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px]">{mounted && resolvedTheme === 'dark' ? '🌙' : ''}</span>
-              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px]">{mounted && resolvedTheme !== 'dark' ? '☀️' : ''}</span>
-            </button>
+            {/* ── Theme toggle: round icon button (Sun/Moon) ── */}
+            {mounted ? (
+              <button
+                onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                aria-label="Toggle theme"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50 hover:scale-110 transition-all"
+              >
+                {resolvedTheme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+              </button>
+            ) : (
+              <div className="w-9 h-9" />
+            )}
 
             <Link href="/login" className="text-slate-700 dark:text-slate-300 hover:text-blue-600 transition font-medium">Login</Link>
             <Link href={starterPlanId ? `/signup?plan=${starterPlanId}` : '/signup'}
@@ -249,16 +251,18 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
 
           {/* Mobile icons */}
           <div className="flex items-center gap-2 md:hidden">
-            {/* Theme toggle mobile */}
-            <button
-              onClick={() => mounted && setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-              aria-label="Toggle theme"
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none border ${mounted && resolvedTheme === 'dark' ? 'bg-blue-600 border-blue-500' : 'bg-slate-200 border-slate-300'}`}
-            >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${mounted && resolvedTheme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
-              <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px]">{mounted && resolvedTheme === 'dark' ? '🌙' : ''}</span>
-              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px]">{mounted && resolvedTheme !== 'dark' ? '☀️' : ''}</span>
-            </button>
+            {/* ── Theme toggle mobile: round icon button (Sun/Moon) ── */}
+            {mounted ? (
+              <button
+                onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+                aria-label="Toggle theme"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50 hover:scale-110 transition-all"
+              >
+                {resolvedTheme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+              </button>
+            ) : (
+              <div className="w-9 h-9" />
+            )}
             <Link href="/login" className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-md">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
