@@ -21,18 +21,20 @@ export default function Reports() {
 
   const fetchAnalytics = async (bizId: string) => {
     setLoading(true);
+
     const { data: orders } = await supabase
       .from('orders')
       .select('amount, status, created_at, method')
       .eq('business_id', bizId)
-      .order('created_at', { ascending: true }); // পুরানো থেকে নতুন
+      .order('created_at', { ascending: true });
+    // পুরানো থেকে নতুন
 
     if (orders) {
       let total = 0;
       let successCount = 0;
       let failCount = 0;
       let methods = { bkash: 0, nagad: 0, rocket: 0, upay: 0 };
-      
+
       // Last 7 days tracking array
       const last7Days = Array.from({ length: 7 }).map((_, i) => {
         const d = new Date();
@@ -44,6 +46,7 @@ export default function Reports() {
         };
       });
 
+      // ✅ টাইপ এরর ফিক্স করা হয়েছে: order এর টাইপ any দেওয়া হলো
       orders.forEach((order: any) => {
         const amt = parseFloat(order.amount || '0');
         const method = order.method?.toLowerCase() as keyof typeof methods;
@@ -93,7 +96,8 @@ export default function Reports() {
   }, []);
 
   // Find max value for dynamic chart height
-  const maxChartValue = Math.max(...weeklyData.map(d => d.amount), 100); // minimum 100 to avoid division by zero
+  const maxChartValue = Math.max(...weeklyData.map(d => d.amount), 100);
+  // minimum 100 to avoid division by zero
   const totalGatewayVolume = Object.values(gatewaySplit).reduce((a, b) => a + b, 0);
 
   if (!businessId) {
