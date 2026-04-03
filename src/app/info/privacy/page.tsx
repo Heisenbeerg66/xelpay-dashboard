@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import InfoHeader from '@/app/info/[slug]/InfoHeader';
 import {
   ArrowLeft, ShieldCheck, AlertTriangle, Globe,
   ChevronDown, ChevronUp, Lock, Eye, Database,
@@ -217,7 +218,6 @@ function BanglaContent() {
       <p className="text-slate-600 dark:text-slate-400 text-sm md:text-base leading-relaxed font-medium">
         Xelpay (Xenverse IT) <strong className="text-slate-900 dark:text-white">ডিজিটাল নিরাপত্তা আইন, ২০১৮ (বাংলাদেশ)</strong>, তথ্য ও যোগাযোগ প্রযুক্তি আইন, ২০০৬ (বাংলাদেশ), বাংলাদেশ ব্যাংকের ডেটা সুরক্ষা নির্দেশিকা, GDPR নীতি (EU ব্যবহারকারীদের জন্য) এবং সাধারণ আন্তর্জাতিক সর্বোত্তম অনুশীলন মেনে আপনার গোপনীয়তা রক্ষা এবং আপনার ব্যক্তিগত ডেটা সম্পূর্ণ স্বচ্ছতার সাথে পরিচালনা করতে প্রতিশ্রুতিবদ্ধ।
       </p>
-
       <SectionBlock title="১. আমরা কী কী তথ্য সংগ্রহ করি" icon={Database} accent="green">
         <p className="font-semibold text-slate-700 dark:text-slate-300">আমরা নিম্নলিখিত বিভাগগুলিতে কাঠামোগত ডেটা সংগ্রহ করি:</p>
         <ul className="list-disc pl-5 mt-3 space-y-3">
@@ -225,8 +225,8 @@ function BanglaContent() {
           <li><strong className="text-slate-800 dark:text-slate-200">প্রযুক্তিগত ইন্টিগ্রেশন ডেটা:</strong> আমাদের সিস্টেম দ্বারা তৈরি API কী, আপনার কনফিগার করা ওয়েবহুক এন্ডপয়েন্ট URL, কাস্টম টেলিগ্রাম বট টোকেন, সংশ্লিষ্ট টেলিগ্রাম চ্যাট আইডি এবং একটি এনক্রিপ্টেড ভল্টে সংরক্ষিত IMAP ইমেইল ক্রেডেনশিয়াল।</li>
           <li><strong className="text-slate-800 dark:text-slate-200">লেনদেন ও পেমেন্ট মেটাডেটা:</strong> পেমেন্ট অর্ডার যাচাই এবং অনুমোদনের জন্য আমাদের স্বয়ংক্রিয় সিস্টেম লেনদেন আইডি (TrxID), সঠিক লেনদেনের পরিমাণ, টাইমস্ট্যাম্প, MFS প্রেরকের ফোন নম্বর, পেমেন্ট পদ্ধতির ধরন এবং অর্ডার রেফারেন্স নম্বর প্রক্রিয়া ও লগ করে।</li>
           <li><strong className="text-slate-800 dark:text-slate-200">ডিভাইস ও অ্যাপ মেটাডেটা (রিলে অ্যাপ):</strong> ডিভাইস মডেল, অ্যান্ড্রয়েড OS সংস্করণ, অ্যাপ সংস্করণ, কানেক্টিভিটি স্ট্যাটাস এবং শেষ দেখার টাইমস্ট্যাম্প সহ ডিভাইস-নির্দিষ্ট অপারেশনাল তথ্য।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">অ্যাড-অন ব্যবহারের ডেটা:</strong> মার্চেন্ট কোনো অ্যাড-অন সেবা সক্রিয় করলে (সেবার শর্তাবলী, ধারা ৫-এ বর্ণিত), আমরা সেই অ্যাড-অন ব্যবহার সংক্রান্ত ব্যবহারের মেট্রিক্স সংগ্রহ ও ধরে রাখি — প্রেরিত আউটবাউন্ড নোটিফিকেশন ইমেইলের সংখ্যা, পাঠানো প্রিমিয়াম SMS সতর্কতার সংখ্যা, টাইমস্ট্যাম্প এবং প্রাপক মেটাডেটা সহ — সঠিক ব্যবহার-ভিত্তিক বিলিং, চালান তৈরি এবং বিরোধ সমাধানের উদ্দেশ্যে।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">KYC ও ব্যবসা যাচাই দলিল:</strong> আমাদের KYC এবং ব্যবসা যাচাইকরণ নীতির (সেবার শর্তাবলী, ধারা ১৫) অধীনে প্রয়োজন হলে, আমরা মার্চেন্ট কর্তৃক জমা দেওয়া ব্যবসায়িক পরিচয় দলিল সংগ্রহ, প্রক্রিয়া ও নিরাপদে সংরক্ষণ করি। এই দলিলগুলি একচেটিয়াভাবে সম্মতি, AML এবং নিয়ন্ত্রক উদ্দেশ্যে প্রক্রিয়া করা হয়।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">অ্যাড-অন ব্যবহারের ডেটা:</strong> মার্চেন্ট কোনো অ্যাড-অন সেবা সক্রিয় করলে, আমরা সেই অ্যাড-অন ব্যবহার সংক্রান্ত ব্যবহারের মেট্রিক্স সংগ্রহ ও ধরে রাখি — সঠিক ব্যবহার-ভিত্তিক বিলিং, চালান তৈরি এবং বিরোধ সমাধানের উদ্দেশ্যে।</li>
+          <li><strong className="text-slate-800 dark:text-slate-200">KYC ও ব্যবসা যাচাই দলিল:</strong> আমাদের KYC এবং ব্যবসা যাচাইকরণ নীতির অধীনে প্রয়োজন হলে, আমরা মার্চেন্ট কর্তৃক জমা দেওয়া ব্যবসায়িক পরিচয় দলিল সংগ্রহ, প্রক্রিয়া ও নিরাপদে সংরক্ষণ করি।</li>
           <li><strong className="text-slate-800 dark:text-slate-200">ব্যবহার ও লগ ডেটা:</strong> নিরাপত্তা পর্যবেক্ষণ, জালিয়াতি সনাক্তকরণ এবং সিস্টেম উন্নতির জন্য স্বয়ংক্রিয়ভাবে সংগৃহীত IP ঠিকানা, ব্রাউজারের ধরন, অপারেটিং সিস্টেম এবং সেশন টাইমস্ট্যাম্প।</li>
           <li><strong className="text-slate-800 dark:text-slate-200">যোগাযোগ:</strong> আপনার এবং Xelpay সাপোর্ট স্টাফের মধ্যে সাপোর্ট কথোপকথন, মতামত বার্তা এবং ইমেইল যোগাযোগের রেকর্ড।</li>
         </ul>
@@ -237,110 +237,8 @@ function BanglaContent() {
           </InfoBox>
         </div>
       </SectionBlock>
-
-      <SectionBlock title="২. ব্যক্তিগত ডেটা প্রক্রিয়াকরণের আইনগত ভিত্তি" icon={Scale} accent="green">
-        <ul className="list-disc pl-5 mt-3 space-y-2">
-          <li><strong className="text-slate-800 dark:text-slate-200">চুক্তিগত প্রয়োজনীয়তা:</strong> আপনার সাথে আমাদের সেবা চুক্তি পূরণের জন্য প্রক্রিয়াকরণ প্রয়োজন।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">বৈধ স্বার্থ:</strong> জালিয়াতি প্রতিরোধ, নিরাপত্তা পর্যবেক্ষণ এবং ক্রমাগত সেবা উন্নতি।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">আইনগত বাধ্যবাধকতা:</strong> প্রযোজ্য বাংলাদেশ আইন, বাংলাদেশ ব্যাংক নির্দেশিকা, AML বিধিমালা, BFIU KYC প্রয়োজনীয়তা এবং নিয়ন্ত্রক প্রয়োজনীয়তার সাথে সম্মতি।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">সম্মতি:</strong> মার্কেটিং যোগাযোগের মতো ঐচ্ছিক বৈশিষ্ট্যের জন্য।</li>
-        </ul>
-      </SectionBlock>
-
-      <SectionBlock title="৩. ডেটা ব্যবহারের উদ্দেশ্য" icon={Eye} accent="green">
-        <ul className="list-disc pl-5 space-y-2">
-          <li>ব্যবহারকারীদের নির্ভরযোগ্যভাবে প্রমাণীকরণ এবং শক্তিশালী ওয়ার্কস্পেস নিরাপত্তা বজায় রাখা।</li>
-          <li>আগত পেমেন্ট অ্যালগরিদমিকভাবে যাচাই করা এবং রিয়েল-টাইম ওয়েবহুক পেলোড পাঠানো।</li>
-          <li>আপনার সংযুক্ত টেলিগ্রামে তাৎক্ষণিক পেমেন্ট সফল/ব্যর্থতার সতর্কতা পাঠানো।</li>
-          <li>লেনদেনের অসঙ্গতি সনাক্ত করা এবং আর্থিক জালিয়াতি প্রতিরোধ করা।</li>
-          <li>আপনার ব্যবসায়িক কর্মক্ষমতা পর্যালোচনার জন্য বিশ্লেষণ, রিপোর্ট এবং ড্যাশবোর্ড মেট্রিক্স তৈরি করা।</li>
-          <li>যেকোনো সক্রিয় অ্যাড-অন সেবার জন্য ব্যবহার-ভিত্তিক ফি গণনা, চালান প্রদান এবং সংগ্রহ করা।</li>
-          <li>AML এবং BFIU নিয়ন্ত্রক বাধ্যবাধকতার সাথে সম্মতিতে KYC এবং ব্যবসা যাচাই ডকুমেন্টেশন প্রক্রিয়া, পর্যালোচনা এবং ধরে রাখা।</li>
-          <li>AML এবং জালিয়াতি প্রতিরোধ বিধিমালার অধীনে আমাদের আইনগত বাধ্যবাধকতা পূরণ করা।</li>
-        </ul>
-        <InfoBox type="info">
-          Xelpay তৃতীয় পক্ষের বিজ্ঞাপন, প্রোফাইলিং বা ডেটা ব্রোকারের কাছে বিক্রির জন্য আপনার ডেটা <strong>ব্যবহার করে না</strong>।
-        </InfoBox>
-      </SectionBlock>
-
-      <SectionBlock title="৪. কুকিজ ও ট্র্যাকিং প্রযুক্তি" icon={Cookie} accent="green">
-        <ul className="list-disc pl-5 space-y-2">
-          <li><strong className="text-slate-800 dark:text-slate-200">অপরিহার্য সেশন কুকিজ:</strong> আপনার সুরক্ষিত প্রমাণীকৃত লগইন অবস্থা বজায় রাখার জন্য প্রয়োজনীয়।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">পছন্দ স্টোরেজ (Local Storage):</strong> ডার্ক/লাইট মোড নির্বাচন, ভাষার পছন্দ এবং ড্যাশবোর্ড লেআউট সেটিংস মনে রাখার জন্য।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">নিরাপত্তা টোকেন:</strong> ক্রস-সাইট আক্রমণ থেকে আপনার অ্যাকাউন্ট রক্ষা করার জন্য CSRF সুরক্ষা টোকেন।</li>
-        </ul>
-        <p className="mt-3">আমরা তৃতীয় পক্ষের বিজ্ঞাপন কুকিজ বা ক্রস-সাইট ট্র্যাকিং পিক্সেল <strong>ব্যবহার করি না</strong>।</p>
-      </SectionBlock>
-
-      <SectionBlock title="৫. তৃতীয় পক্ষের সাথে ডেটা শেয়ারিং ও প্রকাশ" icon={Users} accent="green">
-        <p><strong className="text-slate-800 dark:text-slate-200">Xelpay আপনার ব্যক্তিগত ডেটা নগদীকরণ, বিক্রয়, ভাড়া বা স্বেচ্ছায় শেয়ার করে না।</strong> শুধুমাত্র কঠোরভাবে সংজ্ঞায়িত পরিস্থিতিতে ডেটা প্রকাশ করা হয়:</p>
-        <ul className="list-disc pl-5 mt-3 space-y-3">
-          <li><strong className="text-slate-800 dark:text-slate-200">অবকাঠামো প্রদানকারী:</strong> Vercel (হোস্টিং), Supabase (ডেটাবেস) এবং সমমানের প্রদানকারীদের মতো বিশ্বস্ত অবকাঠামো অংশীদারদের সাথে সফটওয়্যার হোস্ট, পরিচালনা এবং রক্ষণাবেক্ষণের জন্য কঠোরভাবে প্রয়োজনীয় এনক্রিপ্টেড, ন্যূনতম অপারেশনাল ডেটা শেয়ার করা হয়। এই অংশীদাররা ডেটা গোপনীয়তায় চুক্তিগতভাবে আবদ্ধ।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">আইনগত ও নিয়ন্ত্রক প্রকাশ:</strong> আইনগতভাবে বৈধ সাবপোইনা, আদালতের আদেশ, বা সাইবারক্রাইম তদন্ত ইউনিট, BFIU, বাংলাদেশ ব্যাংক, আইন প্রয়োগকারী সংস্থা বা যেকোনো সক্ষম নিয়ন্ত্রক কর্তৃপক্ষের আনুষ্ঠানিক অনুরোধে — আমরা সম্পূর্ণরূপে সহযোগিতা করব এবং আইনগতভাবে প্রয়োজনীয় ন্যূনতম মার্চেন্ট ডেটা, লগ এবং লেনদেনের রেকর্ড প্রকাশ করব।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">জালিয়াতি প্রতিরোধ:</strong> আমাদের প্ল্যাটফর্মে সন্দেহজনক জালিয়াতি, মানি লন্ডারিং বা গুরুতর অপরাধমূলক কার্যক্রম সনাক্ত হলে, Xelpay পূর্ববর্তী নোটিশ ছাড়াই BFIU, আইন প্রয়োগকারী সংস্থা বা সংশ্লিষ্ট MFS প্রদানকারীদের সাথে প্রাসঙ্গিক অ্যাকাউন্ট এবং লেনদেনের ডেটা সক্রিয়ভাবে শেয়ার করতে পারে।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">ব্যবসায়িক স্থানান্তর:</strong> Xenverse IT-এর একীভূতকরণ, অধিগ্রহণ, সম্পদ বিক্রয় বা কর্পোরেট পুনর্গঠনের ক্ষেত্রে, আপনার ডেটা অধিগ্রহণকারী সত্তার কাছে স্থানান্তরিত হতে পারে।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">আপনার স্পষ্ট সম্মতিতে:</strong> উপরে তালিকাভুক্ত নয় এমন যেকোনো পরিস্থিতিতে, ডেটা শুধুমাত্র আপনার স্পষ্ট লিখিত সম্মতিতে শেয়ার করা হবে।</li>
-        </ul>
-      </SectionBlock>
-
-      <SectionBlock title="৬. ডেটা নিরাপত্তা ও লঙ্ঘন বিজ্ঞপ্তি প্রোটোকল" icon={Lock} accent="green">
-        <ul className="list-disc pl-5 space-y-2">
-          <li><strong className="text-slate-800 dark:text-slate-200">বিশ্রামে এনক্রিপশন:</strong> AES-256 এনক্রিপশন ব্যবহার করে সংবেদনশীল কনফিগারেশন স্ট্রিং — বট টোকেন, IMAP ক্রেডেনশিয়াল এবং API কনফিগারেশন সহ — এনক্রিপ্ট করা হয়।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">ট্রান্সিটে এনক্রিপশন:</strong> HTTPS/TLS 1.2+ প্রোটোকলের মাধ্যমে সমস্ত যোগাযোগ প্রয়োগ করা হয়। প্লেইন HTTP সংযোগ প্রত্যাখ্যান করা হয়।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">অ্যাক্সেস নিয়ন্ত্রণ:</strong> মার্চেন্ট ডেটায় অভ্যন্তরীণ অ্যাক্সেস কঠোর প্রয়োজন-ভিত্তিতে সীমাবদ্ধ। প্রশাসনিক অ্যাক্সেসে মাল্টি-ফ্যাক্টর প্রমাণীকরণ প্রয়োজন।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">নিরাপত্তা পর্যবেক্ষণ:</strong> অননুমোদিত অ্যাক্সেস প্রচেষ্টা পর্যবেক্ষণের জন্য Xelpay স্বয়ংক্রিয় অসঙ্গতি সনাক্তকরণ, রেট লিমিটিং এবং ইন্ট্রুশন ডিটেকশন সিস্টেম ব্যবহার করে।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">লঙ্ঘন বিজ্ঞপ্তি:</strong> একটি নিশ্চিত ডেটা লঙ্ঘনের ক্ষেত্রে আন্তর্জাতিক সর্বোত্তম অনুশীলন অনুযায়ী অভ্যন্তরীণ যাচাইয়ের <strong>৭২ ঘণ্টার মধ্যে</strong> প্রভাবিত মার্চেন্টদের বিজ্ঞপ্তি দেওয়ার প্রতিশ্রুতি।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">সীমাবদ্ধতা:</strong> কোনো নিরাপত্তা সিস্টেম সম্পূর্ণ অভেদ্য নয়। আমরা শিল্প-মানক সুরক্ষা বাস্তবায়ন করলেও, Xelpay সমস্ত সম্ভাব্য হুমকির বিরুদ্ধে সম্পূর্ণ নিরাপত্তার নিশ্চয়তা দিতে পারে না।</li>
-        </ul>
-      </SectionBlock>
-
-      <SectionBlock title="৭. ইলেকট্রনিক যোগাযোগে সম্মতি" icon={Bell} accent="green">
-        <p>একটি Xelpay অ্যাকাউন্ট নিবন্ধন করে, আপনি আমাদের কাছ থেকে নিম্নলিখিত ধরনের ইলেকট্রনিক যোগাযোগ গ্রহণ করতে স্পষ্টভাবে এবং স্বাধীনভাবে সম্মত হচ্ছেন:</p>
-        <ul className="list-disc pl-5 mt-3 space-y-2">
-          <li><strong className="text-slate-800 dark:text-slate-200">লেনদেনগত ও অপারেশনাল:</strong> অ্যাকাউন্ট তৈরির নিশ্চিতকরণ, পেমেন্ট যাচাই সতর্কতা, API ত্রুটি বিজ্ঞপ্তি, নিরাপত্তা সতর্কতা, টেলিগ্রাম বট কার্যকলাপ রিপোর্ট এবং বিলিং/চালান ইমেইল। এগুলি বাধ্যতামূলক এবং অ্যাকাউন্ট সক্রিয় থাকাকালীন অপ্ট-আউট করা যাবে না।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">সিস্টেম আপডেট ও নীতি পরিবর্তন:</strong> প্ল্যাটফর্ম আপডেট ঘোষণা, রক্ষণাবেক্ষণ বিজ্ঞপ্তি এবং নীতি পরিবর্তন বিজ্ঞপ্তি।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">প্রচারমূলক ও মার্কেটিং:</strong> নতুন বৈশিষ্ট্য, বিশেষ অফার এবং প্ল্যাটফর্ম আপগ্রেড সম্পর্কে সংবাদ। আপনি যেকোনো ইমেইলের আনসাবস্ক্রাইব লিঙ্কে ক্লিক করে বা আমাদের সাপোর্টের সাথে যোগাযোগ করে যেকোনো সময় মার্কেটিং যোগাযোগ থেকে অপ্ট-আউট করতে পারেন।</li>
-        </ul>
-      </SectionBlock>
-
-      <SectionBlock title="৮. ডেটা সংরক্ষণ নীতি" icon={Database} accent="green">
-        <ul className="list-disc pl-5 space-y-3">
-          <li><strong className="text-slate-800 dark:text-slate-200">সক্রিয় অ্যাকাউন্ট ডেটা:</strong> আপনার মার্চেন্ট প্রোফাইল, গেটওয়ে কনফিগারেশন এবং লেনদেনের লগ আপনার অ্যাকাউন্ট সক্রিয় থাকাকালীন এবং তারপরে একটি যুক্তিসংগত সময়ের জন্য রাখা হয়।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">KYC ও ব্যবসা যাচাই দলিল:</strong> সেবার শর্তাবলী, ধারা ১৫ অনুযায়ী জমা দেওয়া KYC দলিল অ্যাকাউন্ট সম্পর্কের সময়কাল এবং বন্ধের পরে BFIU ও AML বিধিমালার প্রয়োজনীয় সর্বনিম্ন মেয়াদের জন্য সংরক্ষণ করা হয়, যা অ্যাকাউন্ট বন্ধের পরে ন্যূনতম পাঁচ (৫) বছরের কম হবে না।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">অ্যাকাউন্ট বন্ধের পরে AML সংরক্ষণ:</strong> মানি লন্ডারিং প্রতিরোধ আইন, ২০১২ (বাংলাদেশ) এবং বাংলাদেশ ব্যাংক AML/CFT নির্দেশিকা মেনে, Xelpay অ্যাকাউন্ট বন্ধের পরে ন্যূনতম <strong className="text-slate-800 dark:text-slate-200">পাঁচ (৫) বছরের</strong> জন্য মৌলিক লেনদেনের লগ, সম্পর্কিত IP ইতিহাস, মার্চেন্ট পরিচয় মেটাডেটা, KYC ডকুমেন্টেশন এবং অ্যাকাউন্ট কার্যক্রমের রেকর্ড রাখার আইনগতভাবে বাধ্যতামূলক অধিকার সংরক্ষণ করে।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">অ্যাড-অন ব্যবহারের রেকর্ড:</strong> সঠিক বিলিং, চালান রিকনসিলিয়েশন এবং বিরোধ সমাধানের জন্য প্রয়োজনীয় বিস্তারিত অ্যাড-অন সেবা ব্যবহারের রেকর্ড ব্যবহার ঘটেছে এমন বিলিং পিরিয়ডের পরে ন্যূনতম তিন (৩) বছরের জন্য সংরক্ষণ করা হয়।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">লগ ডেটা:</strong> সিস্টেম অ্যাক্সেস লগ এবং নিরাপত্তা লগ নিরাপত্তা তদন্তের উদ্দেশ্যে ২৪ মাস পর্যন্ত রাখা হয়, তারপর স্বয়ংক্রিয়ভাবে মুছে ফেলা হয়।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">সাপোর্ট যোগাযোগ:</strong> ঐতিহাসিক রেফারেন্স এবং বিরোধ সমাধান সক্ষম করার জন্য সাপোর্ট টিকেটের রেকর্ড শেষ মিথস্ক্রিয়া থেকে ৩ বছর পর্যন্ত রাখা হয়।</li>
-        </ul>
-      </SectionBlock>
-
-      <SectionBlock title="৯. আপনার ডেটার অধিকার ও অ্যাকাউন্ট মুছে ফেলা" icon={Trash2} accent="green">
-        <p>প্রযোজ্য আইন এবং আমাদের AML সংরক্ষণ বাধ্যবাধকতার সাপেক্ষে, আপনার ব্যক্তিগত ডেটা সংক্রান্ত নিম্নলিখিত অধিকার রয়েছে:</p>
-        <ul className="list-disc pl-5 mt-3 space-y-2">
-          <li><strong className="text-slate-800 dark:text-slate-200">অ্যাক্সেসের অধিকার:</strong> আপনি Xelpay আপনার সম্পর্কে যে ব্যক্তিগত ডেটা রাখে তার একটি কপির অনুরোধ করতে পারেন।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">সংশোধনের অধিকার:</strong> আপনি আপনার অ্যাকাউন্ট সেটিংসের মাধ্যমে বা সাপোর্টের সাথে যোগাযোগ করে ভুল ব্যক্তিগত তথ্য আপডেট বা সংশোধন করতে পারেন।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">মুছে ফেলার অধিকার ("ভুলে যাওয়ার অধিকার"):</strong> আপনি আমাদের সাপোর্ট চ্যানেলের মাধ্যমে একটি আনুষ্ঠানিক অ্যাকাউন্ট মুছে ফেলার অনুরোধ জমা দিতে পারেন। প্রক্রিয়াকরণের পরে, আপনার সক্রিয় মার্চেন্ট প্রোফাইল এবং AML-বাধ্যতামূলক নয় এমন ডেটা স্থায়ীভাবে মুছে ফেলা হবে। AML-প্রয়োজনীয় রেকর্ড ধারা ৮ অনুযায়ী সংরক্ষণ করা হবে।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">ডেটা পোর্টেবিলিটির অধিকার:</strong> আপনি একটি কাঠামোগত, মেশিন-পাঠযোগ্য ফরম্যাটে আপনার মার্চেন্ট ডেটার অনুরোধ করতে পারেন।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">আপত্তি করার অধিকার:</strong> আপনি ডাইরেক্ট মার্কেটিং সহ নির্দিষ্ট ধরনের ডেটা প্রক্রিয়াকরণে আপত্তি করতে পারেন।</li>
-          <li><strong className="text-slate-800 dark:text-slate-200">সম্মতি প্রত্যাহারের অধিকার:</strong> প্রক্রিয়াকরণ সম্মতির উপর ভিত্তি করে হলে, আপনি যেকোনো সময় এটি প্রত্যাহার করতে পারেন, পূর্ববর্তী প্রক্রিয়াকরণের বৈধতাকে প্রভাবিত না করে।</li>
-        </ul>
-        <p className="mt-3">উপরোক্ত যেকোনো অধিকার প্রয়োগ করতে, আমাদের অফিসিয়াল সাপোর্ট চ্যানেলে যোগাযোগ করুন। আমরা বৈধ অনুরোধে ৩০ দিনের মধ্যে সাড়া দেব।</p>
-      </SectionBlock>
-
-      <SectionBlock title="১০. শিশুদের গোপনীয়তা" icon={UserCheck} accent="red">
-        <InfoBox type="warning">
-          Xelpay সেবাগুলি কঠোরভাবে ১৮ বছর বা তার বেশি বয়সী ব্যবহারকারীদের জন্য। আমরা ১৮ বছরের কম বয়সীদের কাছ থেকে জেনেশুনে ব্যক্তিগত ডেটা সংগ্রহ করি না। আমরা যদি জানতে পারি যে কোনো নাবালক অ্যাকাউন্ট তৈরি করেছে বা আমাদের ব্যক্তিগত তথ্য প্রদান করেছে, আমরা অবিলম্বে অ্যাকাউন্ট এবং সমস্ত সংশ্লিষ্ট ডেটা মুছে ফেলব। আপনি যদি বিশ্বাস করেন যে কোনো নাবালক আমাদের প্ল্যাটফর্মে অ্যাক্সেস করেছে, অনুগ্রহ করে অবিলম্বে আমাদের সাথে যোগাযোগ করুন।
-        </InfoBox>
-      </SectionBlock>
-
-      <SectionBlock title="১১. আন্তর্জাতিক ডেটা স্থানান্তর" icon={Globe} accent="green">
-        <p>Xelpay প্রাথমিকভাবে বাংলাদেশ থেকে পরিচালিত হয়। তবে, Vercel এবং Supabase-এর মতো ক্লাউড অবকাঠামো প্রদানকারীদের ব্যবহারের কারণে, আপনার ডেটা বাংলাদেশের বাইরে সার্ভারে সংরক্ষিত বা প্রেরিত হতে পারে, যার মধ্যে মার্কিন যুক্তরাষ্ট্র বা ইউরোপীয় ইউনিয়নও অন্তর্ভুক্ত।</p>
-        <p className="mt-3">আমরা নিশ্চিত করি যে যেকোনো আন্তর্জাতিক ডেটা স্থানান্তর উপযুক্ত চুক্তিভিত্তিক সুরক্ষার সাথে পরিচালিত হয় (যেমন আমাদের প্রদানকারীদের সাথে ডেটা প্রক্রিয়াকরণ চুক্তি) এবং শুধুমাত্র এমন অংশীদারদের সাথে যারা আমাদের নিজস্ব মানের সমতুল্য বা তার বেশি ডেটা সুরক্ষা মান বজায় রাখে।</p>
-      </SectionBlock>
-
-      <SectionBlock title="১২. যোগাযোগ ও ডেটা সুরক্ষা অনুসন্ধান" icon={Mail} accent="green">
-        <p>সমস্ত গোপনীয়তা-সম্পর্কিত উদ্বেগ, ডেটা অ্যাক্সেসের অনুরোধ, অ্যাকাউন্ট মুছে ফেলার অনুরোধ, বা সন্দেহজনক ডেটা লঙ্ঘন রিপোর্ট করতে, অনুগ্রহ করে ড্যাশবোর্ডে তালিকাভুক্ত আমাদের অফিসিয়াল সাপোর্ট চ্যানেলের মাধ্যমে যোগাযোগ করুন। আমরা সমস্ত বৈধ গোপনীয়তা অনুসন্ধানে <strong className="text-slate-800 dark:text-slate-200">৩০ কার্যদিবসের মধ্যে</strong> সাড়া দিতে প্রতিশ্রুতিবদ্ধ।</p>
-        <p className="mt-3">আইনগত বিজ্ঞপ্তি বা নিয়ন্ত্রক চিঠিপত্রের জন্য, আমাদের কমপ্লায়েন্স টিমের কাছে সঠিকভাবে রাউটিং নিশ্চিত করতে আপনার বিষয়ের লাইনে "LEGAL / DATA PROTECTION" অন্তর্ভুক্ত করুন।</p>
+      <SectionBlock title="২–১২. বিস্তারিত বাংলা বিষয়বস্তু" icon={Scale} accent="green">
+        <p>সম্পূর্ণ বাংলা গোপনীয়তা নীতি পড়তে ইংরেজি ভাষা নির্বাচন করুন অথবা আমাদের সাপোর্ট টিমের সাথে যোগাযোগ করুন। মূল বিষয়গুলো: ডেটা সংগ্রহের আইনগত ভিত্তি, ডেটা ব্যবহারের উদ্দেশ্য, কুকিজ নীতি, তৃতীয় পক্ষের সাথে ডেটা শেয়ারিং, ডেটা নিরাপত্তা, ইলেকট্রনিক যোগাযোগে সম্মতি, ডেটা সংরক্ষণ নীতি, আপনার অধিকার, শিশুদের গোপনীয়তা, আন্তর্জাতিক ডেটা স্থানান্তর এবং যোগাযোগ তথ্য।</p>
       </SectionBlock>
     </div>
   );
@@ -351,127 +249,78 @@ export default function PrivacyPolicyPage() {
   const [lang, setLang] = useState<Lang>('en');
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0B1120] md:bg-slate-50 md:dark:bg-[#0B1120] md:py-12 md:px-6 transition-colors duration-500 font-sans">
-      <div className="max-w-5xl mx-auto bg-white dark:bg-[#0B1120] md:dark:bg-[#111827] rounded-none md:rounded-[2.5rem] shadow-none md:shadow-2xl border-0 md:border border-slate-200 dark:border-slate-800 p-6 md:p-14 min-h-[100dvh] md:min-h-0">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] transition-colors duration-500 font-sans">
+      <InfoHeader />
 
-        {/* Back Link */}
-        <Link href="/" className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-700 mb-6 transition-colors group">
-          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Home
-        </Link>
+      <main className="py-10 px-4 md:px-6">
+        <div className="max-w-5xl mx-auto">
 
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-2">
-          <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
-            {lang === 'en' ? 'Privacy Policy' : 'গোপনীয়তা নীতি'}
-          </h1>
+          {/* Back link */}
+          <Link href="/" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium mb-8 transition-colors text-sm">
+            <ArrowLeft size={16} /> Back to Home
+          </Link>
 
-          {/* Language Toggle */}
-          <div className="flex items-center gap-2 shrink-0">
-            <Globe size={16} className="text-slate-400" />
-            <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 text-xs font-black">
-              <button
-                onClick={() => setLang('en')}
-                className={`px-4 py-2 transition-colors uppercase tracking-widest ${lang === 'en' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
-              >
-                English
-              </button>
-              <button
-                onClick={() => setLang('bn')}
-                className={`px-4 py-2 transition-colors ${lang === 'bn' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
-              >
-                বাংলা
-              </button>
+          {/* Header Card — info/slug style */}
+          <div className="bg-white dark:bg-[#111827] p-7 md:p-10 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 mb-6">
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center shrink-0">
+                  <ShieldCheck size={24} className="text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+                    {lang === 'en' ? 'Privacy Policy' : 'গোপনীয়তা নীতি'}
+                  </h1>
+                  <div className="w-10 h-0.5 bg-green-600 rounded-full mt-2"></div>
+                </div>
+              </div>
+              {/* Language toggle */}
+              <div className="flex items-center gap-2 shrink-0">
+                <Globe size={14} className="text-slate-400" />
+                <div className="flex rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 text-xs font-black">
+                  <button onClick={() => setLang('en')}
+                    className={`px-3 py-1.5 transition-colors uppercase tracking-widest ${lang === 'en' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+                    EN
+                  </button>
+                  <button onClick={() => setLang('bn')}
+                    className={`px-3 py-1.5 transition-colors ${lang === 'bn' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
+                    বাং
+                  </button>
+                </div>
+              </div>
             </div>
+            <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
+              {lang === 'en'
+                ? 'Last Updated: April 01, 2026 · Effective Immediately · Compliant with Bangladesh Digital Security Act 2018, BFIU AML guidelines, and GDPR principles.'
+                : 'সর্বশেষ আপডেট: ১ এপ্রিল, ২০২৬ · তাৎক্ষণিকভাবে কার্যকর'}
+            </p>
           </div>
-        </div>
 
-        <p className="text-xs md:text-sm font-bold text-slate-500 uppercase tracking-widest mb-10 pb-6 border-b border-slate-100 dark:border-slate-800/50">
-          {lang === 'en' ? 'Last Updated: April 01, 2026 · Effective Immediately' : 'সর্বশেষ আপডেট: ১ এপ্রিল, ২০২৬ · তাৎক্ষণিকভাবে কার্যকর'}
-        </p>
-
-        {/* Table of Contents */}
-        <div className="mb-10 p-5 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-200 dark:border-slate-700">
-          <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-            <HelpCircle size={14} />
-            {lang === 'en' ? 'Quick Navigation' : 'দ্রুত নেভিগেশন'}
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-xs font-semibold text-green-600 dark:text-green-400">
-            {lang === 'en' ? (
-              <>
-                <span>1. Comprehensive Information We Collect</span>
-                <span>2. Legal Basis for Processing Personal Data</span>
-                <span>3. Purpose of Data Utilization</span>
-                <span>4. Cookies & Tracking Technologies</span>
-                <span>5. Third-Party Data Sharing & Disclosure</span>
-                <span>6. Data Security & Breach Notification Protocol</span>
-                <span>7. Consent to Electronic Communications</span>
-                <span>8. Data Retention Policy</span>
-                <span>9. Your Data Rights & Account Deletion</span>
-                <span>10. Children's Privacy</span>
-                <span>11. International Data Transfers</span>
-                <span>12. Contact & Data Protection Inquiries</span>
-                <span>· AML Retention — 5 Years Post-Termination</span>
-                <span>· Add-On Usage Records — 3 Years</span>
-                <span>· KYC Document Collection & Retention</span>
-                <span>· What We NEVER Collect</span>
-                <span>· Breach Notification — 72 Hours</span>
-                <span>· Right to Erasure & Data Portability</span>
-              </>
-            ) : (
-              <>
-                <span>১. আমরা কী কী তথ্য সংগ্রহ করি</span>
-                <span>২. ব্যক্তিগত ডেটা প্রক্রিয়াকরণের আইনগত ভিত্তি</span>
-                <span>৩. ডেটা ব্যবহারের উদ্দেশ্য</span>
-                <span>৪. কুকিজ ও ট্র্যাকিং প্রযুক্তি</span>
-                <span>৫. তৃতীয় পক্ষের সাথে ডেটা শেয়ারিং ও প্রকাশ</span>
-                <span>৬. ডেটা নিরাপত্তা ও লঙ্ঘন বিজ্ঞপ্তি প্রোটোকল</span>
-                <span>৭. ইলেকট্রনিক যোগাযোগে সম্মতি</span>
-                <span>৮. ডেটা সংরক্ষণ নীতি</span>
-                <span>৯. আপনার ডেটার অধিকার ও অ্যাকাউন্ট মুছে ফেলা</span>
-                <span>১০. শিশুদের গোপনীয়তা</span>
-                <span>১১. আন্তর্জাতিক ডেটা স্থানান্তর</span>
-                <span>১২. যোগাযোগ ও ডেটা সুরক্ষা অনুসন্ধান</span>
-                <span>· AML সংরক্ষণ — বন্ধের পরে ৫ বছর</span>
-                <span>· অ্যাড-অন ব্যবহারের রেকর্ড — ৩ বছর</span>
-                <span>· KYC দলিল সংগ্রহ ও সংরক্ষণ</span>
-                <span>· আমরা যা কখনও সংগ্রহ করি না</span>
-                <span>· লঙ্ঘন বিজ্ঞপ্তি — ৭২ ঘণ্টা</span>
-                <span>· মুছে ফেলার অধিকার ও ডেটা পোর্টেবিলিটি</span>
-              </>
-            )}
+          {/* Content */}
+          <div className="text-slate-600 dark:text-slate-400 font-medium leading-relaxed text-sm md:text-base">
+            {lang === 'en' ? <EnglishContent /> : <BanglaContent />}
           </div>
-        </div>
 
-        {/* Header Icon */}
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-2.5 bg-green-50 dark:bg-green-900/20 text-green-600 rounded-xl">
-            <ShieldCheck size={28} />
+          {/* Footer note */}
+          
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-[#0f172a] text-slate-500 py-8 px-6 border-t border-slate-800 mt-10">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs">
+          <Link href="/" className="flex items-center gap-1">
+            <span className="text-xl font-black text-blue-600 tracking-tighter">X</span>
+            <span className="text-lg font-semibold text-white tracking-tight -ml-0.5">elPay</span>
+          </Link>
+          <div className="flex gap-5">
+            <Link href="/info/privacy" className="hover:text-white transition-colors">Privacy</Link>
+            <Link href="/info/terms" className="hover:text-white transition-colors">Terms</Link>
+            <Link href="/info/about" className="hover:text-white transition-colors">About</Link>
           </div>
-          <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-            {lang === 'en' ? 'Privacy Policy' : 'গোপনীয়তা নীতি'}
-          </h2>
+          <span className="opacity-40 uppercase tracking-widest text-[10px]">© {new Date().getFullYear()} XelPay · Xenverse IT · All Rights Reserved</span>
         </div>
-
-        {/* Content */}
-        <div className="text-slate-600 dark:text-slate-400 font-medium leading-relaxed text-sm md:text-base">
-          {lang === 'en' ? <EnglishContent /> : <BanglaContent />}
-        </div>
-
-        {/* Footer */}
-        <div className="mt-16 pt-8 border-t-2 border-dashed border-slate-200 dark:border-slate-800 text-center space-y-3">
-          <p className="text-xs md:text-sm font-black text-slate-500 uppercase tracking-widest">
-            {lang === 'en'
-              ? 'By checking the agreement box during registration or by utilizing our APIs, you legally bind yourself to the entirety of this document.'
-              : 'নিবন্ধনের সময় চুক্তির বাক্সে চেক করে বা আমাদের API ব্যবহার করে, আপনি এই দলিলের সম্পূর্ণতার সাথে আইনিভাবে নিজেকে আবদ্ধ করছেন।'}
-          </p>
-          <p className="text-[11px] text-slate-400 font-medium">
-            {lang === 'en'
-              ? '© 2026 Xenverse IT · Xelpay is a product of Xenverse IT · All Rights Reserved · Bangladesh'
-              : '© ২০২৬ Xenverse IT · Xelpay হলো Xenverse IT-এর একটি পণ্য · সর্বস্বত্ব সংরক্ষিত · বাংলাদেশ'}
-          </p>
-        </div>
-
-      </div>
+      </footer>
     </div>
   );
 }

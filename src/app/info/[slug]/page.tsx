@@ -212,7 +212,7 @@ function InfoFooter() {
             <Link key={l.href} href={l.href} className="hover:text-white transition-colors">{l.label}</Link>
           ))}
         </div>
-        <span className="opacity-40 uppercase tracking-widest text-[10px]">© {new Date().getFullYear()} XelPay</span>
+        <span className="opacity-40 uppercase tracking-widest text-[10px]">© {new Date().getFullYear()} XelPay · Xenverse IT · All Rights Reserved</span>
       </div>
     </footer>
   );

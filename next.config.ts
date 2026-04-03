@@ -2,7 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  
+
+  // 🔴 আপনার মোবাইলের লোকাল আইপি থেকে Hot Reload (HMR) এলাও করার জন্য এটি যুক্ত করা হলো
+  allowedDevOrigins: ['192.168.0.171', 'localhost:3000'],
+
   // এই headers ফাংশনটি পুরো সাইটের গ্লোবাল সিকিউরিটি মেইনটেইন করবে
   async headers() {
     return [

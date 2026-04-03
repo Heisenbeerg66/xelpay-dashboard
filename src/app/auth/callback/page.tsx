@@ -3,11 +3,10 @@
 import { useEffect, Suspense, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Loader2, UserX, LogIn, UserPlus, Menu } from 'lucide-react';
+import { UserX, LogIn, UserPlus, Menu, Sun, Moon } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
 
-// User Not Found Modal 
 function UserNotFoundModal({ isOpen, onSignup, onLogin, onBackdrop }: {
   isOpen: boolean;
   onSignup: () => void;
@@ -54,7 +53,7 @@ function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showNotFound, setShowNotFound] = useState(false);
-  const [isValidating, setIsValidating] = useState(true); // 🔴 Security: Initializing with loading hidden
+  const [isValidating, setIsValidating] = useState(true); 
   const isProcessed = useRef(false);
 
   useEffect(() => {
@@ -65,14 +64,22 @@ function AuthCallbackContent() {
       const tx = searchParams.get('tx');
       const savedTx = sessionStorage.getItem('auth_tx');
 
-      // 🔴 Security Check: If tx is missing, invalid, or mismatched, kick out immediately
-      if (!code || !tx || tx !== savedTx) {
-        sessionStorage.removeItem('auth_tx');
-        router.replace('/login');
-        return; // Early return prevents the loading screen from ever showing
+      // 🔴 Security: If it's a Google OAuth flow (has tx), strictly validate it
+      if (tx) {
+        if (tx !== savedTx) {
+          sessionStorage.removeItem('auth_tx');
+          router.replace('/login');
+          return;
+        }
+      } else {
+        // 🔴 Magic Link Fix: If no tx (Magic Link), but also no code or hash, kick out.
+        if (!code && !window.location.hash) {
+          router.replace('/login');
+          return;
+        }
       }
 
-      setIsValidating(false); // Validation passed, now we can show the checking UI
+      setIsValidating(false); 
       isProcessed.current = true;
 
       let currentUser;
@@ -80,7 +87,7 @@ function AuthCallbackContent() {
 
       if (existingSession) {
         currentUser = existingSession.user;
-      } else {
+      } else if (code) {
         const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         
         if (exchangeError || !exchangeData?.session) {
@@ -90,14 +97,17 @@ function AuthCallbackContent() {
         currentUser = exchangeData.session.user;
       }
 
-      // Cleanup
       sessionStorage.removeItem('auth_tx');
       localStorage.removeItem('oauth_plan_id');
       localStorage.removeItem('oauth_plan_price');
       localStorage.removeItem('oauth_refer_code');
       localStorage.removeItem('oauth_source');
 
-      // ── LOGIN FLOW ──
+      if (!currentUser) {
+        router.replace('/login');
+        return;
+      }
+
       const { data: merchant } = await supabase
         .from('merchants')
         .select('id, status')
@@ -137,7 +147,6 @@ function AuthCallbackContent() {
     router.replace('/login');
   };
 
-  // 🔴 Security: Renders nothing (blank white/dark background) if hit directly with bad URL
   if (isValidating) return null;
 
   return (
@@ -173,38 +182,33 @@ export default function AuthCallback() {
         setMounted(true);
     }, []);
 
+    const ThemeToggle = () => (
+      mounted ? (
+        <button
+          onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50 hover:scale-110 transition-all"
+          aria-label="Toggle theme"
+        >
+          {resolvedTheme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
+      ) : <div className="w-9 h-9" />
+    );
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#0B1120] font-sans">
-      
-      {/* Header (শুধু মোবাইল ভিউয়ের জন্য) */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 md:hidden">
-        <div className="h-16 flex items-center px-4 justify-between relative">
-          {/* Menu Button */}
+        <div className="h-16 flex items-center px-4 justify-between relative max-w-7xl mx-auto w-full">
           <button
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all cursor-default"
             aria-label="Menu"
           >
             <Menu size={18} />
           </button>
-
-          {/* Branding */}
           <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
             <span className="text-2xl font-black text-blue-600 tracking-tighter">X</span>
             <span className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
           </Link>
-
-          {/* Theme Toggle */}
-          {mounted && (
-            <button
-              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-              aria-label="Toggle theme"
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none border ${resolvedTheme === 'dark' ? 'bg-blue-600 border-blue-500' : 'bg-slate-200 border-slate-300'}`}
-            >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${resolvedTheme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
-              <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none">{resolvedTheme === 'dark' ? '🌙' : ''}</span>
-              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none">{resolvedTheme !== 'dark' ? '☀️' : ''}</span>
-            </button>
-          )}
+          <ThemeToggle />
         </div>
       </header>
 

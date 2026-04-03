@@ -39,6 +39,7 @@ function getPlanColors(tag: string | null): {
     badge: 'from-blue-500 to-indigo-600',
     badgeText: 'text-white',
   };
+
   const colorKey = (tag.split(':')[1] || 'blue').trim().toLowerCase();
   const map: Record<string, ReturnType<typeof getPlanColors>> = {
     blue: {
@@ -102,11 +103,13 @@ function getPlanColors(tag: string | null): {
       badgeText: 'text-slate-900',
     },
   };
+
   return map[colorKey] || map.blue;
 }
 
 function PlanTagBadge({ tag }: { tag: string }) {
   const colors = getPlanColors(tag);
+
   const parts = tag.split(':');
   const label = parts[0].trim();
   return (
@@ -115,11 +118,13 @@ function PlanTagBadge({ tag }: { tag: string }) {
       <span>{label.replace(/^\p{Emoji}\s*/u, '')}</span>
     </div>
   );
+
 }
 
 const ErrorModal = ({ isOpen, message, onClose }: any) => {
   const router = useRouter();
   if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
       <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl p-7 text-center border border-red-100 dark:border-red-900/20 shadow-2xl">
@@ -141,10 +146,12 @@ const ErrorModal = ({ isOpen, message, onClose }: any) => {
       </div>
     </div>
   );
+
 };
 
 const SuccessModal = ({ isOpen, merchantId, onClose }: any) => {
   if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl p-7 text-center border border-green-100 dark:border-green-900/20 shadow-2xl">
@@ -173,15 +180,18 @@ const SuccessModal = ({ isOpen, merchantId, onClose }: any) => {
       </div>
     </div>
   );
+
 };
 
 function SignUpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const planIdFromUrl = searchParams.get('plan');
+
   const refCodeFromUrl = searchParams.get('ref') || '';
   const mode = searchParams.get('mode');
   const errorFromUrl = searchParams.get('error');
+
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -190,20 +200,25 @@ function SignUpContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
   const [errorModal, setErrorModal] = useState({ show: false, message: '' });
   const [tempMerchantId, setTempMerchantId] = useState('');
 
   const [allPlans, setAllPlans] = useState<any[]>([]);
+
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [showPlanSwitcher, setShowPlanSwitcher] = useState(false);
 
   const [countryCode, setCountryCode] = useState('+880');
+
   const [formData, setFormData] = useState({
     fullName: '', phone: '', email: '', password: '', confirmPassword: '', address: '', referCode: refCodeFromUrl
   });
+
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [privacyPolicyLink, setPrivacyPolicyLink] = useState('/info/privacy');
   const [termsLink, setTermsLink] = useState('/info/terms');
+
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<any>(null);
 
@@ -245,9 +260,11 @@ function SignUpContent() {
 
   const buildPlanFeatures = (plan: any): string[] => {
     if (!plan) return [];
+
     const transactionLabel = (plan.transaction_limit_monthly ?? 100) === 0
       ? 'Unlimited transactions / month'
       : `${(plan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`;
+
     const columnFeatures: (string | null)[] = [
       transactionLabel,
       `${plan.business_limit ?? 1} business${(plan.business_limit ?? 1) > 1 ? 'es' : ''}`,
@@ -258,11 +275,13 @@ function SignUpContent() {
       plan.is_custom_bot_allowed ? 'Custom Telegram bot' : null,
     ];
     const extraFeatures: string[] = Array.isArray(plan.features) ? plan.features : [];
+
     return [...columnFeatures.filter(Boolean) as string[], ...extraFeatures];
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (mode === 'demo') {
       toast.error("Demo Mode: Please go to Login and use demo@xelpay.com / demo123456");
       return;
@@ -273,6 +292,7 @@ function SignUpContent() {
     if (!selectedPlan) { toast.error("Please select a plan."); return; }
 
     setLoading(true);
+
     const fullPhone = `${countryCode}${formData.phone.replace(/\s/g, '')}`;
     const generatedMerchantId = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -313,18 +333,54 @@ function SignUpContent() {
     setLoading(false);
   };
 
-  // ── Selected plan colors (sidebar card) ──
   const selectedColors = getPlanColors(selectedPlan?.tag || null);
 
   const inputClass = "w-full px-4 py-3.5 bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm text-slate-900 dark:text-white placeholder:text-slate-400";
+
   const labelClass = "text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-0.5 mb-1 block";
+
+  // Round theme toggle — original style
+  const ThemeToggle = () => (
+    mounted ? (
+      <button
+        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+        className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50 hover:scale-110 transition-all"
+        aria-label="Toggle theme"
+      >
+        {resolvedTheme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+      </button>
+    ) : <div className="w-9 h-9" />
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] font-sans transition-colors duration-300">
       <Toaster position="top-center" richColors />
 
+      {/* ── HEADER ── */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-        <div className="h-16 flex items-center px-4 md:px-8 justify-between relative">
+
+        {/* Desktop: full nav — no hamburger */}
+        <div className="hidden md:flex items-center h-16 px-8 justify-between max-w-7xl mx-auto w-full">
+          {/* Left: Branding */}
+          <Link href="/" className="flex items-center gap-1">
+            <span className="text-2xl font-black text-blue-600 tracking-tighter">X</span>
+            <span className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
+          </Link>
+
+          {/* Right: links + theme toggle + login */}
+          <div className="flex items-center gap-6 text-sm">
+            <Link href="/" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Home</Link>
+            <Link href="/info/contact" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Help</Link>
+            <Link href="/#pricing" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Pricing</Link>
+            <ThemeToggle />
+            <Link href="/login" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium flex items-center gap-1.5">
+              <LogIn size={15} /> Login
+            </Link>
+          </div>
+        </div>
+
+        {/* Mobile: menu + centered branding + theme toggle */}
+        <div className="flex md:hidden items-center h-16 px-4 justify-between relative max-w-7xl mx-auto w-full">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
@@ -338,27 +394,13 @@ function SignUpContent() {
             <span className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
           </Link>
 
-          <div className="flex items-center gap-2.5">
-            {/* Theme toggle — mounted check শুধু এখানে */}
-            <button
-              onClick={() => mounted && setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-              aria-label="Toggle theme"
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none border ${mounted && resolvedTheme === 'dark' ? 'bg-blue-600 border-blue-500' : 'bg-slate-200 border-slate-300'}`}
-            >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 ${mounted && resolvedTheme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
-              <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none">{mounted && resolvedTheme === 'dark' ? '🌙' : ''}</span>
-              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] pointer-events-none">{mounted && resolvedTheme !== 'dark' ? '☀️' : ''}</span>
-            </button>
-            <Link href="/login"
-              className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-colors">
-              <LogIn size={15} /> Login
-            </Link>
-          </div>
+          <ThemeToggle />
         </div>
 
+        {/* Mobile dropdown */}
         {menuOpen && (
-          <div className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0d1526] animate-in slide-in-from-top-2 duration-200">
-            <div className="px-4 py-3 flex flex-col gap-1">
+          <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0d1526] animate-in slide-in-from-top-2 duration-200">
+            <div className="px-4 py-3 flex flex-col gap-1 max-w-7xl mx-auto w-full">
               <Link href="/" onClick={() => setMenuOpen(false)}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
                 <Home size={15} /> Home
@@ -403,7 +445,6 @@ function SignUpContent() {
 
               {selectedPlan ? (
                 <div className={`p-4 bg-slate-50 dark:bg-[#0B1120] rounded-xl border-2 ${selectedColors.border} relative`}>
-                  {/* Tag badge */}
                   {selectedPlan.tag && (
                     <span className={`inline-flex items-center gap-1 bg-gradient-to-r ${selectedColors.badge} ${selectedColors.badgeText} text-[9px] font-semibold px-3 py-1 rounded-full uppercase tracking-widest mb-3`}>
                       <span>{selectedPlan.tag.split(':')[0].match(/^\p{Emoji}/u)?.[0] || '✦'}</span>
@@ -411,8 +452,8 @@ function SignUpContent() {
                     </span>
                   )}
                   <h4 className="text-base font-semibold text-slate-900 dark:text-white">{selectedPlan.name}</h4>
+                
                   <div className="mt-1 mb-3 flex items-baseline gap-1">
-                    {/* Price color matches tag */}
                     <span className={`text-2xl font-bold ${selectedColors.price}`}>
                       {selectedPlan.price === 0 ? 'Free' : `৳${selectedPlan.price}`}
                     </span>
@@ -420,7 +461,6 @@ function SignUpContent() {
                   </div>
                   <ul className="space-y-1.5">
                     <li className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
-                      {/* Check icon color matches tag */}
                       <CheckCircle size={12} className={`${selectedColors.check} shrink-0 mt-0.5`} />
                       {(selectedPlan.transaction_limit_monthly ?? 100) === 0
                         ? 'Unlimited transactions / month'
@@ -551,7 +591,7 @@ function SignUpContent() {
 
               <div className="md:col-span-2 flex justify-center">
                 {mounted && (
-                  <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme={resolvedTheme === 'dark' ? 'dark' : 'light'} />
+                  <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme="light" />
                 )}
               </div>
 
@@ -607,31 +647,23 @@ function SignUpContent() {
               {allPlans.map((p: any) => {
                 const allFeatures = buildPlanFeatures(p);
                 const isSelected = selectedPlan?.id === p.id;
-                // ── Tag থেকে সব color ──
                 const colors = getPlanColors(p.tag || null);
                 return (
                   <div
                     key={p.id}
                     onClick={() => { setSelectedPlan(p); setShowPlanSwitcher(false); }}
                     className={`relative p-6 rounded-2xl border-2 transition-all cursor-pointer hover:-translate-y-0.5 mt-4 ${
-                      isSelected
-                        ? colors.borderSelected
-                        : `${colors.border} bg-white dark:bg-[#0B1120]`
+                      isSelected ? colors.borderSelected : `${colors.border} bg-white dark:bg-[#0B1120]`
                     }`}
                   >
                     {p.tag && <PlanTagBadge tag={p.tag} />}
-
                     <h4 className="font-semibold text-base text-slate-900 dark:text-white mb-1">{p.name}</h4>
-
-                    {/* Price — tag color */}
                     <div className="flex items-baseline gap-1 mb-4">
                       <span className={`text-2xl font-bold ${colors.price}`}>
                         {p.price === 0 ? 'Free' : `৳${p.price}`}
                       </span>
                       <span className="text-[10px] text-slate-400 uppercase">/mo</span>
                     </div>
-
-                    {/* Features — check icon tag color */}
                     <ul className="space-y-2 mb-5">
                       {allFeatures.map((f: string, i: number) => (
                         <li key={i} className="flex gap-2 text-xs text-slate-500 dark:text-slate-400">
@@ -639,11 +671,7 @@ function SignUpContent() {
                         </li>
                       ))}
                     </ul>
-
-                    {/* Button — tag color */}
-                    <div className={`w-full py-2.5 rounded-xl text-sm text-center transition-all font-medium ${
-                      isSelected ? colors.buttonSelected : colors.button
-                    }`}>
+                    <div className={`w-full py-2.5 rounded-xl text-sm text-center transition-all font-medium ${isSelected ? colors.buttonSelected : colors.button}`}>
                       {isSelected ? '✓ Selected' : 'Select Plan'}
                     </div>
                   </div>
