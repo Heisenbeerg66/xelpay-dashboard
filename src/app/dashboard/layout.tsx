@@ -1,7 +1,21 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import DashboardClient from '@/components/dashboard/DashboardClient';
+import type { Metadata } from 'next';
+
+// ── Dashboard সব page noindex — কোনো dashboard page Google-এ দেখা যাওয়া উচিত না ──
+export const metadata: Metadata = {
+  title: {
+    default: 'Dashboard — XelPay',
+    template: '%s — XelPay',
+  },
+  description: 'XelPay merchant dashboard for managing automated bKash, Nagad, and Rocket payment verification.',
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
@@ -27,7 +41,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .maybeSingle();
 
   if (!merchant) {
-    // Auth আছে কিন্তু merchant নেই → force signout করে signup এ পাঠাও
     redirect('/auth/force-signout?redirect=/signup');
   }
 

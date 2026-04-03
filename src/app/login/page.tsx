@@ -1,17 +1,34 @@
+// ── src/app/login/page.tsx ────────────────────────────────────────────────────
 import LoginClient from './LoginClient';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Merchant Login | XelPay',
-  description: 'Access your XelPay merchant dashboard. Securely login with email or Google to manage automated bKash, Nagad, and Rocket payments.',
-  keywords: ['XelPay Login', 'Merchant Dashboard', 'Automated Payment Gateway Login', 'Secure Login', 'bKash Auto Verification Login'],
+  title: 'Merchant Login — XelPay Dashboard',
+  description:
+    'Sign in to your XelPay merchant dashboard. Manage automated bKash, Nagad, and Rocket payment verification. Secure login with email/password or Google OAuth.',
+  keywords: [
+    'XelPay login',
+    'merchant dashboard login Bangladesh',
+    'payment gateway login',
+    'bKash automation dashboard login',
+    'XelPay merchant account sign in',
+  ],
+  alternates: {
+    canonical: 'https://www.xelpay.site/login',
+  },
   openGraph: {
-    title: 'Sign in to XelPay',
-    description: 'Securely access your XelPay merchant dashboard to automate your business payments.',
+    title: 'Merchant Login — XelPay Dashboard',
+    description:
+      'Access your XelPay merchant dashboard. Manage automated bKash, Nagad, and Rocket payments.',
     url: 'https://www.xelpay.site/login',
     siteName: 'XelPay',
     type: 'website',
-  }
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Merchant Login — XelPay Dashboard',
+    description: 'Sign in to XelPay merchant dashboard for automated payment management.',
+  },
 };
 
 export default function Login() {
