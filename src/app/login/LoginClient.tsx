@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
-import { Mail, Lock, LogIn, Eye, EyeOff, AlertCircle, Send, ArrowLeft, Moon, Sun, Menu, X, Home, HelpCircle, Sparkles, Clock, MailWarning } from 'lucide-react';
+import { Mail, Lock, LogIn, Eye, EyeOff, AlertCircle, Send, ArrowLeft, Moon, Sun, Menu, X, Home, HelpCircle, Sparkles, Clock, MailWarning, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -15,6 +15,12 @@ const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
 // ─── MODALS ───
 const SuspendedModal = ({ isOpen, telegramLink, onClose }: any) => {
   if (!isOpen) return null;
+  // Fix: telegramLink value কে সরাসরি open করো
+  const handleContact = () => {
+    if (telegramLink && telegramLink !== '#') {
+      window.open(telegramLink, '_blank', 'noopener,noreferrer');
+    }
+  };
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
       <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl p-7 text-center shadow-2xl border border-slate-100 dark:border-slate-800">
@@ -24,10 +30,12 @@ const SuspendedModal = ({ isOpen, telegramLink, onClose }: any) => {
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Account Suspended</h3>
         <p className="text-slate-400 text-sm mb-7 leading-relaxed">Your account has been suspended due to a policy violation or review.</p>
         <div className="flex flex-col gap-2.5">
-          <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-all">
+          <button onClick={handleContact}
+            className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-all">
             <Send size={15} /> Contact Support
-          </a>
-          <button onClick={onClose} className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+          </button>
+          <button onClick={onClose}
+            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
             Close
           </button>
         </div>
@@ -38,6 +46,12 @@ const SuspendedModal = ({ isOpen, telegramLink, onClose }: any) => {
 
 const PendingModal = ({ isOpen, telegramLink, onClose }: any) => {
   if (!isOpen) return null;
+  // Fix: telegramLink value কে সরাসরি open করো
+  const handleContact = () => {
+    if (telegramLink && telegramLink !== '#') {
+      window.open(telegramLink, '_blank', 'noopener,noreferrer');
+    }
+  };
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
       <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl p-7 text-center shadow-2xl border border-slate-100 dark:border-slate-800">
@@ -47,10 +61,12 @@ const PendingModal = ({ isOpen, telegramLink, onClose }: any) => {
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Account Pending</h3>
         <p className="text-slate-400 text-sm mb-7 leading-relaxed">Your account is currently under review. We will notify you once approved.</p>
         <div className="flex flex-col gap-2.5">
-          <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-all">
+          <button onClick={handleContact}
+            className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-all">
             <Send size={15} /> Contact Support
-          </a>
-          <button onClick={onClose} className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+          </button>
+          <button onClick={onClose}
+            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
             Close
           </button>
         </div>
@@ -64,7 +80,7 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode');
   const { resolvedTheme, setTheme } = useTheme();
-  
+
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [loginMethod, setLoginMethod] = useState<'password' | 'magic'>('password');
@@ -75,23 +91,24 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  
+
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<any>(null);
 
   const [showSuspendedModal, setShowSuspendedModal] = useState(false);
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [telegramLink, setTelegramLink] = useState('#');
-  
+
   const [viewState, setViewState] = useState<'form' | 'unverified'>('form');
   const [unverifiedEmail, setUnverifiedEmail] = useState('');
   const [showResendForm, setShowResendForm] = useState(false);
   const [resendCount, setResendCount] = useState(0);
   const [cooldown, setCooldown] = useState(0);
+  // Fix: I Have Verified loading state
+  const [checkingVerified, setCheckingVerified] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
-  // 🔴 FIX: BFCache (Back Button loading stuck fix)
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) { setLoading(false); setGoogleLoading(false); }
@@ -102,13 +119,13 @@ function LoginContent() {
 
   const fetchTelegramLink = async () => {
     const { data: settings } = await supabase.from('site_settings').select('value').eq('key_name', 'support_telegram').maybeSingle();
-    if (settings) setTelegramLink(settings.value);
+    if (settings?.value) setTelegramLink(settings.value);
   };
 
   const errorParam = searchParams.get('error');
   useEffect(() => {
-    if (errorParam === 'no_account') { toast.error("No account found with this Google email. Please sign up first.", { duration: 6000 }); } 
-    else if (errorParam === 'suspended' || errorParam === 'ban') { fetchTelegramLink().then(() => setShowSuspendedModal(true)); } 
+    if (errorParam === 'no_account') { toast.error("No account found with this Google email. Please sign up first.", { duration: 6000 }); }
+    else if (errorParam === 'suspended' || errorParam === 'ban') { fetchTelegramLink().then(() => setShowSuspendedModal(true)); }
     else if (errorParam === 'pending') { fetchTelegramLink().then(() => setShowPendingModal(true)); }
   }, [errorParam]);
 
@@ -138,7 +155,7 @@ function LoginContent() {
       if (error.message.toLowerCase().includes("email not confirmed")) { setUnverifiedEmail(email); setViewState('unverified'); }
       else if (error.message.toLowerCase().includes("invalid login credentials")) toast.error("Wrong email or password.");
       else toast.error(error.message);
-      
+
       setLoading(false); recaptchaRef.current?.reset(); setCaptchaToken(null); return;
     }
 
@@ -165,17 +182,17 @@ function LoginContent() {
     setLoading(true);
 
     const { data: merchant } = await supabase.from('merchants').select('status, is_email_verified').eq('email', email).maybeSingle();
-    
+
     if (!merchant) { toast.error("No account found with this email address."); setLoading(false); recaptchaRef.current?.reset(); setCaptchaToken(null); return; }
     if (!merchant.is_email_verified) { setUnverifiedEmail(email); setViewState('unverified'); setLoading(false); recaptchaRef.current?.reset(); setCaptchaToken(null); return; }
-    
+
     const mStatus = merchant.status?.toLowerCase();
     if (['suspended', 'ban', 'banned'].includes(mStatus)) { await fetchTelegramLink(); setShowSuspendedModal(true); setLoading(false); return; }
     if (mStatus === 'pending') { await fetchTelegramLink(); setShowPendingModal(true); setLoading(false); return; }
 
     const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
 
-    if (error) { toast.error(error.message); } 
+    if (error) { toast.error(error.message); }
     else { toast.success("✨ Magic link sent! Please check your email."); setEmail(''); }
     recaptchaRef.current?.reset(); setCaptchaToken(null); setLoading(false);
   };
@@ -184,7 +201,6 @@ function LoginContent() {
     if (mode === 'demo') { toast.error("Google login disabled in demo mode."); return; }
     setGoogleLoading(true);
 
-    // 🔴 FIX: Crypto fallback for localhost testing over HTTP
     const generateTxId = () => {
       if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, '');
       return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -205,9 +221,62 @@ function LoginContent() {
     setLoading(true);
     const { error } = await supabase.auth.resend({ type: 'signup', email: unverifiedEmail, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
 
-    if (error) { toast.error(error.message); } 
+    if (error) { toast.error(error.message); }
     else { toast.success("Verification link resent! Check your inbox."); setCooldown(60); setResendCount(c => c + 1); setShowResendForm(false); }
     recaptchaRef.current?.reset(); setCaptchaToken(null); setLoading(false);
+  };
+
+  // Fix: "I Have Verified" — auth session refresh করে check করো
+  const handleCheckVerified = async () => {
+    setCheckingVerified(true);
+    try {
+      // Supabase session refresh করো যাতে নতুন email_confirmed_at পাই
+      const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
+
+      if (refreshErr || !refreshData?.user) {
+        // Refresh fail — সরাসরি DB check করো
+        const { data: merchant } = await supabase
+          .from('merchants')
+          .select('is_email_verified')
+          .eq('email', unverifiedEmail)
+          .maybeSingle();
+
+        if (merchant?.is_email_verified) {
+          toast.success("Email verified! You can now log in.");
+          setViewState('form');
+          setShowResendForm(false);
+        } else {
+          toast.error("Email not verified yet. Please check your inbox.");
+        }
+      } else {
+        const user = refreshData.user;
+        if (user.email_confirmed_at) {
+          // Sync is_email_verified in merchants table
+          try { await syncEmailVerified(user.id); } catch (_) {}
+          toast.success("Email verified! You can now log in.");
+          setViewState('form');
+          setShowResendForm(false);
+        } else {
+          // Auth এ verified না — DB এও check করো
+          const { data: merchant } = await supabase
+            .from('merchants')
+            .select('is_email_verified')
+            .eq('email', unverifiedEmail)
+            .maybeSingle();
+
+          if (merchant?.is_email_verified) {
+            toast.success("Email verified! You can now log in.");
+            setViewState('form');
+            setShowResendForm(false);
+          } else {
+            toast.error("Email not verified yet. Please check your inbox and click the link.");
+          }
+        }
+      }
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    }
+    setCheckingVerified(false);
   };
 
   const inputClass = "w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm text-slate-900 dark:text-white placeholder:text-slate-400";
@@ -239,12 +308,10 @@ function LoginContent() {
           </div>
         </div>
 
-        {/* 🔴 FIX: Mobile Header Without Branding */}
         <div className="flex md:hidden items-center h-16 px-4 justify-between relative max-w-7xl mx-auto w-full">
           <button onClick={() => setMenuOpen(!menuOpen)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all">
             {menuOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
-          
           <div className="flex items-center justify-end flex-1">
             <ThemeToggle />
           </div>
@@ -289,8 +356,7 @@ function LoginContent() {
             </div>
 
             <div className="flex-1 p-6 md:p-10 flex flex-col justify-center">
-              
-              {/* 🔴 Mobile inner branding restored so it looks centered inside card */}
+
               <div className="md:hidden flex justify-center mb-6">
                 <Link href="/" className="inline-flex items-center gap-1">
                   <span className="text-3xl font-black text-blue-600 tracking-tighter">X</span>
@@ -298,8 +364,10 @@ function LoginContent() {
                 </Link>
               </div>
 
+              {/* ── UNVERIFIED VIEW ── */}
               {viewState === 'unverified' ? (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-center">
+                  {/* Fix: No branding here */}
                   <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5">
                     <MailWarning size={32} />
                   </div>
@@ -307,9 +375,22 @@ function LoginContent() {
                   <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
                     We've sent a verification link to <b className="text-slate-700 dark:text-slate-300">{unverifiedEmail}</b>. Please check your inbox to activate your account.
                   </p>
-                  
+
+                  {/* Fix: I Have Verified button — always visible */}
+                  <button
+                    onClick={handleCheckVerified}
+                    disabled={checkingVerified}
+                    className="w-full mb-3 bg-green-600 disabled:bg-green-500 text-white py-3.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-green-700 transition-all shadow-sm"
+                  >
+                    {checkingVerified ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    ) : (
+                      <><CheckCircle2 size={15} /> I Have Verified My Email</>
+                    )}
+                  </button>
+
                   {!showResendForm ? (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       <button onClick={() => setShowResendForm(true)} className="w-full bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 py-3.5 rounded-xl text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-slate-200 dark:border-slate-700">
                         I didn't receive the email
                       </button>
@@ -320,11 +401,11 @@ function LoginContent() {
                   ) : (
                     <div className="space-y-4 animate-in zoom-in-95 duration-300">
                       <div className="flex justify-center">
-                        {mounted && <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme="light" />}
+                        {mounted && <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme={resolvedTheme === 'dark' ? 'dark' : 'light'} />}
                       </div>
                       <button disabled={loading || cooldown > 0 || resendCount >= 3} onClick={handleResendVerification} type="button" className="w-full bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm flex items-center justify-center shadow-lg transition-all">
-                        {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : 
-                        resendCount >= 3 ? "Maximum limit reached" : cooldown > 0 ? `Resend again in ${cooldown}s` : "Resend Link" }
+                        {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> :
+                          resendCount >= 3 ? "Maximum limit reached" : cooldown > 0 ? `Resend again in ${cooldown}s` : "Resend Verification Link"}
                       </button>
                       <button onClick={() => { setShowResendForm(false); recaptchaRef.current?.reset(); setCaptchaToken(null); }} className="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 uppercase tracking-widest">
                         Cancel
@@ -341,7 +422,7 @@ function LoginContent() {
 
                   <div className="flex bg-slate-100 dark:bg-[#0B1120] p-1 rounded-xl mb-6 border border-slate-200 dark:border-slate-800">
                     <button type="button" onClick={() => setLoginMethod('password')} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${loginMethod === 'password' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>With Password</button>
-                    <button type="button" onClick={() => setLoginMethod('magic')} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${loginMethod === 'magic' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}><Sparkles size={13}/> Magic Link</button>
+                    <button type="button" onClick={() => setLoginMethod('magic')} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${loginMethod === 'magic' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}><Sparkles size={13} /> Magic Link</button>
                   </div>
 
                   <form onSubmit={loginMethod === 'password' ? handleLogin : handleMagicLink} className="space-y-4">
@@ -376,7 +457,6 @@ function LoginContent() {
                             <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 rounded border-slate-300 accent-blue-600" />
                             <span className="text-xs text-slate-500 dark:text-slate-400">Remember me</span>
                           </label>
-                          
                           <Link href={`/forgot-password${mode === 'demo' ? '?mode=demo' : ''}`} onClick={clearForgotSession} className="text-xs text-blue-600 hover:underline">
                             Forgot Password?
                           </Link>
@@ -385,7 +465,7 @@ function LoginContent() {
                     )}
 
                     <div className="flex justify-center pt-2">
-                      {mounted && <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme="light" />}
+                      {mounted && <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme={resolvedTheme === 'dark' ? 'dark' : 'light'} />}
                     </div>
 
                     <button disabled={loading} type="submit" className="w-full relative bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-lg shadow-blue-600/25 h-[50px]">
@@ -423,7 +503,7 @@ function LoginContent() {
           </div>
         </div>
       </div>
-      
+
       <SuspendedModal isOpen={showSuspendedModal} telegramLink={telegramLink} onClose={() => setShowSuspendedModal(false)} />
       <PendingModal isOpen={showPendingModal} telegramLink={telegramLink} onClose={() => setShowPendingModal(false)} />
     </div>

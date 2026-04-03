@@ -18,7 +18,6 @@ const methodLabels: Record<string, string> = {
   international: 'International (Stripe / PayPal / Crypto)',
 };
 
-// ── Tag থেকে সব color বের করা (landing page এর মতো) ──
 function getPlanColors(tag: string | null): {
   border: string;
   borderSelected: string;
@@ -109,7 +108,6 @@ function getPlanColors(tag: string | null): {
 
 function PlanTagBadge({ tag }: { tag: string }) {
   const colors = getPlanColors(tag);
-
   const parts = tag.split(':');
   const label = parts[0].trim();
   return (
@@ -118,13 +116,11 @@ function PlanTagBadge({ tag }: { tag: string }) {
       <span>{label.replace(/^\p{Emoji}\s*/u, '')}</span>
     </div>
   );
-
 }
 
 const ErrorModal = ({ isOpen, message, onClose }: any) => {
   const router = useRouter();
   if (!isOpen) return null;
-
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
       <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl p-7 text-center border border-red-100 dark:border-red-900/20 shadow-2xl">
@@ -146,12 +142,10 @@ const ErrorModal = ({ isOpen, message, onClose }: any) => {
       </div>
     </div>
   );
-
 };
 
 const SuccessModal = ({ isOpen, merchantId, onClose }: any) => {
   if (!isOpen) return null;
-
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl p-7 text-center border border-green-100 dark:border-green-900/20 shadow-2xl">
@@ -180,14 +174,12 @@ const SuccessModal = ({ isOpen, merchantId, onClose }: any) => {
       </div>
     </div>
   );
-
 };
 
 function SignUpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const planIdFromUrl = searchParams.get('plan');
-
   const refCodeFromUrl = searchParams.get('ref') || '';
   const mode = searchParams.get('mode');
   const errorFromUrl = searchParams.get('error');
@@ -205,7 +197,6 @@ function SignUpContent() {
   const [tempMerchantId, setTempMerchantId] = useState('');
 
   const [allPlans, setAllPlans] = useState<any[]>([]);
-
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [showPlanSwitcher, setShowPlanSwitcher] = useState(false);
 
@@ -260,11 +251,9 @@ function SignUpContent() {
 
   const buildPlanFeatures = (plan: any): string[] => {
     if (!plan) return [];
-
     const transactionLabel = (plan.transaction_limit_monthly ?? 100) === 0
       ? 'Unlimited transactions / month'
       : `${(plan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`;
-
     const columnFeatures: (string | null)[] = [
       transactionLabel,
       `${plan.business_limit ?? 1} business${(plan.business_limit ?? 1) > 1 ? 'es' : ''}`,
@@ -275,24 +264,31 @@ function SignUpContent() {
       plan.is_custom_bot_allowed ? 'Custom Telegram bot' : null,
     ];
     const extraFeatures: string[] = Array.isArray(plan.features) ? plan.features : [];
-
     return [...columnFeatures.filter(Boolean) as string[], ...extraFeatures];
+  };
+
+  // Fix: Password validation — symbol optional
+  // Requires: min 8 chars, 1 uppercase, 1 number. Symbol is optional.
+  const validatePassword = (pw: string): boolean => {
+    return /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]{8,}$/.test(pw);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (mode === 'demo') {
       toast.error("Demo Mode: Please go to Login and use demo@xelpay.com / demo123456");
       return;
     }
     if (!captchaToken) { toast.error("Please complete the reCAPTCHA verification."); return; }
     if (!agreedToTerms) { toast.error("Please agree to the Terms & Conditions to continue."); return; }
+    if (!validatePassword(formData.password)) {
+      toast.error("Password must be at least 8 characters with 1 uppercase letter and 1 number.");
+      return;
+    }
     if (formData.password !== formData.confirmPassword) { toast.error("Passwords do not match."); return; }
     if (!selectedPlan) { toast.error("Please select a plan."); return; }
 
     setLoading(true);
-
     const fullPhone = `${countryCode}${formData.phone.replace(/\s/g, '')}`;
     const generatedMerchantId = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -336,10 +332,26 @@ function SignUpContent() {
   const selectedColors = getPlanColors(selectedPlan?.tag || null);
 
   const inputClass = "w-full px-4 py-3.5 bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm text-slate-900 dark:text-white placeholder:text-slate-400";
-
   const labelClass = "text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-0.5 mb-1 block";
 
-  // Round theme toggle — original style
+  // Fix: Password generator — includes symbols + uppercase + number, symbol included
+  const generatePassword = () => {
+    const uppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowers = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const symbols = '!@#$%^&*';
+    const all = uppers + lowers + numbers + symbols;
+    // Guarantee at least 1 uppercase, 1 number, 1 symbol
+    let pw =
+      uppers[Math.floor(Math.random() * uppers.length)] +
+      numbers[Math.floor(Math.random() * numbers.length)] +
+      symbols[Math.floor(Math.random() * symbols.length)];
+    for (let i = 0; i < 11; i++) pw += all[Math.floor(Math.random() * all.length)];
+    pw = pw.split('').sort(() => 0.5 - Math.random()).join('');
+    setFormData({ ...formData, password: pw, confirmPassword: pw });
+    setShowPassword(true);
+  };
+
   const ThemeToggle = () => (
     mounted ? (
       <button
@@ -358,16 +370,11 @@ function SignUpContent() {
 
       {/* ── HEADER ── */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-
-        {/* Desktop: full nav — no hamburger */}
         <div className="hidden md:flex items-center h-16 px-8 justify-between max-w-7xl mx-auto w-full">
-          {/* Left: Branding */}
           <Link href="/" className="flex items-center gap-1">
             <span className="text-2xl font-black text-blue-600 tracking-tighter">X</span>
             <span className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
           </Link>
-
-          {/* Right: links + theme toggle + login */}
           <div className="flex items-center gap-6 text-sm">
             <Link href="/" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Home</Link>
             <Link href="/info/contact" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Help</Link>
@@ -379,7 +386,6 @@ function SignUpContent() {
           </div>
         </div>
 
-        {/* Mobile: menu + centered branding + theme toggle */}
         <div className="flex md:hidden items-center h-16 px-4 justify-between relative max-w-7xl mx-auto w-full">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -391,7 +397,6 @@ function SignUpContent() {
           <ThemeToggle />
         </div>
 
-        {/* Mobile dropdown */}
         {menuOpen && (
           <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0d1526] animate-in slide-in-from-top-2 duration-200">
             <div className="px-4 py-3 flex flex-col gap-1 max-w-7xl mx-auto w-full">
@@ -446,7 +451,6 @@ function SignUpContent() {
                     </span>
                   )}
                   <h4 className="text-base font-semibold text-slate-900 dark:text-white">{selectedPlan.name}</h4>
-                
                   <div className="mt-1 mb-3 flex items-baseline gap-1">
                     <span className={`text-2xl font-bold ${selectedColors.price}`}>
                       {selectedPlan.price === 0 ? 'Free' : `৳${selectedPlan.price}`}
@@ -523,12 +527,8 @@ function SignUpContent() {
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className={labelClass.replace('mb-1', '')}>Password <span className="text-red-400">*</span></label>
-                  <button type="button" onClick={() => {
-                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
-                    const pw = Array.from({ length: 14 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-                    setFormData({ ...formData, password: pw, confirmPassword: pw });
-                    setShowPassword(true);
-                  }} className="text-[10px] text-blue-600 hover:underline uppercase tracking-wider">
+                  {/* Fix: Generator now includes symbols */}
+                  <button type="button" onClick={generatePassword} className="text-[10px] text-blue-600 hover:underline uppercase tracking-wider">
                     Generate
                   </button>
                 </div>
@@ -543,6 +543,8 @@ function SignUpContent() {
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+                {/* Fix: Updated hint — symbol is optional */}
+                <p className="text-[10px] text-slate-400 mt-1 ml-0.5">Min. 8 characters, 1 uppercase &amp; 1 number. Symbols optional.</p>
               </div>
 
               <div>
@@ -585,7 +587,7 @@ function SignUpContent() {
 
               <div className="md:col-span-2 flex justify-center">
                 {mounted && (
-                  <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme="light" />
+                  <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme={resolvedTheme === 'dark' ? 'dark' : 'light'} />
                 )}
               </div>
 

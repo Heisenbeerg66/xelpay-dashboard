@@ -101,7 +101,7 @@ export async function registerMerchantOAuth(payload: {
   userId: string;
   email: string;
   fullName: string;
-  planId: string | null;   // user selected plan UUID — localStorage থেকে আসে
+  planId: string | null;
   planPrice: number;
   referCode: string | null;
 }) {
@@ -151,6 +151,70 @@ export async function registerMerchantOAuth(payload: {
 
   if (insertError) {
     console.error('[registerMerchantOAuth] Insert error:', JSON.stringify(insertError));
+    if (insertError.code === '23505') return { alreadyExists: true };
+    return { error: `Failed to save profile. (${insertError.code}: ${insertError.message})` };
+  }
+
+  return { merchantDisplayId };
+}
+
+// ─── REGISTER MERCHANT VIA INVITE ──────────────────────────────────────────
+// Fix: Invited users ইতিমধ্যে admin দ্বারা verified — is_email_verified: true
+export async function registerMerchantInvite(payload: {
+  userId: string;
+  email: string;
+  fullName: string;
+  planId: string | null;
+  planPrice: number;
+  referCode: string | null;
+}) {
+  const { userId, email, fullName, planId, planPrice, referCode } = payload;
+
+  // userId দিয়ে আগে আছে কিনা
+  const { data: existingById } = await supabaseAdmin
+    .from('merchants')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (existingById) return { alreadyExists: true };
+
+  // Email দিয়ে অন্য account আছে কিনা
+  const { data: existingByEmail } = await supabaseAdmin
+    .from('merchants')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (existingByEmail) {
+    return { error: 'Email already registered. Please login with your existing account.' };
+  }
+
+  const merchantDisplayId = generate6DigitID();
+  const accountStatus = planPrice === 0 ? 'active' : 'pending';
+
+  const { error: insertError } = await supabaseAdmin.from('merchants').insert({
+    id: userId,
+    merchant_id_display: merchantDisplayId,
+    name: fullName,
+    email,
+    phone: null,
+    address: null,
+    slug: null,
+    currency: 'BDT',
+    status: accountStatus,
+    subscription_status: accountStatus,
+    plan_id: planId || null,
+    referred_by: referCode || null,
+    is_demo: false,
+    // Fix: Invited user — admin invite করেছে তাই email already verified
+    is_email_verified: true,
+    telegram_link_code: generateRandomString(12),
+    device_connection_key: generateRandomString(24),
+  });
+
+  if (insertError) {
+    console.error('[registerMerchantInvite] Insert error:', JSON.stringify(insertError));
     if (insertError.code === '23505') return { alreadyExists: true };
     return { error: `Failed to save profile. (${insertError.code}: ${insertError.message})` };
   }
