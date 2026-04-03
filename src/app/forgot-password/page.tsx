@@ -130,6 +130,13 @@ function ForgotPasswordContent() {
       }
     }
 
+    // ── Success Step Guard: if URL is ?step=success and savedStep is '4', show success screen ──
+    if (urlStep === 'success' && savedStep === '4') {
+      setStep(4);
+      setIsRestoring(false);
+      return;
+    }
+
     // ── Back-Button Guard: was on step 3 but URL is now step 2 or null ──
     if (savedStep === '3' && (urlStep === 'verify-otp' || urlStep === null)) {
       (async () => {
@@ -203,7 +210,8 @@ function ForgotPasswordContent() {
       else if (step === 2) router.replace('/forgot-password?step=verify-otp');
       else if (step === 3) router.replace('/forgot-password?step=create-password');
     }
-    if (step === 4) clearSession();
+    // Step 4 is handled by handleUpdatePassword directly — do NOT call clearSession() here
+    // so the success screen is never pre-empted by a storage wipe.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, email, resendCount, isRestoring]);
 
@@ -393,9 +401,14 @@ function ForgotPasswordContent() {
       recaptchaRef.current?.reset();
       setCaptchaToken(null);
     } else {
-      // ── Sign out after successful update, then clear session before step 4 ──
+      // ── Clear input states immediately ──
+      setNewPassword('');
+      setConfirmPassword('');
+      // ── Lock step 4 into sessionStorage + URL BEFORE signOut so the useEffect doesn't kick back to step 1 ──
+      sessionStorage.setItem('xelpay_fp_step', '4');
+      router.replace('/forgot-password?step=success');
+      // ── Sign out (session is done), then reveal the success screen ──
       await supabase.auth.signOut();
-      clearAllSessionStorage();
       toast.success("Password updated successfully!");
       setStep(4);
     }
@@ -411,6 +424,11 @@ function ForgotPasswordContent() {
     sessionStorage.removeItem('xelpay_recovery_mode');
     toast.success("Welcome back! Redirecting to your dashboard...");
     router.push('/dashboard');
+  };
+
+  const handleSuccessLogin = async () => {
+    clearAllSessionStorage();
+    router.push('/login');
   };
 
   const generateStrongPassword = () => {
@@ -634,7 +652,7 @@ function ForgotPasswordContent() {
                   <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle size={40} strokeWidth={1.5} /></div>
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">Password Updated!</h2>
                   <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm leading-relaxed">Your password has been successfully reset. You can now securely login to your workspace.</p>
-                  <Link href="/login" onClick={clearSession} className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-medium text-sm flex items-center justify-center shadow-lg">Login Now</Link>
+                  <button onClick={handleSuccessLogin} className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-medium text-sm flex items-center justify-center shadow-lg hover:-translate-y-0.5 transition-all">Login Now</button>
                 </div>
               )}
             </>
@@ -645,6 +663,37 @@ function ForgotPasswordContent() {
 
       <SuspendedModal isOpen={modalState === 'suspended'} telegramLink={telegramLink} onClose={() => setModalState('none')} />
       <PendingModal isOpen={modalState === 'pending'} telegramLink={telegramLink} onClose={() => setModalState('none')} />
+
+      {/* ── Step 4 Success Backdrop: clicking outside the card goes to /login ── */}
+      {step === 4 && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm animate-in fade-in duration-300"
+          onClick={handleSuccessLogin}
+        >
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm px-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-white dark:bg-[#111827] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-10 text-center animate-in zoom-in-95 duration-500">
+              <div className="absolute -top-20 -left-20 w-40 h-40 bg-green-600/5 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle size={40} strokeWidth={1.5} />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">Password Updated!</h2>
+              <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm leading-relaxed">
+                Your password has been successfully reset. You can now securely login to your workspace.
+              </p>
+              <button
+                onClick={handleSuccessLogin}
+                className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-medium text-sm flex items-center justify-center shadow-lg shadow-blue-600/25 hover:-translate-y-0.5 transition-all"
+              >
+                Login Now
+              </button>
+              <p className="text-[11px] text-slate-400 mt-5">or click anywhere outside to continue</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
