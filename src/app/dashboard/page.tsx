@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 export default function DashboardHome() {
   const [loading, setLoading] = useState(true);
   const [businessId, setBusinessId] = useState<string | null>(null);
-  
+
   // Stats States
   const [stats, setStats] = useState({
     totalRevenue: 0,
@@ -16,11 +16,12 @@ export default function DashboardHome() {
     successRate: 0,
     totalOrders: 0
   });
+
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
 
   const fetchDashboardData = async (bizId: string) => {
     setLoading(true);
-    
+
     // 1. Fetch Orders for calculating Revenue & Success Rate
     const { data: orders } = await supabase
       .from('orders')
@@ -36,9 +37,11 @@ export default function DashboardHome() {
       .eq('status', 'active');
 
     if (orders) {
-      const paidOrders = orders.filter(o => o.status === 'paid' || o.status === 'success');
-      const totalRev = paidOrders.reduce((sum, order) => sum + parseFloat(order.amount || '0'), 0);
-      const rate = orders.length > 0 ? (paidOrders.length / orders.length) * 100 : 0;
+      const paidOrders = orders.filter((o: any) => o.status === 'paid' || o.status === 'success');
+
+      const totalRev = paidOrders.reduce((sum: number, order: any) => sum + parseFloat(order.amount || '0'), 0);
+      const rate = orders.length > 0 ?
+        (paidOrders.length / orders.length) * 100 : 0;
 
       setStats({
         totalRevenue: totalRev,
@@ -107,7 +110,7 @@ export default function DashboardHome() {
             <LinkIcon size={16} /> New Link
           </Link>
           <Link href="/dashboard/gateways" className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 hover:-translate-y-0.5 transition-all shadow-lg shadow-blue-600/30">
-            <Plus size={18} /> Add Gateway
+             <Plus size={18} /> Add Gateway
           </Link>
         </div>
       </div>
