@@ -44,7 +44,7 @@ export default function Reports() {
         };
       });
 
-      orders.forEach(order => {
+      orders.forEach((order: any) => {
         const amt = parseFloat(order.amount || '0');
         const method = order.method?.toLowerCase() as keyof typeof methods;
         const orderDate = new Date(order.created_at).toDateString();
