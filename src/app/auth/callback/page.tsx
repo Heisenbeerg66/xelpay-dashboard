@@ -110,9 +110,18 @@ function AuthCallbackContent() {
         return;
       }
 
-      if (merchant.status === 'suspended') {
+      // 🔴 ADDED: Check Pending & Suspended
+      const mStatus = merchant.status?.toLowerCase();
+      
+      if (['suspended', 'ban', 'banned'].includes(mStatus)) {
         await supabase.auth.signOut();
         router.replace('/login?error=suspended');
+        return;
+      }
+      
+      if (mStatus === 'pending') {
+        await supabase.auth.signOut();
+        router.replace('/login?error=pending');
         return;
       }
 
