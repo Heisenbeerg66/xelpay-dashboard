@@ -45,8 +45,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
+  // ─── FIX: রিকভারি মোড কুকি চেক করা ───
+  const isRecoveryMode = request.cookies.get('xelpay_recovery_mode')?.value === 'true';
+
   // লগইন আছে এবং auth page এ আসছে
   if (user && isAuthPage) {
+    
+    // ─── FIX: রিকভারি মোডে থাকলে forgot-password পেজেই থাকতে দেবে, রিডাইরেক্ট ব্লক করবে ───
+    if (pathname.startsWith('/forgot-password') && isRecoveryMode) {
+      return response; 
+    }
+
     // Merchant আছে কিনা check করো
     const { data: merchant } = await supabase
       .from('merchants')

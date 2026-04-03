@@ -96,36 +96,130 @@ function ForgotPasswordContent() {
 
   const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+]{8,}$/;
 
+  // ─── MASTER RESTORE + URL SYNC + BACK-BUTTON TRACKER ───
   useEffect(() => {
     setMounted(true);
+
+    const urlStep = searchParams.get('step'); // 'verify-otp' | 'create-password' | null
     const savedStep = sessionStorage.getItem('xelpay_fp_step');
     const savedEmail = sessionStorage.getItem('xelpay_fp_email');
     const savedResendCount = sessionStorage.getItem('xelpay_fp_resend');
     const savedCooldownEnd = sessionStorage.getItem('xelpay_fp_cooldown_end');
+    const recoveryMode = sessionStorage.getItem('xelpay_recovery_mode');
+    const savedTimestamp = sessionStorage.getItem('xelpay_fp_timestamp');
 
-    if (savedStep && savedEmail) { setStep(Number(savedStep) as any); setEmail(savedEmail); }
+    const SESSION_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
+
+    // ── 30-Min Expiry Check ──
+    if (savedTimestamp) {
+      const elapsed = Date.now() - Number(savedTimestamp);
+      if (elapsed > SESSION_EXPIRY_MS) {
+        // Expired: sign out, wipe session, redirect to step 1
+        (async () => {
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData?.session) await supabase.auth.signOut();
+          clearAllSessionStorage();
+          setStep(1);
+          setEmail('');
+          setOtp('');
+          setIsRestoring(false);
+          router.replace('/forgot-password');
+          toast.error('Session expired. Please start again.');
+        })();
+        return;
+      }
+    }
+
+    // ── Success Step Guard: if URL is ?step=success and savedStep is '4', show success screen ──
+    if (urlStep === 'success' && savedStep === '4') {
+      setStep(4);
+      setIsRestoring(false);
+      return;
+    }
+
+    // ── Back-Button Guard: was on step 3 but URL is now step 2 or null ──
+    if (savedStep === '3' && (urlStep === 'verify-otp' || urlStep === null)) {
+      (async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session) await supabase.auth.signOut();
+        clearAllSessionStorage();
+        setStep(1);
+        setEmail('');
+        setOtp('');
+        setIsRestoring(false);
+        router.replace('/forgot-password');
+      })();
+      return;
+    }
+
+    // ── Reload on Step 3: validate recovery mode + live session ──
+    if (urlStep === 'create-password' && savedStep === '3') {
+      (async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const hasValidSession = !!sessionData?.session;
+        const hasRecoveryMode = recoveryMode === 'true';
+
+        if (hasValidSession && hasRecoveryMode) {
+          // Valid: restore to step 3
+          if (savedEmail) setEmail(savedEmail);
+          if (savedResendCount) setResendCount(Number(savedResendCount));
+          if (savedCooldownEnd) {
+            const endTime = Number(savedCooldownEnd);
+            if (endTime > Date.now()) setCooldown(Math.floor((endTime - Date.now()) / 1000));
+          }
+          setStep(3);
+        } else {
+          // Invalid session or recovery mode missing: kick to step 1
+          if (sessionData?.session) await supabase.auth.signOut();
+          clearAllSessionStorage();
+          setStep(1);
+          setEmail('');
+          setOtp('');
+          router.replace('/forgot-password');
+          toast.error('Your session is invalid. Please restart the process.');
+        }
+        setIsRestoring(false);
+      })();
+      return;
+    }
+
+    // ── Standard Restore (step 1 or step 2) ──
+    if (savedStep && savedEmail) {
+      setStep(Number(savedStep) as any);
+      setEmail(savedEmail);
+    }
     if (savedResendCount) setResendCount(Number(savedResendCount));
     if (savedCooldownEnd) {
       const endTime = Number(savedCooldownEnd);
       if (endTime > Date.now()) setCooldown(Math.floor((endTime - Date.now()) / 1000));
     }
+
     setIsRestoring(false);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, isRestoring]);
+
+  // ─── SYNC STEP → URL + SESSION STORAGE ───
+  useEffect(() => {
+    if (!isRestoring && step < 4) {
+      sessionStorage.setItem('xelpay_fp_step', step.toString());
+      sessionStorage.setItem('xelpay_fp_email', email);
+      sessionStorage.setItem('xelpay_fp_resend', resendCount.toString());
+
+      // Sync URL to match step
+      if (step === 1) router.replace('/forgot-password');
+      else if (step === 2) router.replace('/forgot-password?step=verify-otp');
+      else if (step === 3) router.replace('/forgot-password?step=create-password');
+    }
+    // Step 4 is handled by handleUpdatePassword directly — do NOT call clearSession() here
+    // so the success screen is never pre-empted by a storage wipe.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, email, resendCount, isRestoring]);
 
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => { if (event.persisted) setLoading(false); };
     window.addEventListener('pageshow', handlePageShow);
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, []);
-
-  useEffect(() => {
-    if (!isRestoring && step < 4) {
-      sessionStorage.setItem('xelpay_fp_step', step.toString());
-      sessionStorage.setItem('xelpay_fp_email', email);
-      sessionStorage.setItem('xelpay_fp_resend', resendCount.toString());
-    }
-    if (step === 4) clearSession();
-  }, [step, email, resendCount, isRestoring]);
 
   useEffect(() => {
     if (cooldown > 0) { const timer = setInterval(() => setCooldown(c => c - 1), 1000); return () => clearInterval(timer); }
@@ -135,13 +229,32 @@ function ForgotPasswordContent() {
     if (cooldownVerify > 0) { const timer = setInterval(() => setCooldownVerify(c => c - 1), 1000); return () => clearInterval(timer); }
   }, [cooldownVerify]);
 
-  const clearSession = () => {
+  // ─── HELPERS ───
+
+  /** Remove all 6 sessionStorage keys without touching Supabase session */
+  const clearAllSessionStorage = () => {
     sessionStorage.removeItem('xelpay_fp_step');
     sessionStorage.removeItem('xelpay_fp_email');
     sessionStorage.removeItem('xelpay_fp_resend');
     sessionStorage.removeItem('xelpay_fp_cooldown_end');
+    sessionStorage.removeItem('xelpay_recovery_mode');
+    sessionStorage.removeItem('xelpay_fp_timestamp');
+    document.cookie = "xelpay_recovery_mode=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+  };
+
+  /**
+   * Full clearSession:
+   * - Removes all 6 sessionStorage items
+   * - Signs out of Supabase if a session exists (user is aborting the flow)
+   * - Resets component state
+   */
+  const clearSession = async () => {
+    clearAllSessionStorage();
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData?.session) await supabase.auth.signOut();
     setStep(1);
     setEmail('');
+    setOtp('');
   };
 
   const fetchTelegramLink = async () => {
@@ -260,8 +373,17 @@ function ForgotPasswordContent() {
   const verifyOtpLogic = async (tokenToVerify: string) => {
     setLoading(true);
     const { data, error } = await supabase.auth.verifyOtp({ email, token: tokenToVerify, type: 'recovery' });
-    if (error) { toast.error("Invalid or expired OTP. Please try again."); setOtp(''); }
-    else if (data.session) { toast.success("OTP Verified! Please set your new password."); setStep(3); }
+    if (error) {
+      toast.error("Invalid or expired OTP. Please try again.");
+      setOtp('');
+    } else if (data.session) {
+      // ── Set recovery mode + timestamp on successful OTP verification ──
+      sessionStorage.setItem('xelpay_recovery_mode', 'true');
+      sessionStorage.setItem('xelpay_fp_timestamp', Date.now().toString());
+      document.cookie = "xelpay_recovery_mode=true; path=/; max-age=1800";
+      toast.success("OTP Verified! Please set your new password.");
+      setStep(3);
+    }
     setLoading(false);
   };
 
@@ -274,9 +396,39 @@ function ForgotPasswordContent() {
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
 
-    if (error) { toast.error(error.message); recaptchaRef.current?.reset(); setCaptchaToken(null); }
-    else { toast.success("Password updated successfully!"); setStep(4); }
+    if (error) {
+      toast.error(error.message);
+      recaptchaRef.current?.reset();
+      setCaptchaToken(null);
+    } else {
+      // ── Clear input states immediately ──
+      setNewPassword('');
+      setConfirmPassword('');
+      // ── Lock step 4 into sessionStorage + URL BEFORE signOut so the useEffect doesn't kick back to step 1 ──
+      sessionStorage.setItem('xelpay_fp_step', '4');
+      router.replace('/forgot-password?step=success');
+      // ── Sign out (session is done), then reveal the success screen ──
+      await supabase.auth.signOut();
+      toast.success("Password updated successfully!");
+      setStep(4);
+    }
     setLoading(false);
+  };
+
+  /**
+   * handleDirectLogin — Step 3 "Login Now" shortcut.
+   * The user already has a valid Supabase session from OTP verification,
+   * so we only remove the recovery_mode flag and redirect to the dashboard.
+   */
+  const handleDirectLogin = () => {
+    sessionStorage.removeItem('xelpay_recovery_mode');
+    toast.success("Welcome back! Redirecting to your dashboard...");
+    router.push('/dashboard');
+  };
+
+  const handleSuccessLogin = async () => {
+    clearAllSessionStorage();
+    router.push('/login');
   };
 
   const generateStrongPassword = () => {
@@ -478,8 +630,18 @@ function ForgotPasswordContent() {
                       {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : 'Update Password'}
                     </button>
 
+                    {/* ── Direct Login: replaces the old <Link> with onClick handler ── */}
                     <div className="pt-2 text-center">
-                      <p className="text-sm text-slate-500 dark:text-slate-400">Don't want to change? <Link href="/login" onClick={clearSession} className="text-blue-600 font-semibold hover:underline">Login Now</Link></p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        Don't want to change?{' '}
+                        <button
+                          type="button"
+                          onClick={handleDirectLogin}
+                          className="text-blue-600 font-semibold hover:underline"
+                        >
+                          Login Now
+                        </button>
+                      </p>
                     </div>
                   </form>
                 </div>
@@ -490,7 +652,7 @@ function ForgotPasswordContent() {
                   <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle size={40} strokeWidth={1.5} /></div>
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">Password Updated!</h2>
                   <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm leading-relaxed">Your password has been successfully reset. You can now securely login to your workspace.</p>
-                  <Link href="/login" onClick={clearSession} className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-medium text-sm flex items-center justify-center shadow-lg">Login Now</Link>
+                  <button onClick={handleSuccessLogin} className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-medium text-sm flex items-center justify-center shadow-lg hover:-translate-y-0.5 transition-all">Login Now</button>
                 </div>
               )}
             </>
@@ -501,6 +663,37 @@ function ForgotPasswordContent() {
 
       <SuspendedModal isOpen={modalState === 'suspended'} telegramLink={telegramLink} onClose={() => setModalState('none')} />
       <PendingModal isOpen={modalState === 'pending'} telegramLink={telegramLink} onClose={() => setModalState('none')} />
+
+      {/* ── Step 4 Success Backdrop: clicking outside the card goes to /login ── */}
+      {step === 4 && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm animate-in fade-in duration-300"
+          onClick={handleSuccessLogin}
+        >
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm px-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-white dark:bg-[#111827] rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-10 text-center animate-in zoom-in-95 duration-500">
+              <div className="absolute -top-20 -left-20 w-40 h-40 bg-green-600/5 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle size={40} strokeWidth={1.5} />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">Password Updated!</h2>
+              <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm leading-relaxed">
+                Your password has been successfully reset. You can now securely login to your workspace.
+              </p>
+              <button
+                onClick={handleSuccessLogin}
+                className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-medium text-sm flex items-center justify-center shadow-lg shadow-blue-600/25 hover:-translate-y-0.5 transition-all"
+              >
+                Login Now
+              </button>
+              <p className="text-[11px] text-slate-400 mt-5">or click anywhere outside to continue</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
