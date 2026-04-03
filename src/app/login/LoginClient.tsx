@@ -79,7 +79,6 @@ function LoginContent() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<any>(null);
 
-  // States
   const [showSuspendedModal, setShowSuspendedModal] = useState(false);
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [telegramLink, setTelegramLink] = useState('#');
@@ -92,8 +91,17 @@ function LoginContent() {
 
   useEffect(() => { setMounted(true); }, []);
 
+  // 🔴 FIX: BFCache (Back Button loading stuck fix)
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) { setLoading(false); setGoogleLoading(false); }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   const fetchTelegramLink = async () => {
-    const { data: settings } = await supabase.from('site_settings').select('value').eq('key_name', 'telegram').maybeSingle();
+    const { data: settings } = await supabase.from('site_settings').select('value').eq('key_name', 'support_telegram').maybeSingle();
     if (settings) setTelegramLink(settings.value);
   };
 
@@ -112,7 +120,6 @@ function LoginContent() {
     if (cooldown > 0) { const timer = setInterval(() => setCooldown((c) => c - 1), 1000); return () => clearInterval(timer); }
   }, [cooldown]);
 
-  // 🔴 FIX: Clear Forgot Password Cache manually before navigating
   const clearForgotSession = () => {
     sessionStorage.removeItem('xelpay_fp_step');
     sessionStorage.removeItem('xelpay_fp_email');
@@ -177,12 +184,9 @@ function LoginContent() {
     if (mode === 'demo') { toast.error("Google login disabled in demo mode."); return; }
     setGoogleLoading(true);
 
-    // 🔴 FIX: Fallback for crypto.randomUUID for local testing networks
+    // 🔴 FIX: Crypto fallback for localhost testing over HTTP
     const generateTxId = () => {
-      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-        return crypto.randomUUID().replace(/-/g, '');
-      }
-      // Fallback generator if crypto is blocked by browser on HTTP
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, '');
       return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     };
 
@@ -235,15 +239,15 @@ function LoginContent() {
           </div>
         </div>
 
+        {/* 🔴 FIX: Mobile Header Without Branding */}
         <div className="flex md:hidden items-center h-16 px-4 justify-between relative max-w-7xl mx-auto w-full">
           <button onClick={() => setMenuOpen(!menuOpen)} className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all">
             {menuOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
-          <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
-            <span className="text-2xl font-black text-blue-600 tracking-tighter">X</span>
-            <span className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
-          </Link>
-          <ThemeToggle />
+          
+          <div className="flex items-center justify-end flex-1">
+            <ThemeToggle />
+          </div>
         </div>
 
         {menuOpen && (
@@ -285,6 +289,8 @@ function LoginContent() {
             </div>
 
             <div className="flex-1 p-6 md:p-10 flex flex-col justify-center">
+              
+              {/* 🔴 Mobile inner branding restored so it looks centered inside card */}
               <div className="md:hidden flex justify-center mb-6">
                 <Link href="/" className="inline-flex items-center gap-1">
                   <span className="text-3xl font-black text-blue-600 tracking-tighter">X</span>
@@ -308,7 +314,7 @@ function LoginContent() {
                         I didn't receive the email
                       </button>
                       <p className="text-xs text-slate-500">
-                        Entered the wrong email? <Link href="/signup" className="text-blue-600 hover:underline font-semibold">Create a new account</Link>
+                        Entered the wrong email? <Link href="/signup" onClick={clearForgotSession} className="text-blue-600 hover:underline font-semibold">Create a new account</Link>
                       </p>
                     </div>
                   ) : (
@@ -371,7 +377,6 @@ function LoginContent() {
                             <span className="text-xs text-slate-500 dark:text-slate-400">Remember me</span>
                           </label>
                           
-                          {/* 🔴 FIX: Click "Forgot Password" to clear its cache */}
                           <Link href={`/forgot-password${mode === 'demo' ? '?mode=demo' : ''}`} onClick={clearForgotSession} className="text-xs text-blue-600 hover:underline">
                             Forgot Password?
                           </Link>
@@ -408,7 +413,7 @@ function LoginContent() {
                       </button>
 
                       <p className="mt-4 text-center text-slate-400 text-sm">
-                        New to XelPay? <Link href="/signup" className="text-blue-600 font-medium hover:underline">Create Account</Link>
+                        New to XelPay? <Link href="/signup" onClick={clearForgotSession} className="text-blue-600 font-medium hover:underline">Create Account</Link>
                       </p>
                     </>
                   )}
