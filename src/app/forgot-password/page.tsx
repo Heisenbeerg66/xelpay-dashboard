@@ -231,6 +231,7 @@ function ForgotPasswordContent() {
     sessionStorage.removeItem('xelpay_fp_cooldown_end');
     sessionStorage.removeItem('xelpay_recovery_mode');
     sessionStorage.removeItem('xelpay_fp_timestamp');
+    document.cookie = "xelpay_recovery_mode=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
   };
 
   /**
@@ -371,6 +372,7 @@ function ForgotPasswordContent() {
       // ── Set recovery mode + timestamp on successful OTP verification ──
       sessionStorage.setItem('xelpay_recovery_mode', 'true');
       sessionStorage.setItem('xelpay_fp_timestamp', Date.now().toString());
+      document.cookie = "xelpay_recovery_mode=true; path=/; max-age=1800";
       toast.success("OTP Verified! Please set your new password.");
       setStep(3);
     }
