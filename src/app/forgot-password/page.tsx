@@ -96,36 +96,122 @@ function ForgotPasswordContent() {
 
   const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+]{8,}$/;
 
+  // ─── MASTER RESTORE + URL SYNC + BACK-BUTTON TRACKER ───
   useEffect(() => {
     setMounted(true);
+
+    const urlStep = searchParams.get('step'); // 'verify-otp' | 'create-password' | null
     const savedStep = sessionStorage.getItem('xelpay_fp_step');
     const savedEmail = sessionStorage.getItem('xelpay_fp_email');
     const savedResendCount = sessionStorage.getItem('xelpay_fp_resend');
     const savedCooldownEnd = sessionStorage.getItem('xelpay_fp_cooldown_end');
+    const recoveryMode = sessionStorage.getItem('xelpay_recovery_mode');
+    const savedTimestamp = sessionStorage.getItem('xelpay_fp_timestamp');
 
-    if (savedStep && savedEmail) { setStep(Number(savedStep) as any); setEmail(savedEmail); }
+    const SESSION_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
+
+    // ── 30-Min Expiry Check ──
+    if (savedTimestamp) {
+      const elapsed = Date.now() - Number(savedTimestamp);
+      if (elapsed > SESSION_EXPIRY_MS) {
+        // Expired: sign out, wipe session, redirect to step 1
+        (async () => {
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (sessionData?.session) await supabase.auth.signOut();
+          clearAllSessionStorage();
+          setStep(1);
+          setEmail('');
+          setOtp('');
+          setIsRestoring(false);
+          router.replace('/forgot-password');
+          toast.error('Session expired. Please start again.');
+        })();
+        return;
+      }
+    }
+
+    // ── Back-Button Guard: was on step 3 but URL is now step 2 or null ──
+    if (savedStep === '3' && (urlStep === 'verify-otp' || urlStep === null)) {
+      (async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session) await supabase.auth.signOut();
+        clearAllSessionStorage();
+        setStep(1);
+        setEmail('');
+        setOtp('');
+        setIsRestoring(false);
+        router.replace('/forgot-password');
+      })();
+      return;
+    }
+
+    // ── Reload on Step 3: validate recovery mode + live session ──
+    if (urlStep === 'create-password' && savedStep === '3') {
+      (async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const hasValidSession = !!sessionData?.session;
+        const hasRecoveryMode = recoveryMode === 'true';
+
+        if (hasValidSession && hasRecoveryMode) {
+          // Valid: restore to step 3
+          if (savedEmail) setEmail(savedEmail);
+          if (savedResendCount) setResendCount(Number(savedResendCount));
+          if (savedCooldownEnd) {
+            const endTime = Number(savedCooldownEnd);
+            if (endTime > Date.now()) setCooldown(Math.floor((endTime - Date.now()) / 1000));
+          }
+          setStep(3);
+        } else {
+          // Invalid session or recovery mode missing: kick to step 1
+          if (sessionData?.session) await supabase.auth.signOut();
+          clearAllSessionStorage();
+          setStep(1);
+          setEmail('');
+          setOtp('');
+          router.replace('/forgot-password');
+          toast.error('Your session is invalid. Please restart the process.');
+        }
+        setIsRestoring(false);
+      })();
+      return;
+    }
+
+    // ── Standard Restore (step 1 or step 2) ──
+    if (savedStep && savedEmail) {
+      setStep(Number(savedStep) as any);
+      setEmail(savedEmail);
+    }
     if (savedResendCount) setResendCount(Number(savedResendCount));
     if (savedCooldownEnd) {
       const endTime = Number(savedCooldownEnd);
       if (endTime > Date.now()) setCooldown(Math.floor((endTime - Date.now()) / 1000));
     }
+
     setIsRestoring(false);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, isRestoring]);
+
+  // ─── SYNC STEP → URL + SESSION STORAGE ───
+  useEffect(() => {
+    if (!isRestoring && step < 4) {
+      sessionStorage.setItem('xelpay_fp_step', step.toString());
+      sessionStorage.setItem('xelpay_fp_email', email);
+      sessionStorage.setItem('xelpay_fp_resend', resendCount.toString());
+
+      // Sync URL to match step
+      if (step === 1) router.replace('/forgot-password');
+      else if (step === 2) router.replace('/forgot-password?step=verify-otp');
+      else if (step === 3) router.replace('/forgot-password?step=create-password');
+    }
+    if (step === 4) clearSession();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, email, resendCount, isRestoring]);
 
   useEffect(() => {
     const handlePageShow = (event: PageTransitionEvent) => { if (event.persisted) setLoading(false); };
     window.addEventListener('pageshow', handlePageShow);
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, []);
-
-  useEffect(() => {
-    if (!isRestoring && step < 4) {
-      sessionStorage.setItem('xelpay_fp_step', step.toString());
-      sessionStorage.setItem('xelpay_fp_email', email);
-      sessionStorage.setItem('xelpay_fp_resend', resendCount.toString());
-    }
-    if (step === 4) clearSession();
-  }, [step, email, resendCount, isRestoring]);
 
   useEffect(() => {
     if (cooldown > 0) { const timer = setInterval(() => setCooldown(c => c - 1), 1000); return () => clearInterval(timer); }
@@ -135,13 +221,31 @@ function ForgotPasswordContent() {
     if (cooldownVerify > 0) { const timer = setInterval(() => setCooldownVerify(c => c - 1), 1000); return () => clearInterval(timer); }
   }, [cooldownVerify]);
 
-  const clearSession = () => {
+  // ─── HELPERS ───
+
+  /** Remove all 6 sessionStorage keys without touching Supabase session */
+  const clearAllSessionStorage = () => {
     sessionStorage.removeItem('xelpay_fp_step');
     sessionStorage.removeItem('xelpay_fp_email');
     sessionStorage.removeItem('xelpay_fp_resend');
     sessionStorage.removeItem('xelpay_fp_cooldown_end');
+    sessionStorage.removeItem('xelpay_recovery_mode');
+    sessionStorage.removeItem('xelpay_fp_timestamp');
+  };
+
+  /**
+   * Full clearSession:
+   * - Removes all 6 sessionStorage items
+   * - Signs out of Supabase if a session exists (user is aborting the flow)
+   * - Resets component state
+   */
+  const clearSession = async () => {
+    clearAllSessionStorage();
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (sessionData?.session) await supabase.auth.signOut();
     setStep(1);
     setEmail('');
+    setOtp('');
   };
 
   const fetchTelegramLink = async () => {
@@ -260,8 +364,16 @@ function ForgotPasswordContent() {
   const verifyOtpLogic = async (tokenToVerify: string) => {
     setLoading(true);
     const { data, error } = await supabase.auth.verifyOtp({ email, token: tokenToVerify, type: 'recovery' });
-    if (error) { toast.error("Invalid or expired OTP. Please try again."); setOtp(''); }
-    else if (data.session) { toast.success("OTP Verified! Please set your new password."); setStep(3); }
+    if (error) {
+      toast.error("Invalid or expired OTP. Please try again.");
+      setOtp('');
+    } else if (data.session) {
+      // ── Set recovery mode + timestamp on successful OTP verification ──
+      sessionStorage.setItem('xelpay_recovery_mode', 'true');
+      sessionStorage.setItem('xelpay_fp_timestamp', Date.now().toString());
+      toast.success("OTP Verified! Please set your new password.");
+      setStep(3);
+    }
     setLoading(false);
   };
 
@@ -274,9 +386,29 @@ function ForgotPasswordContent() {
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
 
-    if (error) { toast.error(error.message); recaptchaRef.current?.reset(); setCaptchaToken(null); }
-    else { toast.success("Password updated successfully!"); setStep(4); }
+    if (error) {
+      toast.error(error.message);
+      recaptchaRef.current?.reset();
+      setCaptchaToken(null);
+    } else {
+      // ── Sign out after successful update, then clear session before step 4 ──
+      await supabase.auth.signOut();
+      clearAllSessionStorage();
+      toast.success("Password updated successfully!");
+      setStep(4);
+    }
     setLoading(false);
+  };
+
+  /**
+   * handleDirectLogin — Step 3 "Login Now" shortcut.
+   * The user already has a valid Supabase session from OTP verification,
+   * so we only remove the recovery_mode flag and redirect to the dashboard.
+   */
+  const handleDirectLogin = () => {
+    sessionStorage.removeItem('xelpay_recovery_mode');
+    toast.success("Welcome back! Redirecting to your dashboard...");
+    router.push('/dashboard');
   };
 
   const generateStrongPassword = () => {
@@ -478,8 +610,18 @@ function ForgotPasswordContent() {
                       {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : 'Update Password'}
                     </button>
 
+                    {/* ── Direct Login: replaces the old <Link> with onClick handler ── */}
                     <div className="pt-2 text-center">
-                      <p className="text-sm text-slate-500 dark:text-slate-400">Don't want to change? <Link href="/login" onClick={clearSession} className="text-blue-600 font-semibold hover:underline">Login Now</Link></p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        Don't want to change?{' '}
+                        <button
+                          type="button"
+                          onClick={handleDirectLogin}
+                          className="text-blue-600 font-semibold hover:underline"
+                        >
+                          Login Now
+                        </button>
+                      </p>
                     </div>
                   </form>
                 </div>
