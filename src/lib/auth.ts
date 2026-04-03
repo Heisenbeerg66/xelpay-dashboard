@@ -20,6 +20,25 @@ function generateRandomString(length: number) {
   return result;
 }
 
+// ─── INCREMENT REFERRER'S total_refer COUNT ─────────────────────────────────
+async function incrementReferrer(referCode: string): Promise<void> {
+  if (!referCode) return;
+
+  // Find the referrer merchant whose refer_id matches the provided referCode
+  const { data: referrer } = await supabaseAdmin
+    .from('merchants')
+    .select('id, total_refer')
+    .eq('refer_id', referCode)
+    .maybeSingle();
+
+  if (!referrer) return; // Invalid referral code — silently skip
+
+  await supabaseAdmin
+    .from('merchants')
+    .update({ total_refer: (referrer.total_refer ?? 0) + 1 })
+    .eq('id', referrer.id);
+}
+
 // ─── REGISTER MERCHANT (Email/Password) ────────────────────────────────────
 export async function registerMerchant(payload: {
   userId: string;
@@ -37,7 +56,7 @@ export async function registerMerchant(payload: {
     referCode, planId, planPrice, merchantDisplayId,
   } = payload;
 
-  // userId দিয়ে আগে আছে কিনা — idempotent
+  // Idempotency check — if userId already exists, return early
   const { data: existingById } = await supabaseAdmin
     .from('merchants')
     .select('id, merchant_id_display')
@@ -59,6 +78,8 @@ export async function registerMerchant(payload: {
     return { error: 'Email already registered. Please login instead.' };
   }
 
+  // ─── Affiliate: Generate this merchant's unique refer_id ───
+  const referId = `XEL-${merchantDisplayId}`;
   const accountStatus = planPrice === 0 ? 'active' : 'pending';
 
   const { error: insertError } = await supabaseAdmin.from('merchants').insert({
@@ -73,9 +94,14 @@ export async function registerMerchant(payload: {
     status: accountStatus,
     subscription_status: accountStatus,
     plan_id: planId || null,
+    // ─── Affiliate columns ───
+    refer_id: referId,
     referred_by: referCode || null,
+    total_refer: 0,
+    affiliate_wallet: 0,
+    // ────────────────────────
     is_demo: false,
-    is_email_verified: false,
+    is_email_verified: true, // OTP already verified before calling this function
     telegram_link_code: generateRandomString(12),
     device_connection_key: generateRandomString(24),
   });
@@ -93,6 +119,11 @@ export async function registerMerchant(payload: {
     return { error: `Failed to save profile. (${insertError.code}: ${insertError.message})` };
   }
 
+  // ─── Affiliate: Increment referrer's count if a valid code was used ───
+  if (referCode) {
+    await incrementReferrer(referCode);
+  }
+
   return { merchantDisplayId };
 }
 
@@ -107,7 +138,6 @@ export async function registerMerchantOAuth(payload: {
 }) {
   const { userId, email, fullName, planId, planPrice, referCode } = payload;
 
-  // userId দিয়ে আগে আছে কিনা
   const { data: existingById } = await supabaseAdmin
     .from('merchants')
     .select('id')
@@ -116,7 +146,6 @@ export async function registerMerchantOAuth(payload: {
 
   if (existingById) return { alreadyExists: true };
 
-  // Email দিয়ে অন্য account আছে কিনা
   const { data: existingByEmail } = await supabaseAdmin
     .from('merchants')
     .select('id')
@@ -128,6 +157,7 @@ export async function registerMerchantOAuth(payload: {
   }
 
   const merchantDisplayId = generate6DigitID();
+  const referId = `XEL-${merchantDisplayId}`;
   const accountStatus = planPrice === 0 ? 'active' : 'pending';
 
   const { error: insertError } = await supabaseAdmin.from('merchants').insert({
@@ -142,7 +172,10 @@ export async function registerMerchantOAuth(payload: {
     status: accountStatus,
     subscription_status: accountStatus,
     plan_id: planId || null,
+    refer_id: referId,
     referred_by: referCode || null,
+    total_refer: 0,
+    affiliate_wallet: 0,
     is_demo: false,
     is_email_verified: false,
     telegram_link_code: generateRandomString(12),
@@ -155,11 +188,14 @@ export async function registerMerchantOAuth(payload: {
     return { error: `Failed to save profile. (${insertError.code}: ${insertError.message})` };
   }
 
+  if (referCode) {
+    await incrementReferrer(referCode);
+  }
+
   return { merchantDisplayId };
 }
 
 // ─── REGISTER MERCHANT VIA INVITE ──────────────────────────────────────────
-// Fix: Invited users ইতিমধ্যে admin দ্বারা verified — is_email_verified: true
 export async function registerMerchantInvite(payload: {
   userId: string;
   email: string;
@@ -170,7 +206,6 @@ export async function registerMerchantInvite(payload: {
 }) {
   const { userId, email, fullName, planId, planPrice, referCode } = payload;
 
-  // userId দিয়ে আগে আছে কিনা
   const { data: existingById } = await supabaseAdmin
     .from('merchants')
     .select('id')
@@ -179,7 +214,6 @@ export async function registerMerchantInvite(payload: {
 
   if (existingById) return { alreadyExists: true };
 
-  // Email দিয়ে অন্য account আছে কিনা
   const { data: existingByEmail } = await supabaseAdmin
     .from('merchants')
     .select('id')
@@ -191,6 +225,7 @@ export async function registerMerchantInvite(payload: {
   }
 
   const merchantDisplayId = generate6DigitID();
+  const referId = `XEL-${merchantDisplayId}`;
   const accountStatus = planPrice === 0 ? 'active' : 'pending';
 
   const { error: insertError } = await supabaseAdmin.from('merchants').insert({
@@ -205,9 +240,12 @@ export async function registerMerchantInvite(payload: {
     status: accountStatus,
     subscription_status: accountStatus,
     plan_id: planId || null,
+    refer_id: referId,
     referred_by: referCode || null,
+    total_refer: 0,
+    affiliate_wallet: 0,
     is_demo: false,
-    // Fix: Invited user — admin invite করেছে তাই email already verified
+    // Invited users are admin-verified — mark email as already confirmed
     is_email_verified: true,
     telegram_link_code: generateRandomString(12),
     device_connection_key: generateRandomString(24),
@@ -217,6 +255,10 @@ export async function registerMerchantInvite(payload: {
     console.error('[registerMerchantInvite] Insert error:', JSON.stringify(insertError));
     if (insertError.code === '23505') return { alreadyExists: true };
     return { error: `Failed to save profile. (${insertError.code}: ${insertError.message})` };
+  }
+
+  if (referCode) {
+    await incrementReferrer(referCode);
   }
 
   return { merchantDisplayId };

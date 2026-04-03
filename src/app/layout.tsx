@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   // গুগলে www সহ ইনডেক্সড তাই metadataBase আপডেট করা হয়েছে
   metadataBase: new URL('https://www.xelpay.site'),
   title: {
-    default: "XelPay | Automated Payment Gateway Bangladesh",
+    default: "XelPay - Automated Payment Gateway Bangladesh",
     template: "%s | XelPay"
   },
   description: "Automate your personal bKash, Nagad, and Rocket payments instantly with XelPay. The most secure and zero-commission payment automation gateway in Bangladesh.",

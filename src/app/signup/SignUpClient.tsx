@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
-import { Mail, Lock, User, MapPin, CheckCircle, ArrowRight, X, AlertCircle, LogIn, Users, Loader2, EyeOff, Eye, Check, Moon, Sun, Menu, Home, HelpCircle } from 'lucide-react';
+import { Mail, Lock, User, MapPin, CheckCircle, ArrowRight, X, AlertCircle, LogIn, Users, Loader2, EyeOff, Eye, Check, Moon, Sun, Menu, Home, HelpCircle, ShieldCheck, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -154,24 +154,118 @@ const SuccessModal = ({ isOpen, merchantId, onClose }: any) => {
         </div>
         <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Welcome Aboard! 🎉</h3>
         <p className="text-slate-500 dark:text-slate-400 text-sm mb-5 leading-relaxed">
-          Your XelPay account has been created. Please verify your email to activate it.
+          Your XelPay account is verified and ready to use.
         </p>
         <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl mb-5 border border-blue-100 dark:border-blue-800/30">
           <span className="text-[10px] font-medium text-blue-500 uppercase tracking-widest block mb-1">Your Merchant ID</span>
           <span className="text-2xl font-bold text-blue-600 dark:text-blue-400 tracking-wider">#{merchantId}</span>
           <p className="text-[10px] text-slate-400 mt-1">Keep this safe for support</p>
         </div>
-        <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl p-3.5 mb-5 text-left">
-          <AlertCircle size={15} className="text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-            Check your inbox and click the verification link before logging in.
-          </p>
-        </div>
         <button onClick={onClose}
           className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
-          <LogIn size={16} /> Go to Login
+          <LogIn size={16} /> Go to Dashboard
         </button>
       </div>
+    </div>
+  );
+};
+
+// ─── OTP INPUT VIEW ──────────────────────────────────────────────────────────
+const OtpView = ({
+  email,
+  otp,
+  setOtp,
+  onVerify,
+  onResend,
+  onBack,
+  loading,
+  resendCooldown,
+}: {
+  email: string;
+  otp: string;
+  setOtp: (v: string) => void;
+  onVerify: () => void;
+  onResend: () => void;
+  onBack: () => void;
+  loading: boolean;
+  resendCooldown: number;
+}) => {
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const handleChange = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, '').slice(-1);
+    const newOtp = otp.split('');
+    newOtp[index] = digit;
+    const joined = newOtp.join('');
+    setOtp(joined);
+    if (digit && index < 5) inputRefs.current[index + 1]?.focus();
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pasted.length === 6) {
+      setOtp(pasted);
+      inputRefs.current[5]?.focus();
+    }
+  };
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 text-center">
+      <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
+        <ShieldCheck size={32} className="text-blue-600" />
+      </div>
+      <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Verify Your Email</h3>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-7 leading-relaxed">
+        We sent a 6-digit code to <b className="text-slate-700 dark:text-slate-300">{email}</b>. Enter it below to complete signup.
+      </p>
+
+      {/* OTP Digit Inputs */}
+      <div className="flex gap-2.5 justify-center mb-7" onPaste={handlePaste}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <input
+            key={i}
+            ref={el => { inputRefs.current[i] = el; }}
+            type="text"
+            inputMode="numeric"
+            maxLength={1}
+            value={otp[i] || ''}
+            onChange={e => handleChange(i, e.target.value)}
+            onKeyDown={e => handleKeyDown(i, e)}
+            className="w-11 h-13 text-center text-lg font-bold bg-white dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-900 dark:text-white py-3"
+          />
+        ))}
+      </div>
+
+      <button
+        disabled={loading || otp.length < 6}
+        onClick={onVerify}
+        className="w-full bg-blue-600 disabled:bg-blue-400 text-white py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2.5 mb-3"
+      >
+        {loading ? (
+          <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Verifying...</>
+        ) : (
+          <><ShieldCheck size={16} /> Verify & Create Account</>
+        )}
+      </button>
+
+      <button
+        disabled={resendCooldown > 0 || loading}
+        onClick={onResend}
+        className="w-full flex items-center justify-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors disabled:opacity-50 mb-4"
+      >
+        <RefreshCw size={13} />
+        {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend OTP'}
+      </button>
+
+      <button onClick={onBack} className="flex items-center justify-center gap-1.5 mx-auto text-xs text-slate-400 hover:text-blue-600 uppercase tracking-widest font-bold transition-colors">
+        ← Back to Form
+      </button>
     </div>
   );
 };
@@ -181,6 +275,7 @@ function SignUpContent() {
   const searchParams = useSearchParams();
   const planIdFromUrl = searchParams.get('plan');
   const refCodeFromUrl = searchParams.get('ref') || '';
+  const nextUrl = searchParams.get('next') || '/dashboard';
   const mode = searchParams.get('mode');
   const errorFromUrl = searchParams.get('error');
 
@@ -212,6 +307,24 @@ function SignUpContent() {
 
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<any>(null);
+
+  // ─── OTP Flow State ───────────────────────────────────────────────────────
+  const [viewState, setViewState] = useState<'form' | 'otp'>('form');
+  const [otp, setOtp] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  // Store pending signup data so we can call registerMerchant after OTP succeeds
+  const pendingSignup = useRef<{
+    userId: string;
+    email: string;
+    fullName: string;
+    phone: string;
+    address: string;
+    referCode: string | null;
+    planId: string | null;
+    planPrice: number;
+    merchantDisplayId: string;
+    password: string;
+  } | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -249,6 +362,21 @@ function SignUpContent() {
     fetchLinks();
   }, []);
 
+  // Resend cooldown countdown
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const t = setInterval(() => setResendCooldown(c => c - 1), 1000);
+      return () => clearInterval(t);
+    }
+  }, [resendCooldown]);
+
+  // Auto-fill referral code from URL param (flawless)
+  useEffect(() => {
+    if (refCodeFromUrl) {
+      setFormData(prev => ({ ...prev, referCode: refCodeFromUrl }));
+    }
+  }, [refCodeFromUrl]);
+
   const buildPlanFeatures = (plan: any): string[] => {
     if (!plan) return [];
     const transactionLabel = (plan.transaction_limit_monthly ?? 100) === 0
@@ -267,14 +395,14 @@ function SignUpContent() {
     return [...columnFeatures.filter(Boolean) as string[], ...extraFeatures];
   };
 
-  // Fix: Password validation — symbol optional
-  // Requires: min 8 chars, 1 uppercase, 1 number. Symbol is optional.
   const validatePassword = (pw: string): boolean => {
     return /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]{8,}$/.test(pw);
   };
 
+  // ─── STEP 1: Submit form → signUp → show OTP view ────────────────────────
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (mode === 'demo') {
       toast.error("Demo Mode: Please go to Login and use demo@xelpay.com / demo123456");
       return;
@@ -292,23 +420,88 @@ function SignUpContent() {
     const fullPhone = `${countryCode}${formData.phone.replace(/\s/g, '')}`;
     const generatedMerchantId = Math.floor(100000 + Math.random() * 900000).toString();
 
+    // ── Attempt signUp (OTP mode — no emailRedirectTo needed for OTP) ──
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
       options: {
         data: { full_name: formData.fullName, merchant_id: generatedMerchantId },
-        emailRedirectTo: `${window.location.origin}/auth/verify-success`
+        // No emailRedirectTo — Supabase will send a 6-digit OTP automatically
+        // when email confirmations are set to OTP mode in the Supabase dashboard.
+        // If your project uses email links, switch Supabase Auth → Email OTP in dashboard.
       }
     });
 
+    // ── Ghost User Handling ──────────────────────────────────────────────────
     if (authError) {
+      const errMsg = authError.message.toLowerCase();
+      const isAlreadyRegistered =
+        errMsg.includes('user already registered') ||
+        errMsg.includes('already registered') ||
+        errMsg.includes('email address is already registered');
+
+      if (isAlreadyRegistered) {
+        // Check if a merchants record exists (completed signup before)
+        const { data: existingMerchant } = await supabase
+          .from('merchants')
+          .select('id')
+          .eq('email', formData.email)
+          .maybeSingle();
+
+        if (existingMerchant) {
+          // This is a real existing account — show error
+          setErrorModal({ show: true, message: 'Email already registered. Please login instead.' });
+          setLoading(false);
+          recaptchaRef.current?.reset();
+          setCaptchaToken(null);
+          return;
+        } else {
+          // Ghost user — abandoned signup. Resend OTP silently.
+          const { error: resendError } = await supabase.auth.resend({
+            type: 'signup',
+            email: formData.email,
+          });
+          if (resendError) {
+            toast.error("Could not resend OTP: " + resendError.message);
+            setLoading(false);
+            recaptchaRef.current?.reset();
+            setCaptchaToken(null);
+            return;
+          }
+
+          // We don't have a userId here for ghost users — we'll get it after verifyOtp
+          pendingSignup.current = {
+            userId: '', // will be populated after OTP verification
+            email: formData.email,
+            fullName: formData.fullName,
+            phone: fullPhone,
+            address: formData.address,
+            referCode: formData.referCode || null,
+            planId: selectedPlan.id,
+            planPrice: selectedPlan.price,
+            merchantDisplayId: generatedMerchantId,
+            password: formData.password,
+          };
+          toast.success("OTP sent! Check your inbox.");
+          setOtp('');
+          setViewState('otp');
+          setResendCooldown(60);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Any other auth error
       setErrorModal({ show: true, message: authError.message });
       setLoading(false);
+      recaptchaRef.current?.reset();
+      setCaptchaToken(null);
       return;
     }
 
+    // ── Normal signUp success — store pending data and show OTP ──
     if (authData.user) {
-      const result = await registerMerchant({
+      pendingSignup.current = {
         userId: authData.user.id,
         email: formData.email,
         fullName: formData.fullName,
@@ -317,16 +510,100 @@ function SignUpContent() {
         referCode: formData.referCode || null,
         planId: selectedPlan.id,
         planPrice: selectedPlan.price,
-        merchantDisplayId: generatedMerchantId
-      });
-      if (result.error) {
-        setErrorModal({ show: true, message: result.error });
-      } else {
-        setTempMerchantId(result.merchantDisplayId!);
-        setShowSuccess(true);
-      }
+        merchantDisplayId: generatedMerchantId,
+        password: formData.password,
+      };
+      toast.success("OTP sent! Check your inbox.");
+      setOtp('');
+      setViewState('otp');
+      setResendCooldown(60);
+    }
+
+    setLoading(false);
+  };
+
+  // ─── RESEND OTP ───────────────────────────────────────────────────────────
+  const handleResendOtp = async () => {
+    if (!pendingSignup.current) return;
+    setLoading(true);
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: pendingSignup.current.email,
+    });
+    if (error) {
+      toast.error("Resend failed: " + error.message);
+    } else {
+      toast.success("New OTP sent! Check your inbox.");
+      setResendCooldown(60);
     }
     setLoading(false);
+  };
+
+  // ─── STEP 2: Verify OTP → updateUser password → registerMerchant → redirect
+  const handleVerifyOtp = async () => {
+    if (!pendingSignup.current || otp.length < 6) return;
+    setLoading(true);
+
+    const pending = pendingSignup.current;
+
+    const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+      email: pending.email,
+      token: otp,
+      type: 'signup',
+    });
+
+    if (verifyError) {
+      toast.error("Invalid or expired OTP. Please try again.");
+      setLoading(false);
+      return;
+    }
+
+    const userId = verifyData.user?.id;
+    if (!userId) {
+      toast.error("Verification failed. Please try again.");
+      setLoading(false);
+      return;
+    }
+
+    // For ghost users whose userId was blank, fill it in now
+    if (!pending.userId) {
+      pending.userId = userId;
+    }
+
+    // Sync password for ghost users (re-confirms the password after OTP)
+    try {
+      await supabase.auth.updateUser({ password: pending.password });
+    } catch (_) {
+      // Non-fatal — user can reset password later if needed
+    }
+
+    // Save to DB — ONLY after successful OTP verification
+    const result = await registerMerchant({
+      userId: pending.userId,
+      email: pending.email,
+      fullName: pending.fullName,
+      phone: pending.phone,
+      address: pending.address,
+      referCode: pending.referCode,
+      planId: pending.planId,
+      planPrice: pending.planPrice,
+      merchantDisplayId: pending.merchantDisplayId,
+    });
+
+    if (result.error) {
+      setErrorModal({ show: true, message: result.error });
+      setLoading(false);
+      return;
+    }
+
+    setTempMerchantId(result.merchantDisplayId!);
+    setShowSuccess(true);
+    setLoading(false);
+  };
+
+  // ─── Success modal close → redirect to next param ────────────────────────
+  const handleSuccessClose = () => {
+    router.push(nextUrl);
   };
 
   const selectedColors = getPlanColors(selectedPlan?.tag || null);
@@ -334,14 +611,12 @@ function SignUpContent() {
   const inputClass = "w-full px-4 py-3.5 bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm text-slate-900 dark:text-white placeholder:text-slate-400";
   const labelClass = "text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-0.5 mb-1 block";
 
-  // Fix: Password generator — includes symbols + uppercase + number, symbol included
   const generatePassword = () => {
     const uppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const lowers = 'abcdefghijklmnopqrstuvwxyz';
     const numbers = '0123456789';
     const symbols = '!@#$%^&*';
     const all = uppers + lowers + numbers + symbols;
-    // Guarantee at least 1 uppercase, 1 number, 1 symbol
     let pw =
       uppers[Math.floor(Math.random() * uppers.length)] +
       numbers[Math.floor(Math.random() * numbers.length)] +
@@ -482,152 +757,169 @@ function SignUpContent() {
             </div>
           </div>
 
-          {/* ── Signup Form ── */}
+          {/* ── Signup Form / OTP View ── */}
           <div className="lg:col-span-8 bg-white dark:bg-[#111827] rounded-2xl p-5 md:p-10 shadow-sm border border-slate-200 dark:border-slate-800">
-            <div className="mb-7">
-              <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Create Account</h2>
-              <p className="text-slate-400 mt-1.5 text-sm">Enter your details to get started with XelPay.</p>
-            </div>
 
-            <form onSubmit={handleSignUp} className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
-
-              <div className="md:col-span-2">
-                <label className={labelClass}>Full Name <span className="text-red-400">*</span></label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input required className={`${inputClass} pl-10`} placeholder="e.g. Rahim Ahmed"
-                    onChange={e => setFormData({ ...formData, fullName: e.target.value })} />
+            {/* ─── OTP Step ─────────────────────────────────────────────────── */}
+            {viewState === 'otp' ? (
+              <OtpView
+                email={formData.email}
+                otp={otp}
+                setOtp={setOtp}
+                onVerify={handleVerifyOtp}
+                onResend={handleResendOtp}
+                onBack={() => { setViewState('form'); setOtp(''); }}
+                loading={loading}
+                resendCooldown={resendCooldown}
+              />
+            ) : (
+              /* ─── Form Step ──────────────────────────────────────────────── */
+              <>
+                <div className="mb-7">
+                  <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Create Account</h2>
+                  <p className="text-slate-400 mt-1.5 text-sm">Enter your details to get started with XelPay.</p>
                 </div>
-              </div>
 
-              <div>
-                <label className={labelClass}>Phone <span className="text-red-400">*</span></label>
-                <div className="flex gap-2">
-                  <select value={countryCode} onChange={e => setCountryCode(e.target.value)}
-                    className="px-3 py-3.5 bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-blue-500 shrink-0">
-                    <option value="+880">🇧🇩 +880</option>
-                    <option value="+1">🇺🇸 +1</option>
-                    <option value="+44">🇬🇧 +44</option>
-                    <option value="+91">🇮🇳 +91</option>
-                  </select>
-                  <input required type="tel" className={inputClass} placeholder="1XXXXXXXXX"
-                    onChange={e => setFormData({ ...formData, phone: e.target.value })} />
-                </div>
-              </div>
+                <form onSubmit={handleSignUp} className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
 
-              <div>
-                <label className={labelClass}>Email <span className="text-red-400">*</span></label>
-                <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input required type="email" name="email" autoComplete="username" className={`${inputClass} pl-10`} placeholder="admin@example.com"
-                    onChange={e => setFormData({ ...formData, email: e.target.value })} />
-                </div>
-              </div>
+                  <div className="md:col-span-2">
+                    <label className={labelClass}>Full Name <span className="text-red-400">*</span></label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input required className={`${inputClass} pl-10`} placeholder="e.g. Rahim Ahmed"
+                        onChange={e => setFormData({ ...formData, fullName: e.target.value })} />
+                    </div>
+                  </div>
 
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className={labelClass.replace('mb-1', '')}>Password <span className="text-red-400">*</span></label>
-                  {/* Fix: Generator now includes symbols */}
-                  <button type="button" onClick={generatePassword} className="text-[10px] text-blue-600 hover:underline uppercase tracking-wider">
-                    Generate
-                  </button>
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input required type={showPassword ? 'text' : 'password'} name="password" autoComplete="new-password"
-                    placeholder="••••••••" value={formData.password}
-                    className={`${inputClass} pl-10 pr-11`}
-                    onChange={e => setFormData({ ...formData, password: e.target.value })} />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-                {/* Fix: Updated hint — symbol is optional */}
-                <p className="text-[10px] text-slate-400 mt-1 ml-0.5">Min. 8 characters, 1 uppercase &amp; 1 number. Symbols optional.</p>
-              </div>
+                  <div>
+                    <label className={labelClass}>Phone <span className="text-red-400">*</span></label>
+                    <div className="flex gap-2">
+                      <select value={countryCode} onChange={e => setCountryCode(e.target.value)}
+                        className="px-3 py-3.5 bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-blue-500 shrink-0">
+                        <option value="+880">🇧🇩 +880</option>
+                        <option value="+1">🇺🇸 +1</option>
+                        <option value="+44">🇬🇧 +44</option>
+                        <option value="+91">🇮🇳 +91</option>
+                      </select>
+                      <input required type="tel" className={inputClass} placeholder="1XXXXXXXXX"
+                        onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                    </div>
+                  </div>
 
-              <div>
-                <label className={labelClass}>Confirm Password <span className="text-red-400">*</span></label>
-                <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input required type={showConfirmPassword ? 'text' : 'password'} name="confirm-password" autoComplete="new-password"
-                    placeholder="••••••••" value={formData.confirmPassword}
-                    className={`${inputClass} pl-10 pr-11 ${formData.confirmPassword && formData.password !== formData.confirmPassword ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : ''}`}
-                    onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
-                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-                {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                  <p className="text-[10px] text-red-500 mt-1 ml-0.5">Passwords do not match</p>
-                )}
-              </div>
+                  <div>
+                    <label className={labelClass}>Email <span className="text-red-400">*</span></label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input required type="email" name="email" autoComplete="username" className={`${inputClass} pl-10`} placeholder="admin@example.com"
+                        value={formData.email}
+                        onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                    </div>
+                  </div>
 
-              <div>
-                <label className={labelClass}>City / Address <span className="text-red-400">*</span></label>
-                <div className="relative">
-                  <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input required className={`${inputClass} pl-10`} placeholder="Dhaka, Bangladesh"
-                    onChange={e => setFormData({ ...formData, address: e.target.value })} />
-                </div>
-              </div>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className={labelClass.replace('mb-1', '')}>Password <span className="text-red-400">*</span></label>
+                      <button type="button" onClick={generatePassword} className="text-[10px] text-blue-600 hover:underline uppercase tracking-wider">
+                        Generate
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input required type={showPassword ? 'text' : 'password'} name="password" autoComplete="new-password"
+                        placeholder="••••••••" value={formData.password}
+                        className={`${inputClass} pl-10 pr-11`}
+                        onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1 ml-0.5">Min. 8 characters, 1 uppercase &amp; 1 number. Symbols optional.</p>
+                  </div>
 
-              <div>
-                <label className={labelClass}>Referral Code <span className="text-slate-400 normal-case tracking-normal">(optional)</span></label>
-                <div className="relative">
-                  <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input type="text" value={formData.referCode}
-                    className={`${inputClass} pl-10 uppercase tracking-widest font-medium`}
-                    placeholder="Referral code"
-                    onChange={e => setFormData({ ...formData, referCode: e.target.value })} />
-                </div>
-              </div>
+                  <div>
+                    <label className={labelClass}>Confirm Password <span className="text-red-400">*</span></label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input required type={showConfirmPassword ? 'text' : 'password'} name="confirm-password" autoComplete="new-password"
+                        placeholder="••••••••" value={formData.confirmPassword}
+                        className={`${inputClass} pl-10 pr-11 ${formData.confirmPassword && formData.password !== formData.confirmPassword ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : ''}`}
+                        onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
+                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                    {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                      <p className="text-[10px] text-red-500 mt-1 ml-0.5">Passwords do not match</p>
+                    )}
+                  </div>
 
-              <div className="md:col-span-2 flex justify-center">
-                {mounted && (
-                  <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme={resolvedTheme === 'dark' ? 'dark' : 'light'} />
-                )}
-              </div>
+                  <div>
+                    <label className={labelClass}>City / Address <span className="text-red-400">*</span></label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input required className={`${inputClass} pl-10`} placeholder="Dhaka, Bangladesh"
+                        onChange={e => setFormData({ ...formData, address: e.target.value })} />
+                    </div>
+                  </div>
 
-              <div className="md:col-span-2">
-                <label className="flex items-start gap-3 cursor-pointer select-none">
-                  <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)}
-                    className="w-4 h-4 mt-0.5 rounded border-slate-300 accent-blue-600 shrink-0" required />
-                  <span className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                    I agree to the{' '}
-                    <a href={termsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" onClick={e => e.stopPropagation()}>Terms & Conditions</a>
-                    {' '}and{' '}
-                    <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" onClick={e => e.stopPropagation()}>Privacy Policy</a>
-                    {' '}of XelPay. <span className="text-red-400">*</span>
-                  </span>
-                </label>
-              </div>
+                  <div>
+                    <label className={labelClass}>Referral Code <span className="text-slate-400 normal-case tracking-normal">(optional)</span></label>
+                    <div className="relative">
+                      <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input type="text" value={formData.referCode}
+                        className={`${inputClass} pl-10 uppercase tracking-widest font-medium`}
+                        placeholder="XEL-XXXXXX"
+                        onChange={e => setFormData({ ...formData, referCode: e.target.value })} />
+                    </div>
+                  </div>
 
-              <div className="md:col-span-2 pt-1">
-                <button disabled={loading || !selectedPlan}
-                  className="w-full bg-blue-600 disabled:bg-blue-400 text-white py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2.5">
-                  {loading ? (
-                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Creating Account...</>
-                  ) : (
-                    <>Create Account <ArrowRight size={16} /></>
-                  )}
-                </button>
-              </div>
-            </form>
+                  <div className="md:col-span-2 flex justify-center">
+                    {mounted && (
+                      <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme={resolvedTheme === 'dark' ? 'dark' : 'light'} />
+                    )}
+                  </div>
 
-            <p className="text-center mt-5 text-sm text-slate-400">
-              Already registered?{' '}
-              <Link href={`/login${mode === 'demo' ? '?mode=demo' : ''}`} className="text-blue-600 font-medium hover:underline">Sign In</Link>
-              {' '}&bull;{' '}
-              <Link href="/forgot-password" className="text-blue-600 font-medium hover:underline">Reset Password</Link>
-            </p>
+                  <div className="md:col-span-2">
+                    <label className="flex items-start gap-3 cursor-pointer select-none">
+                      <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)}
+                        className="w-4 h-4 mt-0.5 rounded border-slate-300 accent-blue-600 shrink-0" required />
+                      <span className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                        I agree to the{' '}
+                        <a href={termsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" onClick={e => e.stopPropagation()}>Terms & Conditions</a>
+                        {' '}and{' '}
+                        <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" onClick={e => e.stopPropagation()}>Privacy Policy</a>
+                        {' '}of XelPay. <span className="text-red-400">*</span>
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="md:col-span-2 pt-1">
+                    <button disabled={loading || !selectedPlan}
+                      className="w-full bg-blue-600 disabled:bg-blue-400 text-white py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2.5">
+                      {loading ? (
+                        <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Sending OTP...</>
+                      ) : (
+                        <>Create Account <ArrowRight size={16} /></>
+                      )}
+                    </button>
+                  </div>
+                </form>
+
+                <p className="text-center mt-5 text-sm text-slate-400">
+                  Already registered?{' '}
+                  <Link href={`/login${mode === 'demo' ? '?mode=demo' : ''}`} className="text-blue-600 font-medium hover:underline">Sign In</Link>
+                  {' '}&bull;{' '}
+                  <Link href="/forgot-password" className="text-blue-600 font-medium hover:underline">Reset Password</Link>
+                </p>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      <SuccessModal isOpen={showSuccess} merchantId={tempMerchantId} onClose={() => router.push('/login')} />
+      <SuccessModal isOpen={showSuccess} merchantId={tempMerchantId} onClose={handleSuccessClose} />
       <ErrorModal isOpen={errorModal.show} message={errorModal.message} onClose={() => setErrorModal({ show: false, message: '' })} />
 
       {/* ── Plan Switcher Modal ── */}

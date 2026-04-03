@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
-import { Mail, Lock, LogIn, Eye, EyeOff, AlertCircle, Send, ArrowLeft, Moon, Sun, Menu, X, Home, HelpCircle, Sparkles, Clock, MailWarning, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, LogIn, Eye, EyeOff, AlertCircle, Send, ArrowLeft, Moon, Sun, Menu, X, Home, HelpCircle, Sparkles, Clock, MailWarning, CheckCircle2, ShieldCheck, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -15,7 +15,6 @@ const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
 // ─── MODALS ───
 const SuspendedModal = ({ isOpen, telegramLink, onClose }: any) => {
   if (!isOpen) return null;
-  // Fix: telegramLink value কে সরাসরি open করো
   const handleContact = () => {
     if (telegramLink && telegramLink !== '#') {
       window.open(telegramLink, '_blank', 'noopener,noreferrer');
@@ -46,7 +45,6 @@ const SuspendedModal = ({ isOpen, telegramLink, onClose }: any) => {
 
 const PendingModal = ({ isOpen, telegramLink, onClose }: any) => {
   if (!isOpen) return null;
-  // Fix: telegramLink value কে সরাসরি open করো
   const handleContact = () => {
     if (telegramLink && telegramLink !== '#') {
       window.open(telegramLink, '_blank', 'noopener,noreferrer');
@@ -79,11 +77,12 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode');
+  const nextUrl = searchParams.get('next') || '/dashboard';
   const { resolvedTheme, setTheme } = useTheme();
 
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [loginMethod, setLoginMethod] = useState<'password' | 'magic'>('password');
+  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -99,13 +98,25 @@ function LoginContent() {
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [telegramLink, setTelegramLink] = useState('#');
 
-  const [viewState, setViewState] = useState<'form' | 'unverified'>('form');
+  // ─── View state machine ───────────────────────────────────────────────────
+  // 'form'       → normal login form
+  // 'unverified' → email not verified (password flow)
+  // 'otp_input'  → OTP digits entry (passwordless OTP flow)
+  const [viewState, setViewState] = useState<'form' | 'unverified' | 'otp_input'>('form');
   const [unverifiedEmail, setUnverifiedEmail] = useState('');
+
+  // Resend verification (for password-login unverified flow)
   const [showResendForm, setShowResendForm] = useState(false);
   const [resendCount, setResendCount] = useState(0);
   const [cooldown, setCooldown] = useState(0);
-  // Fix: I Have Verified loading state
   const [checkingVerified, setCheckingVerified] = useState(false);
+
+  // OTP passwordless flow state
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -133,9 +144,15 @@ function LoginContent() {
     if (mode === 'demo') { setEmail('demo@xelpay.com'); setPassword('demo123456'); toast.success("Demo credentials loaded!", { icon: '✨' }); }
   }, [mode]);
 
+  // Resend verification cooldown
   useEffect(() => {
     if (cooldown > 0) { const timer = setInterval(() => setCooldown((c) => c - 1), 1000); return () => clearInterval(timer); }
   }, [cooldown]);
+
+  // OTP resend cooldown
+  useEffect(() => {
+    if (otpCooldown > 0) { const timer = setInterval(() => setOtpCooldown((c) => c - 1), 1000); return () => clearInterval(timer); }
+  }, [otpCooldown]);
 
   const clearForgotSession = () => {
     sessionStorage.removeItem('xelpay_fp_step');
@@ -144,6 +161,42 @@ function LoginContent() {
     sessionStorage.removeItem('xelpay_fp_cooldown_end');
   };
 
+  // ─── Shared: Check merchant status after any auth ─────────────────────────
+  const checkMerchantAndRedirect = async (userId: string, emailConfirmedAt: string | null) => {
+    try {
+      const { data: merchant } = await supabase.from('merchants').select('status, is_demo').eq('id', userId).single();
+
+      if (mode === 'demo' && merchant?.is_demo !== true) {
+        await supabase.auth.signOut();
+        toast.error("Not a demo account.");
+        setLoading(false);
+        return;
+      }
+
+      const mStatus = merchant?.status?.toLowerCase();
+      if (['suspended', 'ban', 'banned'].includes(mStatus)) {
+        await supabase.auth.signOut();
+        await fetchTelegramLink();
+        setShowSuspendedModal(true);
+        setLoading(false);
+        return;
+      }
+      if (mStatus === 'pending') {
+        await supabase.auth.signOut();
+        await fetchTelegramLink();
+        setShowPendingModal(true);
+        setLoading(false);
+        return;
+      }
+
+      if (emailConfirmedAt) { try { await syncEmailVerified(userId); } catch (_) {} }
+      router.push(nextUrl);
+    } catch {
+      router.push(nextUrl);
+    }
+  };
+
+  // ─── PASSWORD LOGIN ───────────────────────────────────────────────────────
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!captchaToken) { toast.error("Please complete the reCAPTCHA."); return; }
@@ -160,43 +213,116 @@ function LoginContent() {
     }
 
     if (authData.user) {
-      try {
-        const { data: merchant } = await supabase.from('merchants').select('status, is_demo').eq('id', authData.user.id).single();
-
-        if (mode === 'demo' && merchant?.is_demo !== true) { await supabase.auth.signOut(); toast.error("Not a demo account."); setLoading(false); return; }
-
-        const mStatus = merchant?.status?.toLowerCase();
-        if (['suspended', 'ban', 'banned'].includes(mStatus)) { await supabase.auth.signOut(); await fetchTelegramLink(); setShowSuspendedModal(true); setLoading(false); return; }
-        if (mStatus === 'pending') { await supabase.auth.signOut(); await fetchTelegramLink(); setShowPendingModal(true); setLoading(false); return; }
-
-        if (authData.user.email_confirmed_at) { try { await syncEmailVerified(authData.user.id); } catch (_) {} }
-        router.push('/dashboard');
-      } catch (err) { router.push('/dashboard'); }
+      await checkMerchantAndRedirect(authData.user.id, authData.user.email_confirmed_at);
     }
   };
 
-  const handleMagicLink = async (e: React.FormEvent) => {
+  // ─── OTP: STEP 1 — Send OTP ───────────────────────────────────────────────
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!captchaToken) { toast.error("Please complete the reCAPTCHA."); return; }
-    if (mode === 'demo') { toast.error("Magic link is disabled in demo mode."); return; }
+    if (mode === 'demo') { toast.error("OTP login is disabled in demo mode."); return; }
     setLoading(true);
 
-    const { data: merchant } = await supabase.from('merchants').select('status, is_email_verified').eq('email', email).maybeSingle();
+    // Pre-check: account must exist and be verified
+    const { data: merchant } = await supabase
+      .from('merchants')
+      .select('status, is_email_verified')
+      .eq('email', email)
+      .maybeSingle();
 
-    if (!merchant) { toast.error("No account found with this email address."); setLoading(false); recaptchaRef.current?.reset(); setCaptchaToken(null); return; }
-    if (!merchant.is_email_verified) { setUnverifiedEmail(email); setViewState('unverified'); setLoading(false); recaptchaRef.current?.reset(); setCaptchaToken(null); return; }
+    if (!merchant) {
+      toast.error("No account found with this email address.");
+      setLoading(false); recaptchaRef.current?.reset(); setCaptchaToken(null); return;
+    }
+    if (!merchant.is_email_verified) {
+      setUnverifiedEmail(email); setViewState('unverified');
+      setLoading(false); recaptchaRef.current?.reset(); setCaptchaToken(null); return;
+    }
 
     const mStatus = merchant.status?.toLowerCase();
-    if (['suspended', 'ban', 'banned'].includes(mStatus)) { await fetchTelegramLink(); setShowSuspendedModal(true); setLoading(false); return; }
-    if (mStatus === 'pending') { await fetchTelegramLink(); setShowPendingModal(true); setLoading(false); return; }
+    if (['suspended', 'ban', 'banned'].includes(mStatus)) {
+      await fetchTelegramLink(); setShowSuspendedModal(true); setLoading(false); return;
+    }
+    if (mStatus === 'pending') {
+      await fetchTelegramLink(); setShowPendingModal(true); setLoading(false); return;
+    }
 
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
+    // Send OTP via signInWithOtp (Supabase sends a 6-digit code when OTP is enabled)
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false }, // Don't create ghost users during login
+    });
 
-    if (error) { toast.error(error.message); }
-    else { toast.success("✨ Magic link sent! Please check your email."); setEmail(''); }
+    if (error) {
+      toast.error(error.message);
+      setLoading(false); recaptchaRef.current?.reset(); setCaptchaToken(null); return;
+    }
+
+    setOtpEmail(email);
+    setOtp('');
+    setOtpSent(true);
+    setOtpCooldown(60);
+    setViewState('otp_input');
+    toast.success("OTP sent! Check your inbox.");
     recaptchaRef.current?.reset(); setCaptchaToken(null); setLoading(false);
   };
 
+  // ─── OTP: STEP 2 — Verify OTP ────────────────────────────────────────────
+  const handleVerifyOtp = async () => {
+    if (otp.length < 6) return;
+    setLoading(true);
+
+    const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+      email: otpEmail,
+      token: otp,
+      type: 'email',
+    });
+
+    if (verifyError) {
+      toast.error("Invalid or expired OTP. Please try again.");
+      setLoading(false); return;
+    }
+
+    if (verifyData.user) {
+      await checkMerchantAndRedirect(verifyData.user.id, verifyData.user.email_confirmed_at);
+    }
+  };
+
+  // ─── OTP: Resend ──────────────────────────────────────────────────────────
+  const handleResendOtp = async () => {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email: otpEmail,
+      options: { shouldCreateUser: false },
+    });
+    if (error) { toast.error("Resend failed: " + error.message); }
+    else { toast.success("New OTP sent! Check your inbox."); setOtpCooldown(60); setOtp(''); }
+    setLoading(false);
+  };
+
+  // ─── OTP digit input helpers ──────────────────────────────────────────────
+  const handleOtpChange = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, '').slice(-1);
+    const newOtp = otp.split('');
+    newOtp[index] = digit;
+    const joined = newOtp.join('');
+    setOtp(joined);
+    if (digit && index < 5) otpInputRefs.current[index + 1]?.focus();
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pasted.length === 6) { setOtp(pasted); otpInputRefs.current[5]?.focus(); }
+  };
+
+  // ─── GOOGLE LOGIN ─────────────────────────────────────────────────────────
   const handleGoogleLogin = async () => {
     if (mode === 'demo') { toast.error("Google login disabled in demo mode."); return; }
     setGoogleLoading(true);
@@ -210,31 +336,37 @@ function LoginContent() {
     sessionStorage.setItem('auth_tx', txId);
     localStorage.setItem('oauth_source', 'login');
 
+    // Pass next param through OAuth state so callback can redirect properly
+    const redirectTo = `${window.location.origin}/auth/callback?tx=${txId}&next=${encodeURIComponent(nextUrl)}`;
+
     const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback?tx=${txId}` },
+      provider: 'google',
+      options: { redirectTo },
     });
     if (error) { toast.error(error.message); setGoogleLoading(false); }
   };
 
+  // ─── Unverified email — resend verification link ──────────────────────────
   const handleResendVerification = async () => {
     if (!captchaToken) { toast.error("Please complete the reCAPTCHA."); return; }
     setLoading(true);
-    const { error } = await supabase.auth.resend({ type: 'signup', email: unverifiedEmail, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: unverifiedEmail,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    });
 
     if (error) { toast.error(error.message); }
     else { toast.success("Verification link resent! Check your inbox."); setCooldown(60); setResendCount(c => c + 1); setShowResendForm(false); }
     recaptchaRef.current?.reset(); setCaptchaToken(null); setLoading(false);
   };
 
-  // Fix: "I Have Verified" — auth session refresh করে check করো
   const handleCheckVerified = async () => {
     setCheckingVerified(true);
     try {
-      // Supabase session refresh করো যাতে নতুন email_confirmed_at পাই
       const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
 
       if (refreshErr || !refreshData?.user) {
-        // Refresh fail — সরাসরি DB check করো
         const { data: merchant } = await supabase
           .from('merchants')
           .select('is_email_verified')
@@ -243,21 +375,17 @@ function LoginContent() {
 
         if (merchant?.is_email_verified) {
           toast.success("Email verified! You can now log in.");
-          setViewState('form');
-          setShowResendForm(false);
+          setViewState('form'); setShowResendForm(false);
         } else {
           toast.error("Email not verified yet. Please check your inbox.");
         }
       } else {
         const user = refreshData.user;
         if (user.email_confirmed_at) {
-          // Sync is_email_verified in merchants table
           try { await syncEmailVerified(user.id); } catch (_) {}
           toast.success("Email verified! You can now log in.");
-          setViewState('form');
-          setShowResendForm(false);
+          setViewState('form'); setShowResendForm(false);
         } else {
-          // Auth এ verified না — DB এও check করো
           const { data: merchant } = await supabase
             .from('merchants')
             .select('is_email_verified')
@@ -266,8 +394,7 @@ function LoginContent() {
 
           if (merchant?.is_email_verified) {
             toast.success("Email verified! You can now log in.");
-            setViewState('form');
-            setShowResendForm(false);
+            setViewState('form'); setShowResendForm(false);
           } else {
             toast.error("Email not verified yet. Please check your inbox and click the link.");
           }
@@ -367,7 +494,6 @@ function LoginContent() {
               {/* ── UNVERIFIED VIEW ── */}
               {viewState === 'unverified' ? (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-center">
-                  {/* Fix: No branding here */}
                   <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5">
                     <MailWarning size={32} />
                   </div>
@@ -376,7 +502,6 @@ function LoginContent() {
                     We've sent a verification link to <b className="text-slate-700 dark:text-slate-300">{unverifiedEmail}</b>. Please check your inbox to activate your account.
                   </p>
 
-                  {/* Fix: I Have Verified button — always visible */}
                   <button
                     onClick={handleCheckVerified}
                     disabled={checkingVerified}
@@ -416,66 +541,147 @@ function LoginContent() {
                     <ArrowLeft size={14} /> Back to Login
                   </button>
                 </div>
+
+              /* ── OTP INPUT VIEW ── */
+              ) : viewState === 'otp_input' ? (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 text-center">
+                  <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                    <ShieldCheck size={32} className="text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Enter Your OTP</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-7 leading-relaxed">
+                    We sent a 6-digit code to <b className="text-slate-700 dark:text-slate-300">{otpEmail}</b>.
+                  </p>
+
+                  {/* OTP Digit Inputs */}
+                  <div className="flex gap-2.5 justify-center mb-7" onPaste={handleOtpPaste}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <input
+                        key={i}
+                        ref={el => { otpInputRefs.current[i] = el; }}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={otp[i] || ''}
+                        onChange={e => handleOtpChange(i, e.target.value)}
+                        onKeyDown={e => handleOtpKeyDown(i, e)}
+                        className="w-11 h-13 text-center text-lg font-bold bg-white dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-900 dark:text-white py-3"
+                      />
+                    ))}
+                  </div>
+
+                  <button
+                    disabled={loading || otp.length < 6}
+                    onClick={handleVerifyOtp}
+                    className="w-full bg-blue-600 disabled:bg-blue-400 text-white py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2.5 mb-3"
+                  >
+                    {loading ? (
+                      <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Verifying...</>
+                    ) : (
+                      <><ShieldCheck size={16} /> Sign In</>
+                    )}
+                  </button>
+
+                  <button
+                    disabled={otpCooldown > 0 || loading}
+                    onClick={handleResendOtp}
+                    className="w-full flex items-center justify-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors disabled:opacity-50 mb-5"
+                  >
+                    <RefreshCw size={13} />
+                    {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : 'Resend OTP'}
+                  </button>
+
+                  <button onClick={() => { setViewState('form'); setOtp(''); setOtpSent(false); }} className="flex items-center justify-center gap-1.5 mx-auto text-xs text-slate-400 hover:text-blue-600 uppercase tracking-widest font-bold transition-colors">
+                    <ArrowLeft size={14} /> Back to Login
+                  </button>
+                </div>
+
+              /* ── MAIN LOGIN FORM ── */
               ) : (
                 <>
                   <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-5 text-center md:text-left">Welcome Back</h2>
 
+                  {/* Method toggle — Password / With OTP */}
                   <div className="flex bg-slate-100 dark:bg-[#0B1120] p-1 rounded-xl mb-6 border border-slate-200 dark:border-slate-800">
-                    <button type="button" onClick={() => setLoginMethod('password')} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${loginMethod === 'password' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>With Password</button>
-                    <button type="button" onClick={() => setLoginMethod('magic')} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${loginMethod === 'magic' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}><Sparkles size={13} /> Magic Link</button>
+                    <button type="button" onClick={() => setLoginMethod('password')} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${loginMethod === 'password' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
+                      With Password
+                    </button>
+                    <button type="button" onClick={() => setLoginMethod('otp')} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${loginMethod === 'otp' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
+                      <Sparkles size={13} /> With OTP
+                    </button>
                   </div>
 
-                  <form onSubmit={loginMethod === 'password' ? handleLogin : handleMagicLink} className="space-y-4">
-                    {loginMethod === 'magic' && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
-                        Enter your email address and we'll send you a secure, one-time link to instantly log into your workspace without a password.
-                      </p>
-                    )}
-                    <div>
-                      <label className={labelClass}>Email <span className="text-red-400">*</span></label>
-                      <div className="relative">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input required type="email" name="email" autoComplete="username" placeholder="admin@xelpay.com" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
+                  {loginMethod === 'password' ? (
+                    /* ── Password Form ── */
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <div>
+                        <label className={labelClass}>Email <span className="text-red-400">*</span></label>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                          <input required type="email" name="email" autoComplete="username" placeholder="admin@xelpay.com" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
+                        </div>
                       </div>
-                    </div>
 
-                    {loginMethod === 'password' && (
-                      <>
-                        <div>
-                          <label className={labelClass}>Password <span className="text-red-400">*</span></label>
-                          <div className="relative">
-                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                            <input required type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className={`${inputClass} pr-11`} />
-                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
-                              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                            </button>
-                          </div>
+                      <div>
+                        <label className={labelClass}>Password <span className="text-red-400">*</span></label>
+                        <div className="relative">
+                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                          <input required type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className={`${inputClass} pr-11`} />
+                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
+                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
                         </div>
+                      </div>
 
-                        <div className="flex items-center justify-between">
-                          <label className="flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 rounded border-slate-300 accent-blue-600" />
-                            <span className="text-xs text-slate-500 dark:text-slate-400">Remember me</span>
-                          </label>
-                          <Link href={`/forgot-password${mode === 'demo' ? '?mode=demo' : ''}`} onClick={clearForgotSession} className="text-xs text-blue-600 hover:underline">
-                            Forgot Password?
-                          </Link>
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 rounded border-slate-300 accent-blue-600" />
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Remember me</span>
+                        </label>
+                        <Link href={`/forgot-password${mode === 'demo' ? '?mode=demo' : ''}`} onClick={clearForgotSession} className="text-xs text-blue-600 hover:underline">
+                          Forgot Password?
+                        </Link>
+                      </div>
+
+                      <div className="flex justify-center pt-2">
+                        {mounted && <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme={resolvedTheme === 'dark' ? 'dark' : 'light'} />}
+                      </div>
+
+                      <button disabled={loading} type="submit" className="w-full relative bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-lg shadow-blue-600/25 h-[50px]">
+                        {loading ? (
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        ) : (
+                          <>Sign In <LogIn size={15} className="ml-1.5" /></>
+                        )}
+                      </button>
+                    </form>
+                  ) : (
+                    /* ── OTP (Passwordless) Form ── */
+                    <form onSubmit={handleSendOtp} className="space-y-4">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                        Enter your email and we'll send you a 6-digit OTP to log in instantly — no password needed.
+                      </p>
+                      <div>
+                        <label className={labelClass}>Email <span className="text-red-400">*</span></label>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                          <input required type="email" name="email" autoComplete="username" placeholder="admin@xelpay.com" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
                         </div>
-                      </>
-                    )}
+                      </div>
 
-                    <div className="flex justify-center pt-2">
-                      {mounted && <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme={resolvedTheme === 'dark' ? 'dark' : 'light'} />}
-                    </div>
+                      <div className="flex justify-center pt-2">
+                        {mounted && <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme={resolvedTheme === 'dark' ? 'dark' : 'light'} />}
+                      </div>
 
-                    <button disabled={loading} type="submit" className="w-full relative bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-lg shadow-blue-600/25 h-[50px]">
-                      {loading ? (
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      ) : (
-                        <>{loginMethod === 'password' ? 'Sign In' : 'Send Magic Link'} <LogIn size={15} className="ml-1.5" /></>
-                      )}
-                    </button>
-                  </form>
+                      <button disabled={loading} type="submit" className="w-full relative bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-lg shadow-blue-600/25 h-[50px]">
+                        {loading ? (
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        ) : (
+                          <>Send OTP <Send size={15} className="ml-1.5" /></>
+                        )}
+                      </button>
+                    </form>
+                  )}
 
                   {mode !== 'demo' && (
                     <>

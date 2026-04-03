@@ -4,29 +4,53 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useRouter } from 'next/navigation';
+import { motion, cubicBezier } from 'framer-motion';
 import {
   Menu, X, Moon, Sun, Check, Star, Zap, Shield, Smartphone, Globe,
   FileText, CreditCard, ArrowRight, PlayCircle, Send, Mail,
   ChevronDown, ChevronUp, HelpCircle, Code,
   Link as LinkIcon, Database, Building2, BookOpen, ChevronRight,
-  Wallet, TrendingUp, Bell, QrCode
+  Wallet, TrendingUp, Bell, QrCode, ArrowUpRight
 } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
+
+// ── Supabase client (browser-safe) ──
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 // ── WhatsApp deep link helper ──
-// Number যেকোনো format এ থাকুক (01..., +880..., 880...) — শুধু digits রেখে wa.me link বানায়
 function buildWhatsAppLink(value: string): string {
   const digits = value.replace(/\D/g, '');
   return `https://wa.me/${digits}`;
 }
 
-const FeatureCard = ({ icon: Icon, title, desc }: any) => (
-  <div className="group p-8 rounded-2xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-900/50 transition-all hover:-translate-y-1 duration-300 flex flex-col items-center text-center">
+// ── Framer Motion variants ──
+const cardVariants = {
+  hidden: { opacity: 0, y: 32 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, delay: i * 0.08, ease: cubicBezier(0.22, 1, 0.36, 1) },
+  }),
+};
+
+const FeatureCard = ({ icon: Icon, title, desc, index }: any) => (
+  <motion.div
+    custom={index}
+    initial="hidden"
+    whileInView="visible"
+    viewport={{ once: true, amount: 0.2 }}
+    variants={cardVariants}
+    className="group p-8 rounded-2xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-900/50 transition-all hover:-translate-y-1 duration-300 flex flex-col items-center text-center"
+  >
     <div className="w-14 h-14 rounded-xl bg-slate-50 dark:bg-slate-800 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300 flex items-center justify-center mb-5">
       <Icon size={28} strokeWidth={1.5} />
     </div>
     <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-2">{title}</h3>
     <p className="text-slate-500 dark:text-slate-400 leading-relaxed text-sm">{desc}</p>
-  </div>
+  </motion.div>
 );
 
 const FaqItem = ({ question, answer }: any) => {
@@ -125,7 +149,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
   const { theme, setTheme, resolvedTheme } = useTheme();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  // ── mounted: শুধু theme toggle UI এর জন্য — পুরো page কে null করে না ──
   const [mounted, setMounted] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
 
@@ -141,24 +164,33 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
     }
   }, []);
 
+  // ── Task 1: IntersectionObserver replaces scroll listener ──
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollY = window.scrollY + 120;
-      for (const id of SECTIONS) {
-        const el = document.getElementById(id);
-        if (el && el.offsetTop <= scrollY && el.offsetTop + el.offsetHeight > scrollY) {
-          if (activeSection !== id) {
-            setActiveSection(id);
-            const hash = id === 'hero' ? '' : `#${id}`;
-            window.history.replaceState(null, '', hash || window.location.pathname);
-          }
-          break;
-        }
-      }
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [activeSection]);
+    const observers: IntersectionObserver[] = [];
+
+    SECTIONS.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              setActiveSection(id);
+              const hash = id === 'hero' ? '' : `#${id}`;
+              window.history.replaceState(null, '', hash || window.location.pathname);
+            }
+          });
+        },
+        { threshold: 0.5 }
+      );
+
+      observer.observe(el);
+      observers.push(observer);
+    });
+
+    return () => observers.forEach((obs) => obs.disconnect());
+  }, []);
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -198,13 +230,23 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
     faqSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  // ── Task 4: Auth-aware support routing ──
+  const handleTicketClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      router.push('/dashboard/support');
+    } else {
+      router.push('/login?next=/dashboard/support');
+    }
+  };
+
   const methodLabels: Record<string, string> = {
     mobile: 'Mobile Banking (bKash / Nagad / Rocket)',
     bank: 'Bank Transfer via IMAP Sync',
     international: 'International (Stripe / PayPal / Crypto)',
   };
 
-  // ── mounted check নেই — page সবসময় render হয় ──
   return (
     <div className="min-h-screen bg-white dark:bg-[#0B1120] transition-colors duration-500 overflow-x-hidden">
 
@@ -223,13 +265,13 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
               { href: '#features', label: 'Features' },
               { href: '#pricing', label: 'Pricing' },
               { href: '#about', label: 'About' },
-              { href: '#contact', label: 'Help' },
             ].map(item => (
               <Link key={item.href} href={item.href} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">{item.label}</Link>
             ))}
             <a href="#faq" onClick={handleScrollToFaq} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium cursor-pointer">FAQs</a>
+            {/* Auth-aware Help link */}
+            <a href="#contact" onClick={handleTicketClick} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium cursor-pointer">Help</a>
 
-            {/* ── Theme toggle: round icon button (Sun/Moon) ── */}
             {mounted ? (
               <button
                 onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
@@ -251,7 +293,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
 
           {/* Mobile icons */}
           <div className="flex items-center gap-2 md:hidden">
-            {/* ── Theme toggle mobile: round icon button (Sun/Moon) ── */}
             {mounted ? (
               <button
                 onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
@@ -282,7 +323,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                 { href: '#features', label: 'Features' },
                 { href: '#pricing', label: 'Pricing' },
                 { href: '#about', label: 'About' },
-                { href: '#contact', label: 'Help Center' },
               ].map(item => (
                 <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)}
                   className="px-4 py-3 rounded-xl font-medium text-slate-800 dark:text-slate-100 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all text-sm">
@@ -292,6 +332,11 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
               <a href="#faq" onClick={handleScrollToFaq}
                 className="px-4 py-3 rounded-xl font-medium text-slate-800 dark:text-slate-100 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all text-sm cursor-pointer">
                 FAQs
+              </a>
+              {/* Auth-aware Help Center for mobile */}
+              <a href="#contact" onClick={(e) => { setMobileMenuOpen(false); handleTicketClick(e); }}
+                className="px-4 py-3 rounded-xl font-medium text-slate-800 dark:text-slate-100 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all text-sm cursor-pointer">
+                Help Center
               </a>
             </div>
             <div className="mx-5 h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
@@ -338,65 +383,90 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
           </div>
         </div>
 
+        {/* ── Task 3: Glassmorphism Hero Card ── */}
         <div className="hidden md:flex flex-col gap-3">
-          <div className="relative bg-white dark:bg-[#0f172a] p-5 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700/50 overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-500 via-green-400 to-blue-500 animate-pulse"></div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center">
-                  <Wallet size={14} className="text-white" />
+          {/* Main glass card */}
+          <div className="relative rounded-2xl overflow-hidden border border-white/30 dark:border-white/10 shadow-2xl shadow-blue-900/20">
+            {/* Glass background layers */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-slate-100/80 to-indigo-500/10 dark:from-blue-900/40 dark:via-[#0f172a]/80 dark:to-indigo-900/30 backdrop-blur-xl" />
+            <div className="absolute inset-0 bg-white/60 dark:bg-[#0f172a]/60" />
+            {/* Top accent line */}
+            <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
+
+            <div className="relative z-10 p-5">
+              {/* Header row */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-md shadow-blue-600/40">
+                    <Wallet size={14} className="text-white" />
+                  </div>
+                  <div>
+                    <p className="text-slate-800 dark:text-white font-semibold text-xs tracking-tight">Payment Dashboard</p>
+                    <p className="text-slate-400 dark:text-slate-500 text-[10px] font-medium">Real-time · Automated</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-slate-800 dark:text-white font-bold text-xs">Payment Dashboard</p>
-                  <p className="text-slate-400 text-[10px]">Real-time tracking</p>
+                <span className="flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-50/80 dark:bg-emerald-900/30 px-2.5 py-1 rounded-full font-semibold border border-emerald-200/60 dark:border-emerald-800/40">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span> Live
+                </span>
+              </div>
+
+              {/* Balance card — inner glass */}
+              <div className="relative rounded-xl overflow-hidden mb-4 shadow-lg shadow-blue-900/20">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-700" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10" />
+                <div className="relative z-10 p-4">
+                  <p className="text-[10px] text-blue-200 font-semibold uppercase tracking-[0.12em] mb-1.5">Total Collected Today</p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-[10px] text-blue-300 font-medium">৳</span>
+                    <span className="text-3xl font-black text-white tracking-tight tabular-nums">48,250</span>
+                    <span className="text-blue-300 text-base font-medium">.00</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-2.5">
+                    <TrendingUp size={11} className="text-emerald-300" />
+                    <span className="text-[10px] text-emerald-300 font-semibold">+12.5% from yesterday</span>
+                  </div>
                 </div>
               </div>
-              <span className="flex items-center gap-1.5 text-[10px] text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2.5 py-1 rounded-full font-medium border border-green-200 dark:border-green-800/40 animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"></span> Live
-              </span>
-            </div>
-            <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-4 mb-3 text-white">
-              <p className="text-[10px] text-blue-200 uppercase tracking-widest mb-1">Total Collected Today</p>
-              <p className="text-2xl font-black tracking-tight">৳ 48,250<span className="text-blue-300 text-base">.00</span></p>
-              <div className="flex items-center gap-1.5 mt-2">
-                <TrendingUp size={11} className="text-green-300" />
-                <span className="text-[10px] text-green-300 font-medium">+12.5% from yesterday</span>
+
+              {/* Method breakdown — frosted mini cards */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {[
+                  { label: 'bKash', amount: '৳24,500', dotColor: 'bg-rose-500', labelColor: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50/70 dark:bg-rose-900/20', border: 'border-rose-200/60 dark:border-rose-800/30' },
+                  { label: 'Nagad', amount: '৳18,750', dotColor: 'bg-orange-500', labelColor: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50/70 dark:bg-orange-900/20', border: 'border-orange-200/60 dark:border-orange-800/30' },
+                  { label: 'Stripe', amount: '$58.00', dotColor: 'bg-blue-500', labelColor: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50/70 dark:bg-blue-900/20', border: 'border-blue-200/60 dark:border-blue-800/30' },
+                ].map((m, i) => (
+                  <div key={i} className={`${m.bg} border ${m.border} backdrop-blur-sm rounded-xl p-2.5 text-center`}>
+                    <div className={`w-1.5 h-1.5 ${m.dotColor} rounded-full mx-auto mb-1.5`}></div>
+                    <p className={`text-[9px] font-bold ${m.labelColor} uppercase tracking-wider`}>{m.label}</p>
+                    <p className="text-slate-700 dark:text-slate-200 text-[10px] font-black mt-0.5 tabular-nums">{m.amount}</p>
+                  </div>
+                ))}
               </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              {[
-                { label: 'bKash', amount: '৳24,500', color: 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/30', dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400' },
-                { label: 'Nagad', amount: '৳18,750', color: 'bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800/30', dot: 'bg-orange-500', text: 'text-orange-600 dark:text-orange-400' },
-                { label: 'Stripe', amount: '$58.00', color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/30', dot: 'bg-blue-500', text: 'text-blue-600 dark:text-blue-400' },
-              ].map((m, i) => (
-                <div key={i} className={`${m.color} border rounded-xl p-2.5 text-center`}>
-                  <div className={`w-1.5 h-1.5 ${m.dot} rounded-full mx-auto mb-1`}></div>
-                  <p className={`text-[9px] font-bold ${m.text} uppercase tracking-wider`}>{m.label}</p>
-                  <p className="text-slate-700 dark:text-slate-200 text-[10px] font-black mt-0.5">{m.amount}</p>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-1.5">
-              {[
-                { icon: '💳', label: 'bKash Payment Verified', amount: '+৳1,500', time: 'Just now', status: 'success' },
-                { icon: '🔔', label: 'Webhook → Order #XEL9921', amount: 'Sent', time: '2s ago', status: 'info' },
-                { icon: '💰', label: 'Nagad Personal Verified', amount: '+৳850', time: '5s ago', status: 'success' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-2.5 p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
-                  <div className="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center shrink-0 text-sm shadow-sm">
-                    {item.icon}
+
+              {/* Live transaction feed */}
+              <div className="space-y-1.5">
+                <p className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-[0.12em] mb-2">Recent Activity</p>
+                {[
+                  { icon: '💳', label: 'bKash Payment Verified', amount: '+৳1,500', time: 'Just now', color: 'text-emerald-600 dark:text-emerald-400' },
+                  { icon: '🔔', label: 'Webhook → Order #XEL9921', amount: 'Sent', time: '2s ago', color: 'text-blue-500' },
+                  { icon: '💰', label: 'Nagad Personal Verified', amount: '+৳850', time: '5s ago', color: 'text-emerald-600 dark:text-emerald-400' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2.5 p-2 bg-white/50 dark:bg-white/5 backdrop-blur-sm border border-white/60 dark:border-white/10 rounded-xl">
+                    <div className="w-7 h-7 rounded-lg bg-white/80 dark:bg-slate-800/80 flex items-center justify-center shrink-0 text-sm shadow-sm border border-white/60 dark:border-slate-700/50">
+                      {item.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-slate-700 dark:text-slate-200 font-semibold text-[10px] truncate">{item.label}</p>
+                      <p className="text-slate-400 dark:text-slate-500 text-[9px] mt-0.5 font-medium">{item.time}</p>
+                    </div>
+                    <span className={`text-[10px] font-bold ${item.color} shrink-0`}>{item.amount}</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-slate-700 dark:text-slate-200 font-medium text-[10px] truncate">{item.label}</p>
-                    <p className="text-slate-400 text-[9px] mt-0.5">{item.time}</p>
-                  </div>
-                  <span className={`text-[10px] font-bold ${item.status === 'success' ? 'text-green-600 dark:text-green-400' : 'text-blue-500'}`}>
-                    {item.amount}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
+
+          {/* Stats row */}
           <div className="grid grid-cols-3 gap-3">
             {[{ val: '99.9%', label: 'Uptime' }, { val: '<1s', label: 'Verify' }, { val: '25+', label: 'Methods' }].map(s => (
               <div key={s.label} className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-center">
@@ -416,15 +486,15 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             <p className="text-slate-500 dark:text-slate-400 mt-3 text-sm">Everything you need to automate your payments seamlessly.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <FeatureCard icon={Code} title="Easy Integration" desc="Seamlessly integrate with our robust API. Automate payment verification in minutes." />
-            <FeatureCard icon={Smartphone} title="Personal Automation" desc="Automate payments directly through your personal MFS accounts (bKash/Nagad) with 100% accuracy." />
-            <FeatureCard icon={FileText} title="Invoice Automation" desc="Instantly send automated professional invoices and payment links to your customers." />
-            <FeatureCard icon={LinkIcon} title="Dynamic Payment Links" desc="Create no-code payment links to collect funds securely. No website required." />
-            <FeatureCard icon={Globe} title="Global Connectivity" desc="Scale globally with Stripe, PayPal, and Cryptocurrency gateways like Binance." />
-            <FeatureCard icon={CreditCard} title="25+ Payment Methods" desc="Support for 25+ local and international methods for comprehensive automation." />
-            <FeatureCard icon={Shield} title="Bank-Grade Security" desc="Funds settle directly into your own bank or MFS account instantly and securely." />
-            <FeatureCard icon={Star} title="Affiliate Rewards" desc="Earn a 10% recurring lifetime commission for every successful merchant referral." />
-            <FeatureCard icon={Database} title="Bank Sync (IMAP)" desc="Track bank transfers securely via IMAP without needing direct server access." />
+            <FeatureCard index={0} icon={Code} title="Easy Integration" desc="Seamlessly integrate with our robust API. Automate payment verification in minutes." />
+            <FeatureCard index={1} icon={Smartphone} title="Personal Automation" desc="Automate payments directly through your personal MFS accounts (bKash/Nagad) with 100% accuracy." />
+            <FeatureCard index={2} icon={FileText} title="Invoice Automation" desc="Instantly send automated professional invoices and payment links to your customers." />
+            <FeatureCard index={3} icon={LinkIcon} title="Dynamic Payment Links" desc="Create no-code payment links to collect funds securely. No website required." />
+            <FeatureCard index={4} icon={Globe} title="Global Connectivity" desc="Scale globally with Stripe, PayPal, and Cryptocurrency gateways like Binance." />
+            <FeatureCard index={5} icon={CreditCard} title="25+ Payment Methods" desc="Support for 25+ local and international methods for comprehensive automation." />
+            <FeatureCard index={6} icon={Shield} title="Bank-Grade Security" desc="Funds settle directly into your own bank or MFS account instantly and securely." />
+            <FeatureCard index={7} icon={Star} title="Affiliate Rewards" desc="Earn a 10% recurring lifetime commission for every successful merchant referral." />
+            <FeatureCard index={8} icon={Database} title="Bank Sync (IMAP)" desc="Track bank transfers securely via IMAP without needing direct server access." />
           </div>
         </div>
       </section>
@@ -436,7 +506,7 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
           <p className="text-slate-500 dark:text-slate-400 mt-3 text-sm">Transparent pricing for every scale of business.</p>
         </div>
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-          {initialPlans?.map((plan: any) => {
+          {initialPlans?.map((plan: any, planIdx: number) => {
             const transactionLabel = (plan.transaction_limit_monthly ?? 100) === 0
               ? 'Unlimited transactions / month'
               : `${(plan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`;
@@ -454,8 +524,15 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             const planTag: string | null = plan.tag || null;
             const planColors = getPlanColors(planTag);
             return (
-              <div key={plan.id}
-                className={`p-8 md:p-10 rounded-3xl border-2 ${planColors.border} transition-all hover:-translate-y-1 duration-300 flex flex-col relative bg-white dark:bg-[#111827] shadow-lg mt-5`}>
+              <motion.div
+                key={plan.id}
+                custom={planIdx}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, amount: 0.15 }}
+                variants={cardVariants}
+                className={`p-8 md:p-10 rounded-3xl border-2 ${planColors.border} transition-all hover:-translate-y-1 duration-300 flex flex-col relative bg-white dark:bg-[#111827] shadow-lg mt-5`}
+              >
                 {planTag && <PlanTagBadge tag={planTag} />}
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{plan.name}</h3>
                 <div className="my-5 flex items-baseline gap-1">
@@ -475,7 +552,7 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                   className={`w-full block py-3.5 text-center rounded-xl font-medium text-sm transition-all ${planColors.button}`}>
                   {plan.price === 0 ? 'Start Free' : 'Select Plan'}
                 </Link>
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -528,6 +605,7 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
           </div>
         </div>
 
+        {/* ── Task 4: Contact section with auth-aware button ── */}
         <div id="contact" className="max-w-5xl mx-auto bg-blue-600 rounded-3xl p-8 md:p-16 text-center text-white relative overflow-hidden shadow-2xl shadow-blue-600/20">
           <div className="relative z-10 flex flex-col items-center">
             <div className="w-14 h-14 bg-white/20 rounded-2xl mb-5 flex items-center justify-center">
@@ -537,10 +615,12 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             <p className="mb-8 opacity-90 max-w-xl text-sm leading-relaxed">
               Our technical support team is available 24/7 to help with your payment automation journey.
             </p>
-            <Link href="/info/contact"
-              className="bg-white text-blue-600 px-10 py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:-translate-y-0.5 transition shadow-xl w-full sm:w-auto">
+            <button
+              onClick={handleTicketClick}
+              className="bg-white text-blue-600 px-10 py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:-translate-y-0.5 transition shadow-xl w-full sm:w-auto cursor-pointer"
+            >
               <HelpCircle size={16} /> Contact Us
-            </Link>
+            </button>
           </div>
           <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
         </div>
@@ -593,8 +673,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
               { href: '/info/status', label: 'System Status' },
             ]},
             { title: 'Developer & Support', links: [
-              { href: '/info/contact', label: 'Contact Us' },
-              { href: '/info/ticket', label: 'Help Center' },
               { href: '/info/docs', label: 'Developer Guidance' },
               { href: '/info/api-reference', label: 'API Reference' },
               { href: '/info/plugins', label: 'CMS Plugins' },
@@ -611,11 +689,19 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                   </li>
                 ))}
                 {col.title === 'Developer & Support' && (
-                  <li>
-                    <a href="#faq" onClick={handleScrollToFaq} className="hover:text-white transition flex items-center gap-1.5 group cursor-pointer">
-                      <ChevronRight size={13} className="text-slate-700 group-hover:text-blue-500 transition" /> All FAQs
-                    </a>
-                  </li>
+                  <>
+                    <li>
+                      <a href="#faq" onClick={handleScrollToFaq} className="hover:text-white transition flex items-center gap-1.5 group cursor-pointer">
+                        <ChevronRight size={13} className="text-slate-700 group-hover:text-blue-500 transition" /> All FAQs
+                      </a>
+                    </li>
+                    {/* Auth-aware Help Center link in footer */}
+                    <li>
+                      <a href="#contact" onClick={handleTicketClick} className="hover:text-white transition flex items-center gap-1.5 group cursor-pointer">
+                        <ChevronRight size={13} className="text-slate-700 group-hover:text-blue-500 transition" /> Submit a Ticket
+                      </a>
+                    </li>
+                  </>
                 )}
               </ul>
             </div>
@@ -628,7 +714,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
               { href: initialSettings?.facebook, Icon: FacebookIcon },
               { href: initialSettings?.youtube, Icon: YoutubeIcon },
               { href: initialSettings?.support_telegram, Icon: TelegramIcon },
-              // ── WhatsApp: number থেকে wa.me deep link ──
               {
                 href: initialSettings?.whatsapp ? buildWhatsAppLink(initialSettings.whatsapp) : undefined,
                 Icon: WhatsAppIcon,
