@@ -1,4 +1,4 @@
-// src/app/page.tsx
+// app/page.tsx
 import { supabase } from '@/lib/supabase';
 import LandingPageUI from './LandingPageUI';
 import { Metadata } from 'next';
@@ -6,7 +6,7 @@ import { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'XelPay — Best Automated Payment Gateway in Bangladesh',
   description:
-    'Instantly automate bKash, Nagad, Rocket, Upay and Cellfin payment verification using your personal or merchant account. Zero commission, zero hidden fees. Bangladesh\'s most trusted payment automation platform.',
+    "Instantly automate bKash, Nagad, Rocket, Upay and Cellfin payment verification using your personal or merchant account. Zero commission, zero hidden fees. Bangladesh's most trusted payment automation platform.",
   keywords: [
     'automated payment gateway Bangladesh',
     'bKash payment automation',
@@ -57,23 +57,27 @@ export default async function LandingPage() {
     supabase.from('plans').select('*').order('serial', { ascending: true }),
     supabase.from('reviews').select('*'),
     supabase.from('faqs').select('*'),
-    supabase.from('site_settings').select('key_name, value'),
+    // ✅ Fix #3 + #4: is_active এবং refer_commission সহ fetch
+    supabase.from('site_settings').select('key_name, value, is_active'),
   ]);
 
-  const settingsMap =
-    settingsRes.data?.reduce(
-      (acc: any, row: any) => {
-        acc[row.key_name] = row.value;
-        return acc;
-      },
-      {
-        facebook: '#',
-        youtube: '#',
-        telegram: '#',
-        whatsapp: '#',
-        support_email: 'support@xelpay.com',
-      }
-    ) || {};
+  // ✅ Default fallback values
+  const settingsMap: Record<string, any> = {
+    facebook: '#',
+    youtube: '#',
+    telegram: '#',
+    whatsapp: '#',
+    support_email: 'support@xelpay.com',
+    otp_login: 'true',
+    refer_commission: '0',
+  };
+
+  // ✅ Fix #3 + #4: Flatten — value + _active suffix একসাথে
+  settingsRes.data?.forEach((row: any) => {
+    settingsMap[row.key_name] = row.value;
+    // is_active null হলে default true ধরবে
+    settingsMap[`${row.key_name}_active`] = row.is_active !== false;
+  });
 
   return (
     <LandingPageUI

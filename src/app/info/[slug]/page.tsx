@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ArrowLeft, Shield, FileText, Users, Code, BookOpen,
   Activity, Puzzle, Ticket, BadgeDollarSign, Building2,
   Send, Mail, HelpCircle, ChevronRight, Phone, MessageCircle,
-  Facebook, Globe, LockKeyhole, RotateCcw } from 'lucide-react';
+  Facebook, Globe, LockKeyhole, RotateCcw, Headphones } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import type { Metadata } from 'next';
 import InfoHeader from './InfoHeader';
@@ -23,8 +23,6 @@ function buildWhatsAppLink(value: string): string {
 }
 
 // ── Page data map ──
-// NOTE: 'privacy' and 'terms' have been moved to standalone pages at /info/privacy and /info/terms.
-// Their route remains functional via those dedicated files. They are intentionally excluded here.
 const pageData: Record<string, {
   title: string;
   metaTitle: string;
@@ -212,14 +210,11 @@ const pageData: Record<string, {
   'affiliate': {
     title: 'Affiliate Program',
     metaTitle: 'Affiliate Program | XelPay',
-    metaDescription: 'Earn lifetime recurring commissions by referring merchants to XelPay. 10% commission, no cap, paid monthly.',
+    metaDescription: 'Earn lifetime recurring commissions by referring merchants to XelPay. Commission paid monthly — no cap.',
     icon: BadgeDollarSign,
-    content: 'The XelPay Affiliate Program rewards you with a 10% lifetime recurring commission on every subscription fee paid by the merchants you refer. There is no referral cap, no expiry on your commission rights, and no complex tier requirements.',
+    // Fix #4: content is rendered dynamically in AffiliateContent — commission from DB
+    content: 'The XelPay Affiliate Program rewards you with a lifetime recurring commission on every subscription fee paid by the merchants you refer. There is no referral cap, no expiry on your commission rights, and no complex tier requirements.',
     sections: [
-      {
-        heading: 'Commission Structure',
-        body: 'You earn 10% of the monthly or annual subscription fee for every active merchant you have referred, credited every billing cycle for as long as that merchant remains a XelPay subscriber. Commissions are not one-time — they compound with every renewal for the lifetime of the account.',
-      },
       {
         heading: 'How It Works',
         body: 'Register for the Affiliate Program from your merchant dashboard to receive a unique referral link and access your affiliate control panel. When a new merchant signs up using your link and activates a paid plan, you begin earning immediately. Attribution is tracked via first-touch cookie with a 90-day window.',
@@ -239,16 +234,16 @@ const pageData: Record<string, {
     ],
   },
 
+  // Fix #5: contact icon → Headphones (support icon)
   'contact': {
     title: 'Contact Us',
     metaTitle: 'Contact Us | XelPay',
     metaDescription: 'Reach XelPay\'s support team via Telegram, WhatsApp, Email, or Facebook. Available 24/7 for merchant support.',
-    icon: HelpCircle,
+    icon: Headphones, // Fix #5: Changed from HelpCircle (?) to Headphones (support)
     content: 'Our dedicated support team is available around the clock. Choose the channel that works best for you — we are committed to responding promptly and resolving your issues with full accountability.',
     sections: [],
   },
 
-  // ── Task 2: New 'ticket' entry ──
   'ticket': {
     title: 'Submit a Support Ticket',
     metaTitle: 'Support Tickets | XelPay',
@@ -279,7 +274,6 @@ const pageData: Record<string, {
     ],
   },
 
-  // ── Task 2: New 'aml' entry ──
   'aml': {
     title: 'AML & KYC Policy',
     metaTitle: 'AML & KYC Policy | XelPay',
@@ -314,7 +308,6 @@ const pageData: Record<string, {
     ],
   },
 
-  // ── Task 2: New 'refund' entry ──
   'refund': {
     title: 'Refund & Cancellation Policy',
     metaTitle: 'Refund & Cancellation Policy | XelPay',
@@ -372,7 +365,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-// ── Task 3: InfoFooter with verified Privacy and Terms hrefs ──
 function InfoFooter() {
   return (
     <footer className="bg-[#0f172a] text-slate-500 py-8 px-6 border-t border-slate-800 mt-16">
@@ -396,79 +388,84 @@ function InfoFooter() {
   );
 }
 
-// ── Contact Page Content (dynamic from DB) ──
+// Fix #3 + #4: Contact page — is_active check per channel + affiliate commission from DB
 async function ContactContent() {
   const supabase = getSupabase();
+
+  // Fix #3: Fetch key_name, value AND is_active from site_settings
   const { data: settings } = await supabase
     .from('site_settings')
-    .select('key_name, value')
+    .select('key_name, value, is_active')
     .in('key_name', ['support_telegram', 'support_email', 'support_phone', 'whatsapp', 'facebook']);
 
-  const s: Record<string, string> = {};
-  settings?.forEach((r: any) => { s[r.key_name] = r.value; });
+  const s: Record<string, { value: string; is_active: boolean }> = {};
+  settings?.forEach((r: any) => {
+    s[r.key_name] = { value: r.value, is_active: r.is_active !== false };
+  });
 
   const channels = [
     {
       key: 'support_telegram',
       label: 'Telegram',
-      value: s.support_telegram,
+      value: s.support_telegram?.value,
+      is_active: s.support_telegram?.is_active,
       icon: (
         <svg width={20} height={20} viewBox="0 0 24 24" fill="#26A5E4">
           <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
         </svg>
       ),
-      href: s.support_telegram,
-      isLink: true,
+      href: s.support_telegram?.value,
     },
     {
       key: 'whatsapp',
       label: 'WhatsApp',
-      value: s.whatsapp,
+      value: s.whatsapp?.value,
+      is_active: s.whatsapp?.is_active,
       icon: (
         <svg width={20} height={20} viewBox="0 0 24 24" fill="#25D366">
           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
         </svg>
       ),
-      href: s.whatsapp ? buildWhatsAppLink(s.whatsapp) : null,
-      isLink: true,
+      href: s.whatsapp?.value ? buildWhatsAppLink(s.whatsapp.value) : null,
     },
     {
       key: 'support_email',
       label: 'Email',
-      value: s.support_email,
+      value: s.support_email?.value,
+      is_active: s.support_email?.is_active,
       icon: (
         <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#EA4335" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
         </svg>
       ),
-      href: s.support_email ? `mailto:${s.support_email}` : null,
-      isLink: true,
+      href: s.support_email?.value ? `mailto:${s.support_email.value}` : null,
     },
     {
       key: 'support_phone',
       label: 'Phone',
-      value: s.support_phone,
+      value: s.support_phone?.value,
+      is_active: s.support_phone?.is_active,
       icon: (
         <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.08 6.08l1.08-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
         </svg>
       ),
-      href: s.support_phone ? `tel:${s.support_phone}` : null,
-      isLink: true,
+      href: s.support_phone?.value ? `tel:${s.support_phone.value}` : null,
     },
     {
       key: 'facebook',
       label: 'Facebook',
-      value: s.facebook,
+      value: s.facebook?.value,
+      is_active: s.facebook?.is_active,
       icon: (
         <svg width={20} height={20} viewBox="0 0 24 24" fill="#1877F2">
           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
         </svg>
       ),
-      href: s.facebook,
-      isLink: true,
+      href: s.facebook?.value,
     },
-  ].filter(ch => ch.value);
+  // Fix #3: filter by both value existence AND is_active === true
+  ].filter(ch => ch.value && ch.is_active);
 
   return (
     <div className="space-y-3">
@@ -500,6 +497,34 @@ async function ContactContent() {
   );
 }
 
+// Fix #4: Affiliate page — commission from DB
+async function AffiliateCommissionBanner() {
+  const supabase = getSupabase();
+  const { data } = await supabase
+    .from('site_settings')
+    .select('value')
+    .eq('key_name', 'refer_commission')
+    .maybeSingle();
+
+  const commission = data?.value || '10';
+
+  return (
+    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-2xl p-5 mb-5 flex items-center gap-4">
+      <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shrink-0 shadow-md shadow-blue-600/30">
+        <BadgeDollarSign size={22} className="text-white" />
+      </div>
+      <div>
+        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Commission Rate</p>
+        <p className="text-2xl font-black text-slate-900 dark:text-white">{commission}% <span className="text-sm font-medium text-slate-500 dark:text-slate-400">lifetime recurring</span></p>
+      </div>
+    </div>
+  );
+}
+
+// Fix #5: Back button — client component for router.back()
+// We need a client component just for the back button
+import BackButton from './BackButton';
+
 export default async function InfoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
@@ -514,6 +539,7 @@ export default async function InfoPage({ params }: { params: Promise<{ slug: str
 
   const IconComponent = data.icon;
   const isContact = slug === 'contact';
+  const isAffiliate = slug === 'affiliate';
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] flex flex-col">
@@ -522,14 +548,14 @@ export default async function InfoPage({ params }: { params: Promise<{ slug: str
       <main className="flex-1 py-12 px-4 md:px-6">
         <div className="max-w-3xl mx-auto">
 
-          <Link href="/" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium mb-8 transition-colors text-sm">
-            <ArrowLeft size={16} /> Back to Home
-          </Link>
+          {/* Fix #5: Back button → goes to previous page (not always home) */}
+          <BackButton />
 
           {/* Header Card */}
           <div className="bg-white dark:bg-[#111827] p-7 md:p-10 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 mb-5">
             <div className="flex items-center gap-4 mb-5">
               <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center shrink-0">
+                {/* Fix #5: contact → Headphones icon (already set in pageData above) */}
                 <IconComponent size={24} className="text-blue-600 dark:text-blue-400" />
               </div>
               <div>
@@ -540,7 +566,10 @@ export default async function InfoPage({ params }: { params: Promise<{ slug: str
             <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">{data.content}</p>
           </div>
 
-          {/* Contact page — dynamic channels from DB */}
+          {/* Fix #4: Affiliate commission banner from DB */}
+          {isAffiliate && <AffiliateCommissionBanner />}
+
+          {/* Contact page — dynamic channels from DB with is_active */}
           {isContact ? (
             <ContactContent />
           ) : (

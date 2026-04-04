@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, Suspense, useEffect, useRef } from 'react';
-import { Mail, ArrowLeft, Send, CheckCircle, Lock, Eye, EyeOff, Menu, X, Home, HelpCircle, Sun, Moon, AlertCircle, Clock, MailWarning, CheckCircle2 } from 'lucide-react';
+import { Mail, ArrowLeft, Send, CheckCircle, Lock, Eye, EyeOff, Menu, X, Home, HelpCircle, Sun, Moon, AlertCircle, Clock, MailWarning, CheckCircle2, ShieldCheck, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Toaster, toast } from 'sonner';
@@ -15,7 +15,6 @@ const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
 // ─── MODALS ───
 const SuspendedModal = ({ isOpen, telegramLink, onClose }: any) => {
   if (!isOpen) return null;
-  // Fix: telegramLink value সরাসরি open
   const handleContact = () => {
     if (telegramLink && telegramLink !== '#') {
       window.open(telegramLink, '_blank', 'noopener,noreferrer');
@@ -38,7 +37,6 @@ const SuspendedModal = ({ isOpen, telegramLink, onClose }: any) => {
 
 const PendingModal = ({ isOpen, telegramLink, onClose }: any) => {
   if (!isOpen) return null;
-  // Fix: telegramLink value সরাসরি open
   const handleContact = () => {
     if (telegramLink && telegramLink !== '#') {
       window.open(telegramLink, '_blank', 'noopener,noreferrer');
@@ -71,7 +69,11 @@ function ForgotPasswordContent() {
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [email, setEmail] = useState(mode === 'demo' ? 'demo@xelpay.com' : '');
+  // Fix #9: OTP is now an array of 6 digits for box UI, plus a string for legacy logic
   const [otp, setOtp] = useState('');
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [otpResendCooldown, setOtpResendCooldown] = useState(0);
+
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -91,16 +93,18 @@ function ForgotPasswordContent() {
   const [showResendForm, setShowResendForm] = useState(false);
   const [resendVerifyCount, setResendVerifyCount] = useState(0);
   const [cooldownVerify, setCooldownVerify] = useState(0);
-  // Fix: I Have Verified loading
   const [checkingVerified, setCheckingVerified] = useState(false);
 
   const passwordRegex = /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+]{8,}$/;
+
+  // Fix #11: Check demo mode — from URL param OR from sessionStorage (set by login page)
+  const isDemoMode = mode === 'demo' || (typeof window !== 'undefined' && sessionStorage.getItem('xelpay_demo_mode') === 'true');
 
   // ─── MASTER RESTORE + URL SYNC + BACK-BUTTON TRACKER ───
   useEffect(() => {
     setMounted(true);
 
-    const urlStep = searchParams.get('step'); // 'verify-otp' | 'create-password' | null
+    const urlStep = searchParams.get('step');
     const savedStep = sessionStorage.getItem('xelpay_fp_step');
     const savedEmail = sessionStorage.getItem('xelpay_fp_email');
     const savedResendCount = sessionStorage.getItem('xelpay_fp_resend');
@@ -108,13 +112,11 @@ function ForgotPasswordContent() {
     const recoveryMode = sessionStorage.getItem('xelpay_recovery_mode');
     const savedTimestamp = sessionStorage.getItem('xelpay_fp_timestamp');
 
-    const SESSION_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
+    const SESSION_EXPIRY_MS = 30 * 60 * 1000;
 
-    // ── 30-Min Expiry Check ──
     if (savedTimestamp) {
       const elapsed = Date.now() - Number(savedTimestamp);
       if (elapsed > SESSION_EXPIRY_MS) {
-        // Expired: sign out, wipe session, redirect to step 1
         (async () => {
           const { data: sessionData } = await supabase.auth.getSession();
           if (sessionData?.session) await supabase.auth.signOut();
@@ -130,14 +132,12 @@ function ForgotPasswordContent() {
       }
     }
 
-    // ── Success Step Guard: if URL is ?step=success and savedStep is '4', show success screen ──
     if (urlStep === 'success' && savedStep === '4') {
       setStep(4);
       setIsRestoring(false);
       return;
     }
 
-    // ── Back-Button Guard: was on step 3 but URL is now step 2 or null ──
     if (savedStep === '3' && (urlStep === 'verify-otp' || urlStep === null)) {
       (async () => {
         const { data: sessionData } = await supabase.auth.getSession();
@@ -152,7 +152,6 @@ function ForgotPasswordContent() {
       return;
     }
 
-    // ── Reload on Step 3: validate recovery mode + live session ──
     if (urlStep === 'create-password' && savedStep === '3') {
       (async () => {
         const { data: sessionData } = await supabase.auth.getSession();
@@ -160,7 +159,6 @@ function ForgotPasswordContent() {
         const hasRecoveryMode = recoveryMode === 'true';
 
         if (hasValidSession && hasRecoveryMode) {
-          // Valid: restore to step 3
           if (savedEmail) setEmail(savedEmail);
           if (savedResendCount) setResendCount(Number(savedResendCount));
           if (savedCooldownEnd) {
@@ -169,7 +167,6 @@ function ForgotPasswordContent() {
           }
           setStep(3);
         } else {
-          // Invalid session or recovery mode missing: kick to step 1
           if (sessionData?.session) await supabase.auth.signOut();
           clearAllSessionStorage();
           setStep(1);
@@ -183,7 +180,6 @@ function ForgotPasswordContent() {
       return;
     }
 
-    // ── Standard Restore (step 1 or step 2) ──
     if (savedStep && savedEmail) {
       setStep(Number(savedStep) as any);
       setEmail(savedEmail);
@@ -205,13 +201,10 @@ function ForgotPasswordContent() {
       sessionStorage.setItem('xelpay_fp_email', email);
       sessionStorage.setItem('xelpay_fp_resend', resendCount.toString());
 
-      // Sync URL to match step
       if (step === 1) router.replace('/forgot-password');
       else if (step === 2) router.replace('/forgot-password?step=verify-otp');
       else if (step === 3) router.replace('/forgot-password?step=create-password');
     }
-    // Step 4 is handled by handleUpdatePassword directly — do NOT call clearSession() here
-    // so the success screen is never pre-empted by a storage wipe.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, email, resendCount, isRestoring]);
 
@@ -229,9 +222,12 @@ function ForgotPasswordContent() {
     if (cooldownVerify > 0) { const timer = setInterval(() => setCooldownVerify(c => c - 1), 1000); return () => clearInterval(timer); }
   }, [cooldownVerify]);
 
-  // ─── HELPERS ───
+  // Fix #9: OTP resend cooldown for step 2
+  useEffect(() => {
+    if (otpResendCooldown > 0) { const timer = setInterval(() => setOtpResendCooldown(c => c - 1), 1000); return () => clearInterval(timer); }
+  }, [otpResendCooldown]);
 
-  /** Remove all 6 sessionStorage keys without touching Supabase session */
+  // ─── HELPERS ───
   const clearAllSessionStorage = () => {
     sessionStorage.removeItem('xelpay_fp_step');
     sessionStorage.removeItem('xelpay_fp_email');
@@ -242,12 +238,6 @@ function ForgotPasswordContent() {
     document.cookie = "xelpay_recovery_mode=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
   };
 
-  /**
-   * Full clearSession:
-   * - Removes all 6 sessionStorage items
-   * - Signs out of Supabase if a session exists (user is aborting the flow)
-   * - Resets component state
-   */
   const clearSession = async () => {
     clearAllSessionStorage();
     const { data: sessionData } = await supabase.auth.getSession();
@@ -275,7 +265,16 @@ function ForgotPasswordContent() {
       setLoading(false); if (!isResend) recaptchaRef.current?.reset(); setCaptchaToken(null); return;
     }
 
-    if (merchant.is_demo || mode === 'demo') {
+    // Fix #11: Demo mode — block real account submissions
+    if (isDemoMode && !merchant.is_demo) {
+      setLoading(false);
+      if (!isResend) { recaptchaRef.current?.reset(); setCaptchaToken(null); }
+      // Show demo block UI (handled below via a state)
+      toast.error("Demo mode: You cannot use a real account here.");
+      return;
+    }
+
+    if (merchant.is_demo || isDemoMode) {
       setTimeout(() => { setStep(4); toast.success("Demo Recovery successful!"); setLoading(false); }, 1500); return;
     }
 
@@ -296,8 +295,11 @@ function ForgotPasswordContent() {
     } else {
       toast.success(isResend ? "OTP resent successfully!" : "6-digit OTP sent to your email!");
       setStep(2); setCaptchaToken(null);
-      setCooldown(60); sessionStorage.setItem('xelpay_fp_cooldown_end', (Date.now() + 60000).toString());
+      setCooldown(60); setOtpResendCooldown(60);
+      sessionStorage.setItem('xelpay_fp_cooldown_end', (Date.now() + 60000).toString());
       if (isResend) setResendCount(c => c + 1);
+      // Focus first OTP box on step 2
+      setTimeout(() => otpInputRefs.current[0]?.focus(), 300);
     }
     setLoading(false);
   };
@@ -315,7 +317,6 @@ function ForgotPasswordContent() {
     recaptchaRef.current?.reset(); setCaptchaToken(null); setLoading(false);
   };
 
-  // Fix: I Have Verified — session refresh করে check করো
   const handleCheckVerified = async () => {
     setCheckingVerified(true);
     try {
@@ -364,10 +365,33 @@ function ForgotPasswordContent() {
     setCheckingVerified(false);
   };
 
-  const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.replace(/[^0-9]/g, '');
-    setOtp(val);
-    if (val.length === 6) verifyOtpLogic(val);
+  // Fix #9: OTP box input handlers (same pattern as login page)
+  const handleOtpBoxChange = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, '').slice(-1);
+    const chars = otp.split('');
+    chars[index] = digit;
+    const joined = chars.join('');
+    setOtp(joined);
+    if (digit && index < 5) otpInputRefs.current[index + 1]?.focus();
+    // Auto-verify when all 6 digits entered
+    if (joined.length === 6 && joined.replace(/\D/g,'').length === 6) {
+      verifyOtpLogic(joined);
+    }
+  };
+
+  const handleOtpBoxKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpBoxPaste = (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pasted.length === 6) {
+      setOtp(pasted);
+      otpInputRefs.current[5]?.focus();
+      verifyOtpLogic(pasted);
+    }
   };
 
   const verifyOtpLogic = async (tokenToVerify: string) => {
@@ -376,8 +400,8 @@ function ForgotPasswordContent() {
     if (error) {
       toast.error("Invalid or expired OTP. Please try again.");
       setOtp('');
+      otpInputRefs.current[0]?.focus();
     } else if (data.session) {
-      // ── Set recovery mode + timestamp on successful OTP verification ──
       sessionStorage.setItem('xelpay_recovery_mode', 'true');
       sessionStorage.setItem('xelpay_fp_timestamp', Date.now().toString());
       document.cookie = "xelpay_recovery_mode=true; path=/; max-age=1800";
@@ -401,13 +425,10 @@ function ForgotPasswordContent() {
       recaptchaRef.current?.reset();
       setCaptchaToken(null);
     } else {
-      // ── Clear input states immediately ──
       setNewPassword('');
       setConfirmPassword('');
-      // ── Lock step 4 into sessionStorage + URL BEFORE signOut so the useEffect doesn't kick back to step 1 ──
       sessionStorage.setItem('xelpay_fp_step', '4');
       router.replace('/forgot-password?step=success');
-      // ── Sign out (session is done), then reveal the success screen ──
       await supabase.auth.signOut();
       toast.success("Password updated successfully!");
       setStep(4);
@@ -415,11 +436,6 @@ function ForgotPasswordContent() {
     setLoading(false);
   };
 
-  /**
-   * handleDirectLogin — Step 3 "Login Now" shortcut.
-   * The user already has a valid Supabase session from OTP verification,
-   * so we only remove the recovery_mode flag and redirect to the dashboard.
-   */
   const handleDirectLogin = () => {
     sessionStorage.removeItem('xelpay_recovery_mode');
     toast.success("Welcome back! Redirecting to your dashboard...");
@@ -499,17 +515,28 @@ function ForgotPasswordContent() {
 
           <div className="absolute -top-20 -left-20 w-40 h-40 bg-blue-600/5 rounded-full blur-3xl"></div>
 
+          {/* Fix #7 & #11: Demo mode banner inside card */}
+          {isDemoMode && (
+            <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-2xl p-4 flex items-start gap-3">
+              <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-amber-600 text-sm font-black">D</span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider mb-1">Demo Mode</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">You're in demo mode. Only demo accounts work here. Real account submissions will be blocked.</p>
+              </div>
+            </div>
+          )}
+
           {/* ── UNVERIFIED VIEW ── */}
           {viewState === 'unverified' ? (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-center">
-              {/* Fix: No branding in this view */}
               <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5"><MailWarning size={32} /></div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Verify Your Email</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
                 We've sent a verification link to <b className="text-slate-700 dark:text-slate-300">{unverifiedEmail}</b>. Please check your inbox to activate your account.
               </p>
 
-              {/* Fix: I Have Verified button */}
               <button
                 onClick={handleCheckVerified}
                 disabled={checkingVerified}
@@ -572,25 +599,56 @@ function ForgotPasswordContent() {
                 </div>
               )}
 
+              {/* Fix #9: Step 2 — 6-digit OTP box design (same as login page OTP input) */}
               {step === 2 && (
                 <div className="animate-in slide-in-from-right-8 duration-500">
                   <button onClick={() => { setStep(1); setOtp(''); }} className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-600 mb-5 transition-colors uppercase tracking-widest"><ArrowLeft size={14} /> Edit Email</button>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">Enter OTP</h2>
-                  <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm leading-relaxed">We sent a 6-digit secure OTP to <br /><b className="text-slate-800 dark:text-slate-200">{email}</b></p>
+
+                  <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                    <ShieldCheck size={32} className="text-blue-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight text-center">Enter OTP</h2>
+                  <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm leading-relaxed text-center">We sent a 6-digit secure OTP to <br /><b className="text-slate-800 dark:text-slate-200">{email}</b></p>
 
                   <div className="space-y-6">
+                    {/* Fix #9: 6-box OTP input — matching login page design */}
                     <div>
-                      <label className={labelClass}>6-Digit OTP <span className="text-red-500">*</span></label>
-                      <input required type="text" maxLength={6} value={otp} placeholder="• • • • • •" disabled={loading} className={`${inputClass} !pl-4 text-center tracking-[1em] text-2xl font-bold disabled:opacity-50`} onChange={handleOtpChange} />
+                      <label className={`${labelClass} text-center`}>6-Digit OTP <span className="text-red-500">*</span></label>
+                      <div className="flex gap-2.5 justify-center mt-2" onPaste={handleOtpBoxPaste}>
+                        {Array.from({ length: 6 }).map((_, i) => (
+                          <input
+                            key={i}
+                            ref={el => { otpInputRefs.current[i] = el; }}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={otp[i] || ''}
+                            onChange={e => handleOtpBoxChange(i, e.target.value)}
+                            onKeyDown={e => handleOtpBoxKeyDown(i, e)}
+                            disabled={loading}
+                            className="w-11 text-center text-lg font-bold bg-white dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-900 dark:text-white py-3 disabled:opacity-50"
+                          />
+                        ))}
+                      </div>
                     </div>
 
-                    <button disabled={true} className="w-full bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm transition-all shadow-lg flex items-center justify-center">
-                      {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : 'Auto Verifying...'}
-                    </button>
+                    {/* Auto-verifying indicator */}
+                    <div className="flex items-center justify-center gap-2 py-1">
+                      {loading ? (
+                        <div className="flex items-center gap-2 text-blue-600 text-sm font-medium">
+                          <div className="w-4 h-4 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                          Verifying OTP...
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-400">OTP will be verified automatically when all 6 digits are entered.</p>
+                      )}
+                    </div>
 
-                    <div className="text-center pt-2">
-                      <button type="button" disabled={cooldown > 0 || resendCount >= 3 || loading} onClick={() => handleSendOtp(undefined, true)} className="text-xs font-medium text-blue-600 hover:underline disabled:text-slate-400 disabled:no-underline transition-all">
-                        {resendCount >= 3 ? "Maximum resend limit reached." : cooldown > 0 ? `Resend OTP in ${cooldown}s` : "Didn't receive the code? Resend OTP"}
+                    <div className="text-center pt-1">
+                      <button type="button" disabled={otpResendCooldown > 0 || resendCount >= 3 || loading} onClick={() => handleSendOtp(undefined, true)}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:underline disabled:text-slate-400 disabled:no-underline transition-all">
+                        <RefreshCw size={12} />
+                        {resendCount >= 3 ? "Maximum resend limit reached." : otpResendCooldown > 0 ? `Resend OTP in ${otpResendCooldown}s` : "Didn't receive the code? Resend OTP"}
                       </button>
                     </div>
                   </div>
@@ -630,7 +688,6 @@ function ForgotPasswordContent() {
                       {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : 'Update Password'}
                     </button>
 
-                    {/* ── Direct Login: replaces the old <Link> with onClick handler ── */}
                     <div className="pt-2 text-center">
                       <p className="text-sm text-slate-500 dark:text-slate-400">
                         Don't want to change?{' '}
@@ -647,14 +704,7 @@ function ForgotPasswordContent() {
                 </div>
               )}
 
-              {step === 4 && (
-                <div className="text-center animate-in zoom-in-95 duration-500 py-4">
-                  <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle size={40} strokeWidth={1.5} /></div>
-                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">Password Updated!</h2>
-                  <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm leading-relaxed">Your password has been successfully reset. You can now securely login to your workspace.</p>
-                  <button onClick={handleSuccessLogin} className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-medium text-sm flex items-center justify-center shadow-lg hover:-translate-y-0.5 transition-all">Login Now</button>
-                </div>
-              )}
+              {/* Fix #10: Step 4 — Only ONE success UI (the premium backdrop modal). Removed duplicate inline step-4 block. */}
             </>
           )}
 
@@ -664,7 +714,7 @@ function ForgotPasswordContent() {
       <SuspendedModal isOpen={modalState === 'suspended'} telegramLink={telegramLink} onClose={() => setModalState('none')} />
       <PendingModal isOpen={modalState === 'pending'} telegramLink={telegramLink} onClose={() => setModalState('none')} />
 
-      {/* ── Step 4 Success Backdrop: clicking outside the card goes to /login ── */}
+      {/* Fix #10: Step 4 — Single premium success modal (kept the better backdrop version, removed the one inside the card) */}
       {step === 4 && (
         <div
           className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm animate-in fade-in duration-300"
@@ -694,6 +744,9 @@ function ForgotPasswordContent() {
           </div>
         </div>
       )}
+
+      {/* Fix #11: Demo mode real-account block modal */}
+      {/* This is handled via toast in handleSendOtp — no separate modal needed */}
     </div>
   );
 }

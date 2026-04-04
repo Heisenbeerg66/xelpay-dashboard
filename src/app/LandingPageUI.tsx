@@ -152,10 +152,15 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
   const [mounted, setMounted] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
 
+  // Fix #4: refer_commission loaded from initialSettings (passed from server)
+  // initialSettings already contains refer_commission from site_settings
+  const referCommission = initialSettings?.refer_commission || '10';
+
   const sliderRef = useRef<HTMLDivElement>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const faqSectionRef = useRef<HTMLDivElement>(null);
+  const contactSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -164,7 +169,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
     }
   }, []);
 
-  // ── Task 1: IntersectionObserver replaces scroll listener ──
   useEffect(() => {
     const observers: IntersectionObserver[] = [];
 
@@ -230,7 +234,14 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
     faqSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  // ── Task 4: Auth-aware support routing ──
+  // Fix #1: Help nav link → scroll to /#contact section (landing page contact section)
+  const handleScrollToContact = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setMobileMenuOpen(false);
+    contactSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // Auth-aware support ticket routing (footer Submit a Ticket — unchanged)
   const handleTicketClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     const { data: { session } } = await supabase.auth.getSession();
@@ -245,6 +256,14 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
     mobile: 'Mobile Banking (bKash / Nagad / Rocket)',
     bank: 'Bank Transfer via IMAP Sync',
     international: 'International (Stripe / PayPal / Crypto)',
+  };
+
+  // Fix #3: Helper — check if a social/contact setting is active
+  // initialSettings now passes is_active alongside each key's value
+  // Format: initialSettings.facebook, initialSettings.facebook_active (boolean)
+  // We check `_active` suffix to decide visibility
+  const isSettingActive = (key: string): boolean => {
+    return initialSettings?.[`${key}_active`] !== false;
   };
 
   return (
@@ -269,8 +288,9 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
               <Link key={item.href} href={item.href} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">{item.label}</Link>
             ))}
             <a href="#faq" onClick={handleScrollToFaq} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium cursor-pointer">FAQs</a>
-            {/* Auth-aware Help link */}
-            <a href="#contact" onClick={handleTicketClick} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium cursor-pointer">Help</a>
+
+            {/* Fix #1: Help → scroll to /#contact section on landing page */}
+            <a href="#contact" onClick={handleScrollToContact} className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium cursor-pointer">Help</a>
 
             {mounted ? (
               <button
@@ -333,8 +353,8 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                 className="px-4 py-3 rounded-xl font-medium text-slate-800 dark:text-slate-100 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all text-sm cursor-pointer">
                 FAQs
               </a>
-              {/* Auth-aware Help Center for mobile */}
-              <a href="#contact" onClick={(e) => { setMobileMenuOpen(false); handleTicketClick(e); }}
+              {/* Fix #1: Help Center → scroll to contact section */}
+              <a href="#contact" onClick={handleScrollToContact}
                 className="px-4 py-3 rounded-xl font-medium text-slate-800 dark:text-slate-100 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all text-sm cursor-pointer">
                 Help Center
               </a>
@@ -376,6 +396,7 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
               className="flex-1 md:flex-none bg-blue-600 text-white px-5 py-3 md:px-7 md:py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-all">
               Get Started <ArrowRight size={15} />
             </Link>
+            {/* Fix #7 (from prev session): Live Demo → /login?mode=demo */}
             <button onClick={() => router.push('/login?mode=demo')}
               className="flex-1 md:flex-none bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white px-5 py-3 md:px-7 md:py-3.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
               <PlayCircle size={15} /> Live Demo
@@ -383,18 +404,14 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
           </div>
         </div>
 
-        {/* ── Task 3: Glassmorphism Hero Card ── */}
+        {/* Glassmorphism Hero Card */}
         <div className="hidden md:flex flex-col gap-3">
-          {/* Main glass card */}
           <div className="relative rounded-2xl overflow-hidden border border-white/30 dark:border-white/10 shadow-2xl shadow-blue-900/20">
-            {/* Glass background layers */}
             <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-slate-100/80 to-indigo-500/10 dark:from-blue-900/40 dark:via-[#0f172a]/80 dark:to-indigo-900/30 backdrop-blur-xl" />
             <div className="absolute inset-0 bg-white/60 dark:bg-[#0f172a]/60" />
-            {/* Top accent line */}
             <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
 
             <div className="relative z-10 p-5">
-              {/* Header row */}
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-md shadow-blue-600/40">
@@ -410,7 +427,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                 </span>
               </div>
 
-              {/* Balance card — inner glass */}
               <div className="relative rounded-xl overflow-hidden mb-4 shadow-lg shadow-blue-900/20">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-700" />
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10" />
@@ -428,7 +444,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                 </div>
               </div>
 
-              {/* Method breakdown — frosted mini cards */}
               <div className="grid grid-cols-3 gap-2 mb-4">
                 {[
                   { label: 'bKash', amount: '৳24,500', dotColor: 'bg-rose-500', labelColor: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50/70 dark:bg-rose-900/20', border: 'border-rose-200/60 dark:border-rose-800/30' },
@@ -443,7 +458,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                 ))}
               </div>
 
-              {/* Live transaction feed */}
               <div className="space-y-1.5">
                 <p className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-[0.12em] mb-2">Recent Activity</p>
                 {[
@@ -466,7 +480,6 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             </div>
           </div>
 
-          {/* Stats row */}
           <div className="grid grid-cols-3 gap-3">
             {[{ val: '99.9%', label: 'Uptime' }, { val: '<1s', label: 'Verify' }, { val: '25+', label: 'Methods' }].map(s => (
               <div key={s.label} className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-center">
@@ -493,7 +506,8 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             <FeatureCard index={4} icon={Globe} title="Global Connectivity" desc="Scale globally with Stripe, PayPal, and Cryptocurrency gateways like Binance." />
             <FeatureCard index={5} icon={CreditCard} title="25+ Payment Methods" desc="Support for 25+ local and international methods for comprehensive automation." />
             <FeatureCard index={6} icon={Shield} title="Bank-Grade Security" desc="Funds settle directly into your own bank or MFS account instantly and securely." />
-            <FeatureCard index={7} icon={Star} title="Affiliate Rewards" desc="Earn a 10% recurring lifetime commission for every successful merchant referral." />
+            {/* Fix #4: Affiliate commission from DB */}
+            <FeatureCard index={7} icon={Star} title="Affiliate Rewards" desc={`Earn a ${referCommission}% recurring lifetime commission for every successful merchant referral.`} />
             <FeatureCard index={8} icon={Database} title="Bank Sync (IMAP)" desc="Track bank transfers securely via IMAP without needing direct server access." />
           </div>
         </div>
@@ -605,8 +619,9 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
           </div>
         </div>
 
-        {/* ── Task 4: Contact section with auth-aware button ── */}
-        <div id="contact" className="max-w-5xl mx-auto bg-blue-600 rounded-3xl p-8 md:p-16 text-center text-white relative overflow-hidden shadow-2xl shadow-blue-600/20">
+        {/* Fix #1: Contact section — "Need Help?" card → Contact Us → /info/contact */}
+        {/* Fix #1: This is the /#contact anchor that Help nav link scrolls to */}
+        <div id="contact" ref={contactSectionRef} className="max-w-5xl mx-auto bg-blue-600 rounded-3xl p-8 md:p-16 text-center text-white relative overflow-hidden shadow-2xl shadow-blue-600/20">
           <div className="relative z-10 flex flex-col items-center">
             <div className="w-14 h-14 bg-white/20 rounded-2xl mb-5 flex items-center justify-center">
               <HelpCircle size={28} />
@@ -615,12 +630,13 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             <p className="mb-8 opacity-90 max-w-xl text-sm leading-relaxed">
               Our technical support team is available 24/7 to help with your payment automation journey.
             </p>
-            <button
-              onClick={handleTicketClick}
-              className="bg-white text-blue-600 px-10 py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:-translate-y-0.5 transition shadow-xl w-full sm:w-auto cursor-pointer"
+            {/* Fix #1: Contact Us → /info/contact page */}
+            <Link
+              href="/info/contact"
+              className="bg-white text-blue-600 px-10 py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:-translate-y-0.5 transition shadow-xl w-full sm:w-auto"
             >
               <HelpCircle size={16} /> Contact Us
-            </button>
+            </Link>
           </div>
           <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
         </div>
@@ -637,7 +653,8 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
             <p className="text-sm leading-relaxed">Empowering merchants with the most reliable payment automation in Bangladesh.</p>
             <div className="pt-2 space-y-2">
               <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Contact Us</p>
-              {initialSettings?.support_email && (
+              {/* Fix #3: is_active check — support_email */}
+              {initialSettings?.support_email && isSettingActive('support_email') && (
                 <a href={`mailto:${initialSettings.support_email}`} className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors group">
                   <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-blue-600/20 transition-colors">
                     <Mail size={13} className="text-slate-500 group-hover:text-blue-400" />
@@ -645,7 +662,8 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                   {initialSettings.support_email}
                 </a>
               )}
-              {initialSettings?.whatsapp && (
+              {/* Fix #3: is_active check — whatsapp */}
+              {initialSettings?.whatsapp && isSettingActive('whatsapp') && (
                 <a href={buildWhatsAppLink(initialSettings.whatsapp)} className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors group">
                   <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center group-hover:bg-blue-600/20 transition-colors">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 group-hover:text-blue-400">
@@ -695,7 +713,7 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
                         <ChevronRight size={13} className="text-slate-700 group-hover:text-blue-500 transition" /> All FAQs
                       </a>
                     </li>
-                    {/* Auth-aware Help Center link in footer */}
+                    {/* Fix #2: Submit a Ticket — unchanged, keeps auth-aware logic */}
                     <li>
                       <a href="#contact" onClick={handleTicketClick} className="hover:text-white transition flex items-center gap-1.5 group cursor-pointer">
                         <ChevronRight size={13} className="text-slate-700 group-hover:text-blue-500 transition" /> Submit a Ticket
@@ -710,17 +728,19 @@ export default function LandingPageUI({ initialPlans, initialReviews, initialFaq
 
         <div className="max-w-7xl mx-auto border-t border-slate-800 mt-14 pt-8 flex flex-col md:flex-row justify-between items-center gap-5">
           <div className="flex gap-5 items-center">
+            {/* Fix #3: is_active check for social buttons */}
             {[
-              { href: initialSettings?.facebook, Icon: FacebookIcon },
-              { href: initialSettings?.youtube, Icon: YoutubeIcon },
-              { href: initialSettings?.support_telegram, Icon: TelegramIcon },
+              { key: 'facebook', href: initialSettings?.facebook, Icon: FacebookIcon },
+              { key: 'youtube', href: initialSettings?.youtube, Icon: YoutubeIcon },
+              { key: 'support_telegram', href: initialSettings?.support_telegram, Icon: TelegramIcon },
               {
+                key: 'whatsapp',
                 href: initialSettings?.whatsapp ? buildWhatsAppLink(initialSettings.whatsapp) : undefined,
                 Icon: WhatsAppIcon,
               },
-              { href: `mailto:${initialSettings?.support_email}`, Icon: MailIconSvg },
-            ].map(({ href, Icon }, i) => (
-              href ? (
+              { key: 'support_email', href: initialSettings?.support_email ? `mailto:${initialSettings.support_email}` : undefined, Icon: MailIconSvg },
+            ].map(({ key, href, Icon }, i) => (
+              href && isSettingActive(key) ? (
                 <a key={i} href={href} target="_blank" rel="noopener noreferrer"
                   className="hover:scale-125 hover:opacity-100 opacity-70 transition-all duration-200">
                   <Icon size={22} />
