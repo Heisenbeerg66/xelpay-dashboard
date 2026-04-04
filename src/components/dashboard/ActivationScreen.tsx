@@ -17,7 +17,7 @@ export default function ActivationScreen({ merchant }: any) {
       const { data } = await supabase.from('plans').select('*').order('serial', { ascending: true });
       if (data) {
         setPlans(data);
-        const selected = data.find(p => p.id === merchant.plan_id) || data[0];
+        const selected = data.find((p: any) => p.id === merchant.plan_id) || data[0];
         setCurrentPlan(selected);
       }
     };

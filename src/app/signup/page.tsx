@@ -1,6 +1,9 @@
-// ── src/app/signup/page.tsx ───────────────────────────────────────────────────
+// PATH: src/app/signup/page.tsx
+
 import SignUpClient from './SignUpClient';
 import { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'Create Free Account — XelPay Payment Gateway Bangladesh',
@@ -43,6 +46,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function SignUp() {
+export default async function SignUp() {
+  const cookieStore = await cookies();
+  // ইতিমধ্যে login থাকলে dashboard এ redirect করো
+  if (cookieStore.get('auth_session')?.value === 'authenticated') {
+    redirect('/dashboard');
+  }
   return <SignUpClient />;
 }

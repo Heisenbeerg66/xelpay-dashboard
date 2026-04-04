@@ -1,4 +1,5 @@
 'use client';
+// PATH: components/dashboard/DashboardClient.tsx
 
 import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';

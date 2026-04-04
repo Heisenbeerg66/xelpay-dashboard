@@ -1,17 +1,32 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+// ─── ROUTE DEFINITIONS ──────────────────────────────────────────────────────
+const PROTECTED_ROUTES = ['/dashboard'];
+const AUTH_ROUTES = ['/login', '/signup', '/forgot-password', '/reset-password'];
+// Everything else is public — no redirect in either direction.
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: { headers: request.headers },
   });
 
+  const pathname = request.nextUrl.pathname;
+
+  // Pass-through: auth callbacks and API routes — never intercept these.
+  if (pathname.startsWith('/auth/') || pathname.startsWith('/api/')) {
+    return response;
+  }
+
+  // ── Build SSR Supabase client (keeps session cookies in sync) ────────────
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) { return request.cookies.get(name)?.value; },
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
         set(name: string, value: string, options: CookieOptions) {
           request.cookies.set({ name, value, ...options });
           response = NextResponse.next({ request: { headers: request.headers } });
@@ -26,37 +41,29 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const pathname = request.nextUrl.pathname;
-
-  // এই paths এ middleware কিছু করে না
-  if (pathname.startsWith('/auth/') || pathname.startsWith('/api/')) {
-    return response;
-  }
-
+  // ── Verify session server-side (never trust client state alone) ──────────
+  // getUser() validates the JWT against Supabase — cannot be spoofed.
   const { data: { user } } = await supabase.auth.getUser();
 
-  const isAuthPage = ['/login', '/signup', '/forgot-password', '/reset-password'].some(
-    path => pathname.startsWith(path)
-  );
-  const isDashboard = pathname.startsWith('/dashboard');
+  const isProtected = PROTECTED_ROUTES.some(r => pathname.startsWith(r));
+  const isAuthRoute = AUTH_ROUTES.some(r => pathname.startsWith(r));
 
-  // লগইন ছাড়া dashboard → login এ পাঠাও
-  if (!user && isDashboard) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // ─── 1. No session + protected route → force login ───────────────────────
+  if (!user && isProtected) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('next', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // ─── FIX: রিকভারি মোড কুকি চেক করা ───
-  const isRecoveryMode = request.cookies.get('xelpay_recovery_mode')?.value === 'true';
-
-  // লগইন আছে এবং auth page এ আসছে
-  if (user && isAuthPage) {
-    
-    // ─── FIX: রিকভারি মোডে থাকলে forgot-password পেজেই থাকতে দেবে, রিডাইরেক্ট ব্লক করবে ───
-    if (pathname.startsWith('/forgot-password') && isRecoveryMode) {
-      return response; 
+  // ─── 2. Active session + auth route → bounce to dashboard ────────────────
+  if (user && isAuthRoute) {
+    // Special case: password-recovery flow must be allowed through
+    const isRecoveryMode = request.cookies.get('xelpay_recovery_mode')?.value === 'true';
+    if ((pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password')) && isRecoveryMode) {
+      return response;
     }
 
-    // Merchant আছে কিনা check করো
+    // Confirm merchant record exists before redirecting
     const { data: merchant } = await supabase
       .from('merchants')
       .select('id')
@@ -64,14 +71,30 @@ export async function middleware(request: NextRequest) {
       .maybeSingle();
 
     if (!merchant) {
-      // Auth আছে কিন্তু merchant নেই → force signout করে signup এ পাঠাও
+      // Auth session exists but no merchant profile → force re-signup
       const url = new URL('/auth/force-signout', request.url);
       url.searchParams.set('redirect', '/signup');
       return NextResponse.redirect(url);
     }
 
-    // Merchant আছে → dashboard এ পাঠাও
     return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // ─── 3. Set custom HttpOnly auth cookie on every valid session ───────────
+  // This cookie mirrors the Supabase session so headers/layouts can read auth
+  // state server-side without calling Supabase on every Server Component.
+  if (user) {
+    // auth_session cookie — HttpOnly, Secure, SameSite=Strict, 24h
+    response.cookies.set('auth_session', 'authenticated', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 86400,          // exactly 24 hours
+      path: '/',
+    });
+  } else {
+    // Clear our custom cookie if Supabase session is gone
+    response.cookies.delete('auth_session');
   }
 
   return response;
@@ -84,5 +107,8 @@ export const config = {
     '/signup',
     '/forgot-password',
     '/reset-password',
+    // Include root and info pages so the auth_session cookie gets set/cleared
+    '/',
+    '/info/:path*',
   ],
 };

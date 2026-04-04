@@ -1,6 +1,9 @@
-// ── src/app/login/page.tsx ────────────────────────────────────────────────────
+// PATH: src/app/login/page.tsx
+
 import LoginClient from './LoginClient';
 import { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'Merchant Login — XelPay Dashboard',
@@ -31,6 +34,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Login() {
+export default async function Login() {
+  const cookieStore = await cookies();
+  // ইতিমধ্যে login থাকলে dashboard এ redirect করো
+  if (cookieStore.get('auth_session')?.value === 'authenticated') {
+    redirect('/dashboard');
+  }
   return <LoginClient />;
 }
