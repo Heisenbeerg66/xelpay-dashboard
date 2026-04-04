@@ -1,5 +1,5 @@
 'use client';
-// PATH: /components/InfoHeaderClient.tsx  (নতুন ফাইল)
+// PATH: src/app/info/[slug]/InfoHeaderClient.tsx
 // isAuthenticated prop server থেকে আসে → initial HTML এই correct buttons থাকে → zero flicker
 
 import Link from 'next/link';
@@ -39,7 +39,6 @@ export default function InfoHeaderClient({ isAuthenticated }: Props) {
     ) : <div className="w-9 h-9" />
   );
 
-  // ─── Auth-aware CTA — prop থেকে, client-side check নয় ─────────────────
   const AuthButtons = ({ mobile = false }: { mobile?: boolean }) => {
     if (isAuthenticated) {
       return (
