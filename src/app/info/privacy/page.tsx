@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import InfoHeader from '@/app/info/[slug]/InfoHeader';
+import BackButton from '@/app/info/[slug]/BackButton';
 import {
-  ArrowLeft, ShieldCheck, AlertTriangle, Globe,
+  ShieldCheck, AlertTriangle, Globe,
   ChevronDown, ChevronUp, Lock, Eye, Database,
   Users, Bell, Scale, HelpCircle,
   Mail, Cookie, Trash2, UserCheck,
@@ -30,6 +30,7 @@ function SectionBlock({ title, children, icon: Icon, accent = 'blue' }: {
     purple: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600',
     orange: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600',
   };
+
   return (
     <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
       <button
@@ -60,6 +61,7 @@ function InfoBox({ type, children }: { type: 'warning' | 'info' | 'danger' | 'su
   };
   const icons = { warning: AlertTriangle, info: AlertCircle, danger: AlertTriangle, success: ShieldCheck };
   const Icon = icons[type];
+
   return (
     <div className={`flex gap-3 items-start p-4 rounded-xl border font-semibold text-sm ${styles[type]}`}>
       <Icon size={18} className="shrink-0 mt-0.5" />
@@ -249,16 +251,12 @@ export default function PrivacyPolicyPage() {
   const [lang, setLang] = useState<Lang>('en');
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] transition-colors duration-500 font-sans">
-      <InfoHeader />
-
+    <>
       <main className="py-10 px-4 md:px-6">
         <div className="max-w-5xl mx-auto">
 
           {/* Back link */}
-          <Link href="/" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium mb-8 transition-colors text-sm">
-            <ArrowLeft size={16} /> Back to Home
-          </Link>
+          <BackButton />
 
           {/* Header Card — info/slug style */}
           <div className="bg-white dark:bg-[#111827] p-7 md:p-10 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 mb-6">
@@ -321,6 +319,6 @@ export default function PrivacyPolicyPage() {
           <span className="opacity-40 uppercase tracking-widest text-[10px]">© {new Date().getFullYear()} XelPay · Xenverse IT · All Rights Reserved</span>
         </div>
       </footer>
-    </div>
+    </>
   );
 }

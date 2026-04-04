@@ -1,5 +1,6 @@
-// ── src/app/info/terms/layout.tsx  (REPLACE existing) ───────────────────────
+// ── src/app/info/terms/layout.tsx ───────────────────────
 import type { Metadata } from 'next';
+import InfoHeader from '@/app/info/[slug]/InfoHeader';
 
 export const metadata: Metadata = {
   title: 'Terms of Service — XelPay',
@@ -37,5 +38,10 @@ export default function TermsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] transition-colors duration-500 font-sans">
+      <InfoHeader />
+      {children}
+    </div>
+  );
 }

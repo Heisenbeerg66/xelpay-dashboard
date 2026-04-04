@@ -1,5 +1,6 @@
-// ── src/app/info/privacy/layout.tsx  (REPLACE existing) ─────────────────────
+// ── src/app/info/privacy/layout.tsx ─────────────────────
 import type { Metadata } from 'next';
+import InfoHeader from '@/app/info/[slug]/InfoHeader';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — XelPay',
@@ -38,105 +39,10 @@ export default function PrivacyLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] transition-colors duration-500 font-sans">
+      <InfoHeader />
+      {children}
+    </div>
+  );
 }
-
-
-// ── src/app/pay/[order_id]/layout.tsx  (NEW FILE) ─────────────────────────────
-// Checkout pages must NEVER be indexed by Google — private session pages
-
-/*
-import type { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Secure Checkout — XelPay',
-  description: 'Complete your payment securely via XelPay.',
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
-
-export default function PayLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
-}
-*/
-
-
-// ── src/app/[merchant_slug]/[payment_id]/layout.tsx  (NEW FILE) ───────────────
-// Merchant payment link — session-specific, never index
-
-/*
-import type { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Secure Payment — XelPay',
-  description: 'Complete your payment securely via XelPay merchant checkout.',
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
-
-export default function MerchantPayLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
-}
-*/
-
-
-// ── src/app/auth/callback/layout.tsx  (NEW FILE) ──────────────────────────────
-// Auth callback — never index
-
-/*
-import type { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Authenticating — XelPay',
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
-
-export default function CallbackLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
-}
-*/
-
-
-// ── src/app/auth/no-merchant/layout.tsx  (NEW FILE) ───────────────────────────
-
-/*
-import type { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Setup Incomplete — XelPay',
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
-
-export default function NoMerchantLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
-}
-*/
-
-
-// ── src/app/auth/force-signout/layout.tsx  (NEW FILE) ─────────────────────────
-
-/*
-import type { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: 'Signing Out — XelPay',
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
-
-export default function ForceSignoutLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
-}
-*/
