@@ -224,13 +224,34 @@ function LoginContent() {
     }
   }, [errorParam]);
 
-  // Demo mode
+  // Demo mode — credentials fetched from site_settings
+  // key_name: 'demo_email' and 'demo_password' (separate rows, value column is plain text)
   useEffect(() => {
     if (mode === 'demo') {
-      setEmail('demo@xelpay.com');
-      setPassword('demo123456');
       sessionStorage.setItem('xelpay_demo_mode', 'true');
-      toast.success('Demo credentials loaded! Explore freely.', { icon: '✨', duration: 4000 });
+      (async () => {
+        try {
+          const { data } = await supabase
+            .from('site_settings')
+            .select('key_name, value')
+            .in('key_name', ['demo_email', 'demo_password'])
+            .eq('is_active', true);
+
+          const emailRow = data?.find((r: any) => r.key_name === 'demo_email');
+          const passwordRow = data?.find((r: any) => r.key_name === 'demo_password');
+
+          if (emailRow?.value) setEmail(emailRow.value);
+          if (passwordRow?.value) setPassword(passwordRow.value);
+
+          if (emailRow?.value || passwordRow?.value) {
+            toast.success('Demo credentials loaded! Explore freely.', { icon: '✨', duration: 4000 });
+          } else {
+            toast.error('Demo credentials not configured.', { duration: 4000 });
+          }
+        } catch {
+          toast.error('Failed to load demo credentials.', { duration: 4000 });
+        }
+      })();
     } else {
       sessionStorage.removeItem('xelpay_demo_mode');
     }

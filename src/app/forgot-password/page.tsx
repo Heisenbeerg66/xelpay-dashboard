@@ -68,7 +68,7 @@ function ForgotPasswordContent() {
   const [isRestoring, setIsRestoring] = useState(true);
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [email, setEmail] = useState(mode === 'demo' ? 'demo@xelpay.com' : '');
+  const [email, setEmail] = useState('');
   // Fix #9: OTP is now an array of 6 digits for box UI, plus a string for legacy logic
   const [otp, setOtp] = useState('');
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -99,6 +99,26 @@ function ForgotPasswordContent() {
 
   // Fix #11: Check demo mode — from URL param OR from sessionStorage (set by login page)
   const isDemoMode = mode === 'demo' || (typeof window !== 'undefined' && sessionStorage.getItem('xelpay_demo_mode') === 'true');
+
+  // Demo mode — email fetched from site_settings (key_name: 'demo_email', value is plain text)
+  useEffect(() => {
+    if (!isDemoMode) return;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('site_settings')
+          .select('value')
+          .eq('key_name', 'demo_email')
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (data?.value) setEmail(data.value);
+      } catch {
+        // silent fail — user can type manually
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemoMode]);
 
   // ─── MASTER RESTORE + URL SYNC + BACK-BUTTON TRACKER ───
   useEffect(() => {
