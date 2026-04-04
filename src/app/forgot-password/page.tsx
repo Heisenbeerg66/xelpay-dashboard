@@ -100,7 +100,7 @@ function ForgotPasswordContent() {
   // Fix #11: Check demo mode — from URL param OR from sessionStorage (set by login page)
   const isDemoMode = mode === 'demo' || (typeof window !== 'undefined' && sessionStorage.getItem('xelpay_demo_mode') === 'true');
 
-  // Demo mode — email fetched from site_settings (key_name: 'demo_email', value is plain text)
+  // Demo mode — email fetched from site_settings (key_name: 'demo_credentials', value: JSON text)
   useEffect(() => {
     if (!isDemoMode) return;
     (async () => {
@@ -108,11 +108,13 @@ function ForgotPasswordContent() {
         const { data } = await supabase
           .from('site_settings')
           .select('value')
-          .eq('key_name', 'demo_email')
-          .eq('is_active', true)
+          .eq('key_name', 'demo_credentials')
           .maybeSingle();
 
-        if (data?.value) setEmail(data.value);
+        if (data?.value) {
+          const parsed = JSON.parse(data.value);
+          if (parsed?.email) setEmail(parsed.email);
+        }
       } catch {
         // silent fail — user can type manually
       }
