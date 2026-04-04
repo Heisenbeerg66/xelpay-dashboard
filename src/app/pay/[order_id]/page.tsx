@@ -39,8 +39,8 @@ export default async function CheckoutPage({ params }: { params: Promise<{ order
       const accType = g.account_type?.toLowerCase(); 
       const compositeId = `${provider}_${accType}`; 
 
-      const logoInfo = logosRes.data?.find(l => l.method_name?.toLowerCase() === provider);
-      const methodInfo = methodsRes.data?.find(m => m.id?.toLowerCase() === compositeId);
+      const logoInfo = logosRes.data?.find((l: any) => l.method_name?.toLowerCase() === provider);
+      const methodInfo = methodsRes.data?.find((m: any) => m.id?.toLowerCase() === compositeId);
       
       const getMethodLabelText = (type: string, prov: string) => {
         if (type === 'personal') return 'Send Money';
