@@ -310,7 +310,7 @@ export default function LandingPageUI({ isAuthenticated, initialPlans, initialRe
                   href={starterPlanId ? `/signup?plan=${starterPlanId}` : '/signup'}
                   className="bg-blue-600 text-white px-6 py-2.5 rounded-full shadow-lg shadow-blue-600/30 hover:scale-105 transition-transform font-medium text-sm"
                 >
-                  Start Free Trial
+                  Start For Free
                 </Link>
               </>
             )}
@@ -391,7 +391,7 @@ export default function LandingPageUI({ isAuthenticated, initialPlans, initialRe
                   </Link>
                   <Link href={starterPlanId ? `/signup?plan=${starterPlanId}` : '/signup'} onClick={() => setMobileMenuOpen(false)}
                     className="flex items-center justify-center gap-2 w-full bg-blue-600 text-white py-3 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all">
-                    <Zap size={16} /> Start Free Trial
+                    <Zap size={16} /> Start For Free
                   </Link>
                 </>
               )}
@@ -431,7 +431,7 @@ export default function LandingPageUI({ isAuthenticated, initialPlans, initialRe
                 href={starterPlanId ? `/signup?plan=${starterPlanId}` : '/signup'}
                 className="flex-1 md:flex-none bg-blue-600 text-white px-5 py-3 md:px-7 md:py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-all"
               >
-                Get Started <ArrowRight size={15} />
+                Start For Free <ArrowRight size={15} />
               </Link>
             )}
             <button onClick={() => router.push('/login?mode=demo')}
