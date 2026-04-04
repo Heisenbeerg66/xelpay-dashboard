@@ -38,7 +38,7 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
       if (data && data.length > 0) {
         setBusinesses(data);
         const savedBizId = localStorage.getItem('active_business_id');
-        const savedBiz = data.find(b => b.id === savedBizId) || data[0];
+        const savedBiz = data.find((b: any) => b.id === savedBizId) || data[0];
         setActiveBusiness(savedBiz);
         localStorage.setItem('active_business_id', savedBiz.id);
       }
