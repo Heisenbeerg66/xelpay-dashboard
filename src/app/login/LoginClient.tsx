@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import {
   Mail, Lock, LogIn, Eye, EyeOff, AlertCircle, Send, ArrowLeft,
   Moon, Sun, Menu, X, Home, HelpCircle, Sparkles, Clock,
-  MailWarning, CheckCircle2, ShieldCheck, RefreshCw, UserPlus,
+  ShieldCheck, RefreshCw, UserPlus,
 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -154,13 +154,8 @@ function LoginContent() {
   const [otpLoginEnabled, setOtpLoginEnabled] = useState(false);
   const [otpSettingLoaded, setOtpSettingLoaded] = useState(false);
 
-  const [viewState, setViewState] = useState<'form' | 'unverified' | 'otp_input'>('form');
-  const [unverifiedEmail, setUnverifiedEmail] = useState('');
-  const [showResendForm, setShowResendForm] = useState(false);
-  const [resendCount, setResendCount] = useState(0);
-  const [cooldown, setCooldown] = useState(0);
-  const [checkingVerified, setCheckingVerified] = useState(false);
-
+  // OTP login flow state
+  const [viewState, setViewState] = useState<'form' | 'otp_input'>('form');
   const [otpEmail, setOtpEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [otpCooldown, setOtpCooldown] = useState(0);
@@ -209,7 +204,6 @@ function LoginContent() {
   useEffect(() => {
     if (!errorParam) return;
     if (errorParam === 'no_account') {
-      // toast এর বদলে modal — better UX
       setShowNoAccountModal(true);
     } else if (errorParam === 'suspended' || errorParam === 'ban') {
       fetchTelegramLink().then(() => setShowSuspendedModal(true));
@@ -224,7 +218,7 @@ function LoginContent() {
     }
   }, [errorParam]);
 
-  // Demo mode — credentials fetched from site_settings (key_name: 'demo_credentials', value: JSON text)
+  // Demo mode
   useEffect(() => {
     if (mode === 'demo') {
       sessionStorage.setItem('xelpay_demo_mode', 'true');
@@ -252,13 +246,6 @@ function LoginContent() {
       sessionStorage.removeItem('xelpay_demo_mode');
     }
   }, [mode]);
-
-  useEffect(() => {
-    if (cooldown > 0) {
-      const t = setInterval(() => setCooldown(c => c - 1), 1000);
-      return () => clearInterval(t);
-    }
-  }, [cooldown]);
 
   useEffect(() => {
     if (otpCooldown > 0) {
@@ -325,10 +312,7 @@ function LoginContent() {
     const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      if (error.message.toLowerCase().includes('email not confirmed')) {
-        setUnverifiedEmail(email);
-        setViewState('unverified');
-      } else if (error.message.toLowerCase().includes('invalid login credentials')) {
+      if (error.message.toLowerCase().includes('invalid login credentials')) {
         toast.error('Wrong email or password.');
       } else {
         toast.error(error.message);
@@ -359,10 +343,6 @@ function LoginContent() {
 
     if (!merchant) {
       toast.error('No account found with this email address.');
-      setLoading(false); recaptchaRef.current?.reset(); setCaptchaToken(null); return;
-    }
-    if (!merchant.is_email_verified) {
-      setUnverifiedEmail(email); setViewState('unverified');
       setLoading(false); recaptchaRef.current?.reset(); setCaptchaToken(null); return;
     }
 
@@ -468,67 +448,6 @@ function LoginContent() {
     if (error) { toast.error(error.message); setGoogleLoading(false); }
   };
 
-  // ── Resend verification ───────────────────────────────────────────────────
-  const handleResendVerification = async () => {
-    if (!captchaToken) { toast.error('Please complete the reCAPTCHA.'); return; }
-    setLoading(true);
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email: unverifiedEmail,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    });
-    if (error) { toast.error(error.message); }
-    else {
-      toast.success('Verification link resent! Check your inbox.');
-      setCooldown(60); setResendCount(c => c + 1); setShowResendForm(false);
-    }
-    recaptchaRef.current?.reset(); setCaptchaToken(null); setLoading(false);
-  };
-
-  // ── Check if email verified ───────────────────────────────────────────────
-  const handleCheckVerified = async () => {
-    setCheckingVerified(true);
-    try {
-      const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
-
-      if (refreshErr || !refreshData?.user) {
-        const { data: merchant } = await supabase
-          .from('merchants')
-          .select('is_email_verified')
-          .eq('email', unverifiedEmail)
-          .maybeSingle();
-        if (merchant?.is_email_verified) {
-          toast.success('Email verified! You can now log in.');
-          setViewState('form'); setShowResendForm(false);
-        } else {
-          toast.error('Email not verified yet. Please check your inbox.');
-        }
-      } else {
-        const user = refreshData.user;
-        if (user.email_confirmed_at) {
-          try { await syncEmailVerified(user.id); } catch (_) {}
-          toast.success('Email verified! You can now log in.');
-          setViewState('form'); setShowResendForm(false);
-        } else {
-          const { data: merchant } = await supabase
-            .from('merchants')
-            .select('is_email_verified')
-            .eq('email', unverifiedEmail)
-            .maybeSingle();
-          if (merchant?.is_email_verified) {
-            toast.success('Email verified! You can now log in.');
-            setViewState('form'); setShowResendForm(false);
-          } else {
-            toast.error('Email not verified yet. Please check your inbox and click the link.');
-          }
-        }
-      }
-    } catch {
-      toast.error('Something went wrong. Please try again.');
-    }
-    setCheckingVerified(false);
-  };
-
   const inputClass = 'w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm text-slate-900 dark:text-white placeholder:text-slate-400';
   const labelClass = 'text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-0.5 mb-1 block';
   const isDark = resolvedTheme === 'dark';
@@ -630,90 +549,8 @@ function LoginContent() {
                 </Link>
               </div>
 
-              {/* ── UNVERIFIED VIEW ── */}
-              {viewState === 'unverified' ? (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 text-center">
-                  <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                    <MailWarning size={32} />
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Verify Your Email</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-                    We've sent a verification link to{' '}
-                    <b className="text-slate-700 dark:text-slate-300">{unverifiedEmail}</b>.
-                    Please check your inbox to activate your account.
-                  </p>
-
-                  <button
-                    onClick={handleCheckVerified}
-                    disabled={checkingVerified}
-                    className="w-full mb-3 bg-green-600 disabled:bg-green-500 text-white py-3.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-green-700 transition-all shadow-sm"
-                  >
-                    {checkingVerified
-                      ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      : <><CheckCircle2 size={15} /> I Have Verified My Email</>
-                    }
-                  </button>
-
-                  {!showResendForm ? (
-                    <div className="space-y-3">
-                      <button
-                        onClick={() => setShowResendForm(true)}
-                        className="w-full bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 py-3.5 rounded-xl text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-slate-200 dark:border-slate-700"
-                      >
-                        I didn't receive the email
-                      </button>
-                      <p className="text-xs text-slate-500">
-                        Entered the wrong email?{' '}
-                        <Link href="/signup" onClick={clearForgotSession} className="text-blue-600 hover:underline font-semibold">
-                          Create a new account
-                        </Link>
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4 animate-in zoom-in-95 duration-300">
-                      <div className="flex justify-center">
-                        {mounted && (
-                          <ReCAPTCHA
-                            ref={recaptchaRef}
-                            sitekey={RECAPTCHA_SITE_KEY}
-                            onChange={token => setCaptchaToken(token)}
-                            onExpired={() => setCaptchaToken(null)}
-                            theme={isDark ? 'dark' : 'light'}
-                          />
-                        )}
-                      </div>
-                      <button
-                        disabled={loading || cooldown > 0 || resendCount >= 3}
-                        onClick={handleResendVerification}
-                        className="w-full bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm flex items-center justify-center shadow-lg transition-all"
-                      >
-                        {loading
-                          ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          : resendCount >= 3
-                            ? 'Maximum limit reached'
-                            : cooldown > 0
-                              ? `Resend again in ${cooldown}s`
-                              : 'Resend Verification Link'}
-                      </button>
-                      <button
-                        onClick={() => { setShowResendForm(false); recaptchaRef.current?.reset(); setCaptchaToken(null); }}
-                        className="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 uppercase tracking-widest"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => { setViewState('form'); setShowResendForm(false); }}
-                    className="mt-8 flex items-center justify-center gap-1.5 mx-auto text-xs text-slate-400 hover:text-blue-600 uppercase tracking-widest font-bold transition-colors"
-                  >
-                    <ArrowLeft size={14} /> Back to Login
-                  </button>
-                </div>
-
-              /* ── OTP INPUT VIEW ── */
-              ) : viewState === 'otp_input' ? (
+              {/* ── OTP INPUT VIEW ── */}
+              {viewState === 'otp_input' ? (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 text-center">
                   <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
                     <ShieldCheck size={32} className="text-blue-600" />

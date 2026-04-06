@@ -58,6 +58,7 @@ export async function GET(request: Request) {
   }
 
   if (!merchant) {
+    // Sign out so the user isn't stuck in a limbo auth state
     await supabase.auth.signOut();
     return NextResponse.redirect(
       new URL('/login?error=no_account', requestUrl.origin)

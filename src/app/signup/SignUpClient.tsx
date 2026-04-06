@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
-import { Mail, Lock, User, MapPin, CheckCircle, ArrowRight, X, AlertCircle, LogIn, Users, Loader2, EyeOff, Eye, Check, Moon, Sun, Menu, Home, HelpCircle, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Mail, Lock, User, MapPin, CheckCircle, ArrowRight, X, AlertCircle, LogIn, Users, Loader2, EyeOff, Eye, Check, Moon, Sun, Menu, HelpCircle, ShieldCheck, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -370,7 +370,7 @@ function SignUpContent() {
     }
   }, [resendCooldown]);
 
-  // Auto-fill referral code from URL param (flawless)
+  // Auto-fill referral code from URL param
   useEffect(() => {
     if (refCodeFromUrl) {
       setFormData(prev => ({ ...prev, referCode: refCodeFromUrl }));
@@ -420,15 +420,13 @@ function SignUpContent() {
     const fullPhone = `${countryCode}${formData.phone.replace(/\s/g, '')}`;
     const generatedMerchantId = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // ── Attempt signUp (OTP mode — no emailRedirectTo needed for OTP) ──
+    // ── Attempt signUp ──
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
       options: {
         data: { full_name: formData.fullName, merchant_id: generatedMerchantId },
-        // No emailRedirectTo — Supabase will send a 6-digit OTP automatically
-        // when email confirmations are set to OTP mode in the Supabase dashboard.
-        // If your project uses email links, switch Supabase Auth → Email OTP in dashboard.
+        // No emailRedirectTo — Supabase sends 6-digit OTP when auth is set to OTP mode
       }
     });
 
@@ -449,7 +447,6 @@ function SignUpContent() {
           .maybeSingle();
 
         if (existingMerchant) {
-          // This is a real existing account — show error
           setErrorModal({ show: true, message: 'Email already registered. Please login instead.' });
           setLoading(false);
           recaptchaRef.current?.reset();
@@ -469,7 +466,6 @@ function SignUpContent() {
             return;
           }
 
-          // We don't have a userId here for ghost users — we'll get it after verifyOtp
           pendingSignup.current = {
             userId: '', // will be populated after OTP verification
             email: formData.email,
@@ -491,7 +487,6 @@ function SignUpContent() {
         }
       }
 
-      // Any other auth error
       setErrorModal({ show: true, message: authError.message });
       setLoading(false);
       recaptchaRef.current?.reset();
@@ -539,7 +534,7 @@ function SignUpContent() {
     setLoading(false);
   };
 
-  // ─── STEP 2: Verify OTP → updateUser password → registerMerchant → redirect
+  // ─── STEP 2: Verify OTP → registerMerchant → set session cookie → redirect
   const handleVerifyOtp = async () => {
     if (!pendingSignup.current || otp.length < 6) return;
     setLoading(true);
@@ -570,11 +565,11 @@ function SignUpContent() {
       pending.userId = userId;
     }
 
-    // Sync password for ghost users (re-confirms the password after OTP)
+    // Sync password for ghost users
     try {
       await supabase.auth.updateUser({ password: pending.password });
     } catch (_) {
-      // Non-fatal — user can reset password later if needed
+      // Non-fatal
     }
 
     // Save to DB — ONLY after successful OTP verification
@@ -601,7 +596,7 @@ function SignUpContent() {
     setLoading(false);
   };
 
-  // ─── Success modal close → redirect to next param ────────────────────────
+  // ─── Success modal close → redirect ──────────────────────────────────────
   const handleSuccessClose = () => {
     router.push(nextUrl);
   };
@@ -639,12 +634,16 @@ function SignUpContent() {
     ) : <div className="w-9 h-9" />
   );
 
+  // OTP view active — hide sidebar plan card and show OTP card centered
+  const isOtpView = viewState === 'otp';
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] font-sans transition-colors duration-300">
       <Toaster position="top-center" richColors />
 
       {/* ── HEADER ── */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+        {/* Desktop header */}
         <div className="hidden md:flex items-center h-16 px-8 justify-between max-w-7xl mx-auto w-full">
           <Link href="/" className="flex items-center gap-1">
             <span className="text-2xl font-black text-blue-600 tracking-tighter">X</span>
@@ -661,7 +660,8 @@ function SignUpContent() {
           </div>
         </div>
 
-        <div className="flex md:hidden items-center h-16 px-4 justify-between relative max-w-7xl mx-auto w-full">
+        {/* Mobile header — no icons on nav links, clean alignment */}
+        <div className="flex md:hidden items-center h-16 px-4 justify-between max-w-7xl mx-auto w-full">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
@@ -669,27 +669,35 @@ function SignUpContent() {
           >
             {menuOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
+
+          {/* Center logo on mobile */}
+          <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
+            <span className="text-xl font-black text-blue-600 tracking-tighter">X</span>
+            <span className="text-lg font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
+          </Link>
+
           <ThemeToggle />
         </div>
 
+        {/* Mobile dropdown menu — no icons, clean text */}
         {menuOpen && (
           <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0d1526] animate-in slide-in-from-top-2 duration-200">
             <div className="px-4 py-3 flex flex-col gap-1 max-w-7xl mx-auto w-full">
               <Link href="/" onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
-                <Home size={15} /> Home
+                className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
+                Home
               </Link>
               <Link href="/info/contact" onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
-                <HelpCircle size={15} /> Help
+                className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
+                Help
               </Link>
               <Link href="/#pricing" onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
+                className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
                 Pricing
               </Link>
               <Link href="/login" onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
-                <LogIn size={15} /> Login
+                className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
+                Login
               </Link>
             </div>
           </div>
@@ -697,71 +705,11 @@ function SignUpContent() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-8 md:py-12 md:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
 
-          {/* ── Sidebar Plan Card ── */}
-          <div className="lg:col-span-4 lg:sticky lg:top-24">
-            <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 md:p-7 shadow-sm border border-slate-200 dark:border-slate-800">
-
-              {mode === 'demo' && (
-                <div className="bg-yellow-400 text-yellow-900 text-[10px] font-semibold px-4 py-1.5 rounded-lg uppercase tracking-widest mb-4 text-center animate-pulse">
-                  Demo Mode Active
-                </div>
-              )}
-
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Your Plan</h3>
-                <button onClick={() => setShowPlanSwitcher(true)}
-                  className="text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 px-3 py-1.5 rounded-full uppercase hover:bg-blue-600 hover:text-white transition-all">
-                  Change Plan
-                </button>
-              </div>
-
-              {selectedPlan ? (
-                <div className={`p-4 bg-slate-50 dark:bg-[#0B1120] rounded-xl border-2 ${selectedColors.border} relative`}>
-                  {selectedPlan.tag && (
-                    <span className={`inline-flex items-center gap-1 bg-gradient-to-r ${selectedColors.badge} ${selectedColors.badgeText} text-[9px] font-semibold px-3 py-1 rounded-full uppercase tracking-widest mb-3`}>
-                      <span>{selectedPlan.tag.split(':')[0].match(/^\p{Emoji}/u)?.[0] || '✦'}</span>
-                      <span>{selectedPlan.tag.split(':')[0].replace(/^\p{Emoji}\s*/u, '')}</span>
-                    </span>
-                  )}
-                  <h4 className="text-base font-semibold text-slate-900 dark:text-white">{selectedPlan.name}</h4>
-                  <div className="mt-1 mb-3 flex items-baseline gap-1">
-                    <span className={`text-2xl font-bold ${selectedColors.price}`}>
-                      {selectedPlan.price === 0 ? 'Free' : `৳${selectedPlan.price}`}
-                    </span>
-                    <span className="text-[10px] text-slate-400 uppercase">/month</span>
-                  </div>
-                  <ul className="space-y-1.5">
-                    <li className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
-                      <CheckCircle size={12} className={`${selectedColors.check} shrink-0 mt-0.5`} />
-                      {(selectedPlan.transaction_limit_monthly ?? 100) === 0
-                        ? 'Unlimited transactions / month'
-                        : `${(selectedPlan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`}
-                    </li>
-                    {(Array.isArray(selectedPlan.features) ? selectedPlan.features : []).slice(0, 3).map((f: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
-                        <CheckCircle size={12} className={`${selectedColors.check} shrink-0 mt-0.5`} /> {f}
-                      </li>
-                    ))}
-                    {selectedPlan.price === 0 && (
-                      <li className="flex items-start gap-2 text-xs text-green-600 dark:text-green-400">
-                        <CheckCircle size={12} className="shrink-0 mt-0.5" /> No payment required
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              ) : (
-                <div className="h-28 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
-              )}
-            </div>
-          </div>
-
-          {/* ── Signup Form / OTP View ── */}
-          <div className="lg:col-span-8 bg-white dark:bg-[#111827] rounded-2xl p-5 md:p-10 shadow-sm border border-slate-200 dark:border-slate-800">
-
-            {/* ─── OTP Step ─────────────────────────────────────────────────── */}
-            {viewState === 'otp' ? (
+        {/* OTP view — centered card, sidebar hidden */}
+        {isOtpView ? (
+          <div className="flex items-center justify-center">
+            <div className="w-full max-w-md bg-white dark:bg-[#111827] rounded-2xl p-8 md:p-10 shadow-sm border border-slate-200 dark:border-slate-800">
               <OtpView
                 email={formData.email}
                 otp={otp}
@@ -772,151 +720,213 @@ function SignUpContent() {
                 loading={loading}
                 resendCooldown={resendCooldown}
               />
-            ) : (
-              /* ─── Form Step ──────────────────────────────────────────────── */
-              <>
-                <div className="mb-7">
-                  <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Create Account</h2>
-                  <p className="text-slate-400 mt-1.5 text-sm">Enter your details to get started with XelPay.</p>
+            </div>
+          </div>
+        ) : (
+          /* Normal form view — two-column layout */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
+
+            {/* ── Sidebar Plan Card ── */}
+            <div className="lg:col-span-4 lg:sticky lg:top-24">
+              <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 md:p-7 shadow-sm border border-slate-200 dark:border-slate-800">
+
+                {mode === 'demo' && (
+                  <div className="bg-yellow-400 text-yellow-900 text-[10px] font-semibold px-4 py-1.5 rounded-lg uppercase tracking-widest mb-4 text-center animate-pulse">
+                    Demo Mode Active
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Your Plan</h3>
+                  <button onClick={() => setShowPlanSwitcher(true)}
+                    className="text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 px-3 py-1.5 rounded-full uppercase hover:bg-blue-600 hover:text-white transition-all">
+                    Change Plan
+                  </button>
                 </div>
 
-                <form onSubmit={handleSignUp} className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
-
-                  <div className="md:col-span-2">
-                    <label className={labelClass}>Full Name <span className="text-red-400">*</span></label>
-                    <div className="relative">
-                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                      <input required className={`${inputClass} pl-10`} placeholder="e.g. Rahim Ahmed"
-                        onChange={e => setFormData({ ...formData, fullName: e.target.value })} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Phone <span className="text-red-400">*</span></label>
-                    <div className="flex gap-2">
-                      <select value={countryCode} onChange={e => setCountryCode(e.target.value)}
-                        className="px-3 py-3.5 bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-blue-500 shrink-0">
-                        <option value="+880">🇧🇩 +880</option>
-                        <option value="+1">🇺🇸 +1</option>
-                        <option value="+44">🇬🇧 +44</option>
-                        <option value="+91">🇮🇳 +91</option>
-                      </select>
-                      <input required type="tel" className={inputClass} placeholder="1XXXXXXXXX"
-                        onChange={e => setFormData({ ...formData, phone: e.target.value })} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Email <span className="text-red-400">*</span></label>
-                    <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                      <input required type="email" name="email" autoComplete="username" className={`${inputClass} pl-10`} placeholder="admin@example.com"
-                        value={formData.email}
-                        onChange={e => setFormData({ ...formData, email: e.target.value })} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className={labelClass.replace('mb-1', '')}>Password <span className="text-red-400">*</span></label>
-                      <button type="button" onClick={generatePassword} className="text-[10px] text-blue-600 hover:underline uppercase tracking-wider">
-                        Generate
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                      <input required type={showPassword ? 'text' : 'password'} name="password" autoComplete="new-password"
-                        placeholder="••••••••" value={formData.password}
-                        className={`${inputClass} pl-10 pr-11`}
-                        onChange={e => setFormData({ ...formData, password: e.target.value })} />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1 ml-0.5">Min. 8 characters, 1 uppercase &amp; 1 number. Symbols optional.</p>
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Confirm Password <span className="text-red-400">*</span></label>
-                    <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                      <input required type={showConfirmPassword ? 'text' : 'password'} name="confirm-password" autoComplete="new-password"
-                        placeholder="••••••••" value={formData.confirmPassword}
-                        className={`${inputClass} pl-10 pr-11 ${formData.confirmPassword && formData.password !== formData.confirmPassword ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : ''}`}
-                        onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} />
-                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
-                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                    {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                      <p className="text-[10px] text-red-500 mt-1 ml-0.5">Passwords do not match</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>City / Address <span className="text-red-400">*</span></label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                      <input required className={`${inputClass} pl-10`} placeholder="Dhaka, Bangladesh"
-                        onChange={e => setFormData({ ...formData, address: e.target.value })} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Referral Code <span className="text-slate-400 normal-case tracking-normal">(optional)</span></label>
-                    <div className="relative">
-                      <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                      <input type="text" value={formData.referCode}
-                        className={`${inputClass} pl-10 uppercase tracking-widest font-medium`}
-                        placeholder="XEL-XXXXXX"
-                        onChange={e => setFormData({ ...formData, referCode: e.target.value })} />
-                    </div>
-                  </div>
-
-                  <div className="md:col-span-2 flex justify-center">
-                    {mounted && (
-                      <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme={resolvedTheme === 'dark' ? 'dark' : 'light'} />
-                    )}
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="flex items-start gap-3 cursor-pointer select-none">
-                      <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)}
-                        className="w-4 h-4 mt-0.5 rounded border-slate-300 accent-blue-600 shrink-0" required />
-                      <span className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                        I agree to the{' '}
-                        <a href={termsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" onClick={e => e.stopPropagation()}>Terms & Conditions</a>
-                        {' '}and{' '}
-                        <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" onClick={e => e.stopPropagation()}>Privacy Policy</a>
-                        {' '}of XelPay. <span className="text-red-400">*</span>
+                {selectedPlan ? (
+                  <div className={`p-4 bg-slate-50 dark:bg-[#0B1120] rounded-xl border-2 ${selectedColors.border} relative`}>
+                    {selectedPlan.tag && (
+                      <span className={`inline-flex items-center gap-1 bg-gradient-to-r ${selectedColors.badge} ${selectedColors.badgeText} text-[9px] font-semibold px-3 py-1 rounded-full uppercase tracking-widest mb-3`}>
+                        <span>{selectedPlan.tag.split(':')[0].match(/^\p{Emoji}/u)?.[0] || '✦'}</span>
+                        <span>{selectedPlan.tag.split(':')[0].replace(/^\p{Emoji}\s*/u, '')}</span>
                       </span>
-                    </label>
-                  </div>
-
-                  <div className="md:col-span-2 pt-1">
-                    <button disabled={loading || !selectedPlan}
-                      className="w-full bg-blue-600 disabled:bg-blue-400 text-white py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2.5">
-                      {loading ? (
-                        <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Sending OTP...</>
-                      ) : (
-                        <>Create Account <ArrowRight size={16} /></>
+                    )}
+                    <h4 className="text-base font-semibold text-slate-900 dark:text-white">{selectedPlan.name}</h4>
+                    <div className="mt-1 mb-3 flex items-baseline gap-1">
+                      <span className={`text-2xl font-bold ${selectedColors.price}`}>
+                        {selectedPlan.price === 0 ? 'Free' : `৳${selectedPlan.price}`}
+                      </span>
+                      <span className="text-[10px] text-slate-400 uppercase">/month</span>
+                    </div>
+                    <ul className="space-y-1.5">
+                      <li className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <CheckCircle size={12} className={`${selectedColors.check} shrink-0 mt-0.5`} />
+                        {(selectedPlan.transaction_limit_monthly ?? 100) === 0
+                          ? 'Unlimited transactions / month'
+                          : `${(selectedPlan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`}
+                      </li>
+                      {(Array.isArray(selectedPlan.features) ? selectedPlan.features : []).slice(0, 3).map((f: string, i: number) => (
+                        <li key={i} className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
+                          <CheckCircle size={12} className={`${selectedColors.check} shrink-0 mt-0.5`} /> {f}
+                        </li>
+                      ))}
+                      {selectedPlan.price === 0 && (
+                        <li className="flex items-start gap-2 text-xs text-green-600 dark:text-green-400">
+                          <CheckCircle size={12} className="shrink-0 mt-0.5" /> No payment required
+                        </li>
                       )}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="h-28 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
+                )}
+              </div>
+            </div>
+
+            {/* ── Signup Form ── */}
+            <div className="lg:col-span-8 bg-white dark:bg-[#111827] rounded-2xl p-5 md:p-10 shadow-sm border border-slate-200 dark:border-slate-800">
+              <div className="mb-7">
+                <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Create Account</h2>
+                <p className="text-slate-400 mt-1.5 text-sm">Enter your details to get started with XelPay.</p>
+              </div>
+
+              <form onSubmit={handleSignUp} className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
+
+                <div className="md:col-span-2">
+                  <label className={labelClass}>Full Name <span className="text-red-400">*</span></label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input required className={`${inputClass} pl-10`} placeholder="e.g. Rahim Ahmed"
+                      onChange={e => setFormData({ ...formData, fullName: e.target.value })} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Phone <span className="text-red-400">*</span></label>
+                  <div className="flex gap-2">
+                    <select value={countryCode} onChange={e => setCountryCode(e.target.value)}
+                      className="px-3 py-3.5 bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-blue-500 shrink-0">
+                      <option value="+880">🇧🇩 +880</option>
+                      <option value="+1">🇺🇸 +1</option>
+                      <option value="+44">🇬🇧 +44</option>
+                      <option value="+91">🇮🇳 +91</option>
+                    </select>
+                    <input required type="tel" className={inputClass} placeholder="1XXXXXXXXX"
+                      onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Email <span className="text-red-400">*</span></label>
+                  <div className="relative">
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input required type="email" name="email" autoComplete="username" className={`${inputClass} pl-10`} placeholder="admin@example.com"
+                      value={formData.email}
+                      onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className={labelClass.replace('mb-1', '')}>Password <span className="text-red-400">*</span></label>
+                    <button type="button" onClick={generatePassword} className="text-[10px] text-blue-600 hover:underline uppercase tracking-wider">
+                      Generate
                     </button>
                   </div>
-                </form>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input required type={showPassword ? 'text' : 'password'} name="password" autoComplete="new-password"
+                      placeholder="••••••••" value={formData.password}
+                      className={`${inputClass} pl-10 pr-11`}
+                      onChange={e => setFormData({ ...formData, password: e.target.value })} />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1 ml-0.5">Min. 8 characters, 1 uppercase &amp; 1 number. Symbols optional.</p>
+                </div>
 
-                <p className="text-center mt-5 text-sm text-slate-400">
-                  Already registered?{' '}
-                  <Link href={`/login${mode === 'demo' ? '?mode=demo' : ''}`} className="text-blue-600 font-medium hover:underline">Sign In</Link>
-                  {' '}&bull;{' '}
-                  <Link href="/forgot-password" className="text-blue-600 font-medium hover:underline">Reset Password</Link>
-                </p>
-              </>
-            )}
+                <div>
+                  <label className={labelClass}>Confirm Password <span className="text-red-400">*</span></label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input required type={showConfirmPassword ? 'text' : 'password'} name="confirm-password" autoComplete="new-password"
+                      placeholder="••••••••" value={formData.confirmPassword}
+                      className={`${inputClass} pl-10 pr-11 ${formData.confirmPassword && formData.password !== formData.confirmPassword ? 'border-red-400 focus:border-red-500 focus:ring-red-500' : ''}`}
+                      onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })} />
+                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                    <p className="text-[10px] text-red-500 mt-1 ml-0.5">Passwords do not match</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className={labelClass}>City / Address <span className="text-red-400">*</span></label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input required className={`${inputClass} pl-10`} placeholder="Dhaka, Bangladesh"
+                      onChange={e => setFormData({ ...formData, address: e.target.value })} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Referral Code <span className="text-slate-400 normal-case tracking-normal">(optional)</span></label>
+                  <div className="relative">
+                    <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input type="text" value={formData.referCode}
+                      className={`${inputClass} pl-10 uppercase tracking-widest font-medium`}
+                      placeholder="XEL-XXXXXX"
+                      onChange={e => setFormData({ ...formData, referCode: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="md:col-span-2 flex justify-center">
+                  {mounted && (
+                    <ReCAPTCHA ref={recaptchaRef} sitekey={RECAPTCHA_SITE_KEY} onChange={token => setCaptchaToken(token)} onExpired={() => setCaptchaToken(null)} theme={resolvedTheme === 'dark' ? 'dark' : 'light'} />
+                  )}
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="flex items-start gap-3 cursor-pointer select-none">
+                    <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)}
+                      className="w-4 h-4 mt-0.5 rounded border-slate-300 accent-blue-600 shrink-0" required />
+                    <span className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                      I agree to the{' '}
+                      <a href={termsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" onClick={e => e.stopPropagation()}>Terms & Conditions</a>
+                      {' '}and{' '}
+                      <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline" onClick={e => e.stopPropagation()}>Privacy Policy</a>
+                      {' '}of XelPay. <span className="text-red-400">*</span>
+                    </span>
+                  </label>
+                </div>
+
+                <div className="md:col-span-2 pt-1">
+                  <button disabled={loading || !selectedPlan}
+                    className="w-full bg-blue-600 disabled:bg-blue-400 text-white py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2.5">
+                    {loading ? (
+                      <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Sending OTP...</>
+                    ) : (
+                      <>Create Account <ArrowRight size={16} /></>
+                    )}
+                  </button>
+                </div>
+              </form>
+
+              <p className="text-center mt-5 text-sm text-slate-400">
+                Already registered?{' '}
+                <Link href={`/login${mode === 'demo' ? '?mode=demo' : ''}`} className="text-blue-600 font-medium hover:underline">Sign In</Link>
+                {' '}&bull;{' '}
+                <Link href="/forgot-password" className="text-blue-600 font-medium hover:underline">Reset Password</Link>
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <SuccessModal isOpen={showSuccess} merchantId={tempMerchantId} onClose={handleSuccessClose} />

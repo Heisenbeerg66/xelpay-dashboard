@@ -50,9 +50,13 @@ export async function middleware(request: NextRequest) {
 
   // ─── 1. No session + protected route → force login ───────────────────────
   if (!user && isProtected) {
+    // Clear stale auth_session cookie so landing page doesn't show Dashboard
+    // button for a user whose Supabase session has already expired.
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('next', pathname);
-    return NextResponse.redirect(loginUrl);
+    const redirectResponse = NextResponse.redirect(loginUrl);
+    redirectResponse.cookies.delete('auth_session');
+    return redirectResponse;
   }
 
   // ─── 2. Active session + auth route → bounce to dashboard ────────────────
@@ -81,15 +85,15 @@ export async function middleware(request: NextRequest) {
   }
 
   // ─── 3. Set custom HttpOnly auth cookie on every valid session ───────────
-  // This cookie mirrors the Supabase session so headers/layouts can read auth
-  // state server-side without calling Supabase on every Server Component.
+  // No maxAge — cookie persists until user explicitly logs out or clears
+  // browser data. Supabase handles its own token refresh automatically.
   if (user) {
-    // auth_session cookie — HttpOnly, Secure, SameSite=Strict, 24h
     response.cookies.set('auth_session', 'authenticated', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 86400,          // exactly 24 hours
+      // No maxAge — session lives as long as the Supabase JWT is valid and
+      // auto-refreshed. User must explicitly log out to clear.
       path: '/',
     });
   } else {

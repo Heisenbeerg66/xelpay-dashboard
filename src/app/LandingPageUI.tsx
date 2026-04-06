@@ -93,8 +93,7 @@ const WhatsAppIcon = ({ size = 20 }: { size?: number }) => (
 );
 const MailIconSvg = ({ size = 20 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#EA4335" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="20" height="16" x="2" y="4" rx="2"/>
-    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+    <rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
   </svg>
 );
 
@@ -145,7 +144,6 @@ function getPlanColors(tag: string | null): {
 
 const SECTIONS = ['hero', 'features', 'pricing', 'reviews', 'faq', 'contact'];
 
-// CHANGE 2: isAuthenticated prop যোগ করা হয়েছে
 export default function LandingPageUI({ isAuthenticated, initialPlans, initialReviews, initialFaqs, initialSettings }: any) {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const router = useRouter();
@@ -165,6 +163,34 @@ export default function LandingPageUI({ isAuthenticated, initialPlans, initialRe
     setMounted(true);
     if (!localStorage.getItem('theme')) {
       setTheme('dark');
+    }
+  }, []);
+
+  // ── iOS scroll jitter fix ──────────────────────────────────────────────────
+  // On iOS Safari, momentum scrolling with transform-based animations causes
+  // jitter. We apply will-change and translate3d hints to help the GPU layer.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    // Detect iOS
+    const isIOS = /iP(hone|od|ad)/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    if (isIOS) {
+      // Force GPU compositing on the main scroll container
+      document.documentElement.style.setProperty('-webkit-overflow-scrolling', 'touch');
+      // Smooth out framer-motion animated elements by pre-compositing them
+      const style = document.createElement('style');
+      style.id = 'xelpay-ios-fix';
+      style.textContent = `
+        /* iOS scroll jitter fix — force GPU layer for animated elements */
+        [data-framer-motion] { will-change: transform; transform: translateZ(0); }
+        .group { will-change: transform; }
+        /* Prevent sub-pixel rendering shifts during momentum scroll */
+        * { -webkit-font-smoothing: antialiased; }
+      `;
+      if (!document.getElementById('xelpay-ios-fix')) {
+        document.head.appendChild(style);
+      }
     }
   }, []);
 
@@ -239,10 +265,10 @@ export default function LandingPageUI({ isAuthenticated, initialPlans, initialRe
     contactSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleTicketClick = async (e: React.MouseEvent) => {
+  // Submit a Ticket — if logged in go straight to /dashboard/support
+  const handleTicketClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
+    if (isAuthenticated) {
       router.push('/dashboard/support');
     } else {
       router.push('/login?next=/dashboard/support');
@@ -295,7 +321,6 @@ export default function LandingPageUI({ isAuthenticated, initialPlans, initialRe
               <div className="w-9 h-9" />
             )}
 
-            {/* CHANGE 3: Desktop nav — isAuthenticated check */}
             {isAuthenticated ? (
               <Link
                 href="/dashboard"
@@ -330,7 +355,6 @@ export default function LandingPageUI({ isAuthenticated, initialPlans, initialRe
               <div className="w-9 h-9" />
             )}
 
-            {/* CHANGE 4: Mobile nav icon — isAuthenticated check */}
             {isAuthenticated ? (
               <Link href="/dashboard" className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-md">
                 <LayoutDashboard size={18} />
@@ -374,7 +398,6 @@ export default function LandingPageUI({ isAuthenticated, initialPlans, initialRe
             </div>
             <div className="mx-5 h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
             <div className="px-5 pb-5 pt-3 flex flex-col gap-3">
-              {/* CHANGE 5: Mobile dropdown — isAuthenticated check */}
               {isAuthenticated ? (
                 <Link
                   href="/dashboard"
@@ -418,8 +441,8 @@ export default function LandingPageUI({ isAuthenticated, initialPlans, initialRe
             accounts. Receive funds directly — no third-party holding.
           </p>
           <div className="flex flex-row gap-3 justify-center md:justify-start">
-            {/* CHANGE 6: Hero "Get Started" button — isAuthenticated check */}
             {isAuthenticated ? (
+              /* Logged-in: show only Dashboard button, no Live Demo */
               <Link
                 href="/dashboard"
                 className="flex-1 md:flex-none bg-blue-600 text-white px-5 py-3 md:px-7 md:py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-all"
@@ -427,17 +450,20 @@ export default function LandingPageUI({ isAuthenticated, initialPlans, initialRe
                 <LayoutDashboard size={15} /> Dashboard <ArrowRight size={15} />
               </Link>
             ) : (
-              <Link
-                href={starterPlanId ? `/signup?plan=${starterPlanId}` : '/signup'}
-                className="flex-1 md:flex-none bg-blue-600 text-white px-5 py-3 md:px-7 md:py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-all"
-              >
-                Start For Free <ArrowRight size={15} />
-              </Link>
+              /* Guest: show Start For Free + Live Demo */
+              <>
+                <Link
+                  href={starterPlanId ? `/signup?plan=${starterPlanId}` : '/signup'}
+                  className="flex-1 md:flex-none bg-blue-600 text-white px-5 py-3 md:px-7 md:py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-all"
+                >
+                  Start For Free <ArrowRight size={15} />
+                </Link>
+                <button onClick={() => router.push('/login?mode=demo')}
+                  className="flex-1 md:flex-none bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white px-5 py-3 md:px-7 md:py-3.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                  <PlayCircle size={15} /> Live Demo
+                </button>
+              </>
             )}
-            <button onClick={() => router.push('/login?mode=demo')}
-              className="flex-1 md:flex-none bg-white dark:bg-[#1E293B] border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white px-5 py-3 md:px-7 md:py-3.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-              <PlayCircle size={15} /> Live Demo
-            </button>
           </div>
         </div>
 
@@ -745,7 +771,8 @@ export default function LandingPageUI({ isAuthenticated, initialPlans, initialRe
                       </a>
                     </li>
                     <li>
-                      <a href="#contact" onClick={handleTicketClick} className="hover:text-white transition flex items-center gap-1.5 group cursor-pointer">
+                      {/* Submit a Ticket — respects auth state */}
+                      <a href="#" onClick={handleTicketClick} className="hover:text-white transition flex items-center gap-1.5 group cursor-pointer">
                         <ChevronRight size={13} className="text-slate-700 group-hover:text-blue-500 transition" /> Submit a Ticket
                       </a>
                     </li>
