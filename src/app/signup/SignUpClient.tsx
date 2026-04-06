@@ -146,24 +146,36 @@ const ErrorModal = ({ isOpen, message, onClose }: any) => {
 const SuccessModal = ({ isOpen, merchantId, onClose }: any) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl p-7 text-center border border-green-100 dark:border-green-900/20 shadow-2xl">
-        <div className="w-16 h-16 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-5">
-          <CheckCircle size={32} className="text-green-500" strokeWidth={1.5} />
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+        {/* Top accent bar */}
+        <div className="h-1 w-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600" />
+        <div className="p-8 text-center">
+          {/* Icon */}
+          <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <CheckCircle size={28} className="text-blue-600 dark:text-blue-400" strokeWidth={1.75} />
+          </div>
+          {/* Title */}
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1 tracking-tight">
+            Registration Successful
+          </h3>
+          <p className="text-slate-400 dark:text-slate-500 text-sm mb-6 leading-relaxed">
+            Your merchant account has been created and verified successfully.
+          </p>
+          {/* Merchant ID */}
+          <div className="bg-slate-50 dark:bg-[#0B1120] rounded-xl p-4 mb-6 border border-slate-100 dark:border-slate-800">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5">Merchant ID</p>
+            <p className="text-2xl font-black text-blue-600 dark:text-blue-400 tracking-widest">#{merchantId}</p>
+            <p className="text-[10px] text-slate-400 mt-1.5">Save this ID — you'll need it for support</p>
+          </div>
+          {/* CTA */}
+          <button
+            onClick={onClose}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2"
+          >
+            <LogIn size={15} /> Continue to Dashboard
+          </button>
         </div>
-        <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">Welcome Aboard! 🎉</h3>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mb-5 leading-relaxed">
-          Your XelPay account is verified and ready to use.
-        </p>
-        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl mb-5 border border-blue-100 dark:border-blue-800/30">
-          <span className="text-[10px] font-medium text-blue-500 uppercase tracking-widest block mb-1">Your Merchant ID</span>
-          <span className="text-2xl font-bold text-blue-600 dark:text-blue-400 tracking-wider">#{merchantId}</span>
-          <p className="text-[10px] text-slate-400 mt-1">Keep this safe for support</p>
-        </div>
-        <button onClick={onClose}
-          className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
-          <LogIn size={16} /> Go to Dashboard
-        </button>
       </div>
     </div>
   );
@@ -533,13 +545,18 @@ function SignUpContent() {
     setLoading(false);
   };
 
+  // ─── AUTO-VERIFY: trigger as soon as user enters all 6 digits ───────────
+  const isVerifyingRef = useRef(false);
+  useEffect(() => {
+    if (viewState === 'otp' && otp.length === 6 && !loading && pendingSignup.current && !isVerifyingRef.current) {
+      isVerifyingRef.current = true;
+      handleVerifyOtp();
+    }
+    if (otp.length < 6) isVerifyingRef.current = false;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp, viewState]);
+
   // ─── STEP 2: Verify OTP + Register Merchant — single server round-trip ────
-  //
-  // Everything (OTP verify, merchant DB insert, session cookie commit) happens
-  // inside one POST to /auth/verify-and-register. By the time the response
-  // arrives the browser already has valid Supabase session cookies AND the
-  // merchant row exists, so middleware never sees the limbo state that caused
-  // the "clearing session" / force-signout loop.
   const handleVerifyOtp = async () => {
     if (!pendingSignup.current || otp.length < 6) return;
     setLoading(true);
@@ -552,7 +569,7 @@ function SignUpContent() {
       body: JSON.stringify({
         email:             pending.email,
         token:             otp,
-        userId:            pending.userId,      // '' for ghost users — server resolves it
+        userId:            pending.userId,
         fullName:          pending.fullName,
         phone:             pending.phone,
         address:           pending.address,
@@ -567,28 +584,22 @@ function SignUpContent() {
 
     if (!res.ok || result.error) {
       const msg = result.error || 'Verification failed. Please try again.';
-      // OTP-specific errors shown as toast; other errors as modal
       if (res.status === 401) {
         toast.error(msg);
       } else {
         setErrorModal({ show: true, message: msg });
       }
+      isVerifyingRef.current = false;
       setLoading(false);
       return;
     }
 
-    // Session cookies are already committed in the server response — safe to
-    // show the success modal now. window.location.href in handleSuccessClose
-    // will do a full reload so middleware sees everything correctly.
     setTempMerchantId(result.merchantDisplayId!);
     setShowSuccess(true);
     setLoading(false);
   };
 
   // ─── Success modal close → hard redirect ─────────────────────────────────
-  // Full page reload (not Next.js client navigation) so the browser sends the
-  // freshly-set Supabase session cookies on the very first request — middleware
-  // finds the session + merchant row and goes straight to /dashboard.
   const handleSuccessClose = () => {
     window.location.href = nextUrl;
   };

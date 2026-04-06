@@ -161,6 +161,9 @@ function LoginContent() {
   const [otpCooldown, setOtpCooldown] = useState(0);
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Guard to prevent double-fire of auto-verify
+  const isVerifyingRef = useRef(false);
+
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
@@ -189,6 +192,16 @@ function LoginContent() {
     };
     loadOtpSetting();
   }, []);
+
+  // ─── AUTO-VERIFY: fire as soon as the 6th OTP digit is entered ───────────
+  useEffect(() => {
+    if (viewState === 'otp_input' && otp.length === 6 && !loading && !isVerifyingRef.current) {
+      isVerifyingRef.current = true;
+      handleVerifyOtp();
+    }
+    if (otp.length < 6) isVerifyingRef.current = false;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp, viewState]);
 
   const fetchTelegramLink = async () => {
     const { data: settings } = await supabase
@@ -385,6 +398,7 @@ function LoginContent() {
 
     if (verifyError) {
       toast.error('Invalid or expired OTP. Please try again.');
+      isVerifyingRef.current = false;
       setLoading(false); return;
     }
 
