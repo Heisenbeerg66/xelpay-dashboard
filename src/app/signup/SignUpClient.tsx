@@ -7,7 +7,6 @@ import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Toaster, toast } from 'sonner';
 import ReCAPTCHA from 'react-google-recaptcha';
-import { registerMerchant } from '@/lib/auth';
 import { useTheme } from 'next-themes';
 
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
@@ -534,71 +533,64 @@ function SignUpContent() {
     setLoading(false);
   };
 
-  // ─── STEP 2: Verify OTP → registerMerchant → set session cookie → redirect
+  // ─── STEP 2: Verify OTP + Register Merchant — single server round-trip ────
+  //
+  // Everything (OTP verify, merchant DB insert, session cookie commit) happens
+  // inside one POST to /auth/verify-and-register. By the time the response
+  // arrives the browser already has valid Supabase session cookies AND the
+  // merchant row exists, so middleware never sees the limbo state that caused
+  // the "clearing session" / force-signout loop.
   const handleVerifyOtp = async () => {
     if (!pendingSignup.current || otp.length < 6) return;
     setLoading(true);
 
     const pending = pendingSignup.current;
 
-    const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-      email: pending.email,
-      token: otp,
-      type: 'signup',
+    const res = await fetch('/auth/verify-and-register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email:             pending.email,
+        token:             otp,
+        userId:            pending.userId,      // '' for ghost users — server resolves it
+        fullName:          pending.fullName,
+        phone:             pending.phone,
+        address:           pending.address,
+        referCode:         pending.referCode,
+        planId:            pending.planId,
+        planPrice:         pending.planPrice,
+        merchantDisplayId: pending.merchantDisplayId,
+      }),
     });
 
-    if (verifyError) {
-      toast.error("Invalid or expired OTP. Please try again.");
+    const result = await res.json();
+
+    if (!res.ok || result.error) {
+      const msg = result.error || 'Verification failed. Please try again.';
+      // OTP-specific errors shown as toast; other errors as modal
+      if (res.status === 401) {
+        toast.error(msg);
+      } else {
+        setErrorModal({ show: true, message: msg });
+      }
       setLoading(false);
       return;
     }
 
-    const userId = verifyData.user?.id;
-    if (!userId) {
-      toast.error("Verification failed. Please try again.");
-      setLoading(false);
-      return;
-    }
-
-    // For ghost users whose userId was blank, fill it in now
-    if (!pending.userId) {
-      pending.userId = userId;
-    }
-
-    // Sync password for ghost users
-    try {
-      await supabase.auth.updateUser({ password: pending.password });
-    } catch (_) {
-      // Non-fatal
-    }
-
-    // Save to DB — ONLY after successful OTP verification
-    const result = await registerMerchant({
-      userId: pending.userId,
-      email: pending.email,
-      fullName: pending.fullName,
-      phone: pending.phone,
-      address: pending.address,
-      referCode: pending.referCode,
-      planId: pending.planId,
-      planPrice: pending.planPrice,
-      merchantDisplayId: pending.merchantDisplayId,
-    });
-
-    if (result.error) {
-      setErrorModal({ show: true, message: result.error });
-      setLoading(false);
-      return;
-    }
-
+    // Session cookies are already committed in the server response — safe to
+    // show the success modal now. window.location.href in handleSuccessClose
+    // will do a full reload so middleware sees everything correctly.
     setTempMerchantId(result.merchantDisplayId!);
     setShowSuccess(true);
     setLoading(false);
   };
 
-  // ─── Success modal close → redirect ──────────────────────────────────────
+  // ─── Success modal close → hard redirect ─────────────────────────────────
+  // Full page reload (not Next.js client navigation) so the browser sends the
+  // freshly-set Supabase session cookies on the very first request — middleware
+  // finds the session + merchant row and goes straight to /dashboard.
   const handleSuccessClose = () => {
-    router.push(nextUrl);
+    window.location.href = nextUrl;
   };
 
   const selectedColors = getPlanColors(selectedPlan?.tag || null);
