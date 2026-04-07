@@ -12,6 +12,9 @@ export async function middleware(request: NextRequest) {
   });
 
   const pathname = request.nextUrl.pathname;
+  
+  // 💥 ডায়নামিক প্রোটোকল চেক: লাইভে https এবং লোকালহোস্টে http
+  const isSecure = request.nextUrl.protocol === 'https:';
 
   // Pass-through: auth callbacks and API routes — never intercept these.
   if (pathname.startsWith('/auth/') || pathname.startsWith('/api/')) {
@@ -35,7 +38,8 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, {
               ...options,
-              secure: process.env.NODE_ENV === 'production', // 👈 লোকালহোস্টের জন্য ফিক্স
+              secure: isSecure, // 👈 ডায়নামিক সিকিউর চেক
+              sameSite: 'lax',  // 👈 Redirect এর জন্য এটি সবচেয়ে নিরাপদ
             })
           );
         },
@@ -92,8 +96,8 @@ export async function middleware(request: NextRequest) {
   if (user) {
     response.cookies.set('auth_session', 'authenticated', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: isSecure, // 👈 ডায়নামিক সিকিউর চেক
+      sameSite: 'lax',  // 👈 'strict' এর বদলে 'lax' দেওয়া হলো যেন OAuth ঠিকমত কাজ করে
       // No maxAge — session lives as long as the Supabase JWT is valid and
       // auto-refreshed. User must explicitly log out to clear.
       path: '/',

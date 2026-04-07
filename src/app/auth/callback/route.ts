@@ -9,6 +9,9 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get('code');
   const next = requestUrl.searchParams.get('next') || '/dashboard';
 
+  // 💥 ডায়নামিক প্রোটোকল চেক: লাইভে https এবং লোকালহোস্টে http
+  const isSecure = requestUrl.protocol === 'https:';
+
   if (!code) {
     return NextResponse.redirect(
       new URL('/login?error=no_code', requestUrl.origin)
@@ -29,7 +32,8 @@ export async function GET(request: Request) {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, {
               ...options,
-              secure: process.env.NODE_ENV === 'production', // 👈 লোকালহোস্টের জন্য ফিক্স
+              secure: isSecure, // 👈 ডায়নামিক সিকিউর চেক
+              sameSite: 'lax',  // 👈 Redirect এর জন্য এটি সবচেয়ে নিরাপদ
             });
           });
         },
