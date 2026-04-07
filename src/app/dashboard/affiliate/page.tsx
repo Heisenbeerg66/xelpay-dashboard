@@ -5,7 +5,7 @@ import {
   Users, Copy, Wallet, TrendingUp, ArrowUpRight, Loader2,
   Share2, Link2, Clock, AlertCircle, X, ShieldCheck, Gift,
   ArrowDownLeft, Check, QrCode, Eye, EyeOff, Smartphone,
-  ChevronDown,
+  ChevronDown, ExternalLink,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -22,7 +22,7 @@ interface SiteSettings {
   withdraw_open_days: number[];
   withdraw_open_dates: number[];
   withdraw_require_2fa: boolean;
-  withdrawal_fees: number; // percent
+  withdrawal_fees: number;
 }
 
 interface AffiliateWallet {
@@ -95,7 +95,7 @@ const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> =
   processing: { label: 'Processing', color: 'text-sky-600',     bg: 'bg-sky-50 dark:bg-sky-900/20' },
 };
 
-// ─── Native Share / Share Modal ─────────────────────────────────────────────
+// ─── Share Platforms ────────────────────────────────────────────────────────
 
 const SHARE_PLATFORMS = [
   {
@@ -136,51 +136,62 @@ const SHARE_PLATFORMS = [
   },
 ];
 
-async function ShareModal({ referralLink, onClose, isMobileNative }: {
-  referralLink: string; onClose: () => void; isMobileNative: boolean;
-}) {
+// ─── Share Modal (Desktop only — sync component, no async) ──────────────────
+
+function ShareModal({ referralLink, onClose }: { referralLink: string; onClose: () => void }) {
   const shareText = 'Join XelPay — fastest payment gateway for Bangladeshi businesses. Use my referral link:';
-
-  // Mobile: native share sheet
-  const handleNativeShare = async () => {
-    try {
-      await navigator.share({ title: 'XelPay Referral', text: shareText, url: referralLink });
-      onClose();
-    } catch {}
-  };
-
-  if (isMobileNative && await navigator.share()) {
-    handleNativeShare();
-    return null;
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-4">
-      <div className="bg-white dark:bg-[#111827] w-full sm:max-w-xs sm:rounded-2xl rounded-t-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl">
+      <div className="bg-white dark:bg-[#111827] w-full sm:max-w-sm sm:rounded-2xl rounded-t-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Share your link</h3>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:rotate-90 transition-all">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Share your referral link</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">Choose a platform to share</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:rotate-90 transition-all"
+          >
             <X size={14} />
           </button>
         </div>
+
+        {/* Link preview */}
+        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 mb-4">
+          <Link2 size={11} className="text-slate-400 shrink-0" />
+          <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 truncate flex-1">{referralLink}</span>
+        </div>
+
         <div className="grid grid-cols-3 gap-2.5 mb-4">
           {SHARE_PLATFORMS.map(p => (
-            <button key={p.id}
-              onClick={() => window.open(p.url(referralLink, shareText), '_blank')}
-              className="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: p.color + '18' }}>
+            <button
+              key={p.id}
+              onClick={() => window.open(p.url(referralLink, shareText), '_blank', 'noopener,noreferrer')}
+              className="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all group"
+            >
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center transition-all group-hover:scale-110"
+                style={{ background: p.color + '18' }}
+              >
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke={p.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d={p.svgPath} />
                 </svg>
               </div>
-              <span className="text-[9px] font-medium text-slate-400 leading-tight text-center">{p.label}</span>
+              <span className="text-[10px] font-medium text-slate-400 leading-tight text-center">{p.label}</span>
             </button>
           ))}
         </div>
+
         <button
-          onClick={() => { navigator.clipboard.writeText(referralLink); toast.success('Link copied!'); onClose(); }}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
-          <Copy size={13} /> Copy link
+          onClick={() => {
+            navigator.clipboard.writeText(referralLink);
+            toast.success('Link copied!');
+            onClose();
+          }}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+        >
+          <Copy size={13} /> Copy link to clipboard
         </button>
       </div>
     </div>
@@ -223,8 +234,11 @@ function TotpEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () 
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
             <ShieldCheck size={16} className="text-blue-600" /> Setup 2FA Authenticator
           </h3>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:rotate-90 transition-all"><X size={14} /></button>
+          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:rotate-90 transition-all">
+            <X size={14} />
+          </button>
         </div>
+
         {step === 'info' && (
           <div className="text-center">
             <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -239,6 +253,7 @@ function TotpEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () 
             </button>
           </div>
         )}
+
         {step === 'qr' && (
           <div className="text-center">
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">Scan this QR code with your authenticator app.</p>
@@ -256,20 +271,50 @@ function TotpEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () 
             <button onClick={() => setStep('verify')} className="w-full py-3 rounded-xl bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-all">I've scanned it →</button>
           </div>
         )}
+
         {step === 'verify' && (
           <div className="text-center">
-            <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-4"><ShieldCheck size={24} className="text-blue-600" /></div>
+            <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <ShieldCheck size={24} className="text-blue-600" />
+            </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">Enter the 6-digit code from your authenticator app.</p>
-            <input type="text" inputMode="numeric" maxLength={6} value={code}
+            <input
+              type="text" inputMode="numeric" maxLength={6} value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
-              className="w-full text-center text-2xl font-mono tracking-[0.4em] py-3 px-4 rounded-xl bg-slate-50 dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 outline-none text-slate-900 dark:text-white mb-4 transition-all" />
+              className="w-full text-center text-2xl font-mono tracking-[0.4em] py-3 px-4 rounded-xl bg-slate-50 dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 outline-none text-slate-900 dark:text-white mb-4 transition-all"
+            />
             <button onClick={verifyEnroll} disabled={loading || code.length < 6}
               className="w-full py-3 rounded-xl bg-blue-600 disabled:bg-blue-400 text-white text-xs font-medium hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
               {loading ? <Loader2 size={14} className="animate-spin" /> : <><Check size={14} /> Verify & activate</>}
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Fee Breakdown Box ────────────────────────────────────────────────────
+
+function FeeBreakdown({ amtNum, feeAmt, netAmt, feePercent }: {
+  amtNum: number; feeAmt: number; netAmt: number; feePercent: number;
+}) {
+  if (amtNum <= 0 || feePercent <= 0) return null;
+  return (
+    <div className="mt-2.5 p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-1.5">
+      <div className="flex justify-between items-center text-[11px]">
+        <span className="text-slate-400 font-medium">Requested amount</span>
+        <span className="text-slate-700 dark:text-slate-300 font-semibold">৳ {amtNum.toLocaleString()}</span>
+      </div>
+      <div className="flex justify-between items-center text-[11px]">
+        <span className="text-slate-400 font-medium">Service fee ({feePercent}%)</span>
+        <span className="text-red-500 font-semibold">− ৳ {feeAmt.toLocaleString()}</span>
+      </div>
+      <div className="h-px bg-slate-200 dark:bg-slate-700 my-1" />
+      <div className="flex justify-between items-center">
+        <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">You'll receive</span>
+        <span className="text-sm font-bold text-emerald-600">৳ {netAmt.toLocaleString()}</span>
       </div>
     </div>
   );
@@ -294,7 +339,6 @@ function WithdrawModal({
   const [step, setStep]           = useState<'form' | 'totp'>('form');
   const [loading, setLoading]     = useState(false);
 
-  // Enabled methods (bank আলাদা, বাকি সব MFS)
   const enabledMethods = settings.withdraw_methods_enabled;
   const mfsMethods = enabledMethods.filter(m => m !== 'bank');
   const hasBankEnabled = enabledMethods.includes('bank');
@@ -367,26 +411,37 @@ function WithdrawModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-4">
       <div className="bg-white dark:bg-[#111827] w-full max-w-md sm:rounded-2xl rounded-t-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
               <Wallet size={15} className="text-blue-600" />
               {step === 'form' ? 'Request withdrawal' : 'Verify identity'}
             </h3>
-            {step === 'form' && <p className="text-[10px] text-slate-400 mt-0.5">Available: <span className="font-semibold text-emerald-600">৳ {wallet.withdrawable_balance.toLocaleString()}</span></p>}
+            {step === 'form' && (
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Available: <span className="font-semibold text-emerald-600">৳ {wallet.withdrawable_balance.toLocaleString()}</span>
+                {settings.withdrawal_fees > 0 && (
+                  <span className="ml-1.5 text-slate-400">· {settings.withdrawal_fees}% fee applies</span>
+                )}
+              </p>
+            )}
           </div>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:rotate-90 transition-all"><X size={14} /></button>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:rotate-90 transition-all">
+            <X size={14} />
+          </button>
         </div>
 
-        <div className="p-5 overflow-y-auto max-h-[80vh]">
+        <div className="px-6 py-5 overflow-y-auto max-h-[80vh] space-y-4">
           {!settings.withdraw_enabled && (
-            <div className="flex gap-2.5 p-3.5 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800/40 mb-4">
+            <div className="flex gap-2.5 p-3.5 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800/40">
               <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">Withdrawals are currently paused.</p>
             </div>
           )}
           {settings.withdraw_enabled && !todayOk && (
-            <div className="flex gap-2.5 p-3.5 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800/40 mb-4">
+            <div className="flex gap-2.5 p-3.5 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800/40">
               <Clock size={14} className="text-amber-600 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">Withdrawals are not open today.</p>
             </div>
@@ -397,21 +452,21 @@ function WithdrawModal({
               {/* MFS Methods */}
               {mfsMethods.length > 0 && (
                 <div>
-                  <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-2 block">Mobile banking (MFS)</label>
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2.5 block">Mobile banking (MFS)</label>
                   <div className="grid grid-cols-2 gap-2">
                     {mfsMethods.map(m => {
                       const logoUrl = getLogoUrl(m);
                       const selected = method === m;
                       return (
                         <button type="button" key={m} onClick={() => setMethod(m)}
-                          className={`flex items-center gap-2.5 p-3 rounded-xl border-2 transition-all text-left ${selected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'}`}>
+                          className={`flex items-center gap-2.5 p-3 rounded-xl border-2 transition-all text-left ${selected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}>
                           {logoUrl
                             ? <img src={logoUrl} alt={m} className="w-8 h-8 object-contain rounded-lg" />
                             : <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-semibold text-slate-500">{m[0].toUpperCase()}</div>
                           }
                           <div>
                             <p className={`text-xs font-semibold capitalize ${selected ? 'text-blue-600' : 'text-slate-700 dark:text-slate-300'}`}>{m}</p>
-                            <p className="text-[9px] text-slate-400">Min ৳{settings.withdraw_min_mfs}</p>
+                            <p className="text-[10px] text-slate-400">Min ৳{settings.withdraw_min_mfs}</p>
                           </div>
                         </button>
                       );
@@ -423,13 +478,13 @@ function WithdrawModal({
               {/* Bank */}
               {hasBankEnabled && (
                 <div>
-                  <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-2 block">Bank transfer</label>
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2.5 block">Bank transfer</label>
                   <button type="button" onClick={() => setMethod('bank')}
-                    className={`w-full flex items-center gap-2.5 p-3 rounded-xl border-2 transition-all text-left ${method === 'bank' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'}`}>
+                    className={`w-full flex items-center gap-2.5 p-3 rounded-xl border-2 transition-all text-left ${method === 'bank' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}>
                     <img src={BANK_LOGO} alt="bank" className="w-8 h-8 object-contain" />
                     <div>
                       <p className={`text-xs font-semibold ${method === 'bank' ? 'text-blue-600' : 'text-slate-700 dark:text-slate-300'}`}>Bank transfer</p>
-                      <p className="text-[9px] text-slate-400">Min ৳{settings.withdraw_min_bank}</p>
+                      <p className="text-[10px] text-slate-400">Min ৳{settings.withdraw_min_bank}</p>
                     </div>
                   </button>
                 </div>
@@ -440,38 +495,29 @@ function WithdrawModal({
                 <>
                   {/* Amount */}
                   <div>
-                    <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block">Amount (BDT)</label>
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block">Amount (BDT)</label>
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-medium text-slate-400">৳</span>
-                      <input type="number" min={minAmt} max={wallet.withdrawable_balance} step="1" value={amount}
+                      <input
+                        type="number" min={minAmt} max={wallet.withdrawable_balance} step="1" value={amount}
                         onChange={e => setAmount(e.target.value)} placeholder={`Min ৳${minAmt}`}
-                        className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all" />
+                        className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all"
+                      />
                     </div>
-                    {/* Fee breakdown */}
-                    {amtNum > 0 && settings.withdrawal_fees > 0 && (
-                      <div className="mt-2 p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-700/50 space-y-1">
-                        <div className="flex justify-between text-[10px]">
-                          <span className="text-slate-400">Requested</span>
-                          <span className="text-slate-600 dark:text-slate-300 font-medium">৳ {amtNum.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between text-[10px]">
-                          <span className="text-slate-400">Fee ({settings.withdrawal_fees}%)</span>
-                          <span className="text-red-500 font-medium">- ৳ {feeAmt.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between text-[10px] border-t border-slate-200 dark:border-slate-700 pt-1 mt-1">
-                          <span className="text-slate-700 dark:text-slate-200 font-semibold">You'll receive</span>
-                          <span className="text-emerald-600 font-semibold">৳ {netAmt.toLocaleString()}</span>
-                        </div>
-                      </div>
+
+                    {/* Fee breakdown — shown always when method selected and amount > 0 */}
+                    <FeeBreakdown amtNum={amtNum} feeAmt={feeAmt} netAmt={netAmt} feePercent={settings.withdrawal_fees} />
+
+                    {amount && !amtValid && (
+                      <p className="text-[11px] text-red-500 mt-1.5">Must be ৳{minAmt}–৳{wallet.withdrawable_balance.toFixed(0)}</p>
                     )}
-                    {amount && !amtValid && <p className="text-[10px] text-red-500 mt-1">Must be ৳{minAmt}–৳{wallet.withdrawable_balance.toFixed(0)}</p>}
                   </div>
 
                   {/* MFS: account type + number */}
                   {isMfs && (
                     <>
                       <div>
-                        <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block">Account type</label>
+                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block">Account type</label>
                         <div className="grid grid-cols-3 gap-2">
                           {ACCOUNT_TYPES.map(at => (
                             <button type="button" key={at.value} onClick={() => setAccountType(at.value)}
@@ -482,7 +528,7 @@ function WithdrawModal({
                         </div>
                       </div>
                       <div>
-                        <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block capitalize">{method} number</label>
+                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block capitalize">{method} number</label>
                         <input type="text" value={account} onChange={e => setAccount(e.target.value)} placeholder="01XXXXXXXXX"
                           className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all" />
                       </div>
@@ -493,7 +539,7 @@ function WithdrawModal({
                   {isBank && (
                     <>
                       <div>
-                        <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block">Bank name</label>
+                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block">Bank name</label>
                         <div className="relative">
                           <select value={bankName} onChange={e => setBankName(e.target.value)}
                             className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all appearance-none">
@@ -504,23 +550,23 @@ function WithdrawModal({
                         </div>
                       </div>
                       <div>
-                        <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block">Account number</label>
+                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block">Account number</label>
                         <input type="text" value={account} onChange={e => setAccount(e.target.value)} placeholder="Account number"
                           className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all" />
                       </div>
                       <div>
-                        <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block">Account holder name</label>
+                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block">Account holder name</label>
                         <input type="text" value={bankDetails.name} onChange={e => setBankDetails({ ...bankDetails, name: e.target.value })} placeholder="Full name"
                           className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all" />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block">Branch</label>
+                          <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block">Branch</label>
                           <input type="text" value={bankDetails.branch} onChange={e => setBankDetails({ ...bankDetails, branch: e.target.value })} placeholder="e.g. Motijheel"
                             className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all" />
                         </div>
                         <div>
-                          <label className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block">Routing no.</label>
+                          <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5 block">Routing no.</label>
                           <input type="text" value={bankDetails.routing} onChange={e => setBankDetails({ ...bankDetails, routing: e.target.value })} placeholder="9-digit"
                             className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all" />
                         </div>
@@ -531,17 +577,18 @@ function WithdrawModal({
                   {/* Info notices */}
                   <div className="flex gap-2.5 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
                     <Clock size={12} className="text-blue-500 shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Processing time: <span className="font-medium text-slate-700 dark:text-slate-300">{settings.withdraw_process_time}</span></p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Processing time: <span className="font-medium text-slate-700 dark:text-slate-300">{settings.withdraw_process_time}</span></p>
                   </div>
+
                   {settings.withdraw_require_2fa && (
                     <div className="flex gap-2.5 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/40">
                       <ShieldCheck size={12} className="text-blue-600 shrink-0 mt-0.5" />
-                      <p className="text-[10px] text-blue-700 dark:text-blue-400">Authenticator code required on next step.</p>
+                      <p className="text-[11px] text-blue-700 dark:text-blue-400">Authenticator code required on next step.</p>
                     </div>
                   )}
 
                   <button type="submit" disabled={loading}
-                    className="w-full py-3 rounded-xl bg-blue-600 disabled:bg-blue-400 text-white text-xs font-semibold hover:-translate-y-0.5 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
+                    className="w-full py-3 rounded-xl bg-blue-600 disabled:bg-blue-400 text-white text-sm font-semibold hover:-translate-y-0.5 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
                     {loading ? <Loader2 size={13} className="animate-spin" /> : <><ArrowUpRight size={13} /> {settings.withdraw_require_2fa ? 'Next: verify →' : 'Submit request'}</>}
                   </button>
                 </>
@@ -550,19 +597,29 @@ function WithdrawModal({
           )}
 
           {canProceed && step === 'totp' && (
-            <div className="text-center">
-              <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-4"><ShieldCheck size={26} className="text-blue-600" /></div>
+            <div className="text-center py-2">
+              <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <ShieldCheck size={26} className="text-blue-600" />
+              </div>
               <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Verify identity</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
-                Enter the 6-digit code to confirm withdrawal of <span className="font-semibold text-slate-700 dark:text-slate-300">৳ {amtNum.toLocaleString()}</span>
-                {settings.withdrawal_fees > 0 && <span className="text-slate-400"> (you'll receive ৳ {netAmt.toLocaleString()})</span>}.
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 leading-relaxed">
+                Enter the 6-digit code to confirm withdrawal of{' '}
+                <span className="font-semibold text-slate-700 dark:text-slate-300">৳ {amtNum.toLocaleString()}</span>.
               </p>
-              <input type="text" inputMode="numeric" maxLength={6} value={totpCode}
+              {settings.withdrawal_fees > 0 && (
+                <p className="text-xs text-slate-400 mb-5">
+                  After {settings.withdrawal_fees}% fee, you'll receive{' '}
+                  <span className="font-semibold text-emerald-600">৳ {netAmt.toLocaleString()}</span>
+                </p>
+              )}
+              <input
+                type="text" inputMode="numeric" maxLength={6} value={totpCode}
                 onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="000000"
-                className="w-full text-center text-2xl font-mono tracking-[0.4em] py-3 px-4 rounded-xl bg-slate-50 dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 outline-none text-slate-900 dark:text-white mb-4 transition-all" />
+                className="w-full text-center text-2xl font-mono tracking-[0.4em] py-3 px-4 rounded-xl bg-slate-50 dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 outline-none text-slate-900 dark:text-white mb-4 transition-all"
+              />
               <button onClick={() => doSubmit(totpCode)} disabled={loading || totpCode.length < 6}
-                className="w-full py-3 rounded-xl bg-blue-600 disabled:bg-blue-400 text-white text-xs font-semibold hover:-translate-y-0.5 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
+                className="w-full py-3 rounded-xl bg-blue-600 disabled:bg-blue-400 text-white text-sm font-semibold hover:-translate-y-0.5 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
                 {loading ? <Loader2 size={13} className="animate-spin" /> : <><Check size={13} /> Confirm withdrawal</>}
               </button>
               <button onClick={() => setStep('form')} className="mt-3 text-xs text-slate-400 hover:text-blue-600 transition-colors">← Back</button>
@@ -575,22 +632,21 @@ function WithdrawModal({
 }
 
 // ─── Stat Card ─────────────────────────────────────────────────────────────
+// Mobile: all stacked; Desktop: grid. No accent/blue variant anymore — all uniform.
 
-function StatCard({ label, value, sub, accent, icon }: {
-  label: string; value: string; sub?: string; accent?: boolean; icon: React.ReactNode;
+function StatCard({ label, value, sub, icon }: {
+  label: string; value: string; sub?: string; icon: React.ReactNode;
 }) {
   return (
-    <div className={`rounded-2xl p-4 sm:p-5 border transition-all ${
-      accent ? 'bg-blue-600 border-blue-500' : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800'
-    }`}>
-      <div className="flex items-center justify-between mb-3">
-        <p className={`text-[9px] font-semibold uppercase tracking-widest ${accent ? 'text-blue-100' : 'text-slate-400'}`}>{label}</p>
-        <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${accent ? 'bg-white/15' : 'bg-slate-100 dark:bg-slate-800'}`}>
-          <span className={`scale-90 ${accent ? 'text-white' : 'text-slate-500'}`}>{icon}</span>
+    <div className="rounded-2xl p-4 sm:p-5 border bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 transition-all hover:shadow-sm">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-widest text-slate-400">{label}</p>
+        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center bg-slate-100 dark:bg-slate-800">
+          <span className="scale-90 text-slate-500">{icon}</span>
         </div>
       </div>
-      <p className={`text-xl sm:text-2xl font-semibold leading-none ${accent ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{value}</p>
-      {sub && <p className={`text-[9px] mt-1.5 ${accent ? 'text-blue-200' : 'text-slate-400'}`}>{sub}</p>}
+      <p className="text-xl sm:text-2xl font-bold leading-none text-slate-900 dark:text-white">{value}</p>
+      {sub && <p className="text-[10px] sm:text-[11px] mt-1.5 text-slate-400">{sub}</p>}
     </div>
   );
 }
@@ -692,9 +748,9 @@ export default function AffiliateProgram() {
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
+  // Share handler: mobile → native sheet, desktop → custom modal
   const handleShare = async () => {
-    // Mobile: native share sheet
-    if (isMobileDevice && navigator.share) {
+    if (isMobileDevice && typeof navigator.share === 'function') {
       try {
         await navigator.share({
           title: 'XelPay Referral',
@@ -702,9 +758,10 @@ export default function AffiliateProgram() {
           url: referralLink,
         });
         return;
-      } catch {}
+      } catch {
+        // User cancelled or share failed — fall through to modal
+      }
     }
-    // Desktop: custom modal
     setShowShare(true);
   };
 
@@ -723,127 +780,167 @@ export default function AffiliateProgram() {
 
   return (
     <>
-      <div className="max-w-5xl mx-auto space-y-5 pb-14 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="max-w-5xl mx-auto space-y-5 sm:space-y-6 pb-14 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-        {/* Header */}
+        {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-violet-50 dark:bg-violet-900/20 flex items-center justify-center shrink-0">
-              <Users size={17} className="text-violet-600" />
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-violet-50 dark:bg-violet-900/20 flex items-center justify-center shrink-0">
+              <Users size={18} className="text-violet-600" />
             </div>
             <div>
-              <h1 className="text-base font-semibold text-slate-900 dark:text-white leading-none">Affiliate program</h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <h1 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white leading-none">Affiliate program</h1>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                 Earn <span className="font-medium text-violet-600">{settings?.refer_commission ?? 10}% lifetime commission</span> per referral
               </p>
             </div>
           </div>
-          <button onClick={() => setShowWithdraw(true)}
+          <button
+            onClick={() => setShowWithdraw(true)}
             disabled={!settings?.withdraw_enabled || walletData.withdrawable_balance <= 0}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium hover:-translate-y-0.5 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed self-start sm:self-auto">
+            className="flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs sm:text-sm font-medium hover:-translate-y-0.5 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed self-start sm:self-auto"
+          >
             <Wallet size={13} /> Withdraw funds
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard label="Total earned"    value={`৳ ${walletData.total_earned.toLocaleString()}`}      icon={<TrendingUp size={13} />} />
-          <StatCard label="Available"       value={`৳ ${walletData.withdrawable_balance.toLocaleString()}`} sub="Ready to withdraw" accent icon={<Wallet size={13} />} />
-          <StatCard label="Total withdrawn" value={`৳ ${walletData.total_withdrawn.toLocaleString()}`}
-            sub={walletData.last_withdrawn_at ? `Last: ${new Date(walletData.last_withdrawn_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short' })}` : 'None yet'}
-            icon={<ArrowDownLeft size={13} />} />
-          <StatCard label="Referrals" value={String(merchant?.total_refer ?? 0)} sub={`${merchant?.refer_link_clicks ?? 0} link clicks`} icon={<Users size={13} />} />
+        {/* ── Stats Grid ──
+              Mobile:  2 columns (2+2 rows)
+              Desktop: 4 columns
+        */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <StatCard
+            label="Total earned"
+            value={`৳ ${walletData.total_earned.toLocaleString()}`}
+            icon={<TrendingUp size={14} />}
+          />
+          <StatCard
+            label="Available"
+            value={`৳ ${walletData.withdrawable_balance.toLocaleString()}`}
+            sub="Ready to withdraw"
+            icon={<Wallet size={14} />}
+          />
+          <StatCard
+            label="Total withdrawn"
+            value={`৳ ${walletData.total_withdrawn.toLocaleString()}`}
+            sub={walletData.last_withdrawn_at
+              ? `Last: ${new Date(walletData.last_withdrawn_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`
+              : 'None yet'}
+            icon={<ArrowDownLeft size={14} />}
+          />
+          <StatCard
+            label="Referrals"
+            value={String(merchant?.total_refer ?? 0)}
+            sub={`${merchant?.refer_link_clicks ?? 0} link clicks`}
+            icon={<Users size={14} />}
+          />
         </div>
 
-        {/* Referral Link Card */}
+        {/* ── Referral Link Card ── */}
         <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-violet-700 rounded-2xl p-5 sm:p-7 shadow-xl">
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute -top-8 -right-8 w-48 h-48 rounded-full bg-white opacity-[0.04]" />
             <div className="absolute -bottom-6 left-10 w-32 h-32 rounded-full bg-violet-300 opacity-[0.08]" />
           </div>
           <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center border border-white/20 shrink-0">
+            <div className="flex items-center gap-3 mb-4 sm:mb-5">
+              <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center border border-white/20 shrink-0">
                 <Gift size={18} className="text-white" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-white">Your referral link</h2>
-                <p className="text-xs text-blue-100">Share on blog, YouTube, WhatsApp, socials</p>
+                <h2 className="text-sm sm:text-base font-semibold text-white">Your referral link</h2>
+                <p className="text-xs sm:text-sm text-blue-100">Share on blog, YouTube, WhatsApp, socials</p>
               </div>
             </div>
+
+            {/* Link row */}
             <div className="flex flex-col sm:flex-row gap-2 mb-4">
               <div className="flex items-center flex-1 bg-black/20 border border-white/15 rounded-xl px-3 py-2.5 min-w-0">
                 <Link2 size={11} className="text-blue-200 mr-2 shrink-0" />
-                <span className="text-xs font-mono text-white truncate flex-1">{referralLink}</span>
+                <span className="text-xs sm:text-sm font-mono text-white truncate flex-1">{referralLink}</span>
               </div>
               <div className="flex gap-2 shrink-0">
-                <button onClick={copyLink}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-blue-700 text-xs font-medium hover:bg-blue-50 transition-colors">
-                  {linkCopied ? <Check size={12} /> : <Copy size={12} />}
+                <button
+                  onClick={copyLink}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white text-blue-700 text-xs sm:text-sm font-medium hover:bg-blue-50 transition-colors"
+                >
+                  {linkCopied ? <Check size={13} /> : <Copy size={13} />}
                   {linkCopied ? 'Copied!' : 'Copy'}
                 </button>
-                <button onClick={handleShare}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-xs font-medium hover:bg-white/20 transition-colors">
-                  <Share2 size={12} /> Share
+                <button
+                  onClick={handleShare}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-xs sm:text-sm font-medium hover:bg-white/20 transition-colors"
+                >
+                  <Share2 size={13} /> Share
                 </button>
               </div>
             </div>
+
+            {/* Code row */}
             <div className="flex items-center gap-2.5 flex-wrap">
-              <div className="flex items-center gap-2 bg-black/20 border border-white/15 rounded-xl px-3.5 py-2">
-                <span className="text-[9px] text-blue-200 uppercase tracking-widest font-medium">Your code</span>
-                <span className="text-sm font-mono font-semibold text-white tracking-widest">{merchant?.refer_id ?? '—'}</span>
+              <div className="flex items-center gap-2.5 bg-black/20 border border-white/15 rounded-xl px-4 py-2.5">
+                <span className="text-[10px] text-blue-200 uppercase tracking-widest font-medium">Your code</span>
+                <span className="text-base sm:text-lg font-mono font-semibold text-white tracking-widest">{merchant?.refer_id ?? '—'}</span>
               </div>
-              <button onClick={copyCode}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white text-[9px] font-medium hover:bg-white/20 transition-colors">
-                {codeCopied ? <Check size={11} /> : <Copy size={11} />}
+              <button
+                onClick={copyCode}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-[10px] sm:text-xs font-medium hover:bg-white/20 transition-colors"
+              >
+                {codeCopied ? <Check size={12} /> : <Copy size={12} />}
                 {codeCopied ? 'Copied' : 'Copy code'}
               </button>
             </div>
           </div>
         </div>
 
-        {/* How it Works */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
-          <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-4">How it works</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        {/* ── How it Works ── */}
+        <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6">
+          <p className="text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-widest mb-5">How it works</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6">
             {[
-              { n: '01', title: 'Share your link', desc: 'Post your unique referral link on social media, YouTube, or your blog.', icon: <Share2 size={14} /> },
-              { n: '02', title: 'They sign up',    desc: 'Anyone who registers via your link is permanently tagged as your referral.', icon: <Users size={14} /> },
-              { n: '03', title: 'Earn monthly',    desc: `You get ${settings?.refer_commission ?? 10}% of their plan fee every billing cycle, for life.`, icon: <TrendingUp size={14} /> },
+              { n: '01', title: 'Share your link', desc: 'Post your unique referral link on social media, YouTube, or your blog.', icon: <Share2 size={15} /> },
+              { n: '02', title: 'They sign up',    desc: 'Anyone who registers via your link is permanently tagged as your referral.', icon: <Users size={15} /> },
+              { n: '03', title: 'Earn monthly',    desc: `You get ${settings?.refer_commission ?? 10}% of their plan fee every billing cycle, for life.`, icon: <TrendingUp size={15} /> },
             ].map(s => (
-              <div key={s.n} className="flex gap-3.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">{s.icon}</div>
+              <div key={s.n} className="flex gap-4">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">{s.icon}</div>
                 <div>
-                  <p className="text-[8px] font-semibold text-blue-400 uppercase tracking-widest mb-0.5">Step {s.n}</p>
-                  <h4 className="text-xs font-semibold text-slate-900 dark:text-white mb-1">{s.title}</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{s.desc}</p>
+                  <p className="text-[9px] sm:text-[10px] font-semibold text-blue-400 uppercase tracking-widest mb-0.5">Step {s.n}</p>
+                  <h4 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white mb-1">{s.title}</h4>
+                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{s.desc}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Tables */}
+        {/* ── Tables ── */}
         <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+          {/* Tabs */}
           <div className="flex border-b border-slate-100 dark:border-slate-800 px-4 pt-3 gap-0.5">
             {(['referrals', 'history'] as const).map(t => (
               <button key={t} onClick={() => setActiveTab(t)}
-                className={`px-4 py-2.5 text-[9px] font-semibold uppercase tracking-widest rounded-t-lg border-b-2 -mb-px transition-all ${
-                  activeTab === t ? 'text-blue-600 border-blue-600 bg-blue-50/50 dark:bg-blue-900/10' : 'text-slate-400 border-transparent hover:text-slate-600'
+                className={`px-4 sm:px-5 py-2.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest rounded-t-lg border-b-2 -mb-px transition-all ${
+                  activeTab === t
+                    ? 'text-blue-600 border-blue-600 bg-blue-50/50 dark:bg-blue-900/10'
+                    : 'text-slate-400 border-transparent hover:text-slate-600'
                 }`}>
                 {t === 'referrals' ? `Referrals (${commissions.length})` : `Withdrawals (${withdrawals.length})`}
               </button>
             ))}
           </div>
 
-          {/* Fee info bar */}
+          {/* Fee info bar — withdrawal history tab */}
           {settings && settings.withdrawal_fees > 0 && activeTab === 'history' && (
             <div className="flex items-center gap-2 px-5 py-2.5 bg-blue-50/60 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/20">
               <AlertCircle size={12} className="text-blue-500 shrink-0" />
-              <p className="text-[10px] text-blue-700 dark:text-blue-400">Withdrawal fee: <span className="font-semibold">{settings.withdrawal_fees}%</span> deducted from each request</p>
+              <p className="text-[11px] text-blue-700 dark:text-blue-400">
+                Withdrawal fee: <span className="font-semibold">{settings.withdrawal_fees}%</span> deducted from each request
+              </p>
             </div>
           )}
 
+          {/* Referrals table */}
           {activeTab === 'referrals' && (
             commissions.length === 0
               ? <EmptyState icon={<Users size={26} />} title="No referrals yet" sub="Share your link to get started" />
@@ -853,7 +950,7 @@ export default function AffiliateProgram() {
                     <thead>
                       <tr className="bg-slate-50/60 dark:bg-[#0B1120]/60">
                         {['Merchant', 'Plan', 'Date joined', 'Commission', 'Status'].map(h => (
-                          <th key={h} className="px-5 py-3 text-[9px] font-semibold text-slate-400 uppercase tracking-widest">{h}</th>
+                          <th key={h} className="px-5 py-3.5 text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-widest">{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -862,11 +959,17 @@ export default function AffiliateProgram() {
                         const st = STATUS_CFG[c.status] ?? STATUS_CFG.pending;
                         return (
                           <tr key={c.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors">
-                            <td className="px-5 py-3.5 text-xs font-semibold text-slate-900 dark:text-white">{c.merchant_name}</td>
-                            <td className="px-5 py-3.5"><span className="text-[9px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-1 rounded-lg uppercase tracking-wider">{c.plan_name}</span></td>
-                            <td className="px-5 py-3.5 text-xs text-slate-400">{new Date(c.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}</td>
-                            <td className="px-5 py-3.5 text-xs font-semibold text-emerald-600">+ ৳ {parseFloat(String(c.commission_amount)).toLocaleString()}</td>
-                            <td className="px-5 py-3.5"><span className={`text-[9px] font-medium px-2.5 py-1 rounded-lg uppercase tracking-wider ${st.bg} ${st.color}`}>{st.label}</span></td>
+                            <td className="px-5 py-4 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white">{c.merchant_name}</td>
+                            <td className="px-5 py-4">
+                              <span className="text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-1 rounded-lg uppercase tracking-wider">{c.plan_name}</span>
+                            </td>
+                            <td className="px-5 py-4 text-xs sm:text-sm text-slate-400">
+                              {new Date(c.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </td>
+                            <td className="px-5 py-4 text-xs sm:text-sm font-semibold text-emerald-600">+ ৳ {parseFloat(String(c.commission_amount)).toLocaleString()}</td>
+                            <td className="px-5 py-4">
+                              <span className={`text-[10px] font-medium px-2.5 py-1 rounded-lg uppercase tracking-wider ${st.bg} ${st.color}`}>{st.label}</span>
+                            </td>
                           </tr>
                         );
                       })}
@@ -876,6 +979,7 @@ export default function AffiliateProgram() {
               )
           )}
 
+          {/* Withdrawals table */}
           {activeTab === 'history' && (
             withdrawals.length === 0
               ? <EmptyState icon={<Wallet size={26} />} title="No withdrawals yet" sub="Your withdrawal history will appear here" />
@@ -885,7 +989,7 @@ export default function AffiliateProgram() {
                     <thead>
                       <tr className="bg-slate-50/60 dark:bg-[#0B1120]/60">
                         {['Amount', 'Fee', 'Net received', 'Method', 'Account', 'Requested', 'Status'].map(h => (
-                          <th key={h} className="px-5 py-3 text-[9px] font-semibold text-slate-400 uppercase tracking-widest">{h}</th>
+                          <th key={h} className="px-5 py-3.5 text-[10px] sm:text-[11px] font-semibold text-slate-400 uppercase tracking-widest">{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -897,21 +1001,25 @@ export default function AffiliateProgram() {
                         try { const p = JSON.parse(w.account_details); acc = p.number ?? acc; } catch {}
                         return (
                           <tr key={w.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors">
-                            <td className="px-5 py-3.5 text-xs font-semibold text-slate-900 dark:text-white">৳ {parseFloat(String(w.amount)).toLocaleString()}</td>
-                            <td className="px-5 py-3.5 text-xs text-red-500">- ৳ {parseFloat(String(w.fee_amount || 0)).toLocaleString()}</td>
-                            <td className="px-5 py-3.5 text-xs font-semibold text-emerald-600">৳ {parseFloat(String(w.net_amount || w.amount)).toLocaleString()}</td>
-                            <td className="px-5 py-3.5">
-                              <span className="flex items-center gap-1.5">
+                            <td className="px-5 py-4 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white">৳ {parseFloat(String(w.amount)).toLocaleString()}</td>
+                            <td className="px-5 py-4 text-xs sm:text-sm text-red-500">− ৳ {parseFloat(String(w.fee_amount || 0)).toLocaleString()}</td>
+                            <td className="px-5 py-4 text-xs sm:text-sm font-semibold text-emerald-600">৳ {parseFloat(String(w.net_amount || w.amount)).toLocaleString()}</td>
+                            <td className="px-5 py-4">
+                              <span className="flex items-center gap-2">
                                 {logo
                                   ? <img src={logo.logo_url} alt={w.method} className="w-5 h-5 object-contain rounded" />
                                   : w.method === 'bank' ? <img src={BANK_LOGO} alt="bank" className="w-5 h-5 object-contain" /> : null
                                 }
-                                <span className="text-xs capitalize text-slate-700 dark:text-slate-300">{w.method}</span>
+                                <span className="text-xs sm:text-sm capitalize text-slate-700 dark:text-slate-300">{w.method}</span>
                               </span>
                             </td>
-                            <td className="px-5 py-3.5 text-xs font-mono text-slate-400">{acc}</td>
-                            <td className="px-5 py-3.5 text-xs text-slate-400">{new Date(w.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}</td>
-                            <td className="px-5 py-3.5"><span className={`text-[9px] font-medium px-2.5 py-1 rounded-lg uppercase tracking-wider ${st.bg} ${st.color}`}>{st.label}</span></td>
+                            <td className="px-5 py-4 text-xs sm:text-sm font-mono text-slate-400">{acc}</td>
+                            <td className="px-5 py-4 text-xs sm:text-sm text-slate-400">
+                              {new Date(w.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </td>
+                            <td className="px-5 py-4">
+                              <span className={`text-[10px] font-medium px-2.5 py-1 rounded-lg uppercase tracking-wider ${st.bg} ${st.color}`}>{st.label}</span>
+                            </td>
                           </tr>
                         );
                       })}
@@ -922,13 +1030,13 @@ export default function AffiliateProgram() {
           )}
         </div>
 
-        {/* 2FA notice */}
+        {/* ── 2FA notice ── */}
         {settings?.withdraw_require_2fa && !hasTOTP && (
-          <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-800/40">
-            <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 sm:p-5 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-800/40">
+            <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-0.5">Authenticator required for withdrawals</p>
-              <p className="text-xs text-amber-600 dark:text-amber-500 leading-relaxed">
+              <p className="text-xs sm:text-sm font-semibold text-amber-700 dark:text-amber-400 mb-0.5">Authenticator required for withdrawals</p>
+              <p className="text-xs sm:text-sm text-amber-600 dark:text-amber-500 leading-relaxed">
                 You haven't set up 2FA yet.{' '}
                 <button onClick={() => setShowEnrollTotp(true)} className="underline font-medium hover:no-underline">Set it up now →</button>
               </p>
@@ -937,9 +1045,9 @@ export default function AffiliateProgram() {
         )}
       </div>
 
-      {/* Modals */}
-      {showShare && !isMobileDevice && (
-        <ShareModal referralLink={referralLink} onClose={() => setShowShare(false)} isMobileNative={false} />
+      {/* ── Modals ── */}
+      {showShare && (
+        <ShareModal referralLink={referralLink} onClose={() => setShowShare(false)} />
       )}
 
       {showWithdraw && settings && merchant && (
@@ -964,10 +1072,10 @@ export default function AffiliateProgram() {
 
 function EmptyState({ icon, title, sub }: { icon: React.ReactNode; title: string; sub: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-2">
+    <div className="flex flex-col items-center justify-center py-14 text-slate-400 gap-2">
       <div className="opacity-20">{icon}</div>
-      <p className="text-xs font-medium">{title}</p>
-      <p className="text-[11px] opacity-70">{sub}</p>
+      <p className="text-xs sm:text-sm font-medium">{title}</p>
+      <p className="text-[11px] sm:text-xs opacity-70">{sub}</p>
     </div>
   );
 }
