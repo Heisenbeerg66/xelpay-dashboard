@@ -1,4 +1,3 @@
-// app/auth/callback/route.ts
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
@@ -28,7 +27,10 @@ export async function GET(request: Request) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
+            cookieStore.set(name, value, {
+              ...options,
+              secure: process.env.NODE_ENV === 'production', // 👈 লোকালহোস্টের জন্য ফিক্স
+            });
           });
         },
       },

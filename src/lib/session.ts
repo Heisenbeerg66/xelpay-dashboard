@@ -1,5 +1,3 @@
-// PATH: /lib/session.ts
-
 'use server';
 
 import { createServerClient } from '@supabase/ssr';
@@ -17,9 +15,21 @@ export async function logoutAction() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) { return cookieStore.get(name)?.value; },
-        set() {},
-        remove() {},
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, {
+                ...options,
+                secure: process.env.NODE_ENV === 'production',
+              });
+            });
+          } catch (error) {
+            // Server Component থেকে কল হলে কুকি সেট করা যায় না, তাই এটি ইগনোর করা হলো
+          }
+        },
       },
     }
   );
@@ -48,9 +58,19 @@ export async function getServerUser() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) { return cookieStore.get(name)?.value; },
-        set() {},
-        remove() {},
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, {
+                ...options,
+                secure: process.env.NODE_ENV === 'production',
+              });
+            });
+          } catch (error) {}
+        },
       },
     }
   );
