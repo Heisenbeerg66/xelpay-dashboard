@@ -310,9 +310,14 @@ function LoginContent() {
       if (emailConfirmedAt) {
         try { await syncEmailVerified(userId); } catch (_) {}
       }
-      router.push(nextUrl);
+      // window.location.href ব্যবহার করা হচ্ছে কারণ এটা full page reload করে।
+      // এতে middleware নতুন request-এ Supabase session detect করে
+      // auth_session HttpOnly cookie সঠিকভাবে set করতে পারে।
+      // router.push() শুধু client-side navigation করে — middleware cookie
+      // set হওয়ার আগেই navigate হয়ে login page-এ ফিরে আসার সমস্যা তৈরি করে।
+      window.location.href = nextUrl;
     } catch {
-      router.push(nextUrl);
+      window.location.href = nextUrl;
     }
   };
 

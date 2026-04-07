@@ -88,7 +88,12 @@ export async function POST(request: Request) {
           },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, {
+                ...options,
+                // localhost-এ secure: true হলে cookie set হয় না (HTTP),
+                // তাই production ছাড়া secure: false রাখতে হবে।
+                secure: process.env.NODE_ENV === 'production',
+              })
             );
           },
         },

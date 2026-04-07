@@ -134,16 +134,14 @@ const SHARE_PLATFORMS = [
     color: '#FF4500',
     url: (l: string, t: string) => `https://reddit.com/submit?url=${encodeURIComponent(l)}&title=${encodeURIComponent(t)}`,
   },
-];
-
-// ─── Share Modal ──────────────────────────────────────────────────────────
+];// ─── Share Modal ──────────────────────────────────────────────────────────
 
 function ShareModal({ referralLink, onClose }: { referralLink: string; onClose: () => void }) {
   const shareText = 'Join XelPay — fastest payment gateway for Bangladeshi businesses. Use my referral link:';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-0 sm:p-4">
-      <div className="bg-white dark:bg-[#111827] w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl p-6 sm:p-8 border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-[95vw] sm:max-w-lg rounded-3xl sm:rounded-2xl p-5 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-2xl mx-auto">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -166,7 +164,7 @@ function ShareModal({ referralLink, onClose }: { referralLink: string; onClose: 
         </div>
 
         {/* Platform grid */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
           {SHARE_PLATFORMS.map(p => (
             <button
               key={p.id}
@@ -232,10 +230,8 @@ function TotpEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-0 sm:p-4">
-      <div className="bg-white dark:bg-[#111827] w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl p-6 sm:p-8 border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl">
-
-        {/* Header */}
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-[95vw] sm:max-w-lg rounded-3xl sm:rounded-2xl p-5 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
             <ShieldCheck size={18} className="text-blue-600" /> Setup 2FA Authenticator
@@ -290,7 +286,7 @@ function TotpEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () 
               type="text" inputMode="numeric" maxLength={6} value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
-              className="w-full text-center text-3xl font-mono tracking-[0.4em] py-4 px-4 rounded-2xl bg-slate-50 dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 outline-none text-slate-900 dark:text-white transition-all"
+              className="w-full text-center text-2xl sm:text-3xl font-mono tracking-widest sm:tracking-[0.4em] py-4 px-4 rounded-2xl bg-slate-50 dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 outline-none text-slate-900 dark:text-white transition-all"
             />
             <button onClick={verifyEnroll} disabled={loading || code.length < 6}
               className="w-full py-3.5 rounded-2xl bg-blue-600 disabled:bg-blue-400 text-white text-sm font-semibold hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
@@ -326,9 +322,7 @@ function FeeBreakdown({ amtNum, feeAmt, netAmt, feePercent }: {
       </div>
     </div>
   );
-}
-
-// ─── Withdraw Modal ───────────────────────────────────────────────────────
+}// ─── Withdraw Modal ───────────────────────────────────────────────────────
 
 function WithdrawModal({
   wallet, settings, merchantId, hasTOTP, onEnrollTOTP, onClose, onSuccess, paymentLogos,
@@ -350,7 +344,6 @@ function WithdrawModal({
   const enabledMethods = settings.withdraw_methods_enabled;
   const mfsMethods = enabledMethods.filter(m => m !== 'bank');
   const hasBankEnabled = enabledMethods.includes('bank');
-
   const isMfs = method !== 'bank' && method !== '';
   const isBank = method === 'bank';
   const minAmt = isBank ? settings.withdraw_min_bank : settings.withdraw_min_mfs;
@@ -358,19 +351,16 @@ function WithdrawModal({
   const feeAmt = parseFloat((amtNum * settings.withdrawal_fees / 100).toFixed(2));
   const netAmt = parseFloat((amtNum - feeAmt).toFixed(2));
   const amtValid = amtNum >= minAmt && amtNum <= wallet.withdrawable_balance;
-
   const todayOk = (() => {
     if (settings.withdraw_open_days.length  > 0 && !settings.withdraw_open_days.includes(new Date().getDay()))   return false;
     if (settings.withdraw_open_dates.length > 0 && !settings.withdraw_open_dates.includes(new Date().getDate())) return false;
     return true;
   })();
-
   const getLogoUrl = (m: string) => paymentLogos.find(p => p.method_name === m)?.logo_url ?? '';
-
   const buildAccountDetails = () => isBank
     ? JSON.stringify({ number: account, name: bankDetails.name, branch: bankDetails.branch, routing: bankDetails.routing, bank_name: bankName })
     : account;
-
+    
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!method) { toast.error('Select a withdrawal method.'); return; }
@@ -378,7 +368,8 @@ function WithdrawModal({
     if (isBank && !bankName) { toast.error('Select your bank.'); return; }
     if (!amtValid) { toast.error(`Amount must be ৳${minAmt}–৳${wallet.withdrawable_balance.toFixed(0)}.`); return; }
     if (settings.withdraw_require_2fa && !hasTOTP) { onClose(); onEnrollTOTP(); return; }
-    if (settings.withdraw_require_2fa) setStep('totp'); else doSubmit('');
+    if (settings.withdraw_require_2fa) setStep('totp');
+    else doSubmit('');
   };
 
   const doSubmit = async (code: string) => {
@@ -415,17 +406,15 @@ function WithdrawModal({
   };
 
   const canProceed = settings.withdraw_enabled && todayOk;
-
-  // Shared input class
   const inputCls = "w-full px-4 py-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0B1120] text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all";
   const labelCls = "text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2 block";
-
+  
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-0 sm:p-4">
-      <div className="bg-white dark:bg-[#111827] w-full sm:max-w-xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-[95vw] sm:max-w-xl rounded-3xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden mx-auto">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-5 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h3 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
               <Wallet size={17} className="text-blue-600" />
@@ -445,7 +434,7 @@ function WithdrawModal({
           </button>
         </div>
 
-        <div className="px-6 py-6 overflow-y-auto max-h-[80vh] space-y-5">
+        <div className="px-5 sm:px-6 py-6 overflow-y-auto max-h-[80vh] space-y-5">
           {!settings.withdraw_enabled && (
             <div className="flex gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-200 dark:border-amber-800/40">
               <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
@@ -464,7 +453,7 @@ function WithdrawModal({
               {mfsMethods.length > 0 && (
                 <div>
                   <label className={labelCls}>Mobile banking (MFS)</label>
-                  <div className="grid grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-2.5">
                     {mfsMethods.map(m => {
                       const logoUrl = getLogoUrl(m);
                       const selected = method === m;
@@ -522,7 +511,7 @@ function WithdrawModal({
                     <>
                       <div>
                         <label className={labelCls}>Account type</label>
-                        <div className="grid grid-cols-3 gap-2.5">
+                        <div className="grid grid-cols-1 min-[400px]:grid-cols-3 gap-2.5">
                           {ACCOUNT_TYPES.map(at => (
                             <button type="button" key={at.value} onClick={() => setAccountType(at.value)}
                               className={`py-3 rounded-2xl border-2 text-sm font-medium transition-all ${accountType === at.value ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10 text-blue-600' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300'}`}>
@@ -562,7 +551,7 @@ function WithdrawModal({
                         <input type="text" value={bankDetails.name} onChange={e => setBankDetails({ ...bankDetails, name: e.target.value })} placeholder="Full name"
                           className={inputCls} />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className={labelCls}>Branch</label>
                           <input type="text" value={bankDetails.branch} onChange={e => setBankDetails({ ...bankDetails, branch: e.target.value })} placeholder="e.g. Motijheel"
@@ -620,7 +609,7 @@ function WithdrawModal({
                 type="text" inputMode="numeric" maxLength={6} value={totpCode}
                 onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="000000"
-                className="w-full text-center text-3xl font-mono tracking-[0.4em] py-4 px-4 rounded-2xl bg-slate-50 dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 outline-none text-slate-900 dark:text-white transition-all"
+                className="w-full text-center text-2xl sm:text-3xl font-mono tracking-widest sm:tracking-[0.4em] py-4 px-4 rounded-2xl bg-slate-50 dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 outline-none text-slate-900 dark:text-white transition-all"
               />
               <button onClick={() => doSubmit(totpCode)} disabled={loading || totpCode.length < 6}
                 className="w-full py-3.5 rounded-2xl bg-blue-600 disabled:bg-blue-400 text-white text-sm font-semibold hover:-translate-y-0.5 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
@@ -633,9 +622,7 @@ function WithdrawModal({
       </div>
     </div>
   );
-}
-
-// ─── Stat Card ────────────────────────────────────────────────────────────
+}// ─── Stat Card ────────────────────────────────────────────────────────────
 
 function StatCard({ label, value, sub, icon }: {
   label: string; value: string; sub?: string; icon: React.ReactNode;
@@ -715,6 +702,7 @@ export default function AffiliateProgram() {
       commission_amount: r.commission_amount, status: r.status, created_at: r.created_at,
       merchant_name: r.merchants?.name ?? 'Unknown', plan_name: r.plans?.name ?? '—',
     })));
+
     if (wd) setWithdrawals(wd as Withdrawal[]);
 
     if (ss) {
@@ -778,14 +766,11 @@ export default function AffiliateProgram() {
     );
   }
 
-  const walletData: AffiliateWallet = wallet ?? { total_earned: 0, withdrawable_balance: 0, total_withdrawn: 0, last_withdrawn_at: null };
-
-  return (
+  const walletData: AffiliateWallet = wallet ?? { total_earned: 0, withdrawable_balance: 0, total_withdrawn: 0, last_withdrawn_at: null };return (
     <>
-      {/* ── Main wrapper — no horizontal overflow ── */}
-      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-0 space-y-4 pb-14 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-x-hidden">
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 pb-14 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-        {/* ── Header — stacks on mobile ── */}
+        {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="w-11 h-11 rounded-2xl bg-violet-50 dark:bg-violet-900/20 flex items-center justify-center shrink-0">
@@ -807,7 +792,7 @@ export default function AffiliateProgram() {
           </button>
         </div>
 
-        {/* ── Stats Grid — 1 col mobile, 2 tablet, 4 desktop ── */}
+        {/* ── Stats Grid ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard
             label="Total earned"
@@ -837,14 +822,12 @@ export default function AffiliateProgram() {
         </div>
 
         {/* ── Referral Link Card ── */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-violet-700 rounded-2xl p-5 shadow-xl">
+        <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-violet-700 rounded-2xl p-4 sm:p-5 shadow-xl">
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <div className="absolute -top-8 -right-8 w-48 h-48 rounded-full bg-white opacity-[0.04]" />
             <div className="absolute -bottom-6 left-10 w-32 h-32 rounded-full bg-violet-300 opacity-[0.08]" />
           </div>
           <div className="relative z-10 space-y-4">
-
-            {/* Title row */}
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20 shrink-0">
                 <Gift size={20} className="text-white" />
@@ -855,41 +838,27 @@ export default function AffiliateProgram() {
               </div>
             </div>
 
-            {/* Link row — truncates, no overflow */}
             <div className="flex items-center bg-black/20 border border-white/15 rounded-2xl px-4 py-3 min-w-0">
               <Link2 size={14} className="text-blue-200 mr-2.5 shrink-0" />
               <span className="text-sm font-mono text-white truncate flex-1">{referralLink}</span>
             </div>
 
-            {/* Action buttons — flex-col on mobile, flex-row on sm */}
             <div className="flex flex-col sm:flex-row gap-2.5">
-              <button
-                onClick={copyLink}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white text-blue-700 text-sm font-semibold hover:bg-blue-50 transition-colors"
-              >
-                {linkCopied ? <Check size={15} /> : <Copy size={15} />}
-                {linkCopied ? 'Copied!' : 'Copy link'}
+              <button onClick={copyLink} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white text-blue-700 text-sm font-semibold hover:bg-blue-50 transition-colors">
+                {linkCopied ? <Check size={15} /> : <Copy size={15} />} {linkCopied ? 'Copied!' : 'Copy link'}
               </button>
-              <button
-                onClick={handleShare}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 border border-white/20 text-white text-sm font-semibold hover:bg-white/20 transition-colors"
-              >
+              <button onClick={handleShare} className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 border border-white/20 text-white text-sm font-semibold hover:bg-white/20 transition-colors">
                 <Share2 size={15} /> Share
               </button>
             </div>
 
-            {/* Code row — flex-col on mobile */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
               <div className="flex items-center gap-3 bg-black/20 border border-white/15 rounded-2xl px-4 py-3 flex-1 min-w-0">
                 <span className="text-xs text-blue-200 uppercase tracking-widest font-semibold shrink-0">Code</span>
                 <span className="text-lg font-mono font-semibold text-white tracking-widest truncate">{merchant?.refer_id ?? '—'}</span>
               </div>
-              <button
-                onClick={copyCode}
-                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 border border-white/20 text-white text-sm font-semibold hover:bg-white/20 transition-colors sm:shrink-0"
-              >
-                {codeCopied ? <Check size={14} /> : <Copy size={14} />}
-                {codeCopied ? 'Copied' : 'Copy code'}
+              <button onClick={copyCode} className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/10 border border-white/20 text-white text-sm font-semibold hover:bg-white/20 transition-colors sm:shrink-0">
+                {codeCopied ? <Check size={14} /> : <Copy size={14} />} {codeCopied ? 'Copied' : 'Copy code'}
               </button>
             </div>
           </div>
@@ -917,9 +886,7 @@ export default function AffiliateProgram() {
         </div>
 
         {/* ── Tables ── */}
-        <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-
-          {/* Tabs */}
+        <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden w-full">
           <div className="flex border-b border-slate-100 dark:border-slate-800 px-4 pt-3 gap-0.5">
             {(['referrals', 'history'] as const).map(t => (
               <button key={t} onClick={() => setActiveTab(t)}
@@ -933,7 +900,6 @@ export default function AffiliateProgram() {
             ))}
           </div>
 
-          {/* Fee info bar */}
           {settings && settings.withdrawal_fees > 0 && activeTab === 'history' && (
             <div className="flex items-center gap-2.5 px-5 py-3 bg-blue-50/60 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/20">
               <AlertCircle size={14} className="text-blue-500 shrink-0" />
@@ -943,13 +909,12 @@ export default function AffiliateProgram() {
             </div>
           )}
 
-          {/* Referrals table — wrapped in overflow-x-auto, page itself won't scroll */}
           {activeTab === 'referrals' && (
             commissions.length === 0
               ? <EmptyState icon={<Users size={28} />} title="No referrals yet" sub="Share your link to get started" />
               : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left whitespace-nowrap">
+                <div className="w-full overflow-x-auto max-w-full block pb-2">
+                  <table className="w-full text-left whitespace-nowrap min-w-[600px]">
                     <thead>
                       <tr className="bg-slate-50/60 dark:bg-[#0B1120]/60">
                         {['Merchant', 'Plan', 'Date joined', 'Commission', 'Status'].map(h => (
@@ -982,13 +947,12 @@ export default function AffiliateProgram() {
               )
           )}
 
-          {/* Withdrawals table — wrapped in overflow-x-auto */}
           {activeTab === 'history' && (
             withdrawals.length === 0
               ? <EmptyState icon={<Wallet size={28} />} title="No withdrawals yet" sub="Your withdrawal history will appear here" />
               : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left whitespace-nowrap">
+                <div className="w-full overflow-x-auto max-w-full block pb-2">
+                  <table className="w-full text-left whitespace-nowrap min-w-[700px]">
                     <thead>
                       <tr className="bg-slate-50/60 dark:bg-[#0B1120]/60">
                         {['Amount', 'Fee', 'Net received', 'Method', 'Account', 'Requested', 'Status'].map(h => (
@@ -1009,17 +973,12 @@ export default function AffiliateProgram() {
                             <td className="px-5 py-4 text-sm font-semibold text-emerald-600">৳ {parseFloat(String(w.net_amount || w.amount)).toLocaleString()}</td>
                             <td className="px-5 py-4">
                               <span className="flex items-center gap-2">
-                                {logo
-                                  ? <img src={logo.logo_url} alt={w.method} className="w-5 h-5 object-contain rounded" />
-                                  : w.method === 'bank' ? <img src={BANK_LOGO} alt="bank" className="w-5 h-5 object-contain" /> : null
-                                }
+                                {logo ? <img src={logo.logo_url} alt={w.method} className="w-5 h-5 object-contain rounded" /> : w.method === 'bank' ? <img src={BANK_LOGO} alt="bank" className="w-5 h-5 object-contain" /> : null}
                                 <span className="text-sm capitalize text-slate-700 dark:text-slate-300">{w.method}</span>
                               </span>
                             </td>
                             <td className="px-5 py-4 text-sm font-mono text-slate-400">{acc}</td>
-                            <td className="px-5 py-4 text-sm text-slate-400">
-                              {new Date(w.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </td>
+                            <td className="px-5 py-4 text-sm text-slate-400">{new Date(w.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                             <td className="px-5 py-4">
                               <span className={`text-xs font-medium px-2.5 py-1 rounded-lg uppercase tracking-wider ${st.bg} ${st.color}`}>{st.label}</span>
                             </td>
@@ -1033,7 +992,6 @@ export default function AffiliateProgram() {
           )}
         </div>
 
-        {/* ── 2FA notice ── */}
         {settings?.withdraw_require_2fa && !hasTOTP && (
           <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-200 dark:border-amber-800/40">
             <AlertCircle size={17} className="text-amber-600 shrink-0 mt-0.5" />
@@ -1048,11 +1006,8 @@ export default function AffiliateProgram() {
         )}
       </div>
 
-      {/* ── Modals ── */}
-      {showShare && (
-        <ShareModal referralLink={referralLink} onClose={() => setShowShare(false)} />
-      )}
-
+      {showShare && <ShareModal referralLink={referralLink} onClose={() => setShowShare(false)} />}
+      
       {showWithdraw && settings && merchant && (
         <WithdrawModal
           wallet={walletData} settings={settings} merchantId={merchant.id} hasTOTP={hasTOTP}

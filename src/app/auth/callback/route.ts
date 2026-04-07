@@ -9,9 +9,6 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get('code');
   const next = requestUrl.searchParams.get('next') || '/dashboard';
 
-  // 💥 ডায়নামিক প্রোটোকল চেক: লাইভে https এবং লোকালহোস্টে http
-  const isSecure = requestUrl.protocol === 'https:';
-
   if (!code) {
     return NextResponse.redirect(
       new URL('/login?error=no_code', requestUrl.origin)
@@ -19,6 +16,9 @@ export async function GET(request: Request) {
   }
 
   const cookieStore = await cookies();
+
+  // cookiesToCommit — redirect response-এ manually set করার জন্য collect করব
+  const cookiesToCommit: { name: string; value: string; options: any }[] = [];
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,8 +32,15 @@ export async function GET(request: Request) {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, {
               ...options,
-              secure: isSecure, // 👈 ডায়নামিক সিকিউর চেক
-              sameSite: 'lax',  // 👈 Redirect এর জন্য এটি সবচেয়ে নিরাপদ
+              secure: process.env.NODE_ENV === 'production',
+            });
+            cookiesToCommit.push({
+              name,
+              value,
+              options: {
+                ...options,
+                secure: process.env.NODE_ENV === 'production',
+              },
             });
           });
         },
@@ -64,7 +71,6 @@ export async function GET(request: Request) {
   }
 
   if (!merchant) {
-    // Sign out so the user isn't stuck in a limbo auth state
     await supabase.auth.signOut();
     return NextResponse.redirect(
       new URL('/login?error=no_account', requestUrl.origin)
@@ -92,5 +98,14 @@ export async function GET(request: Request) {
       ? next
       : '/dashboard';
 
-  return NextResponse.redirect(new URL(safeNext, requestUrl.origin));
+  // ── Redirect response-এ Supabase session cookies সরাসরি set করি ────────────
+  // Next.js Route Handler-এ cookies() দিয়ে set করা values redirect response-এ
+  // automatically forward হয় না। তাই collect করা cookies manually লাগাতে হয়।
+  const redirectResponse = NextResponse.redirect(new URL(safeNext, requestUrl.origin));
+
+  cookiesToCommit.forEach(({ name, value, options }) => {
+    redirectResponse.cookies.set(name, value, options);
+  });
+
+  return redirectResponse;
 }
