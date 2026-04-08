@@ -1,11 +1,10 @@
 // PATH: /app/dashboard/layout.tsx
-// তোমার আগের dashboard layout কে REPLACE করো।
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import DashboardClient from '@/components/dashboard/DashboardClient';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
   title: { default: 'Dashboard — XelPay', template: '%s — XelPay' },
@@ -13,10 +12,18 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// 💥 মোবাইলের জুম ইন/আউট চিরতরে বন্ধ করার ম্যাজিক ফিক্স
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, // এটি আঙুল দিয়ে জুম করা বন্ধ করে দেবে
+};
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
 
-  // Fast check — middleware already handled this, এটা safety net
+  // Fast check — middleware already handled this
   if (cookieStore.get('auth_session')?.value !== 'authenticated') {
     redirect('/login');
   }

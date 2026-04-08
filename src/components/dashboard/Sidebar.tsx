@@ -32,7 +32,8 @@ const menuItems = [
 function useIsMobileDevice() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia('(pointer: coarse)');
+    // Treat screens smaller than md (768px) as mobile for UI purposes
+    const mq = window.matchMedia('(pointer: coarse), (max-width: 768px)');
     setIsMobile(mq.matches);
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener('change', handler);
@@ -41,14 +42,11 @@ function useIsMobileDevice() {
   return isMobile;
 }
 
-// Fix 12: Theme-safe sign out — শুধু auth-related data clear, theme রাখে
 async function fullSignOut() {
   try {
     await supabase.auth.signOut({ scope: 'global' });
-  } catch (e) {
-    // ignore errors
-  }
-  // Fix 12: theme এবং অন্য non-auth keys রেখে বাকি সব clear করো
+  } catch (e) {}
+  
   const KEEP_KEYS = ['theme'];
   const toRemove: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
@@ -59,12 +57,10 @@ async function fullSignOut() {
   }
   toRemove.forEach(k => localStorage.removeItem(k));
   sessionStorage.clear();
-  // Hard redirect — Next.js router cache ও clear হয়ে যাবে
   window.location.href = '/login';
 }
 
-// ৩০ মিনিট idle থাকলে auto logout
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
 export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
   const pathname = usePathname();
@@ -78,7 +74,6 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
   const switcherRef = useRef<HTMLDivElement>(null);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ── 30 মিনিট idle auto-logout ──
   const resetIdleTimer = useCallback(() => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     idleTimerRef.current = setTimeout(async () => {
@@ -90,7 +85,7 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
   useEffect(() => {
     const events = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
     events.forEach(e => window.addEventListener(e, resetIdleTimer, { passive: true }));
-    resetIdleTimer(); // initial timer শুরু
+    resetIdleTimer();
 
     return () => {
       events.forEach(e => window.removeEventListener(e, resetIdleTimer));
@@ -145,19 +140,23 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
     await fullSignOut();
   };
 
-  return (
-    <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 transform ${(!isMobileDevice || isOpen) ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out flex flex-col ${isMobileDevice ? 'shadow-2xl' : 'shadow-none'}`}>
+  // Logic for sidebar visibility based on screen size
+  const sidebarClasses = `fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-300 ease-in-out flex flex-col shadow-2xl md:shadow-none
+    ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
+    md:translate-x-0`;
 
-      {isMobileDevice && (
-        <button onClick={() => setIsOpen(false)} className="absolute top-4 right-4 p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 z-50">
-          <X size={20} />
-        </button>
-      )}
+  return (
+    <aside className={sidebarClasses}>
+
+      {/* Close button for mobile */}
+      <button onClick={() => setIsOpen(false)} className="md:hidden absolute top-4 right-4 p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 z-50">
+        <X size={20} />
+      </button>
 
       {/* Brand & Workspace Switcher */}
       <div className="p-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
         <div className="px-2 pt-2 pb-6">
-          <Link href="/dashboard" className="flex items-center gap-1 group">
+          <Link href="/dashboard" className="flex items-center gap-1 group w-max">
             <span className="text-3xl font-black text-blue-600 tracking-tighter group-hover:scale-105 transition-transform">X</span>
             <span className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
           </Link>
@@ -178,7 +177,7 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
                   ) : <Building2 size={16} />}
               </div>
               <div className="text-left overflow-hidden">
-                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none mb-1">Workspace</p>
+                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none mb-1">Workspace</p>
                 <p className="text-sm font-black text-slate-900 dark:text-white truncate leading-none">
                   {isLoading ? 'Loading...' : activeBusiness ? activeBusiness.business_name : 'No Business Found'}
                 </p>
@@ -232,7 +231,7 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
 
       {/* Navigation */}
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {menuItems.map((item) => {
             const isActive = item.path === '/dashboard'
               ? pathname === item.path
@@ -243,7 +242,7 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
                 key={item.name}
                 href={item.path}
                 onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold text-sm transition-all group ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all group ${
                   isActive
                     ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-[#0B1120] hover:text-blue-600 dark:hover:text-blue-500'
@@ -259,7 +258,7 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
 
       {/* Footer / User Profile */}
       <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-[#111827] shrink-0">
-        <div className="flex items-center gap-3 px-4 py-3">
+        <div className="flex items-center gap-3 px-2 py-2">
           <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center font-black text-lg shrink-0">
             {merchant.name.charAt(0).toUpperCase()}
           </div>
@@ -270,9 +269,9 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
         </div>
         <button
           onClick={handleLogout}
-          className="w-full mt-2 flex items-center justify-start gap-2 px-4 py-3 text-sm font-bold text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+          className="w-full mt-2 flex items-center justify-start gap-2 px-4 py-2.5 text-sm font-bold text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
         >
-          <LogOut size={18} /> Sign Out
+          <LogOut size={16} /> Sign Out
         </button>
       </div>
     </aside>

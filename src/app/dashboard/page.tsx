@@ -97,19 +97,19 @@ export default function DashboardHome() {
   }
 
   return (
-    <div className="space-y-6 md:space-y-8 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="w-full space-y-6 md:space-y-8 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
       {/* 🚀 1. Welcome Section & Quick Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Overview</h1>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Track your payments, links, and business growth dynamically.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/links" className="flex items-center gap-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/dashboard/links" className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm">
             <LinkIcon size={16} /> New Link
           </Link>
-          <Link href="/dashboard/gateways" className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 hover:-translate-y-0.5 transition-all shadow-lg shadow-blue-600/30">
+          <Link href="/dashboard/gateways" className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 hover:-translate-y-0.5 transition-all shadow-lg shadow-blue-600/30">
              <Plus size={18} /> Add Gateway
           </Link>
         </div>
@@ -122,51 +122,51 @@ export default function DashboardHome() {
           {/* 📊 2. Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+            <div className="bg-white dark:bg-[#111827] p-5 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform"><DollarSign size={20} /></div>
               </div>
               <h3 className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Total Revenue</h3>
-              <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tighter truncate">
                 ৳ {stats.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
             </div>
 
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+            <div className="bg-white dark:bg-[#111827] p-5 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform"><LinkIcon size={20} /></div>
               </div>
               <h3 className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Active Links</h3>
-              <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{stats.activeLinks}</div>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{stats.activeLinks}</div>
             </div>
 
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+            <div className="bg-white dark:bg-[#111827] p-5 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform"><Activity size={20} /></div>
               </div>
               <h3 className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Success Rate</h3>
-              <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
                 {stats.successRate.toFixed(1)}<span className="text-lg text-slate-400">%</span>
               </div>
             </div>
 
-            <div className="bg-white dark:bg-[#111827] p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+            <div className="bg-white dark:bg-[#111827] p-5 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
               <div className="flex justify-between items-start mb-4">
                 <div className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-900/20 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform"><Wallet size={20} /></div>
                 <span className="text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md uppercase tracking-widest">{stats.totalOrders} Orders</span>
               </div>
               <h3 className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Affiliate Earned</h3>
-              <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">৳ 0<span className="text-lg text-slate-400">.00</span></div>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tighter truncate">৳ 0<span className="text-lg text-slate-400">.00</span></div>
             </div>
           </div>
 
           {/* 🧾 3. Recent Transactions Table */}
-          <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden mt-8">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-              <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                <FileText size={20} className="text-blue-600"/> Recent Transactions
+          <div className="w-full bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden mt-8">
+            <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                <FileText size={18} className="text-blue-600"/> Recent Transactions
               </h2>
-              <Link href="/dashboard/transactions" className="text-xs font-bold text-blue-600 flex items-center gap-1 hover:gap-2 transition-all">
+              <Link href="/dashboard/transactions" className="text-[11px] sm:text-xs font-bold text-blue-600 flex items-center gap-1 hover:gap-2 transition-all">
                 View All <ArrowRight size={14}/>
               </Link>
             </div>
@@ -174,8 +174,8 @@ export default function DashboardHome() {
             {recentTransactions.length === 0 ? (
               <div className="p-10 text-center text-slate-500 text-sm font-medium">No recent transactions to display.</div>
             ) : (
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left border-collapse whitespace-nowrap">
+              <div className="w-full overflow-x-auto custom-scrollbar block max-w-full">
+                <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
                   <thead>
                     <tr className="bg-slate-50/50 dark:bg-[#0B1120]/50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                       <th className="p-4 md:px-6 md:py-4">Order ID</th>
