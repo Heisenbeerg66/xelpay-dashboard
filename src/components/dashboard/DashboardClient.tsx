@@ -10,7 +10,8 @@ import { Loader2 } from 'lucide-react';
 function useIsMobileDevice() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia('(pointer: coarse), (max-width: 768px)');
+    // 💥 Perfect hardware check
+    const mq = window.matchMedia('(pointer: coarse)');
     setIsMobile(mq.matches);
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener('change', handler);
@@ -43,12 +44,12 @@ export default function DashboardClient({ merchant, user, children }: any) {
   }
 
   return (
-    // 💥 max-w-[100vw] এবং overflow-x-hidden নিশ্চিত করবে স্ক্রিন কখনোই ডিভাইসের সাইজের চেয়ে বড় হবে না
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-slate-50 dark:bg-[#0B1120] flex font-sans transition-colors duration-500">
       
       <Sidebar merchant={merchant} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
-      <div className={`flex-1 flex flex-col min-h-screen w-full max-w-[100vw] transition-all duration-300 relative z-10 md:ml-72`}>
+      {/* 💥 Real PC হলে ml-72 কাজ করবে, Mobile হলে ফুল স্ক্রিন */}
+      <div className={`flex-1 flex flex-col min-h-screen w-full transition-all duration-300 relative z-10 ${!isMobileDevice ? 'ml-72' : 'max-w-[100vw]'}`}>
         
         <Header merchant={merchant} setSidebarOpen={setIsSidebarOpen} />
 
@@ -57,10 +58,11 @@ export default function DashboardClient({ merchant, user, children }: any) {
         </main>
       </div>
 
-      {isSidebarOpen && (
+      {/* 💥 Overlay শুধু টাচ ডিভাইসেই আসবে যখন মেনু ওপেন থাকবে */}
+      {isSidebarOpen && isMobileDevice && (
         <div 
           onClick={() => setIsSidebarOpen(false)} 
-          className="md:hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 animate-in fade-in duration-300" 
+          className="fixed inset-0 bg-slate-900/60 dark:bg-[#0B1120]/80 backdrop-blur-sm z-40 animate-in fade-in duration-300" 
         />
       )}
     </div>
