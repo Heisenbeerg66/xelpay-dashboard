@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Users, Copy, Wallet, TrendingUp, ArrowUpRight, Loader2,
   Share2, Link2, Clock, AlertCircle, X, ShieldCheck, Gift,
   ArrowDownLeft, Check, QrCode, Eye, EyeOff, Smartphone,
-  ChevronDown, ExternalLink,
+  ChevronDown, Search,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -71,14 +71,14 @@ interface PaymentLogo {
 const BANK_LOGO = 'https://cdn-icons-png.flaticon.com/512/2830/2830284.png';
 
 const BANGLADESHI_BANKS = [
-  'Sonali Bank','Janata Bank','Agrani Bank','Rupali Bank','BASIC Bank',
-  'Dutch-Bangla Bank','BRAC Bank','Islami Bank Bangladesh','Prime Bank',
-  'Southeast Bank','Dhaka Bank','Mutual Trust Bank','Bank Asia',
-  'Mercantile Bank','Standard Bank','One Bank','NCC Bank','Pubali Bank',
-  'Uttara Bank','AB Bank','City Bank','Eastern Bank','IFIC Bank',
-  'Jamuna Bank','Meghna Bank','Midland Bank','Modhumoti Bank',
-  'NRB Bank','Padma Bank','Premier Bank','Shimanto Bank','South Bangla Bank',
-  'UCB','Union Bank','United Commercial Bank',
+  'AB Bank','Agrani Bank','Bank Asia','BASIC Bank','BRAC Bank',
+  'City Bank','Dhaka Bank','Dutch-Bangla Bank','Eastern Bank',
+  'IFIC Bank','Islami Bank Bangladesh','Jamuna Bank','Janata Bank',
+  'Meghna Bank','Mercantile Bank','Midland Bank','Modhumoti Bank',
+  'Mutual Trust Bank','NCC Bank','NRB Bank','One Bank','Padma Bank',
+  'Premier Bank','Prime Bank','Pubali Bank','Rupali Bank','Shimanto Bank',
+  'Sonali Bank','South Bangla Bank','Southeast Bank','Standard Bank',
+  'UCB','Union Bank','United Commercial Bank','Uttara Bank',
 ];
 
 const ACCOUNT_TYPES = [
@@ -135,6 +135,105 @@ const SHARE_PLATFORMS = [
     url: (l: string, t: string) => `https://reddit.com/submit?url=${encodeURIComponent(l)}&title=${encodeURIComponent(t)}`,
   },
 ];
+
+// ─── Searchable Bank Picker ───────────────────────────────────────────────
+
+function BankPicker({ value, onChange, inputCls }: {
+  value: string;
+  onChange: (v: string) => void;
+  inputCls: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filtered = BANGLADESHI_BANKS.filter(b =>
+    b.toLowerCase().includes(query.toLowerCase())
+  );
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleOpen = () => {
+    setOpen(true);
+    setQuery('');
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const handleSelect = (bank: string) => {
+    onChange(bank);
+    setOpen(false);
+    setQuery('');
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={handleOpen}
+        className={`${inputCls} flex items-center justify-between text-left`}
+      >
+        <span className={value ? 'text-slate-900 dark:text-white' : 'text-slate-400'}>
+          {value || 'Select your bank'}
+        </span>
+        <ChevronDown size={14} className={`text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1.5 w-full bg-white dark:bg-[#1a2235] border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden">
+          {/* Search input */}
+          <div className="p-2 border-b border-slate-100 dark:border-slate-700/60 flex items-center gap-2 px-3">
+            <Search size={13} className="text-slate-400 shrink-0" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search bank..."
+              className="flex-1 text-sm bg-transparent outline-none text-slate-900 dark:text-white placeholder-slate-400 py-1.5"
+            />
+            {query && (
+              <button type="button" onClick={() => setQuery('')} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X size={12} />
+              </button>
+            )}
+          </div>
+          {/* Results */}
+          <div className="max-h-48 overflow-y-auto overscroll-contain">
+            {filtered.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-4">No banks found</p>
+            ) : (
+              filtered.map(bank => (
+                <button
+                  key={bank}
+                  type="button"
+                  onClick={() => handleSelect(bank)}
+                  className={`w-full text-left px-3.5 py-2.5 text-sm transition-colors flex items-center justify-between
+                    ${value === bank
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600'
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                    }`}
+                >
+                  {bank}
+                  {value === bank && <Check size={13} className="text-blue-600 shrink-0" />}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Share Modal ──────────────────────────────────────────────────────────
 
@@ -304,8 +403,6 @@ function FeeBreakdown({ amtNum, feeAmt, netAmt, feePercent }: {
 }
 
 // ─── Withdraw Modal ───────────────────────────────────────────────────────
-// Mobile: bottom-sheet (slides up, max-h 92dvh, sticky header+footer)
-// Desktop: centered dialog (max-w 480px)
 
 function WithdrawModal({
   wallet, settings, merchantId, hasTOTP, onEnrollTOTP, onClose, onSuccess, paymentLogos,
@@ -396,7 +493,6 @@ function WithdrawModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      {/* Bottom-sheet on mobile, dialog on sm+ */}
       <div className="bg-white dark:bg-[#111827] w-full sm:w-[480px] sm:max-w-[95vw] rounded-t-3xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[88vh]">
 
         {/* ── Sticky header ── */}
@@ -516,15 +612,10 @@ function WithdrawModal({
 
                   {isBank && (
                     <>
+                      {/* ── Searchable Bank Picker ── */}
                       <div>
                         <label className={labelCls}>Bank name</label>
-                        <div className="relative">
-                          <select value={bankName} onChange={e => setBankName(e.target.value)} className={`${inputCls} appearance-none pr-9`}>
-                            <option value="">Select your bank</option>
-                            {BANGLADESHI_BANKS.map(b => <option key={b} value={b}>{b}</option>)}
-                          </select>
-                          <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                        </div>
+                        <BankPicker value={bankName} onChange={setBankName} inputCls={inputCls} />
                       </div>
                       <div>
                         <label className={labelCls}>Account number</label>
@@ -590,7 +681,7 @@ function WithdrawModal({
           )}
         </div>
 
-        {/* ── Sticky footer (submit button) ── */}
+        {/* ── Sticky footer ── */}
         {canProceed && (
           <div className="px-5 pb-6 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0 space-y-2.5">
             {step === 'form' && method && (
@@ -769,7 +860,13 @@ export default function AffiliateProgram() {
 
   return (
     <>
-      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3 pb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/*
+        ✅ FIX: Removed px-4 sm:px-6 lg:px-8 and max-w-5xl mx-auto
+        The parent DashboardClient already provides p-4 md:p-8 padding.
+        Adding extra padding here caused the page to not fill the screen like the Dashboard.
+        Now it uses w-full to match the dashboard layout behaviour.
+      */}
+      <div className="w-full space-y-3 pb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
         {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 pt-0.5">
