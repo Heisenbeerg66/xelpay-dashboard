@@ -88,11 +88,11 @@ const ACCOUNT_TYPES = [
 ];
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  pending:    { label: 'Pending',    color: 'text-amber-500',   bg: 'bg-amber-500/10' },
-  approved:   { label: 'Approved',   color: 'text-blue-400',    bg: 'bg-blue-500/10' },
-  paid:       { label: 'Paid',       color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-  cancelled:  { label: 'Cancelled',  color: 'text-red-400',     bg: 'bg-red-500/10' },
-  processing: { label: 'Processing', color: 'text-sky-400',     bg: 'bg-sky-500/10' },
+  pending:    { label: 'Pending',    color: 'text-yellow-600 dark:text-yellow-400',   bg: 'bg-yellow-50 dark:bg-yellow-900/20' },
+  approved:   { label: 'Approved',   color: 'text-blue-600 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-900/20' },
+  paid:       { label: 'Paid',       color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/20' },
+  cancelled:  { label: 'Cancelled',  color: 'text-red-600 dark:text-red-400',     bg: 'bg-red-50 dark:bg-red-900/20' },
+  processing: { label: 'Processing', color: 'text-sky-600 dark:text-sky-400',     bg: 'bg-sky-50 dark:bg-sky-900/20' },
 };
 
 // ─── Share Platforms ────────────────────────────────────────────────────────
@@ -161,26 +161,26 @@ function BankPicker({ value, onChange, inputCls }: {
     <div ref={containerRef} className="relative">
       <button type="button" onClick={() => { setOpen(true); setQuery(''); setTimeout(() => inputRef.current?.focus(), 50); }}
         className={`${inputCls} flex items-center justify-between text-left`}>
-        <span className={value ? 'text-white' : 'text-slate-500'}>{value || 'Select your bank'}</span>
-        <ChevronDown size={13} className={`text-slate-500 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className={value ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}>{value || 'Select your bank'}</span>
+        <ChevronDown size={13} className={`text-slate-400 dark:text-slate-500 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute z-50 mt-1.5 w-full bg-[#1a2235] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-white/6">
-            <Search size={12} className="text-slate-500 shrink-0" />
+        <div className="absolute z-50 mt-1.5 w-full bg-white dark:bg-[#1a2235] border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+            <Search size={12} className="text-slate-400 dark:text-slate-500 shrink-0" />
             <input ref={inputRef} type="text" value={query} onChange={e => setQuery(e.target.value)}
-              placeholder="Search bank..." className="flex-1 text-xs bg-transparent outline-none text-white placeholder-slate-500 py-1" />
-            {query && <button type="button" onClick={() => setQuery('')} className="text-slate-500 hover:text-slate-300"><X size={11} /></button>}
+              placeholder="Search bank..." className="flex-1 text-xs bg-transparent outline-none text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 py-1" />
+            {query && <button type="button" onClick={() => setQuery('')} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"><X size={11} /></button>}
           </div>
           <div className="max-h-44 overflow-y-auto overscroll-contain">
             {filtered.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-4">No banks found</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 text-center py-4">No banks found</p>
             ) : filtered.map(bank => (
               <button key={bank} type="button" onClick={() => { onChange(bank); setOpen(false); setQuery(''); }}
                 className={`w-full text-left px-3.5 py-2 text-xs transition-colors flex items-center justify-between
-                  ${value === bank ? 'bg-blue-500/15 text-blue-400' : 'text-slate-300 hover:bg-white/5'}`}>
+                  ${value === bank ? 'bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
                 {bank}
-                {value === bank && <Check size={12} className="text-blue-400 shrink-0" />}
+                {value === bank && <Check size={12} className="text-blue-600 dark:text-blue-400 shrink-0" />}
               </button>
             ))}
           </div>
@@ -196,35 +196,35 @@ function ShareModal({ referralLink, onClose }: { referralLink: string; onClose: 
   const shareText = 'Join XelPay — fastest payment gateway for Bangladeshi businesses. Use my referral link:';
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200 p-4">
-      <div className="bg-[#0f1623] w-full max-w-[95vw] sm:max-w-md rounded-3xl sm:rounded-2xl p-5 sm:p-7 border border-white/8 shadow-2xl mx-auto">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-[95vw] sm:max-w-md rounded-3xl sm:rounded-2xl p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl mx-auto">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-sm font-semibold text-white">Share referral link</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Choose a platform</p>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Share referral link</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Choose a platform</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/8 text-slate-400 hover:rotate-90 transition-all">
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:rotate-90 transition-all">
             <X size={14} />
           </button>
         </div>
-        <div className="flex items-center gap-2.5 bg-white/5 border border-white/8 rounded-xl px-3.5 py-2.5 mb-4">
-          <Link2 size={12} className="text-slate-500 shrink-0" />
-          <span className="text-xs font-mono text-slate-400 truncate flex-1">{referralLink}</span>
+        <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 mb-4">
+          <Link2 size={12} className="text-slate-500 dark:text-slate-400 shrink-0" />
+          <span className="text-xs font-mono text-slate-700 dark:text-slate-300 truncate flex-1">{referralLink}</span>
         </div>
         <div className="grid grid-cols-3 gap-2 mb-4">
           {SHARE_PLATFORMS.map(p => (
             <button key={p.id} onClick={() => window.open(p.url(referralLink, shareText), '_blank', 'noopener,noreferrer')}
-              className="flex flex-col items-center gap-2 p-3 rounded-xl border border-white/6 hover:border-white/15 hover:bg-white/5 transition-all group">
+              className="flex flex-col items-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-all group-hover:scale-110" style={{ background: p.color + '20' }}>
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke={p.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d={p.svgPath} />
                 </svg>
               </div>
-              <span className="text-[10px] font-medium text-slate-500 leading-tight text-center">{p.label}</span>
+              <span className="text-[10px] font-medium text-slate-600 dark:text-slate-400 leading-tight text-center">{p.label}</span>
             </button>
           ))}
         </div>
         <button onClick={() => { navigator.clipboard.writeText(referralLink); toast.success('Link copied!'); onClose(); }}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white/8 border border-white/8 text-xs font-medium text-slate-300 hover:bg-white/12 transition-all">
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
           <Copy size={13} /> Copy link
         </button>
       </div>
@@ -263,26 +263,26 @@ function TotpEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () 
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200 p-4">
-      <div className="bg-[#0f1623] w-full max-w-[95vw] sm:max-w-md rounded-3xl sm:rounded-2xl p-5 sm:p-7 border border-white/8 shadow-2xl mx-auto">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-[95vw] sm:max-w-md rounded-3xl sm:rounded-2xl p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl mx-auto">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-            <ShieldCheck size={15} className="text-blue-400" /> Setup 2FA Authenticator
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+            <ShieldCheck size={15} className="text-blue-600 dark:text-blue-400" /> Setup 2FA Authenticator
           </h3>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/8 text-slate-400 hover:rotate-90 transition-all"><X size={14} /></button>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:rotate-90 transition-all"><X size={14} /></button>
         </div>
 
         {step === 'info' && (
           <div className="text-center space-y-4">
-            <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto border border-blue-500/20">
-              <Smartphone size={26} className="text-blue-400" />
+            <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto border border-blue-100 dark:border-blue-800">
+              <Smartphone size={26} className="text-blue-600 dark:text-blue-400" />
             </div>
             <div className="space-y-1.5">
-              <h4 className="text-sm font-semibold text-white">2-factor auth required</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">Withdrawals need a one-time code from an authenticator app.</p>
-              <p className="text-xs text-slate-500">Install <b className="text-slate-400">Google Authenticator</b> or <b className="text-slate-400">Authy</b> first.</p>
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-white">2-factor auth required</h4>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">Withdrawals need a one-time code from an authenticator app.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-500">Install <b className="text-slate-800 dark:text-slate-300">Google Authenticator</b> or <b className="text-slate-800 dark:text-slate-300">Authy</b> first.</p>
             </div>
             <button onClick={startEnroll} disabled={loading}
-              className="w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+              className="w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
               {loading ? <Loader2 size={15} className="animate-spin" /> : <><QrCode size={14} /> Get QR code</>}
             </button>
           </div>
@@ -290,34 +290,34 @@ function TotpEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () 
 
         {step === 'qr' && (
           <div className="text-center space-y-4">
-            <p className="text-xs text-slate-400">Scan this QR code with your authenticator app.</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400">Scan this QR code with your authenticator app.</p>
             <div className="bg-white p-3 rounded-xl inline-block">
               <img src={qrUri} alt="TOTP QR" className="w-44 h-44 mx-auto" />
             </div>
             <div>
-              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-2">Manual secret</p>
-              <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5">
-                <code className={`text-xs font-mono text-slate-300 flex-1 break-all ${!showSec ? 'blur-sm select-none' : ''}`}>{secret}</code>
-                <button onClick={() => setShowSec(s => !s)} className="text-slate-500 hover:text-blue-400 transition-colors shrink-0">{showSec ? <EyeOff size={13} /> : <Eye size={13} />}</button>
-                <button onClick={() => { navigator.clipboard.writeText(secret); toast.success('Secret copied'); }} className="text-slate-500 hover:text-blue-400 transition-colors shrink-0"><Copy size={13} /></button>
+              <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Manual secret</p>
+              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5">
+                <code className={`text-xs font-mono text-slate-800 dark:text-slate-200 flex-1 break-all ${!showSec ? 'blur-sm select-none' : ''}`}>{secret}</code>
+                <button onClick={() => setShowSec(s => !s)} className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shrink-0">{showSec ? <EyeOff size={13} /> : <Eye size={13} />}</button>
+                <button onClick={() => { navigator.clipboard.writeText(secret); toast.success('Secret copied'); }} className="text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shrink-0"><Copy size={13} /></button>
               </div>
             </div>
-            <button onClick={() => setStep('verify')} className="w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500 transition-all">I've scanned it →</button>
+            <button onClick={() => setStep('verify')} className="w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-all">I've scanned it →</button>
           </div>
         )}
 
         {step === 'verify' && (
           <div className="text-center space-y-4">
-            <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto border border-blue-500/20">
-              <ShieldCheck size={24} className="text-blue-400" />
+            <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto border border-blue-100 dark:border-blue-800">
+              <ShieldCheck size={24} className="text-blue-600 dark:text-blue-400" />
             </div>
-            <p className="text-xs text-slate-400">Enter the 6-digit code from your authenticator app.</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400">Enter the 6-digit code from your authenticator app.</p>
             <input type="text" inputMode="numeric" maxLength={6} value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
-              className="w-full text-center text-2xl font-mono tracking-[0.4em] py-4 rounded-xl bg-white/5 border-2 border-white/10 focus:border-blue-500 outline-none text-white transition-all" />
+              className="w-full text-center text-2xl font-mono tracking-[0.4em] py-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 outline-none text-slate-900 dark:text-white transition-all" />
             <button onClick={verifyEnroll} disabled={loading || code.length < 6}
-              className="w-full py-3 rounded-xl bg-blue-600 disabled:opacity-40 text-white text-sm font-semibold hover:bg-blue-500 transition-all flex items-center justify-center gap-2">
+              className="w-full py-3 rounded-xl bg-blue-600 disabled:opacity-40 text-white text-sm font-semibold hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
               {loading ? <Loader2 size={15} className="animate-spin" /> : <><Check size={14} /> Verify & activate</>}
             </button>
           </div>
@@ -334,19 +334,19 @@ function FeeBreakdown({ amtNum, feeAmt, netAmt, feePercent }: {
 }) {
   if (amtNum <= 0 || feePercent <= 0) return null;
   return (
-    <div className="mt-2 p-3 bg-white/4 rounded-xl border border-white/8 space-y-1.5">
+    <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1.5">
       <div className="flex justify-between text-xs">
-        <span className="text-slate-500">Requested</span>
-        <span className="text-slate-300 font-medium">৳ {amtNum.toLocaleString()}</span>
+        <span className="text-slate-600 dark:text-slate-400">Requested</span>
+        <span className="text-slate-800 dark:text-slate-200 font-medium">৳ {amtNum.toLocaleString()}</span>
       </div>
       <div className="flex justify-between text-xs">
-        <span className="text-slate-500">Fee ({feePercent}%)</span>
-        <span className="text-red-400 font-medium">− ৳ {feeAmt.toLocaleString()}</span>
+        <span className="text-slate-600 dark:text-slate-400">Fee ({feePercent}%)</span>
+        <span className="text-red-600 dark:text-red-400 font-medium">− ৳ {feeAmt.toLocaleString()}</span>
       </div>
-      <div className="h-px bg-white/8" />
+      <div className="h-px bg-slate-200 dark:bg-slate-700" />
       <div className="flex justify-between text-xs">
-        <span className="text-slate-300 font-semibold">You'll receive</span>
-        <span className="text-emerald-400 font-bold">৳ {netAmt.toLocaleString()}</span>
+        <span className="text-slate-700 dark:text-slate-300 font-semibold">You'll receive</span>
+        <span className="text-green-600 dark:text-green-400 font-bold">৳ {netAmt.toLocaleString()}</span>
       </div>
     </div>
   );
@@ -438,42 +438,42 @@ function WithdrawModal({
   };
 
   const canProceed = settings.withdraw_enabled && todayOk;
-  const inputCls   = "w-full px-3.5 py-3 rounded-xl border border-white/10 bg-white/5 text-sm text-white outline-none focus:border-blue-500 transition-all placeholder-slate-500";
-  const labelCls   = "text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1.5 block";
+  const inputCls   = "w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all placeholder-slate-500 dark:placeholder-slate-400";
+  const labelCls   = "text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 block";
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-[#0f1623] w-full sm:w-[460px] sm:max-w-[95vw] rounded-t-3xl sm:rounded-2xl border border-white/8 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[88vh]">
+      <div className="bg-white dark:bg-[#111827] w-full sm:w-[460px] sm:max-w-[95vw] rounded-t-3xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[88vh]">
 
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/6 shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div>
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Wallet size={14} className="text-blue-400" />
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+              <Wallet size={14} className="text-blue-600 dark:text-blue-400" />
               {step === 'form' ? 'Request withdrawal' : 'Verify identity'}
             </h3>
             {step === 'form' && (
-              <p className="text-xs text-slate-500 mt-0.5">
-                Available: <span className="text-emerald-400 font-semibold">৳ {wallet.withdrawable_balance.toLocaleString()}</span>
-                {settings.withdrawal_fees > 0 && <span className="ml-1.5 text-slate-600">· {settings.withdrawal_fees}% fee</span>}
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Available: <span className="text-green-600 dark:text-green-400 font-semibold">৳ {wallet.withdrawable_balance.toLocaleString()}</span>
+                {settings.withdrawal_fees > 0 && <span className="ml-1.5 text-slate-400 dark:text-slate-500">· {settings.withdrawal_fees}% fee</span>}
               </p>
             )}
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/8 text-slate-400 hover:rotate-90 transition-all shrink-0">
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:rotate-90 transition-all shrink-0">
             <X size={14} />
           </button>
         </div>
 
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
           {!settings.withdraw_enabled && (
-            <div className="flex gap-2.5 p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
-              <AlertCircle size={13} className="text-amber-400 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-300">Withdrawals are currently paused.</p>
+            <div className="flex gap-2.5 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
+              <AlertCircle size={13} className="text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-yellow-700 dark:text-yellow-300">Withdrawals are currently paused.</p>
             </div>
           )}
           {settings.withdraw_enabled && !todayOk && (
-            <div className="flex gap-2.5 p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
-              <Clock size={13} className="text-amber-400 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-300">Withdrawals are not open today.</p>
+            <div className="flex gap-2.5 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl border border-yellow-200 dark:border-yellow-800">
+              <Clock size={13} className="text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-yellow-700 dark:text-yellow-300">Withdrawals are not open today.</p>
             </div>
           )}
 
@@ -488,12 +488,12 @@ function WithdrawModal({
                       const selected = method === m;
                       return (
                         <button type="button" key={m} onClick={() => setMethod(m)}
-                          className={`flex items-center gap-2.5 p-3 rounded-xl border-2 transition-all text-left ${selected ? 'border-blue-500 bg-blue-500/10' : 'border-white/8 hover:border-white/15 bg-white/3'}`}>
+                          className={`flex items-center gap-2.5 p-3 rounded-xl border-2 transition-all text-left ${selected ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800/30'}`}>
                           {logoUrl ? <img src={logoUrl} alt={m} className="w-7 h-7 object-contain rounded-lg shrink-0" />
-                            : <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-xs font-semibold text-slate-400 shrink-0">{m[0].toUpperCase()}</div>}
+                            : <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs font-semibold text-slate-600 dark:text-slate-300 shrink-0">{m[0].toUpperCase()}</div>}
                           <div className="min-w-0">
-                            <p className={`text-xs font-semibold capitalize truncate ${selected ? 'text-blue-400' : 'text-slate-300'}`}>{m}</p>
-                            <p className="text-[10px] text-slate-500">Min ৳{settings.withdraw_min_mfs}</p>
+                            <p className={`text-xs font-semibold capitalize truncate ${selected ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>{m}</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">Min ৳{settings.withdraw_min_mfs}</p>
                           </div>
                         </button>
                       );
@@ -506,11 +506,11 @@ function WithdrawModal({
                 <div>
                   <label className={labelCls}>Bank transfer</label>
                   <button type="button" onClick={() => setMethod('bank')}
-                    className={`w-full flex items-center gap-2.5 p-3 rounded-xl border-2 transition-all text-left ${method === 'bank' ? 'border-blue-500 bg-blue-500/10' : 'border-white/8 hover:border-white/15 bg-white/3'}`}>
+                    className={`w-full flex items-center gap-2.5 p-3 rounded-xl border-2 transition-all text-left ${method === 'bank' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800/30'}`}>
                     <img src={BANK_LOGO} alt="bank" className="w-7 h-7 object-contain shrink-0" />
                     <div>
-                      <p className={`text-xs font-semibold ${method === 'bank' ? 'text-blue-400' : 'text-slate-300'}`}>Bank transfer</p>
-                      <p className="text-[10px] text-slate-500">Min ৳{settings.withdraw_min_bank}</p>
+                      <p className={`text-xs font-semibold ${method === 'bank' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>Bank transfer</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Min ৳{settings.withdraw_min_bank}</p>
                     </div>
                   </button>
                 </div>
@@ -521,13 +521,13 @@ function WithdrawModal({
                   <div>
                     <label className={labelCls}>Amount (BDT)</label>
                     <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-500">৳</span>
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-500 dark:text-slate-400">৳</span>
                       <input type="number" min={minAmt} max={wallet.withdrawable_balance} step="1" value={amount}
                         onChange={e => setAmount(e.target.value)} placeholder={`Min ৳${minAmt}`}
-                        className="w-full pl-8 pr-3.5 py-3 rounded-xl border border-white/10 bg-white/5 text-sm text-white outline-none focus:border-blue-500 transition-all placeholder-slate-500" />
+                        className="w-full pl-8 pr-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all placeholder-slate-500 dark:placeholder-slate-400" />
                     </div>
                     <FeeBreakdown amtNum={amtNum} feeAmt={feeAmt} netAmt={netAmt} feePercent={settings.withdrawal_fees} />
-                    {amount && !amtValid && <p className="text-xs text-red-400 mt-1.5">Must be ৳{minAmt}–৳{wallet.withdrawable_balance.toFixed(0)}</p>}
+                    {amount && !amtValid && <p className="text-xs text-red-600 dark:text-red-400 mt-1.5">Must be ৳{minAmt}–৳{wallet.withdrawable_balance.toFixed(0)}</p>}
                   </div>
 
                   {isMfs && (
@@ -537,7 +537,7 @@ function WithdrawModal({
                         <div className="grid grid-cols-3 gap-2">
                           {ACCOUNT_TYPES.map(at => (
                             <button type="button" key={at.value} onClick={() => setAccountType(at.value)}
-                              className={`py-2 rounded-xl border-2 text-xs font-semibold transition-all ${accountType === at.value ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-white/8 text-slate-400 hover:border-white/15'}`}>
+                              className={`py-2 rounded-xl border-2 text-xs font-semibold transition-all ${accountType === at.value ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'}`}>
                               {at.label}
                             </button>
                           ))}
@@ -577,15 +577,15 @@ function WithdrawModal({
                     </>
                   )}
 
-                  <div className="flex gap-2 p-3 bg-white/4 rounded-xl border border-white/6">
-                    <Clock size={12} className="text-blue-400 shrink-0 mt-0.5" />
-                    <p className="text-xs text-slate-500">Processing: <span className="text-slate-300 font-medium">{settings.withdraw_process_time}</span></p>
+                  <div className="flex gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <Clock size={12} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-slate-600 dark:text-slate-400">Processing: <span className="text-slate-800 dark:text-slate-200 font-medium">{settings.withdraw_process_time}</span></p>
                   </div>
 
                   {settings.withdraw_require_2fa && (
-                    <div className="flex gap-2 p-3 bg-blue-500/8 rounded-xl border border-blue-500/15">
-                      <ShieldCheck size={12} className="text-blue-400 shrink-0 mt-0.5" />
-                      <p className="text-xs text-blue-400">Authenticator code required on next step.</p>
+                    <div className="flex gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                      <ShieldCheck size={12} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                      <p className="text-xs text-blue-700 dark:text-blue-300">Authenticator code required on next step.</p>
                     </div>
                   )}
                 </>
@@ -595,37 +595,37 @@ function WithdrawModal({
 
           {canProceed && step === 'totp' && (
             <div className="text-center space-y-4 py-2">
-              <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto border border-blue-500/20">
-                <ShieldCheck size={22} className="text-blue-400" />
+              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto border border-blue-100 dark:border-blue-800">
+                <ShieldCheck size={22} className="text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <h4 className="text-sm font-semibold text-white mb-1">Verify identity</h4>
-                <p className="text-xs text-slate-400">Confirm withdrawal of <span className="text-white font-semibold">৳ {amtNum.toLocaleString()}</span>.</p>
-                {settings.withdrawal_fees > 0 && <p className="text-xs text-slate-500 mt-0.5">After fee → <span className="text-emerald-400 font-semibold">৳ {netAmt.toLocaleString()}</span></p>}
+                <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Verify identity</h4>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Confirm withdrawal of <span className="text-slate-900 dark:text-white font-semibold">৳ {amtNum.toLocaleString()}</span>.</p>
+                {settings.withdrawal_fees > 0 && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">After fee → <span className="text-green-600 dark:text-green-400 font-semibold">৳ {netAmt.toLocaleString()}</span></p>}
               </div>
               <input type="text" inputMode="numeric" maxLength={6} value={totpCode}
                 onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="000000"
-                className="w-full text-center text-2xl font-mono tracking-[0.35em] py-4 rounded-xl bg-white/5 border-2 border-white/10 focus:border-blue-500 outline-none text-white transition-all" />
+                className="w-full text-center text-2xl font-mono tracking-[0.35em] py-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 outline-none text-slate-900 dark:text-white transition-all" />
             </div>
           )}
         </div>
 
         {canProceed && (
-          <div className="px-5 pb-5 pt-3 border-t border-white/6 shrink-0 space-y-2">
+          <div className="px-5 pb-5 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0 space-y-2">
             {step === 'form' && method && (
               <button onClick={handleFormSubmit as any} disabled={loading}
-                className="w-full py-3 rounded-xl bg-blue-600 disabled:opacity-40 text-white text-sm font-semibold hover:bg-blue-500 transition-all flex items-center justify-center gap-2">
+                className="w-full py-3 rounded-xl bg-blue-600 disabled:opacity-40 text-white text-sm font-semibold hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <><ArrowUpRight size={14} /> {settings.withdraw_require_2fa ? 'Next: verify →' : 'Submit request'}</>}
               </button>
             )}
             {step === 'totp' && (
               <>
                 <button onClick={() => doSubmit(totpCode)} disabled={loading || totpCode.length < 6}
-                  className="w-full py-3 rounded-xl bg-blue-600 disabled:opacity-40 text-white text-sm font-semibold hover:bg-blue-500 transition-all flex items-center justify-center gap-2">
+                  className="w-full py-3 rounded-xl bg-blue-600 disabled:opacity-40 text-white text-sm font-semibold hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <><Check size={14} /> Confirm withdrawal</>}
                 </button>
-                <button onClick={() => setStep('form')} className="w-full text-xs text-slate-500 hover:text-blue-400 transition-colors py-1">← Back</button>
+                <button onClick={() => setStep('form')} className="w-full text-xs text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors py-1">← Back</button>
               </>
             )}
           </div>
@@ -639,10 +639,10 @@ function WithdrawModal({
 
 function EmptyState({ icon, title, sub }: { icon: React.ReactNode; title: string; sub: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-10 gap-2">
-      <div className="opacity-10 text-slate-400">{icon}</div>
-      <p className="text-sm font-medium text-slate-500">{title}</p>
-      <p className="text-xs text-slate-600">{sub}</p>
+    <div className="flex flex-col items-center justify-center py-12 gap-3">
+      <div className="text-slate-300 dark:text-slate-600">{icon}</div>
+      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">{title}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-500">{sub}</p>
     </div>
   );
 }
@@ -755,10 +755,10 @@ export default function AffiliateProgram() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
-        <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-          <Loader2 size={18} className="animate-spin text-blue-400" />
+        <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center border border-blue-100 dark:border-blue-800">
+          <Loader2 size={18} className="animate-spin text-blue-600 dark:text-blue-400" />
         </div>
-        <p className="text-xs text-slate-500">Loading affiliate dashboard…</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Loading affiliate dashboard…</p>
       </div>
     );
   }
@@ -767,110 +767,109 @@ export default function AffiliateProgram() {
 
   return (
     <>
-      <div className="w-full space-y-3 pb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="w-full space-y-6 md:space-y-8 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
         {/* ── Header row ── */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-              <Users size={16} className="text-violet-400" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-sm font-semibold text-white leading-none">Affiliate program</h1>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Earn <span className="text-violet-400 font-medium">{settings?.refer_commission ?? 10}% lifetime commission</span> per referral
-              </p>
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Affiliate Program</h1>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
+              Earn <span className="text-blue-600 dark:text-blue-400 font-semibold">{settings?.refer_commission ?? 10}% lifetime commission</span> per referral
+            </p>
           </div>
           <button
             onClick={() => setShowWithdraw(true)}
             disabled={!settings?.withdraw_enabled || walletData.withdrawable_balance <= 0}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/8 border border-white/10 text-white text-xs font-semibold hover:bg-white/12 transition-all disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+            className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 hover:-translate-y-0.5 transition-all shadow-lg shadow-blue-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 shrink-0"
           >
-            <Wallet size={13} className="text-slate-400" /> Withdraw
+            <Wallet size={18} /> Withdraw
           </button>
         </div>
 
-        {/* ── Stats row ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        {/* ── Stats row (responsive grid) ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {[
-            { label: 'Total earned',    value: `৳ ${walletData.total_earned.toLocaleString()}`,         sub: undefined,       icon: <TrendingUp size={14} />, accent: 'text-emerald-400' },
-            { label: 'Available',       value: `৳ ${walletData.withdrawable_balance.toLocaleString()}`, sub: 'Ready to withdraw', icon: <Wallet size={14} />,     accent: 'text-blue-400' },
-            { label: 'Total withdrawn', value: `৳ ${walletData.total_withdrawn.toLocaleString()}`,      sub: walletData.last_withdrawn_at ? `Last ${new Date(walletData.last_withdrawn_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}` : 'None yet', icon: <ArrowDownLeft size={14} />, accent: 'text-slate-300' },
-            { label: 'Referrals',       value: String(merchant?.total_refer ?? 0),                      sub: `${merchant?.refer_link_clicks ?? 0} link clicks`, icon: <Users size={14} />, accent: 'text-violet-400' },
+            { label: 'Total earned',    value: `৳ ${walletData.total_earned.toLocaleString()}`,         sub: undefined,       icon: <TrendingUp size={20} />, accent: 'text-emerald-600 dark:text-emerald-400' },
+            { label: 'Available',       value: `৳ ${walletData.withdrawable_balance.toLocaleString()}`, sub: 'Ready to withdraw', icon: <Wallet size={20} />,     accent: 'text-blue-600 dark:text-blue-400' },
+            { label: 'Total withdrawn', value: `৳ ${walletData.total_withdrawn.toLocaleString()}`,      sub: walletData.last_withdrawn_at ? `Last ${new Date(walletData.last_withdrawn_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}` : 'None yet', icon: <ArrowDownLeft size={20} />, accent: 'text-slate-700 dark:text-slate-300' },
+            { label: 'Referrals',       value: String(merchant?.total_refer ?? 0),                      sub: `${merchant?.refer_link_clicks ?? 0} link clicks`, icon: <Users size={20} />, accent: 'text-violet-600 dark:text-violet-400' },
           ].map(card => (
-            <div key={card.label} className="rounded-xl px-3 py-3 bg-white/4 border border-white/6 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-white/6 flex items-center justify-center shrink-0 text-slate-400">
-                {card.icon}
+            <div key={card.label} className="bg-white dark:bg-[#111827] p-5 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  {card.icon}
+                </div>
+                {card.sub && (
+                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md uppercase tracking-widest">
+                    {card.sub}
+                  </span>
+                )}
               </div>
-              <div className="min-w-0">
-                <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-600 mb-0.5">{card.label}</p>
-                <p className={`text-sm font-bold leading-none truncate ${card.accent}`}>{card.value}</p>
-                {card.sub && <p className="text-[10px] text-slate-600 mt-0.5 truncate">{card.sub}</p>}
+              <h3 className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">{card.label}</h3>
+              <div className={`text-2xl sm:text-3xl font-black tracking-tighter ${card.accent}`}>
+                {card.value}
               </div>
             </div>
           ))}
         </div>
 
         {/* ── Referral card ── */}
-        <div className="rounded-2xl overflow-hidden border border-white/8 bg-gradient-to-br from-[#1a2235] via-[#1e2a45] to-[#1a1f35]">
-          <div className="h-px bg-gradient-to-r from-transparent via-blue-500/40 to-transparent" />
-          <div className="p-4 space-y-3">
-            {/* label + actions inline */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <Gift size={13} className="text-blue-400 shrink-0" />
-                <span className="text-xs font-semibold text-slate-300">Your referral link</span>
+        <div className="bg-white dark:bg-[#111827] rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="p-5 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Gift size={18} className="text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Your referral link</span>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-2">
                 <button onClick={copyLink}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/8 border border-white/8 text-[11px] font-medium text-slate-300 hover:bg-white/12 hover:text-white transition-all">
-                  {linkCopied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                  {linkCopied ? 'Copied' : 'Copy'}
+                  className="flex items-center justify-center gap-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-xl font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                  {linkCopied ? <Check size={14} className="text-green-600 dark:text-green-400" /> : <Copy size={14} />}
+                  {linkCopied ? 'Copied' : 'Copy Link'}
                 </button>
                 <button onClick={handleShare}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-500/15 border border-blue-500/25 text-[11px] font-medium text-blue-300 hover:bg-blue-500/25 transition-all">
-                  <Share2 size={11} /> Share
+                  className="flex items-center justify-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded-xl font-bold text-xs hover:bg-blue-700 transition-all">
+                  <Share2 size={14} /> Share
                 </button>
               </div>
             </div>
 
-            {/* link */}
-            <div className="flex items-center gap-2 bg-black/25 border border-white/6 rounded-xl px-3 py-2.5">
-              <Link2 size={11} className="text-slate-600 shrink-0" />
-              <span className="text-xs font-mono text-slate-400 truncate flex-1 select-all">{referralLink}</span>
+            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+              <Link2 size={14} className="text-slate-500 dark:text-slate-400 shrink-0" />
+              <span className="text-sm font-mono text-slate-700 dark:text-slate-300 truncate flex-1 select-all">{referralLink}</span>
             </div>
 
-            {/* code */}
-            <div className="flex items-center justify-between bg-black/25 border border-white/6 rounded-xl px-3 py-2.5">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest shrink-0">Code</span>
-                <span className="text-sm font-mono font-bold text-white tracking-[0.15em] truncate">{merchant?.refer_id ?? '—'}</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Referral Code</span>
+                <span className="text-sm font-mono font-bold text-slate-900 dark:text-white tracking-wider">{merchant?.refer_id ?? '—'}</span>
               </div>
               <button onClick={copyCode}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/6 border border-white/8 text-[11px] font-medium text-slate-400 hover:text-white hover:bg-white/10 transition-all shrink-0 ml-2">
-                {codeCopied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                {codeCopied ? 'Copied' : 'Copy'}
+                className="flex items-center justify-center gap-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-xl font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                {codeCopied ? <Check size={14} className="text-green-600 dark:text-green-400" /> : <Copy size={14} />}
+                {codeCopied ? 'Copied' : 'Copy Code'}
               </button>
             </div>
           </div>
         </div>
 
         {/* ── How it works ── */}
-        <div className="rounded-2xl bg-white/3 border border-white/6 p-4">
-          <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest mb-3">How it works</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-white dark:bg-[#111827] rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-5 sm:p-6">
+          <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">How it works</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
-              { n: '01', title: 'Share your link', desc: 'Post your unique link on social media, YouTube, or your blog.', icon: <Share2 size={13} /> },
-              { n: '02', title: 'They sign up',    desc: 'Anyone who registers via your link is permanently tagged as your referral.', icon: <Users size={13} /> },
-              { n: '03', title: 'Earn monthly',    desc: `You get ${settings?.refer_commission ?? 10}% of their plan fee every billing cycle, for life.`, icon: <TrendingUp size={13} /> },
+              { n: '01', title: 'Share your link', desc: 'Post your unique link on social media, YouTube, or your blog.', icon: <Share2 size={16} /> },
+              { n: '02', title: 'They sign up',    desc: 'Anyone who registers via your link is permanently tagged as your referral.', icon: <Users size={16} /> },
+              { n: '03', title: 'Earn monthly',    desc: `You get ${settings?.refer_commission ?? 10}% of their plan fee every billing cycle, for life.`, icon: <TrendingUp size={16} /> },
             ].map(s => (
-              <div key={s.n} className="flex gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/15 flex items-center justify-center text-blue-400 shrink-0 mt-0.5">{s.icon}</div>
+              <div key={s.n} className="flex gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                  {s.icon}
+                </div>
                 <div>
-                  <p className="text-[9px] font-bold text-blue-500/70 uppercase tracking-widest mb-0.5">Step {s.n}</p>
-                  <h4 className="text-xs font-semibold text-slate-200 mb-0.5">{s.title}</h4>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">{s.desc}</p>
+                  <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-0.5">Step {s.n}</p>
+                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">{s.title}</h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{s.desc}</p>
                 </div>
               </div>
             ))}
@@ -878,55 +877,61 @@ export default function AffiliateProgram() {
         </div>
 
         {/* ── Tables ── */}
-        <div className="rounded-2xl bg-white/3 border border-white/6 overflow-hidden">
-          <div className="flex border-b border-white/6 px-4 pt-2 gap-1">
-            {(['referrals', 'history'] as const).map(t => (
-              <button key={t} onClick={() => setActiveTab(t)}
-                className={`px-3 py-2 text-[10px] font-semibold uppercase tracking-widest border-b-2 -mb-px transition-all ${
-                  activeTab === t ? 'text-blue-400 border-blue-500' : 'text-slate-600 border-transparent hover:text-slate-400'
-                }`}>
-                {t === 'referrals' ? `Referrals (${commissions.length})` : `Withdrawals (${withdrawals.length})`}
-              </button>
-            ))}
+        <div className="bg-white dark:bg-[#111827] rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="border-b border-slate-100 dark:border-slate-800 px-5 pt-2">
+            <div className="flex gap-1">
+              {(['referrals', 'history'] as const).map(t => (
+                <button key={t} onClick={() => setActiveTab(t)}
+                  className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border-b-2 -mb-px transition-all ${
+                    activeTab === t ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}>
+                  {t === 'referrals' ? `Referrals (${commissions.length})` : `Withdrawals (${withdrawals.length})`}
+                </button>
+              ))}
+            </div>
           </div>
 
           {settings && settings.withdrawal_fees > 0 && activeTab === 'history' && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-blue-500/6 border-b border-blue-500/10">
-              <AlertCircle size={11} className="text-blue-500 shrink-0" />
-              <p className="text-[11px] text-blue-500/80">
-                Withdrawal fee: <span className="font-semibold text-blue-400">{settings.withdrawal_fees}%</span> deducted from each request
+            <div className="flex items-center gap-2 px-5 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800">
+              <AlertCircle size={12} className="text-blue-600 dark:text-blue-400 shrink-0" />
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                Withdrawal fee: <span className="font-semibold">{settings.withdrawal_fees}%</span> deducted from each request
               </p>
             </div>
           )}
 
           {activeTab === 'referrals' && (
             commissions.length === 0
-              ? <EmptyState icon={<Users size={28} />} title="No referrals yet" sub="Share your link to get started" />
+              ? <EmptyState icon={<Users size={32} />} title="No referrals yet" sub="Share your link to get started" />
               : (
-                <div className="w-full overflow-x-auto block pb-1">
-                  <table className="w-full text-left whitespace-nowrap min-w-[540px]">
+                <div className="w-full overflow-x-auto custom-scrollbar block max-w-full">
+                  <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
                     <thead>
-                      <tr className="border-b border-white/4">
-                        {['Merchant', 'Plan', 'Date', 'Commission', 'Status'].map(h => (
-                          <th key={h} className="px-4 py-2.5 text-[9px] font-bold text-slate-600 uppercase tracking-widest">{h}</th>
-                        ))}
+                      <tr className="bg-slate-50/50 dark:bg-[#0B1120]/50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <th className="p-4 md:px-6 md:py-4">Merchant</th>
+                        <th className="p-4 md:px-6 md:py-4">Plan</th>
+                        <th className="p-4 md:px-6 md:py-4">Date</th>
+                        <th className="p-4 md:px-6 md:py-4">Commission</th>
+                        <th className="p-4 md:px-6 md:py-4">Status</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="text-sm font-medium text-slate-700 dark:text-slate-300 divide-y divide-slate-100 dark:divide-slate-800/50">
                       {commissions.map(c => {
                         const st = STATUS_CFG[c.status] ?? STATUS_CFG.pending;
                         return (
-                          <tr key={c.id} className="border-b border-white/3 hover:bg-white/3 transition-colors">
-                            <td className="px-4 py-3 text-xs font-semibold text-slate-200">{c.merchant_name}</td>
-                            <td className="px-4 py-3">
-                              <span className="text-[10px] font-medium bg-white/8 text-slate-400 px-2 py-0.5 rounded-md uppercase tracking-wider">{c.plan_name}</span>
+                          <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors group">
+                            <td className="p-4 md:px-6 md:py-4 font-semibold text-slate-900 dark:text-white">{c.merchant_name}</td>
+                            <td className="p-4 md:px-6 md:py-4">
+                              <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-md text-xs font-semibold uppercase tracking-wider">{c.plan_name}</span>
                             </td>
-                            <td className="px-4 py-3 text-[11px] text-slate-500">
+                            <td className="p-4 md:px-6 md:py-4 text-slate-600 dark:text-slate-400">
                               {new Date(c.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </td>
-                            <td className="px-4 py-3 text-xs font-semibold text-emerald-400">+ ৳ {parseFloat(String(c.commission_amount)).toLocaleString()}</td>
-                            <td className="px-4 py-3">
-                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider ${st.bg} ${st.color}`}>{st.label}</span>
+                            <td className="p-4 md:px-6 md:py-4 font-bold text-emerald-600 dark:text-emerald-400">+ ৳ {parseFloat(String(c.commission_amount)).toLocaleString()}</td>
+                            <td className="p-4 md:px-6 md:py-4">
+                              <span className={`inline-flex items-center justify-center px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${st.bg} ${st.color}`}>
+                                {st.label}
+                              </span>
                             </td>
                           </tr>
                         );
@@ -939,39 +944,47 @@ export default function AffiliateProgram() {
 
           {activeTab === 'history' && (
             withdrawals.length === 0
-              ? <EmptyState icon={<Wallet size={28} />} title="No withdrawals yet" sub="Your withdrawal history will appear here" />
+              ? <EmptyState icon={<Wallet size={32} />} title="No withdrawals yet" sub="Your withdrawal history will appear here" />
               : (
-                <div className="w-full overflow-x-auto block pb-1">
-                  <table className="w-full text-left whitespace-nowrap min-w-[640px]">
+                <div className="w-full overflow-x-auto custom-scrollbar block max-w-full">
+                  <table className="w-full text-left border-collapse whitespace-nowrap min-w-[700px]">
                     <thead>
-                      <tr className="border-b border-white/4">
-                        {['Amount', 'Fee', 'Net', 'Method', 'Account', 'Date', 'Status'].map(h => (
-                          <th key={h} className="px-4 py-2.5 text-[9px] font-bold text-slate-600 uppercase tracking-widest">{h}</th>
-                        ))}
+                      <tr className="bg-slate-50/50 dark:bg-[#0B1120]/50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <th className="p-4 md:px-6 md:py-4">Amount</th>
+                        <th className="p-4 md:px-6 md:py-4">Fee</th>
+                        <th className="p-4 md:px-6 md:py-4">Net</th>
+                        <th className="p-4 md:px-6 md:py-4">Method</th>
+                        <th className="p-4 md:px-6 md:py-4">Account</th>
+                        <th className="p-4 md:px-6 md:py-4">Date</th>
+                        <th className="p-4 md:px-6 md:py-4">Status</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="text-sm font-medium text-slate-700 dark:text-slate-300 divide-y divide-slate-100 dark:divide-slate-800/50">
                       {withdrawals.map(w => {
                         const st = STATUS_CFG[w.status] ?? STATUS_CFG.pending;
                         const logo = paymentLogos.find(p => p.method_name === w.method);
                         let acc = w.account_details;
                         try { const p = JSON.parse(w.account_details); acc = p.number ?? acc; } catch {}
                         return (
-                          <tr key={w.id} className="border-b border-white/3 hover:bg-white/3 transition-colors">
-                            <td className="px-4 py-3 text-xs font-semibold text-slate-200">৳ {parseFloat(String(w.amount)).toLocaleString()}</td>
-                            <td className="px-4 py-3 text-[11px] text-red-400">−৳ {parseFloat(String(w.fee_amount || 0)).toLocaleString()}</td>
-                            <td className="px-4 py-3 text-xs font-semibold text-emerald-400">৳ {parseFloat(String(w.net_amount || w.amount)).toLocaleString()}</td>
-                            <td className="px-4 py-3">
+                          <tr key={w.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors group">
+                            <td className="p-4 md:px-6 md:py-4 font-semibold text-slate-900 dark:text-white">৳ {parseFloat(String(w.amount)).toLocaleString()}</td>
+                            <td className="p-4 md:px-6 md:py-4 text-red-600 dark:text-red-400">−৳ {parseFloat(String(w.fee_amount || 0)).toLocaleString()}</td>
+                            <td className="p-4 md:px-6 md:py-4 font-bold text-emerald-600 dark:text-emerald-400">৳ {parseFloat(String(w.net_amount || w.amount)).toLocaleString()}</td>
+                            <td className="p-4 md:px-6 md:py-4">
                               <span className="flex items-center gap-1.5">
                                 {logo ? <img src={logo.logo_url} alt={w.method} className="w-4 h-4 object-contain rounded" />
                                   : w.method === 'bank' ? <img src={BANK_LOGO} alt="bank" className="w-4 h-4 object-contain opacity-70" /> : null}
-                                <span className="text-[11px] capitalize text-slate-400">{w.method}</span>
+                                <span className="text-xs capitalize text-slate-700 dark:text-slate-300">{w.method}</span>
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-[11px] font-mono text-slate-500">{acc}</td>
-                            <td className="px-4 py-3 text-[11px] text-slate-500">{new Date(w.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                            <td className="px-4 py-3">
-                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider ${st.bg} ${st.color}`}>{st.label}</span>
+                            <td className="p-4 md:px-6 md:py-4 text-xs font-mono text-slate-600 dark:text-slate-400">{acc}</td>
+                            <td className="p-4 md:px-6 md:py-4 text-xs text-slate-600 dark:text-slate-400">
+                              {new Date(w.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </td>
+                            <td className="p-4 md:px-6 md:py-4">
+                              <span className={`inline-flex items-center justify-center px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${st.bg} ${st.color}`}>
+                                {st.label}
+                              </span>
                             </td>
                           </tr>
                         );
@@ -985,13 +998,13 @@ export default function AffiliateProgram() {
 
         {/* ── 2FA warning ── */}
         {settings?.withdraw_require_2fa && !hasTOTP && (
-          <div className="flex items-start gap-2.5 p-3.5 bg-amber-500/8 rounded-xl border border-amber-500/15">
-            <AlertCircle size={13} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl border border-yellow-200 dark:border-yellow-800">
+            <AlertCircle size={16} className="text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
             <div>
-              <p className="text-xs font-semibold text-amber-300 mb-0.5">Authenticator required for withdrawals</p>
-              <p className="text-[11px] text-amber-500/80">
+              <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-0.5">Authenticator required for withdrawals</p>
+              <p className="text-xs text-yellow-700 dark:text-yellow-400">
                 You haven't set up 2FA yet.{' '}
-                <button onClick={() => setShowEnrollTotp(true)} className="underline text-amber-400 font-medium hover:no-underline">Set it up now →</button>
+                <button onClick={() => setShowEnrollTotp(true)} className="underline font-medium hover:no-underline">Set it up now →</button>
               </p>
             </div>
           </div>
