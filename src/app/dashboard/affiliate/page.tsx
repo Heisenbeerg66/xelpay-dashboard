@@ -5,7 +5,7 @@ import {
   Users, Copy, Wallet, TrendingUp, ArrowUpRight, Loader2,
   Share2, Link2, Clock, AlertCircle, X, ShieldCheck, Gift,
   ArrowDownLeft, Check, QrCode, Eye, EyeOff, Smartphone,
-  ChevronDown, Search,
+  ChevronDown, Search, ShieldOff,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -71,76 +71,33 @@ interface PaymentLogo {
 const BANK_LOGO = 'https://cdn-icons-png.flaticon.com/512/2830/2830284.png';
 
 const BANGLADESHI_BANKS = [
-  'AB Bank','Agrani Bank','Bank Asia','BASIC Bank','BRAC Bank',
-  'City Bank','Dhaka Bank','Dutch-Bangla Bank','Eastern Bank',
-  'IFIC Bank','Islami Bank Bangladesh','Jamuna Bank','Janata Bank',
-  'Meghna Bank','Mercantile Bank','Midland Bank','Modhumoti Bank',
-  'Mutual Trust Bank','NCC Bank','NRB Bank','One Bank','Padma Bank',
-  'Premier Bank','Prime Bank','Pubali Bank','Rupali Bank','Shimanto Bank',
-  'Sonali Bank','South Bangla Bank','Southeast Bank','Standard Bank',
-  'UCB','Union Bank','United Commercial Bank','Uttara Bank',
+  'AB Bank', 'Agrani Bank', 'Bank Asia', 'BASIC Bank', 'BRAC Bank',
+  'City Bank', 'Dhaka Bank', 'Dutch-Bangla Bank', 'Eastern Bank',
+  'IFIC Bank', 'Islami Bank Bangladesh', 'Jamuna Bank', 'Janata Bank',
+  'Meghna Bank', 'Mercantile Bank', 'Midland Bank', 'Modhumoti Bank',
+  'Mutual Trust Bank', 'NCC Bank', 'NRB Bank', 'One Bank', 'Padma Bank',
+  'Premier Bank', 'Prime Bank', 'Pubali Bank', 'Rupali Bank', 'Shimanto Bank',
+  'Sonali Bank', 'South Bangla Bank', 'Southeast Bank', 'Standard Bank',
+  'UCB', 'Union Bank', 'United Commercial Bank', 'Uttara Bank',
 ];
 
 const ACCOUNT_TYPES = [
   { value: 'personal', label: 'Personal' },
-  { value: 'agent',    label: 'Agent' },
+  { value: 'agent', label: 'Agent' },
   { value: 'merchant', label: 'Merchant' },
 ];
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  pending:    { label: 'Pending',    color: 'text-yellow-600 dark:text-yellow-400',   bg: 'bg-yellow-50 dark:bg-yellow-900/20' },
-  approved:   { label: 'Approved',   color: 'text-blue-600 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-900/20' },
-  paid:       { label: 'Paid',       color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-900/20' },
-  cancelled:  { label: 'Cancelled',  color: 'text-red-600 dark:text-red-400',     bg: 'bg-red-50 dark:bg-red-900/20' },
-  processing: { label: 'Processing', color: 'text-sky-600 dark:text-sky-400',     bg: 'bg-sky-50 dark:bg-sky-900/20' },
+  pending: { label: 'Pending', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+  approved: { label: 'Approved', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+  paid: { label: 'Paid', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+  cancelled: { label: 'Cancelled', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10' },
+  processing: { label: 'Processing', color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-50 dark:bg-sky-500/10' },
 };
 
-// ─── Share Platforms ────────────────────────────────────────────────────────
+// ─── Helper Components (Ultra-Minimal Premium) ────────────────────────────
 
-const SHARE_PLATFORMS = [
-  {
-    id: 'facebook', label: 'Facebook',
-    svgPath: 'M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z',
-    color: '#1877F2',
-    url: (l: string) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(l)}`,
-  },
-  {
-    id: 'whatsapp', label: 'WhatsApp',
-    svgPath: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z',
-    color: '#25D366',
-    url: (l: string, t: string) => `https://wa.me/?text=${encodeURIComponent(t + ' ' + l)}`,
-  },
-  {
-    id: 'twitter', label: 'X',
-    svgPath: 'M4 4l16 16M4 20L20 4',
-    color: '#e2e8f0',
-    url: (l: string, t: string) => `https://twitter.com/intent/tweet?text=${encodeURIComponent(t)}&url=${encodeURIComponent(l)}`,
-  },
-  {
-    id: 'telegram', label: 'Telegram',
-    svgPath: 'M21.4 2.6L2.6 10.3c-1.3.5-1.3 1.3-.2 1.6l4.8 1.5 1.9 5.8c.3.7.2 1 1 1 .6 0 .9-.3 1.3-.7l3.1-3 5.1 3.8c.9.5 1.6.3 1.8-.9L22 4c.3-1.4-.5-2-1.6-1.4z',
-    color: '#2CA5E0',
-    url: (l: string, t: string) => `https://t.me/share/url?url=${encodeURIComponent(l)}&text=${encodeURIComponent(t)}`,
-  },
-  {
-    id: 'linkedin', label: 'LinkedIn',
-    svgPath: 'M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z M4 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
-    color: '#0A66C2',
-    url: (l: string) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(l)}`,
-  },
-  {
-    id: 'reddit', label: 'Reddit',
-    svgPath: 'M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm5 11.5c0 2.5-2.2 4.5-5 4.5s-5-2-5-4.5c0-.3 0-.5.1-.8-.4-.1-.8-.4-.8-.9 0-.6.5-1 1-1 .3 0 .5.1.7.3.7-.5 1.8-.8 3-.9l.5-2.4 2 .4c.1-.4.5-.7 1-.7.6 0 1 .4 1 1s-.4 1-1 1-.9-.4-1-.9l-1.7-.4-.4 2c1.2.1 2.2.4 3 .9.2-.2.4-.3.7-.3.6 0 1 .5 1 1 0 .5-.3.8-.7.9 0 .3.1.5.1.8z',
-    color: '#FF4500',
-    url: (l: string, t: string) => `https://reddit.com/submit?url=${encodeURIComponent(l)}&title=${encodeURIComponent(t)}`,
-  },
-];
-
-// ─── Searchable Bank Picker ───────────────────────────────────────────────
-
-function BankPicker({ value, onChange, inputCls }: {
-  value: string; onChange: (v: string) => void; inputCls: string;
-}) {
+function BankPicker({ value, onChange, inputCls }: { value: string; onChange: (v: string) => void; inputCls: string }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -162,10 +119,10 @@ function BankPicker({ value, onChange, inputCls }: {
       <button type="button" onClick={() => { setOpen(true); setQuery(''); setTimeout(() => inputRef.current?.focus(), 50); }}
         className={`${inputCls} flex items-center justify-between text-left`}>
         <span className={value ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}>{value || 'Select your bank'}</span>
-        <ChevronDown size={13} className={`text-slate-400 dark:text-slate-500 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={13} className="text-slate-400 dark:text-slate-500 shrink-0 transition-transform" />
       </button>
       {open && (
-        <div className="absolute z-50 mt-1.5 w-full bg-white dark:bg-[#1a2235] border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden">
+        <div className="absolute z-50 mt-1.5 w-full bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 dark:border-slate-800">
             <Search size={12} className="text-slate-400 dark:text-slate-500 shrink-0" />
             <input ref={inputRef} type="text" value={query} onChange={e => setQuery(e.target.value)}
@@ -190,13 +147,11 @@ function BankPicker({ value, onChange, inputCls }: {
   );
 }
 
-// ─── Share Modal ──────────────────────────────────────────────────────────
-
 function ShareModal({ referralLink, onClose }: { referralLink: string; onClose: () => void }) {
   const shareText = 'Join XelPay — fastest payment gateway for Bangladeshi businesses. Use my referral link:';
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200 p-4">
-      <div className="bg-white dark:bg-[#111827] w-full max-w-[95vw] sm:max-w-md rounded-3xl sm:rounded-2xl p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl mx-auto">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-200 p-4">
+      <div className="bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md w-full max-w-[95vw] sm:max-w-md rounded-3xl p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl shadow-black/5 dark:shadow-black/40 mx-auto">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Share referral link</h3>
@@ -232,8 +187,6 @@ function ShareModal({ referralLink, onClose }: { referralLink: string; onClose: 
   );
 }
 
-// ─── TOTP Enroll Modal ────────────────────────────────────────────────────
-
 function TotpEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () => void }) {
   const [step, setStep] = useState<'info' | 'qr' | 'verify'>('info');
   const [qrUri, setQrUri] = useState('');
@@ -262,8 +215,8 @@ function TotpEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200 p-4">
-      <div className="bg-white dark:bg-[#111827] w-full max-w-[95vw] sm:max-w-md rounded-3xl sm:rounded-2xl p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl mx-auto">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-200 p-4">
+      <div className="bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md w-full max-w-[95vw] sm:max-w-md rounded-3xl p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl shadow-black/5 dark:shadow-black/40 mx-auto">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
             <ShieldCheck size={15} className="text-blue-600 dark:text-blue-400" /> Setup 2FA Authenticator
@@ -280,6 +233,7 @@ function TotpEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () 
               <h4 className="text-sm font-semibold text-slate-900 dark:text-white">2-factor auth required</h4>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">Withdrawals need a one-time code from an authenticator app.</p>
               <p className="text-xs text-slate-500 dark:text-slate-500">Install <b className="text-slate-800 dark:text-slate-300">Google Authenticator</b> or <b className="text-slate-800 dark:text-slate-300">Authy</b> first.</p>
+              <p className="text-xs text-amber-600 dark:text-amber-400">Lost your authenticator device? Contact support to reset your 2FA.</p>
             </div>
             <button onClick={startEnroll} disabled={loading}
               className="w-full py-3 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
@@ -327,8 +281,6 @@ function TotpEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () 
   );
 }
 
-// ─── Fee Breakdown ────────────────────────────────────────────────────────
-
 function FeeBreakdown({ amtNum, feeAmt, netAmt, feePercent }: {
   amtNum: number; feeAmt: number; netAmt: number; feePercent: number;
 }) {
@@ -352,8 +304,6 @@ function FeeBreakdown({ amtNum, feeAmt, netAmt, feePercent }: {
   );
 }
 
-// ─── Withdraw Modal ───────────────────────────────────────────────────────
-
 function WithdrawModal({
   wallet, settings, merchantId, hasTOTP, onEnrollTOTP, onClose, onSuccess, paymentLogos,
 }: {
@@ -361,44 +311,44 @@ function WithdrawModal({
   hasTOTP: boolean; onEnrollTOTP: () => void; onClose: () => void; onSuccess: () => void;
   paymentLogos: PaymentLogo[];
 }) {
-  const [method, setMethod]           = useState('');
-  const [account, setAccount]         = useState('');
-  const [amount, setAmount]           = useState('');
+  const [method, setMethod] = useState('');
+  const [account, setAccount] = useState('');
+  const [amount, setAmount] = useState('');
   const [accountType, setAccountType] = useState('personal');
-  const [bankName, setBankName]       = useState('');
+  const [bankName, setBankName] = useState('');
   const [bankDetails, setBankDetails] = useState({ name: '', branch: '', routing: '' });
-  const [totpCode, setTotpCode]       = useState('');
-  const [step, setStep]               = useState<'form' | 'totp'>('form');
-  const [loading, setLoading]         = useState(false);
+  const [totpCode, setTotpCode] = useState('');
+  const [step, setStep] = useState<'form' | 'totp'>('form');
+  const [loading, setLoading] = useState(false);
 
   const enabledMethods = settings.withdraw_methods_enabled;
-  const mfsMethods     = enabledMethods.filter(m => m !== 'bank');
+  const mfsMethods = enabledMethods.filter(m => m !== 'bank');
   const hasBankEnabled = enabledMethods.includes('bank');
-  const isMfs          = method !== 'bank' && method !== '';
-  const isBank         = method === 'bank';
-  const minAmt         = isBank ? settings.withdraw_min_bank : settings.withdraw_min_mfs;
-  const amtNum         = parseFloat(amount) || 0;
-  const feeAmt         = parseFloat((amtNum * settings.withdrawal_fees / 100).toFixed(2));
-  const netAmt         = parseFloat((amtNum - feeAmt).toFixed(2));
-  const amtValid       = amtNum >= minAmt && amtNum <= wallet.withdrawable_balance;
+  const isMfs = method !== 'bank' && method !== '';
+  const isBank = method === 'bank';
+  const minAmt = isBank ? settings.withdraw_min_bank : settings.withdraw_min_mfs;
+  const amtNum = parseFloat(amount) || 0;
+  const feeAmt = parseFloat((amtNum * settings.withdrawal_fees / 100).toFixed(2));
+  const netAmt = parseFloat((amtNum - feeAmt).toFixed(2));
+  const amtValid = amtNum >= minAmt && amtNum <= wallet.withdrawable_balance;
 
   const todayOk = (() => {
-    if (settings.withdraw_open_days.length  > 0 && !settings.withdraw_open_days.includes(new Date().getDay()))   return false;
+    if (settings.withdraw_open_days.length > 0 && !settings.withdraw_open_days.includes(new Date().getDay())) return false;
     if (settings.withdraw_open_dates.length > 0 && !settings.withdraw_open_dates.includes(new Date().getDate())) return false;
     return true;
   })();
 
-  const getLogoUrl          = (m: string) => paymentLogos.find(p => p.method_name === m)?.logo_url ?? '';
+  const getLogoUrl = (m: string) => paymentLogos.find(p => p.method_name === m)?.logo_url ?? '';
   const buildAccountDetails = () => isBank
     ? JSON.stringify({ number: account, name: bankDetails.name, branch: bankDetails.branch, routing: bankDetails.routing, bank_name: bankName })
     : account;
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!method)             { toast.error('Select a withdrawal method.'); return; }
-    if (!account)            { toast.error('Enter your account details.'); return; }
+    if (!method) { toast.error('Select a withdrawal method.'); return; }
+    if (!account) { toast.error('Enter your account details.'); return; }
     if (isBank && !bankName) { toast.error('Select your bank.'); return; }
-    if (!amtValid)           { toast.error(`Amount must be ৳${minAmt}–৳${wallet.withdrawable_balance.toFixed(0)}.`); return; }
+    if (!amtValid) { toast.error(`Amount must be ৳${minAmt}–৳${wallet.withdrawable_balance.toFixed(0)}.`); return; }
     if (settings.withdraw_require_2fa && !hasTOTP) { onClose(); onEnrollTOTP(); return; }
     if (settings.withdraw_require_2fa) setStep('totp');
     else doSubmit('');
@@ -416,34 +366,36 @@ function WithdrawModal({
       if (ve) { toast.error('Invalid authenticator code.'); setLoading(false); return; }
     }
     const { error } = await supabase.from('affiliate_withdrawals').insert({
-      merchant_id:     merchantId,
-      amount:          amtNum,
-      fee_amount:      feeAmt,
-      net_amount:      netAmt,
+      merchant_id: merchantId,
+      amount: amtNum,
+      fee_amount: feeAmt,
+      net_amount: netAmt,
       method,
       account_details: buildAccountDetails(),
-      account_type:    isMfs ? accountType : null,
-      bank_name:       isBank ? bankName : null,
-      status:          'pending',
-      otp_verified:    true,
-      is_active:       true,
+      account_type: isMfs ? accountType : null,
+      bank_name: isBank ? bankName : null,
+      status: 'pending',
+      otp_verified: true,
+      is_active: true,
     });
-    if (error) { toast.error('Failed: ' + error.message); setLoading(false); return; }
-    await supabase.from('affiliate_wallets').update({
-      withdrawable_balance: Math.max(0, wallet.withdrawable_balance - amtNum),
-      last_withdrawn_at: new Date().toISOString(),
-    }).eq('merchant_id', merchantId);
+    if (error) {
+      toast.error('Failed: ' + error.message);
+      console.error('Withdrawal insert error:', error);
+      setLoading(false);
+      return;
+    }
     toast.success('Withdrawal request submitted!');
-    setLoading(false); onSuccess();
+    setLoading(false);
+    onSuccess(); // this will call fetchAll and refresh the UI
   };
 
   const canProceed = settings.withdraw_enabled && todayOk;
-  const inputCls   = "w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all placeholder-slate-500 dark:placeholder-slate-400";
-  const labelCls   = "text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 block";
+  const inputCls = "w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder-slate-500 dark:placeholder-slate-400";
+  const labelCls = "text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 block";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#111827] w-full sm:w-[460px] sm:max-w-[95vw] rounded-t-3xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[88vh]">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-white/95 dark:bg-[#0B1120]/95 backdrop-blur-md w-full sm:w-[460px] sm:max-w-[95vw] rounded-t-3xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl shadow-black/5 dark:shadow-black/40 overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[88vh]">
 
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div>
@@ -524,7 +476,7 @@ function WithdrawModal({
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-slate-500 dark:text-slate-400">৳</span>
                       <input type="number" min={minAmt} max={wallet.withdrawable_balance} step="1" value={amount}
                         onChange={e => setAmount(e.target.value)} placeholder={`Min ৳${minAmt}`}
-                        className="w-full pl-8 pr-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all placeholder-slate-500 dark:placeholder-slate-400" />
+                        className="w-full pl-8 pr-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-all placeholder-slate-500 dark:placeholder-slate-400" />
                     </div>
                     <FeeBreakdown amtNum={amtNum} feeAmt={feeAmt} netAmt={netAmt} feePercent={settings.withdrawal_fees} />
                     {amount && !amtValid && <p className="text-xs text-red-600 dark:text-red-400 mt-1.5">Must be ৳{minAmt}–৳{wallet.withdrawable_balance.toFixed(0)}</p>}
@@ -602,6 +554,7 @@ function WithdrawModal({
                 <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Verify identity</h4>
                 <p className="text-xs text-slate-600 dark:text-slate-400">Confirm withdrawal of <span className="text-slate-900 dark:text-white font-semibold">৳ {amtNum.toLocaleString()}</span>.</p>
                 {settings.withdrawal_fees > 0 && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">After fee → <span className="text-green-600 dark:text-green-400 font-semibold">৳ {netAmt.toLocaleString()}</span></p>}
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">Lost your authenticator device? Contact support to reset your 2FA.</p>
               </div>
               <input type="text" inputMode="numeric" maxLength={6} value={totpCode}
                 onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
@@ -635,8 +588,6 @@ function WithdrawModal({
   );
 }
 
-// ─── Empty State ──────────────────────────────────────────────────────────
-
 function EmptyState({ icon, title, sub }: { icon: React.ReactNode; title: string; sub: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 gap-3">
@@ -647,23 +598,24 @@ function EmptyState({ icon, title, sub }: { icon: React.ReactNode; title: string
   );
 }
 
-// ─── Main Page ─────────────────────────────────────────────────────────────
+// ─── Main Component ────────────────────────────────────────────────────────
 
 export default function AffiliateProgram() {
-  const [loading, setLoading]               = useState(true);
-  const [merchant, setMerchant]             = useState<MerchantInfo | null>(null);
-  const [wallet, setWallet]                 = useState<AffiliateWallet | null>(null);
-  const [commissions, setCommissions]       = useState<Commission[]>([]);
-  const [withdrawals, setWithdrawals]       = useState<Withdrawal[]>([]);
-  const [settings, setSettings]             = useState<SiteSettings | null>(null);
-  const [paymentLogos, setPaymentLogos]     = useState<PaymentLogo[]>([]);
-  const [hasTOTP, setHasTOTP]               = useState(false);
-  const [activeTab, setActiveTab]           = useState<'referrals' | 'history'>('referrals');
-  const [showShare, setShowShare]           = useState(false);
-  const [showWithdraw, setShowWithdraw]     = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [merchant, setMerchant] = useState<MerchantInfo | null>(null);
+  const [wallet, setWallet] = useState<AffiliateWallet | null>(null);
+  const [commissions, setCommissions] = useState<Commission[]>([]);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [paymentLogos, setPaymentLogos] = useState<PaymentLogo[]>([]);
+  const [hasTOTP, setHasTOTP] = useState(false);
+  const [activeFactorId, setActiveFactorId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'referrals' | 'history'>('referrals');
+  const [showShare, setShowShare] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
   const [showEnrollTotp, setShowEnrollTotp] = useState(false);
-  const [codeCopied, setCodeCopied]         = useState(false);
-  const [linkCopied, setLinkCopied]         = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [isMobileDevice, setIsMobileDevice] = useState(false);
 
   useEffect(() => {
@@ -676,6 +628,11 @@ export default function AffiliateProgram() {
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const referralLink = merchant ? `${origin}/signup?ref=${merchant.refer_id}` : '';
+
+  // Pending withdrawals (pending + processing)
+  const pendingTotal = withdrawals
+    .filter(w => w.status === 'pending' || w.status === 'processing')
+    .reduce((sum, w) => sum + (w.amount || 0), 0);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -692,9 +649,9 @@ export default function AffiliateProgram() {
         .select('id,amount,fee_amount,net_amount,method,account_details,status,created_at,processed_at')
         .eq('merchant_id', user.id).order('created_at', { ascending: false }).limit(30),
       supabase.from('site_settings').select('key_name,value')
-        .in('key_name', ['refer_commission','withdraw_min_mfs','withdraw_min_bank','withdraw_enabled',
-          'withdraw_methods_enabled','withdraw_process_time','withdraw_open_days','withdraw_open_dates',
-          'withdraw_require_2fa','withdrawal_fees']),
+        .in('key_name', ['refer_commission', 'withdraw_min_mfs', 'withdraw_min_bank', 'withdraw_enabled',
+          'withdraw_methods_enabled', 'withdraw_process_time', 'withdraw_open_days', 'withdraw_open_dates',
+          'withdraw_require_2fa', 'withdrawal_fees']),
       supabase.from('payment_logos').select('method_name,logo_url'),
       supabase.auth.mfa.listFactors(),
     ]);
@@ -703,11 +660,17 @@ export default function AffiliateProgram() {
     if (w) setWallet(w as AffiliateWallet);
     if (logos) setPaymentLogos(logos as PaymentLogo[]);
 
-    if (c) setCommissions(c.map((r: any) => ({
-      id: r.id, referred_merchant_id: r.referred_merchant_id,
-      commission_amount: r.commission_amount, status: r.status, created_at: r.created_at,
-      merchant_name: r.merchants?.name ?? 'Unknown', plan_name: r.plans?.name ?? '—',
-    })));
+    if (c) {
+      setCommissions(c.map((r: any) => ({
+        id: r.id,
+        referred_merchant_id: r.referred_merchant_id,
+        commission_amount: r.commission_amount,
+        status: r.status,
+        created_at: r.created_at,
+        merchant_name: r.merchants?.name ?? 'Unknown',
+        plan_name: r.plans?.name ?? '—',
+      })));
+    }
 
     if (wd) setWithdrawals(wd as Withdrawal[]);
 
@@ -715,19 +678,24 @@ export default function AffiliateProgram() {
       const s: Record<string, string> = {};
       ss.forEach((r: any) => { s[r.key_name] = r.value; });
       setSettings({
-        refer_commission:         parseFloat(s.refer_commission ?? '10'),
-        withdraw_min_mfs:         parseFloat(s.withdraw_min_mfs ?? '200'),
-        withdraw_min_bank:        parseFloat(s.withdraw_min_bank ?? '1000'),
-        withdraw_enabled:         (s.withdraw_enabled ?? 'true') === 'true',
+        refer_commission: parseFloat(s.refer_commission ?? '10'),
+        withdraw_min_mfs: parseFloat(s.withdraw_min_mfs ?? '200'),
+        withdraw_min_bank: parseFloat(s.withdraw_min_bank ?? '1000'),
+        withdraw_enabled: (s.withdraw_enabled ?? 'true') === 'true',
         withdraw_methods_enabled: (s.withdraw_methods_enabled ?? 'bkash,nagad,rocket,bank').split(',').map(x => x.trim()).filter(Boolean),
-        withdraw_process_time:    s.withdraw_process_time ?? '2–3 business days',
-        withdraw_open_days:       s.withdraw_open_days ? s.withdraw_open_days.split(',').map(Number).filter(Boolean) : [],
-        withdraw_open_dates:      s.withdraw_open_dates ? s.withdraw_open_dates.split(',').map(Number).filter(Boolean) : [],
-        withdraw_require_2fa:     (s.withdraw_require_2fa ?? 'true') === 'true',
-        withdrawal_fees:          parseFloat(s.withdrawal_fees ?? '0'),
+        withdraw_process_time: s.withdraw_process_time ?? '2–3 business days',
+        withdraw_open_days: s.withdraw_open_days ? s.withdraw_open_days.split(',').map(Number).filter(Boolean) : [],
+        withdraw_open_dates: s.withdraw_open_dates ? s.withdraw_open_dates.split(',').map(Number).filter(Boolean) : [],
+        withdraw_require_2fa: (s.withdraw_require_2fa ?? 'true') === 'true',
+        withdrawal_fees: parseFloat(s.withdrawal_fees ?? '0'),
       });
     }
-    setHasTOTP(!!mfa?.data?.totp?.some((f: any) => f.status === 'verified'));
+
+    // Handle 2FA factor
+    const totpFactors = mfa?.data?.totp ?? [];
+    const verifiedFactor = totpFactors.find((f: any) => f.status === 'verified');
+    setHasTOTP(!!verifiedFactor);
+    setActiveFactorId(verifiedFactor ? verifiedFactor.id : null);
     setLoading(false);
   }, []);
 
@@ -739,17 +707,32 @@ export default function AffiliateProgram() {
     setCodeCopied(true); toast.success('Code copied!');
     setTimeout(() => setCodeCopied(false), 2000);
   };
+
   const copyLink = () => {
     navigator.clipboard.writeText(referralLink);
     setLinkCopied(true); toast.success('Link copied!');
     setTimeout(() => setLinkCopied(false), 2000);
   };
+
   const handleShare = async () => {
     if (isMobileDevice && typeof navigator.share === 'function') {
-      try { await navigator.share({ title: 'XelPay Referral', text: 'Join XelPay — fastest payment gateway for Bangladeshi businesses.', url: referralLink }); return; }
-      catch { /* fall through */ }
+      try {
+        await navigator.share({ title: 'XelPay Referral', text: 'Join XelPay — fastest payment gateway for Bangladeshi businesses.', url: referralLink });
+        return;
+      } catch { /* fall through */ }
     }
     setShowShare(true);
+  };
+
+  const handleDisable2FA = async () => {
+    if (!activeFactorId) return;
+    const { error } = await supabase.auth.mfa.unenroll({ factorId: activeFactorId });
+    if (error) {
+      toast.error('Failed to disable 2FA: ' + error.message);
+      return;
+    }
+    toast.success('2FA disabled successfully');
+    await fetchAll(); // refresh state
   };
 
   if (loading) {
@@ -768,8 +751,7 @@ export default function AffiliateProgram() {
   return (
     <>
       <div className="w-full space-y-6 md:space-y-8 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-
-        {/* ── Header row ── */}
+        {/* Header with 2FA manage button */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Affiliate Program</h1>
@@ -777,43 +759,51 @@ export default function AffiliateProgram() {
               Earn <span className="text-blue-600 dark:text-blue-400 font-semibold">{settings?.refer_commission ?? 10}% lifetime commission</span> per referral
             </p>
           </div>
-          <button
-            onClick={() => setShowWithdraw(true)}
-            disabled={!settings?.withdraw_enabled || walletData.withdrawable_balance <= 0}
-            className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 hover:-translate-y-0.5 transition-all shadow-lg shadow-blue-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 shrink-0"
-          >
-            <Wallet size={18} /> Withdraw
-          </button>
+          <div className="flex items-center gap-3">
+            {hasTOTP ? (
+              <button
+                onClick={handleDisable2FA}
+                className="flex items-center gap-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
+              >
+                <ShieldOff size={16} /> Disable 2FA
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowEnrollTotp(true)}
+                className="flex items-center gap-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm"
+              >
+                <ShieldCheck size={16} /> Enable 2FA
+              </button>
+            )}
+            <button
+              onClick={() => setShowWithdraw(true)}
+              disabled={!settings?.withdraw_enabled || walletData.withdrawable_balance <= 0}
+              className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 hover:-translate-y-0.5 transition-all shadow-lg shadow-blue-600/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 shrink-0"
+            >
+              <Wallet size={18} /> Withdraw
+            </button>
+          </div>
         </div>
 
-        {/* ── Stats row (responsive grid) ── */}
+        {/* Stats Grid (4 cards) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {[
-            { label: 'Total earned',    value: `৳ ${walletData.total_earned.toLocaleString()}`,         sub: undefined,       icon: <TrendingUp size={20} />, accent: 'text-emerald-600 dark:text-emerald-400' },
-            { label: 'Available',       value: `৳ ${walletData.withdrawable_balance.toLocaleString()}`, sub: 'Ready to withdraw', icon: <Wallet size={20} />,     accent: 'text-blue-600 dark:text-blue-400' },
-            { label: 'Total withdrawn', value: `৳ ${walletData.total_withdrawn.toLocaleString()}`,      sub: walletData.last_withdrawn_at ? `Last ${new Date(walletData.last_withdrawn_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}` : 'None yet', icon: <ArrowDownLeft size={20} />, accent: 'text-slate-700 dark:text-slate-300' },
-            { label: 'Referrals',       value: String(merchant?.total_refer ?? 0),                      sub: `${merchant?.refer_link_clicks ?? 0} link clicks`, icon: <Users size={20} />, accent: 'text-violet-600 dark:text-violet-400' },
+            { label: 'Total earned', value: `৳ ${walletData.total_earned.toLocaleString()}`, icon: <TrendingUp size={20} />, accent: 'text-emerald-600 dark:text-emerald-400' },
+            { label: 'Available', value: `৳ ${walletData.withdrawable_balance.toLocaleString()}`, icon: <Wallet size={20} />, accent: 'text-blue-600 dark:text-blue-400' },
+            { label: 'Pending withdrawals', value: `৳ ${pendingTotal.toLocaleString()}`, icon: <Clock size={20} />, accent: 'text-amber-600 dark:text-amber-400' },
+            { label: 'Total withdrawn', value: `৳ ${walletData.total_withdrawn.toLocaleString()}`, icon: <ArrowDownLeft size={20} />, accent: 'text-slate-700 dark:text-slate-300' },
           ].map(card => (
             <div key={card.label} className="bg-white dark:bg-[#111827] p-5 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  {card.icon}
-                </div>
-                {card.sub && (
-                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md uppercase tracking-widest">
-                    {card.sub}
-                  </span>
-                )}
+              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center group-hover:scale-110 transition-transform mb-4">
+                {card.icon}
               </div>
               <h3 className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">{card.label}</h3>
-              <div className={`text-2xl sm:text-3xl font-black tracking-tighter ${card.accent}`}>
-                {card.value}
-              </div>
+              <div className={`text-2xl sm:text-3xl font-black tracking-tighter ${card.accent}`}>{card.value}</div>
             </div>
           ))}
         </div>
 
-        {/* ── Referral card ── */}
+        {/* Referral card */}
         <div className="bg-white dark:bg-[#111827] rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
           <div className="p-5 sm:p-6 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -822,52 +812,45 @@ export default function AffiliateProgram() {
                 <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Your referral link</span>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={copyLink}
-                  className="flex items-center justify-center gap-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-xl font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-                  {linkCopied ? <Check size={14} className="text-green-600 dark:text-green-400" /> : <Copy size={14} />}
+                <button onClick={copyLink} className="flex items-center gap-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-xl font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                  {linkCopied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
                   {linkCopied ? 'Copied' : 'Copy Link'}
                 </button>
-                <button onClick={handleShare}
-                  className="flex items-center justify-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded-xl font-bold text-xs hover:bg-blue-700 transition-all">
+                <button onClick={handleShare} className="flex items-center gap-2 bg-blue-600 text-white px-3 py-1.5 rounded-xl font-bold text-xs hover:bg-blue-700 transition-all">
                   <Share2 size={14} /> Share
                 </button>
               </div>
             </div>
-
             <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
               <Link2 size={14} className="text-slate-500 dark:text-slate-400 shrink-0" />
-              <span className="text-sm font-mono text-slate-700 dark:text-slate-300 truncate flex-1 select-all">{referralLink}</span>
+              <span className="text-sm font-mono text-slate-700 dark:text-slate-300 truncate select-all">{referralLink}</span>
             </div>
-
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Referral Code</span>
                 <span className="text-sm font-mono font-bold text-slate-900 dark:text-white tracking-wider">{merchant?.refer_id ?? '—'}</span>
               </div>
-              <button onClick={copyCode}
-                className="flex items-center justify-center gap-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-xl font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-                {codeCopied ? <Check size={14} className="text-green-600 dark:text-green-400" /> : <Copy size={14} />}
+              <button onClick={copyCode} className="flex items-center gap-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-xl font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                {codeCopied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
                 {codeCopied ? 'Copied' : 'Copy Code'}
               </button>
             </div>
           </div>
         </div>
 
-        {/* ── How it works ── */}
+        {/* How it works */}
         <div className="bg-white dark:bg-[#111827] rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-5 sm:p-6">
           <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">How it works</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
-              { n: '01', title: 'Share your link', desc: 'Post your unique link on social media, YouTube, or your blog.', icon: <Share2 size={16} /> },
-              { n: '02', title: 'They sign up',    desc: 'Anyone who registers via your link is permanently tagged as your referral.', icon: <Users size={16} /> },
-              { n: '03', title: 'Earn monthly',    desc: `You get ${settings?.refer_commission ?? 10}% of their plan fee every billing cycle, for life.`, icon: <TrendingUp size={16} /> },
+              { step: '01', title: 'Share your link', desc: 'Post your unique link on social media, YouTube, or your blog.', icon: <Share2 size={16} /> },
+              { step: '02', title: 'They sign up', desc: 'Anyone who registers via your link is permanently tagged as your referral.', icon: <Users size={16} /> },
+              { step: '03', title: 'Earn monthly', desc: `You get ${settings?.refer_commission ?? 10}% of their plan fee every billing cycle, for life.`, icon: <TrendingUp size={16} /> },
             ].map(s => (
-              <div key={s.n} className="flex gap-3">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                  {s.icon}
-                </div>
+              <div key={s.step} className="flex gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">{s.icon}</div>
                 <div>
-                  <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-0.5">Step {s.n}</p>
+                  <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-0.5">Step {s.step}</p>
                   <h4 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">{s.title}</h4>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{s.desc}</p>
                 </div>
@@ -876,133 +859,120 @@ export default function AffiliateProgram() {
           </div>
         </div>
 
-        {/* ── Tables ── */}
+        {/* Tabs & Tables */}
         <div className="bg-white dark:bg-[#111827] rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
           <div className="border-b border-slate-100 dark:border-slate-800 px-5 pt-2">
-            <div className="flex gap-1">
-              {(['referrals', 'history'] as const).map(t => (
-                <button key={t} onClick={() => setActiveTab(t)}
-                  className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border-b-2 -mb-px transition-all ${
-                    activeTab === t ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400' : 'text-slate-500 dark:text-slate-400 border-transparent hover:text-slate-700 dark:hover:text-slate-300'
-                  }`}>
-                  {t === 'referrals' ? `Referrals (${commissions.length})` : `Withdrawals (${withdrawals.length})`}
+            <div className="flex gap-4">
+              {(['referrals', 'history'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`pb-2 text-xs font-semibold uppercase tracking-wider border-b-2 transition-all ${
+                    activeTab === tab
+                      ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400'
+                      : 'text-slate-400 dark:text-slate-500 border-transparent hover:text-slate-600 dark:hover:text-slate-300'
+                  }`}
+                >
+                  {tab === 'referrals' ? `Referrals (${commissions.length})` : `Withdrawals (${withdrawals.length})`}
                 </button>
               ))}
             </div>
           </div>
 
-          {settings && settings.withdrawal_fees > 0 && activeTab === 'history' && (
-            <div className="flex items-center gap-2 px-5 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800">
-              <AlertCircle size={12} className="text-blue-600 dark:text-blue-400 shrink-0" />
-              <p className="text-xs text-blue-700 dark:text-blue-300">
-                Withdrawal fee: <span className="font-semibold">{settings.withdrawal_fees}%</span> deducted from each request
-              </p>
-            </div>
-          )}
-
           {activeTab === 'referrals' && (
-            commissions.length === 0
-              ? <EmptyState icon={<Users size={32} />} title="No referrals yet" sub="Share your link to get started" />
-              : (
-                <div className="w-full overflow-x-auto custom-scrollbar block max-w-full">
-                  <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
-                    <thead>
-                      <tr className="bg-slate-50/50 dark:bg-[#0B1120]/50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        <th className="p-4 md:px-6 md:py-4">Merchant</th>
-                        <th className="p-4 md:px-6 md:py-4">Plan</th>
-                        <th className="p-4 md:px-6 md:py-4">Date</th>
-                        <th className="p-4 md:px-6 md:py-4">Commission</th>
-                        <th className="p-4 md:px-6 md:py-4">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-sm font-medium text-slate-700 dark:text-slate-300 divide-y divide-slate-100 dark:divide-slate-800/50">
-                      {commissions.map(c => {
-                        const st = STATUS_CFG[c.status] ?? STATUS_CFG.pending;
-                        return (
-                          <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors group">
-                            <td className="p-4 md:px-6 md:py-4 font-semibold text-slate-900 dark:text-white">{c.merchant_name}</td>
-                            <td className="p-4 md:px-6 md:py-4">
-                              <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-md text-xs font-semibold uppercase tracking-wider">{c.plan_name}</span>
-                            </td>
-                            <td className="p-4 md:px-6 md:py-4 text-slate-600 dark:text-slate-400">
-                              {new Date(c.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </td>
-                            <td className="p-4 md:px-6 md:py-4 font-bold text-emerald-600 dark:text-emerald-400">+ ৳ {parseFloat(String(c.commission_amount)).toLocaleString()}</td>
-                            <td className="p-4 md:px-6 md:py-4">
-                              <span className={`inline-flex items-center justify-center px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${st.bg} ${st.color}`}>
-                                {st.label}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )
+            commissions.length === 0 ? (
+              <EmptyState icon={<Users size={28} />} title="No referrals yet" sub="Share your link to get started" />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left min-w-[560px]">
+                  <thead className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                    <tr>
+                      <th className="px-5 py-3">Merchant</th>
+                      <th className="px-5 py-3">Plan</th>
+                      <th className="px-5 py-3">Date</th>
+                      <th className="px-5 py-3">Commission</th>
+                      <th className="px-5 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                    {commissions.map(c => {
+                      const st = STATUS_CFG[c.status] ?? STATUS_CFG.pending;
+                      return (
+                        <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors text-sm">
+                          <td className="px-5 py-3 font-medium text-slate-900 dark:text-white">{c.merchant_name}</td>
+                          <td className="px-5 py-3">
+                            <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-1 rounded-md uppercase">{c.plan_name}</span>
+                          </td>
+                          <td className="px-5 py-3 text-slate-500 dark:text-slate-400">{new Date(c.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                          <td className="px-5 py-3 font-bold text-emerald-600 dark:text-emerald-400">+ ৳ {c.commission_amount.toLocaleString()}</td>
+                          <td className="px-5 py-3">
+                            <span className={`inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${st.bg} ${st.color}`}>{st.label}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
           )}
 
           {activeTab === 'history' && (
-            withdrawals.length === 0
-              ? <EmptyState icon={<Wallet size={32} />} title="No withdrawals yet" sub="Your withdrawal history will appear here" />
-              : (
-                <div className="w-full overflow-x-auto custom-scrollbar block max-w-full">
-                  <table className="w-full text-left border-collapse whitespace-nowrap min-w-[700px]">
-                    <thead>
-                      <tr className="bg-slate-50/50 dark:bg-[#0B1120]/50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        <th className="p-4 md:px-6 md:py-4">Amount</th>
-                        <th className="p-4 md:px-6 md:py-4">Fee</th>
-                        <th className="p-4 md:px-6 md:py-4">Net</th>
-                        <th className="p-4 md:px-6 md:py-4">Method</th>
-                        <th className="p-4 md:px-6 md:py-4">Account</th>
-                        <th className="p-4 md:px-6 md:py-4">Date</th>
-                        <th className="p-4 md:px-6 md:py-4">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-sm font-medium text-slate-700 dark:text-slate-300 divide-y divide-slate-100 dark:divide-slate-800/50">
-                      {withdrawals.map(w => {
-                        const st = STATUS_CFG[w.status] ?? STATUS_CFG.pending;
-                        const logo = paymentLogos.find(p => p.method_name === w.method);
-                        let acc = w.account_details;
-                        try { const p = JSON.parse(w.account_details); acc = p.number ?? acc; } catch {}
-                        return (
-                          <tr key={w.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors group">
-                            <td className="p-4 md:px-6 md:py-4 font-semibold text-slate-900 dark:text-white">৳ {parseFloat(String(w.amount)).toLocaleString()}</td>
-                            <td className="p-4 md:px-6 md:py-4 text-red-600 dark:text-red-400">−৳ {parseFloat(String(w.fee_amount || 0)).toLocaleString()}</td>
-                            <td className="p-4 md:px-6 md:py-4 font-bold text-emerald-600 dark:text-emerald-400">৳ {parseFloat(String(w.net_amount || w.amount)).toLocaleString()}</td>
-                            <td className="p-4 md:px-6 md:py-4">
-                              <span className="flex items-center gap-1.5">
-                                {logo ? <img src={logo.logo_url} alt={w.method} className="w-4 h-4 object-contain rounded" />
-                                  : w.method === 'bank' ? <img src={BANK_LOGO} alt="bank" className="w-4 h-4 object-contain opacity-70" /> : null}
-                                <span className="text-xs capitalize text-slate-700 dark:text-slate-300">{w.method}</span>
-                              </span>
-                            </td>
-                            <td className="p-4 md:px-6 md:py-4 text-xs font-mono text-slate-600 dark:text-slate-400">{acc}</td>
-                            <td className="p-4 md:px-6 md:py-4 text-xs text-slate-600 dark:text-slate-400">
-                              {new Date(w.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </td>
-                            <td className="p-4 md:px-6 md:py-4">
-                              <span className={`inline-flex items-center justify-center px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${st.bg} ${st.color}`}>
-                                {st.label}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )
+            withdrawals.length === 0 ? (
+              <EmptyState icon={<Wallet size={28} />} title="No withdrawals yet" sub="Your withdrawal history will appear here" />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left min-w-[680px]">
+                  <thead className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                    <tr>
+                      <th className="px-5 py-3">Amount</th>
+                      <th className="px-5 py-3">Fee</th>
+                      <th className="px-5 py-3">Net</th>
+                      <th className="px-5 py-3">Method</th>
+                      <th className="px-5 py-3">Account</th>
+                      <th className="px-5 py-3">Date</th>
+                      <th className="px-5 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                    {withdrawals.map(w => {
+                      const st = STATUS_CFG[w.status] ?? STATUS_CFG.pending;
+                      const logo = paymentLogos.find(p => p.method_name === w.method);
+                      let acc = w.account_details;
+                      try { const p = JSON.parse(w.account_details); acc = p.number ?? acc; } catch {}
+                      return (
+                        <tr key={w.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors text-sm">
+                          <td className="px-5 py-3 font-medium text-slate-900 dark:text-white">৳ {w.amount.toLocaleString()}</td>
+                          <td className="px-5 py-3 text-red-600 dark:text-red-400">−৳ {(w.fee_amount || 0).toLocaleString()}</td>
+                          <td className="px-5 py-3 font-bold text-emerald-600 dark:text-emerald-400">৳ {(w.net_amount || w.amount).toLocaleString()}</td>
+                          <td className="px-5 py-3">
+                            <div className="flex items-center gap-1.5">
+                              {logo ? <img src={logo.logo_url} alt={w.method} className="w-4 h-4 object-contain rounded" /> : w.method === 'bank' && <img src={BANK_LOGO} alt="bank" className="w-4 h-4 opacity-70" />}
+                              <span className="text-xs capitalize text-slate-700 dark:text-slate-300">{w.method}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-3 text-xs font-mono text-slate-500 dark:text-slate-400">{acc}</td>
+                          <td className="px-5 py-3 text-slate-500 dark:text-slate-400">{new Date(w.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                          <td className="px-5 py-3">
+                            <span className={`inline-flex px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${st.bg} ${st.color}`}>{st.label}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
           )}
         </div>
 
-        {/* ── 2FA warning ── */}
+        {/* 2FA warning only if needed and not enrolled */}
         {settings?.withdraw_require_2fa && !hasTOTP && (
-          <div className="flex items-start gap-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl border border-yellow-200 dark:border-yellow-800">
-            <AlertCircle size={16} className="text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-200 dark:border-amber-800">
+            <AlertCircle size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-0.5">Authenticator required for withdrawals</p>
-              <p className="text-xs text-yellow-700 dark:text-yellow-400">
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-0.5">Authenticator required for withdrawals</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400">
                 You haven't set up 2FA yet.{' '}
                 <button onClick={() => setShowEnrollTotp(true)} className="underline font-medium hover:no-underline">Set it up now →</button>
               </p>
@@ -1011,24 +981,66 @@ export default function AffiliateProgram() {
         )}
       </div>
 
+      {/* Modals */}
       {showShare && <ShareModal referralLink={referralLink} onClose={() => setShowShare(false)} />}
-
       {showWithdraw && settings && merchant && (
         <WithdrawModal
-          wallet={walletData} settings={settings} merchantId={merchant.id} hasTOTP={hasTOTP}
+          wallet={walletData}
+          settings={settings}
+          merchantId={merchant.id}
+          hasTOTP={hasTOTP}
           paymentLogos={paymentLogos}
           onEnrollTOTP={() => { setShowWithdraw(false); setShowEnrollTotp(true); }}
           onClose={() => setShowWithdraw(false)}
           onSuccess={() => { setShowWithdraw(false); fetchAll(); }}
         />
       )}
-
       {showEnrollTotp && (
         <TotpEnrollModal
-          onDone={() => { setShowEnrollTotp(false); setHasTOTP(true); toast.success('2FA enabled!'); }}
+          onDone={() => { setShowEnrollTotp(false); fetchAll(); toast.success('2FA enabled!'); }}
           onClose={() => setShowEnrollTotp(false)}
         />
       )}
     </>
   );
 }
+
+// Share platforms definitions (moved outside for clarity)
+const SHARE_PLATFORMS = [
+  {
+    id: 'facebook', label: 'Facebook',
+    svgPath: 'M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z',
+    color: '#1877F2',
+    url: (l: string) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(l)}`,
+  },
+  {
+    id: 'whatsapp', label: 'WhatsApp',
+    svgPath: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z',
+    color: '#25D366',
+    url: (l: string, t: string) => `https://wa.me/?text=${encodeURIComponent(t + ' ' + l)}`,
+  },
+  {
+    id: 'twitter', label: 'X',
+    svgPath: 'M4 4l16 16M4 20L20 4',
+    color: '#e2e8f0',
+    url: (l: string, t: string) => `https://twitter.com/intent/tweet?text=${encodeURIComponent(t)}&url=${encodeURIComponent(l)}`,
+  },
+  {
+    id: 'telegram', label: 'Telegram',
+    svgPath: 'M21.4 2.6L2.6 10.3c-1.3.5-1.3 1.3-.2 1.6l4.8 1.5 1.9 5.8c.3.7.2 1 1 1 .6 0 .9-.3 1.3-.7l3.1-3 5.1 3.8c.9.5 1.6.3 1.8-.9L22 4c.3-1.4-.5-2-1.6-1.4z',
+    color: '#2CA5E0',
+    url: (l: string, t: string) => `https://t.me/share/url?url=${encodeURIComponent(l)}&text=${encodeURIComponent(t)}`,
+  },
+  {
+    id: 'linkedin', label: 'LinkedIn',
+    svgPath: 'M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6zM2 9h4v12H2z M4 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+    color: '#0A66C2',
+    url: (l: string) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(l)}`,
+  },
+  {
+    id: 'reddit', label: 'Reddit',
+    svgPath: 'M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm5 11.5c0 2.5-2.2 4.5-5 4.5s-5-2-5-4.5c0-.3 0-.5.1-.8-.4-.1-.8-.4-.8-.9 0-.6.5-1 1-1 .3 0 .5.1.7.3.7-.5 1.8-.8 3-.9l.5-2.4 2 .4c.1-.4.5-.7 1-.7.6 0 1 .4 1 1s-.4 1-1 1-.9-.4-1-.9l-1.7-.4-.4 2c1.2.1 2.2.4 3 .9.2-.2.4-.3.7-.3.6 0 1 .5 1 1 0 .5-.3.8-.7.9 0 .3.1.5.1.8z',
+    color: '#FF4500',
+    url: (l: string, t: string) => `https://reddit.com/submit?url=${encodeURIComponent(l)}&title=${encodeURIComponent(t)}`,
+  },
+];
