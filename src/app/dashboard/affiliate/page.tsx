@@ -88,11 +88,11 @@ const ACCOUNT_TYPES = [
 ];
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  pending: { label: 'Pending', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
-  approved: { label: 'Approved', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' },
-  paid: { label: 'Paid', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-  cancelled: { label: 'Cancelled', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10' },
-  processing: { label: 'Processing', color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-50 dark:bg-sky-500/10' },
+  pending:    { label: 'Pending',    color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+  approved:   { label: 'Approved',   color: 'text-blue-600 dark:text-blue-400',   bg: 'bg-blue-50 dark:bg-blue-500/10' },
+  paid:       { label: 'Paid',       color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+  cancelled:  { label: 'Cancelled',  color: 'text-red-600 dark:text-red-400',     bg: 'bg-red-50 dark:bg-red-500/10' },
+  processing: { label: 'Processing', color: 'text-sky-600 dark:text-sky-400',     bg: 'bg-sky-50 dark:bg-sky-500/10' },
 };
 
 // ─── Helper Components (Ultra-Minimal Premium) ────────────────────────────
@@ -386,7 +386,7 @@ function WithdrawModal({
     }
     toast.success('Withdrawal request submitted!');
     setLoading(false);
-    onSuccess(); // this will call fetchAll and refresh the UI
+    onSuccess(); // will call fetchAll and refresh UI
   };
 
   const canProceed = settings.withdraw_enabled && todayOk;
@@ -629,7 +629,7 @@ export default function AffiliateProgram() {
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const referralLink = merchant ? `${origin}/signup?ref=${merchant.refer_id}` : '';
 
-  // Pending withdrawals (pending + processing)
+  // Pending withdrawals total (pending + processing)
   const pendingTotal = withdrawals
     .filter(w => w.status === 'pending' || w.status === 'processing')
     .reduce((sum, w) => sum + (w.amount || 0), 0);
@@ -691,8 +691,8 @@ export default function AffiliateProgram() {
       });
     }
 
-    // Handle 2FA factor
-    const totpFactors = mfa?.data?.totp ?? [];
+    // FIXED: mfa is the direct response from listFactors(), no nested .data
+    const totpFactors = mfa?.totp ?? [];
     const verifiedFactor = totpFactors.find((f: any) => f.status === 'verified');
     setHasTOTP(!!verifiedFactor);
     setActiveFactorId(verifiedFactor ? verifiedFactor.id : null);
@@ -732,7 +732,7 @@ export default function AffiliateProgram() {
       return;
     }
     toast.success('2FA disabled successfully');
-    await fetchAll(); // refresh state
+    await fetchAll();
   };
 
   if (loading) {
@@ -1005,7 +1005,7 @@ export default function AffiliateProgram() {
   );
 }
 
-// Share platforms definitions (moved outside for clarity)
+// Share platforms definitions
 const SHARE_PLATFORMS = [
   {
     id: 'facebook', label: 'Facebook',
