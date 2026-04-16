@@ -43,13 +43,17 @@ export default function NewBusiness() {
     loadInitialData();
   }, []);
 
-  const isInternationalAllowed = planData?.allowed_method?.includes('international') || planData?.allowed_method?.includes('global');
-
+  // 🚀 FIXED: JSONB ডেটা সঠিকভাবে চেক করার লজিক
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
+    
+    // JSONB ডেটা অবজেক্ট বা অ্যারে যাই হোক না কেন, নিরাপদে চেক করার জন্য স্ট্রিংয়ে রূপান্তর করা হয়েছে
+    const allowedMethodsStr = JSON.stringify(planData?.allowed_method || {}).toLowerCase();
+    const isInternationalAllowed = allowedMethodsStr.includes('international') || allowedMethodsStr.includes('global');
+
     if (val === 'USD' && !isInternationalAllowed) {
        toast.error("আপনার বর্তমান প্ল্যানে ইন্টারন্যাশনাল পেমেন্ট বা USD সাপোর্ট নেই। দয়া করে প্ল্যান আপগ্রেড করুন।");
-       setFormData(prev => ({ ...prev, currency: 'BDT' }));
+       setFormData(prev => ({ ...prev, currency: 'BDT' })); // জোরপূর্বক BDT তে ফেরত পাঠানো
        return;
     }
     setFormData(prev => ({ ...prev, currency: val }));
@@ -78,7 +82,6 @@ export default function NewBusiness() {
     return result;
   };
 
-  // 🚀 FIXED: single() এর বদলে maybeSingle() ব্যবহার করা হয়েছে যাতে এরর থ্রো না করে
   const generateSlug = async (name: string) => {
     const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
     let isUnique = false;
@@ -129,7 +132,7 @@ export default function NewBusiness() {
       const slug = await generateSlug(formData.businessName);
 
       const { data: newBusiness, error } = await supabase.from('businesses').insert({
-        merchant_id: user.id, // এটি ১০০% ঠিক আছে
+        merchant_id: user.id,
         business_name: formData.businessName,
         slug: slug,
         business_type: formData.businessType,
@@ -158,7 +161,6 @@ export default function NewBusiness() {
          autoVerifyBusiness(newBusiness.id, formData.websiteUrl);
       }
       
-      // রিডাইরেক্ট হওয়ার আগে একটু সময় দেওয়া হলো যাতে ইউজার মেসেজটা পড়তে পারে
       setTimeout(() => {
         window.location.href = '/dashboard';
       }, 2000);
@@ -166,7 +168,6 @@ export default function NewBusiness() {
     } catch (error: any) {
       toast.error(error.message || "Failed to create workspace. Please try again.");
     } finally {
-      // 🚀 FIXED: finally ব্লক দেওয়া হয়েছে যাতে এরর এলেও লোডিং বন্ধ হয়ে যায়
       setLoading(false);
     }
   };
