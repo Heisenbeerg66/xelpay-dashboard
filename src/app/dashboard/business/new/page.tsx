@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Building2, Globe, Mail, Phone, ArrowRight, Loader2, DollarSign, ShieldAlert, Smartphone, ShoppingBag, LayoutGrid } from 'lucide-react';
+import { Building2, Globe, Mail, Phone, ArrowRight, Loader2, DollarSign, ShieldAlert, Smartphone, ShoppingBag, LayoutGrid, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { autoVerifyBusiness } from '@/lib/verify-business';
@@ -9,6 +9,7 @@ import { autoVerifyBusiness } from '@/lib/verify-business';
 export default function NewBusiness() {
   const [loading, setLoading] = useState(false);
   const [fetchingPlan, setFetchingPlan] = useState(true);
+  const [errorMessage, setErrorMessage] = useState(''); // ইনলাইন এরর দেখানোর জন্য
   
   // Plan & Limit Data
   const [planData, setPlanData] = useState<any>(null);
@@ -43,19 +44,22 @@ export default function NewBusiness() {
     loadInitialData();
   }, []);
 
-  // 🚀 FIXED: JSONB ডেটা সঠিকভাবে চেক করার লজিক
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     
-    // JSONB ডেটা অবজেক্ট বা অ্যারে যাই হোক না কেন, নিরাপদে চেক করার জন্য স্ট্রিংয়ে রূপান্তর করা হয়েছে
+    // JSONB ডেটা ঠিকমতো চেক করার জন্য স্ট্রিংয়ে কনভার্ট করা হয়েছে
     const allowedMethodsStr = JSON.stringify(planData?.allowed_method || {}).toLowerCase();
     const isInternationalAllowed = allowedMethodsStr.includes('international') || allowedMethodsStr.includes('global');
 
     if (val === 'USD' && !isInternationalAllowed) {
-       toast.error("আপনার বর্তমান প্ল্যানে ইন্টারন্যাশনাল পেমেন্ট বা USD সাপোর্ট নেই। দয়া করে প্ল্যান আপগ্রেড করুন।");
-       setFormData(prev => ({ ...prev, currency: 'BDT' })); // জোরপূর্বক BDT তে ফেরত পাঠানো
+       const msg = "আপনার বর্তমান প্ল্যানে ইন্টারন্যাশনাল পেমেন্ট বা USD সাপোর্ট নেই। দয়া করে প্ল্যান আপগ্রেড করুন।";
+       toast.error(msg);
+       setErrorMessage(msg);
+       setFormData(prev => ({ ...prev, currency: 'BDT' }));
+       setTimeout(() => setErrorMessage(''), 5000); // ৫ সেকেন্ড পর মেসেজ হাইড হবে
        return;
     }
+    setErrorMessage('');
     setFormData(prev => ({ ...prev, currency: val }));
   };
 
@@ -89,6 +93,7 @@ export default function NewBusiness() {
     let counter = 1;
 
     while (!isUnique) {
+      // .single() এর বদলে .maybeSingle() ব্যবহার করা হয়েছে যেন এরর থ্রো না করে
       const { data } = await supabase.from('businesses').select('slug').eq('slug', currentSlug).maybeSingle();
       if (!data) {
         isUnique = true;
@@ -102,17 +107,27 @@ export default function NewBusiness() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage('');
 
     if (planData && businessCount >= planData.business_limit) {
-       return toast.error(`আপনার প্ল্যানের লিমিট শেষ (${planData.business_limit} টি)। আরো Business অ্যাড করতে আপগ্রেড করুন।`);
+       const msg = `আপনার প্ল্যানের লিমিট শেষ (${planData.business_limit} টি)। আরো Business অ্যাড করতে আপগ্রেড করুন।`;
+       toast.error(msg);
+       setErrorMessage(msg);
+       return;
     }
 
     if (formData.supportPhone.length < 11 || !formData.supportPhone.startsWith('0')) {
-       return toast.error("ফোন নম্বর অবশ্যই 0 দিয়ে শুরু হতে হবে এবং ১১ ডিজিটের হতে হবে।");
+       const msg = "ফোন নম্বর অবশ্যই 0 দিয়ে শুরু হতে হবে এবং ১১ ডিজিটের হতে হবে।";
+       toast.error(msg);
+       setErrorMessage(msg);
+       return;
     }
 
     if (formData.currency === 'USD' && !formData.exchangeRate) {
-       return toast.error("USD সিলেক্ট করলে Exchange Rate বসানো বাধ্যতামূলক।");
+       const msg = "USD সিলেক্ট করলে Exchange Rate বসানো বাধ্যতামূলক।";
+       toast.error(msg);
+       setErrorMessage(msg);
+       return;
     }
 
     setLoading(true);
@@ -154,6 +169,7 @@ export default function NewBusiness() {
       }
 
       toast.success("Business submitted! Verification is in progress (takes up to 24-48 hours).");
+      setErrorMessage(''); 
       window.dispatchEvent(new Event('businessChanged'));
       
       // Background Auto Verify Trigger
@@ -166,7 +182,9 @@ export default function NewBusiness() {
       }, 2000);
 
     } catch (error: any) {
-      toast.error(error.message || "Failed to create workspace. Please try again.");
+      const errMsg = error.message || "Failed to create workspace. Please try again.";
+      toast.error(errMsg);
+      setErrorMessage(`Database Error: ${errMsg}`); // ডাটাবেসে কোনো এরর থাকলে স্ক্রিনে দেখাবে
     } finally {
       setLoading(false);
     }
@@ -191,15 +209,22 @@ export default function NewBusiness() {
 
       <div className="bg-white dark:bg-[#0B1120] rounded-[2rem] border border-slate-200 dark:border-slate-800/60 p-6 md:p-10 shadow-sm">
         
-        {/* Strict Legal Warning Banner */}
-        <div className="mb-8 p-4 md:p-5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-2xl flex gap-4 items-start">
-           <ShieldAlert className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" size={24} />
+        {/* ইনলাইন এরর মেসেজ */}
+        {errorMessage && (
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-xl flex items-start gap-3 animate-in zoom-in-95 duration-300">
+             <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={20} />
+             <p className="text-sm font-bold text-red-700 dark:text-red-400">{errorMessage}</p>
+          </div>
+        )}
+
+        <div className="mb-8 p-4 md:p-5 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-900/30 rounded-2xl flex gap-4 items-start">
+           <ShieldAlert className="text-yellow-600 dark:text-yellow-500 shrink-0 mt-0.5" size={24} />
            <div>
-             <h4 className="text-sm font-black text-red-800 dark:text-red-400 uppercase tracking-widest mb-1.5">Strict Legal Policy</h4>
-             <p className="text-xs font-bold text-red-700 dark:text-red-300/80 leading-relaxed">
+             <h4 className="text-sm font-black text-yellow-800 dark:text-yellow-500 uppercase tracking-widest mb-1.5">Strict Legal Policy</h4>
+             <p className="text-xs font-bold text-yellow-700 dark:text-yellow-600/80 leading-relaxed">
                বেটিং (Betting), জুয়া, পর্নোগ্রাফি বা বাংলাদেশের আইনে নিষিদ্ধ এমন কোনো অবৈধ ওয়েবসাইট, অ্যাপ বা বিজনেস এলাও করা হবে না। 
-               আমাদের অটোমেটেড সিস্টেম এবং অ্যাডমিন প্যানেল এটি নিবিড়ভাবে যাচাই করবে। ভেরিফিকেশন ফেইল হলে বা পরবর্তীতে এমন কিছু পাওয়া গেলে অ্যাকাউন্ট ও ব্যালেন্স স্থায়ীভাবে বাতিল করা হবে। 
-               <a href="/info/terms" target="_blank" rel="noreferrer" className="underline ml-1 hover:text-red-900 dark:hover:text-red-200">Terms & Conditions পড়ুন</a>.
+               আমাদের অটোমেটেড সিস্টেম এবং অ্যাডমিন প্যানেল এটি নিবিড়ভাবে যাচাই করবে। 
+               <a href="/info/terms" target="_blank" rel="noreferrer" className="underline ml-1 hover:text-yellow-900 dark:hover:text-yellow-400">Terms & Conditions পড়ুন</a>.
              </p>
            </div>
         </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { DollarSign, Link as LinkIcon, Activity, ArrowUpRight, Plus, Wallet, FileText, ArrowRight, Loader2, Building2 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner'; // 🚀 ফিক্স: পপআপের জন্য ইম্পোর্ট করা হয়েছে
 
 export default function DashboardHome() {
   const [loading, setLoading] = useState(true);
@@ -20,41 +21,48 @@ export default function DashboardHome() {
   const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
 
   const fetchDashboardData = async (bizId: string) => {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    // 1. Fetch Orders for calculating Revenue & Success Rate
-    const { data: orders } = await supabase
-      .from('orders')
-      .select('amount, status, created_at, order_no, customer_name, method')
-      .eq('business_id', bizId)
-      .order('created_at', { ascending: false });
+      // 1. Fetch Orders for calculating Revenue & Success Rate
+      const { data: orders, error: ordersError } = await supabase
+        .from('orders')
+        .select('amount, status, created_at, order_no, customer_name, method')
+        .eq('business_id', bizId)
+        .order('created_at', { ascending: false });
 
-    // 2. Fetch Active Links Count
-    const { count: linksCount } = await supabase
-      .from('payment_links')
-      .select('*', { count: 'exact', head: true })
-      .eq('business_id', bizId)
-      .eq('status', 'active');
+      if (ordersError) throw ordersError;
 
-    if (orders) {
-      const paidOrders = orders.filter((o: any) => o.status === 'paid' || o.status === 'success');
+      // 2. Fetch Active Links Count
+      const { count: linksCount, error: linksError } = await supabase
+        .from('payment_links')
+        .select('*', { count: 'exact', head: true })
+        .eq('business_id', bizId)
+        .eq('status', 'active');
 
-      const totalRev = paidOrders.reduce((sum: number, order: any) => sum + parseFloat(order.amount || '0'), 0);
-      const rate = orders.length > 0 ?
-        (paidOrders.length / orders.length) * 100 : 0;
+      if (linksError) throw linksError;
 
-      setStats({
-        totalRevenue: totalRev,
-        activeLinks: linksCount || 0,
-        successRate: rate,
-        totalOrders: orders.length
-      });
+      if (orders) {
+        const paidOrders = orders.filter((o: any) => o.status === 'paid' || o.status === 'success');
 
-      // Get top 5 recent orders
-      setRecentTransactions(orders.slice(0, 5));
+        const totalRev = paidOrders.reduce((sum: number, order: any) => sum + parseFloat(order.amount || '0'), 0);
+        const rate = orders.length > 0 ? (paidOrders.length / orders.length) * 100 : 0;
+
+        setStats({
+          totalRevenue: totalRev,
+          activeLinks: linksCount || 0,
+          successRate: rate,
+          totalOrders: orders.length
+        });
+
+        // Get top 5 recent orders
+        setRecentTransactions(orders.slice(0, 5));
+      }
+    } catch (error: any) {
+      toast.error("Failed to load dashboard data. Please refresh the page.");
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   // 🚀 Initial Load & Workspace Switcher Listener

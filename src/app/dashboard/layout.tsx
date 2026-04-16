@@ -1,10 +1,9 @@
-// PATH: /app/dashboard/layout.tsx
-
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import DashboardClient from '@/components/dashboard/DashboardClient';
 import type { Metadata, Viewport } from 'next';
+import { Toaster } from 'sonner'; // 🚀 ফিক্স: Toaster ইম্পোর্ট করা হয়েছে
 
 export const metadata: Metadata = {
   title: { default: 'Dashboard — XelPay', template: '%s — XelPay' },
@@ -53,6 +52,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <DashboardClient merchant={merchant} user={user}>
+      {/* 🚀 ফিক্স: ড্যাশবোর্ডে পপআপ/মেসেজ দেখানোর জন্য Toaster যুক্ত করা হয়েছে */}
+      <Toaster richColors position="top-center" />
       {children}
     </DashboardClient>
   );
