@@ -9,7 +9,7 @@ import { autoVerifyBusiness } from '@/lib/verify-business';
 export default function NewBusiness() {
   const [loading, setLoading] = useState(false);
   const [fetchingPlan, setFetchingPlan] = useState(true);
-  const [errorMessage, setErrorMessage] = useState(''); // ইনলাইন এরর দেখানোর জন্য
+  const [errorMessage, setErrorMessage] = useState('');
   
   // Plan & Limit Data
   const [planData, setPlanData] = useState<any>(null);
@@ -46,8 +46,6 @@ export default function NewBusiness() {
 
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
-    
-    // JSONB ডেটা ঠিকমতো চেক করার জন্য স্ট্রিংয়ে কনভার্ট করা হয়েছে
     const allowedMethodsStr = JSON.stringify(planData?.allowed_method || {}).toLowerCase();
     const isInternationalAllowed = allowedMethodsStr.includes('international') || allowedMethodsStr.includes('global');
 
@@ -56,7 +54,7 @@ export default function NewBusiness() {
        toast.error(msg);
        setErrorMessage(msg);
        setFormData(prev => ({ ...prev, currency: 'BDT' }));
-       setTimeout(() => setErrorMessage(''), 5000); // ৫ সেকেন্ড পর মেসেজ হাইড হবে
+       setTimeout(() => setErrorMessage(''), 5000);
        return;
     }
     setErrorMessage('');
@@ -93,7 +91,6 @@ export default function NewBusiness() {
     let counter = 1;
 
     while (!isUnique) {
-      // .single() এর বদলে .maybeSingle() ব্যবহার করা হয়েছে যেন এরর থ্রো না করে
       const { data } = await supabase.from('businesses').select('slug').eq('slug', currentSlug).maybeSingle();
       if (!data) {
         isUnique = true;
@@ -109,8 +106,9 @@ export default function NewBusiness() {
     e.preventDefault();
     setErrorMessage('');
 
-    if (planData && businessCount >= planData.business_limit) {
-       const msg = `আপনার প্ল্যানের লিমিট শেষ (${planData.business_limit} টি)। আরো Business অ্যাড করতে আপগ্রেড করুন।`;
+    // Fast UI Validation Check
+    if (planData && Number(businessCount) >= Number(planData.business_limit)) {
+       const msg = `আপনার প্ল্যানের লিমিট শেষ (সর্বোচ্চ ${planData.business_limit} টি)। আরো Business অ্যাড করতে প্ল্যান আপগ্রেড করুন।`;
        toast.error(msg);
        setErrorMessage(msg);
        return;
@@ -139,6 +137,25 @@ export default function NewBusiness() {
         return;
       }
 
+      // 🚀 BULLETPROOF LIMIT CHECK: সাবমিট করার ঠিক আগ মুহূর্তে রিয়েল-টাইমে ডাটাবেস চেক করা
+      const { data: currentMerchant } = await supabase.from('merchants').select('plan_id').eq('id', user.id).single();
+      if (currentMerchant?.plan_id) {
+          const { data: currentPlan } = await supabase.from('plans').select('business_limit').eq('id', currentMerchant.plan_id).single();
+          const { count: exactBusinessCount } = await supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('merchant_id', user.id);
+          
+          const limit = Number(currentPlan?.business_limit || 0);
+          const current = Number(exactBusinessCount || 0);
+
+          if (current >= limit) {
+             const msg = `আপনার বর্তমান প্ল্যানের লিমিট শেষ (সর্বোচ্চ ${limit} টি)। দয়া করে প্ল্যান আপগ্রেড করুন।`;
+             toast.error(msg);
+             setErrorMessage(msg);
+             setLoading(false);
+             return; // ডেটাবেসে ইনসার্ট হওয়া থেকে আটকে দিল
+          }
+      }
+
+      // Limit Check Passed, Proceed to Insert
       const pubKey = generateSecureKey('xp_pub', 16);
       const secKey = generateSecureKey('xp_sec', 32);
       const whSecret = generateSecureKey('whsec', 24);
@@ -184,7 +201,7 @@ export default function NewBusiness() {
     } catch (error: any) {
       const errMsg = error.message || "Failed to create workspace. Please try again.";
       toast.error(errMsg);
-      setErrorMessage(`Database Error: ${errMsg}`); // ডাটাবেসে কোনো এরর থাকলে স্ক্রিনে দেখাবে
+      setErrorMessage(`Database Error: ${errMsg}`);
     } finally {
       setLoading(false);
     }
