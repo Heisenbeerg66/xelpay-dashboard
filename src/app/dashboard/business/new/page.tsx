@@ -78,6 +78,7 @@ export default function NewBusiness() {
     return result;
   };
 
+  // 🚀 FIXED: single() এর বদলে maybeSingle() ব্যবহার করা হয়েছে যাতে এরর থ্রো না করে
   const generateSlug = async (name: string) => {
     const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
     let isUnique = false;
@@ -85,7 +86,7 @@ export default function NewBusiness() {
     let counter = 1;
 
     while (!isUnique) {
-      const { data } = await supabase.from('businesses').select('slug').eq('slug', currentSlug).single();
+      const { data } = await supabase.from('businesses').select('slug').eq('slug', currentSlug).maybeSingle();
       if (!data) {
         isUnique = true;
       } else {
@@ -100,57 +101,55 @@ export default function NewBusiness() {
     e.preventDefault();
 
     if (planData && businessCount >= planData.business_limit) {
-       toast.error(`আপনার প্ল্যানের লিমিট শেষ (${planData.business_limit} টি)। আরো Business অ্যাড করতে আপগ্রেড করুন।`);
-       return;
+       return toast.error(`আপনার প্ল্যানের লিমিট শেষ (${planData.business_limit} টি)। আরো Business অ্যাড করতে আপগ্রেড করুন।`);
     }
 
     if (formData.supportPhone.length < 11 || !formData.supportPhone.startsWith('0')) {
-       toast.error("ফোন নম্বর অবশ্যই 0 দিয়ে শুরু হতে হবে এবং ১১ ডিজিটের হতে হবে।");
-       return;
+       return toast.error("ফোন নম্বর অবশ্যই 0 দিয়ে শুরু হতে হবে এবং ১১ ডিজিটের হতে হবে।");
     }
 
     if (formData.currency === 'USD' && !formData.exchangeRate) {
-       toast.error("USD সিলেক্ট করলে Exchange Rate বসানো বাধ্যতামূলক।");
-       return;
+       return toast.error("USD সিলেক্ট করলে Exchange Rate বসানো বাধ্যতামূলক।");
     }
 
     setLoading(true);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error("Session expired. Please login again.");
-      setLoading(false);
-      return;
-    }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Session expired. Please login again.");
+        return;
+      }
 
-    const pubKey = generateSecureKey('xp_pub', 16);
-    const secKey = generateSecureKey('xp_sec', 32);
-    const whSecret = generateSecureKey('whsec', 24);
-    const telegramLinkCode = generateRandomStr(12, true);
-    const deviceConnKey = generateRandomStr(24);
-    const slug = await generateSlug(formData.businessName);
+      const pubKey = generateSecureKey('xp_pub', 16);
+      const secKey = generateSecureKey('xp_sec', 32);
+      const whSecret = generateSecureKey('whsec', 24);
+      const telegramLinkCode = generateRandomStr(12, true);
+      const deviceConnKey = generateRandomStr(24);
+      const slug = await generateSlug(formData.businessName);
 
-    const { data: newBusiness, error } = await supabase.from('businesses').insert({
-      merchant_id: user.id,
-      business_name: formData.businessName,
-      slug: slug,
-      website_url: formData.websiteUrl,
-      support_email: formData.supportEmail,
-      support_phone: formData.supportPhone,
-      public_key: pubKey,
-      secret_key: secKey,
-      webhook_secret: whSecret,
-      telegram_link_code: telegramLinkCode,
-      device_connection_key: deviceConnKey,
-      currency: formData.currency,
-      exchange_rate: formData.currency === 'USD' ? parseFloat(formData.exchangeRate) : null,
-      status: 'pending'
-    }).select().single();
+      const { data: newBusiness, error } = await supabase.from('businesses').insert({
+        merchant_id: user.id, // এটি ১০০% ঠিক আছে
+        business_name: formData.businessName,
+        slug: slug,
+        business_type: formData.businessType,
+        website_url: formData.websiteUrl,
+        support_email: formData.supportEmail,
+        support_phone: formData.supportPhone,
+        public_key: pubKey,
+        secret_key: secKey,
+        webhook_secret: whSecret,
+        telegram_link_code: telegramLinkCode,
+        device_connection_key: deviceConnKey,
+        currency: formData.currency,
+        exchange_rate: formData.currency === 'USD' ? parseFloat(formData.exchangeRate) : null,
+        status: 'pending'
+      }).select().single();
 
-    if (error) {
-      toast.error(error.message);
-      setLoading(false);
-    } else {
+      if (error) {
+        throw new Error(error.message);
+      }
+
       toast.success("Business submitted! Verification is in progress (takes up to 24-48 hours).");
       window.dispatchEvent(new Event('businessChanged'));
       
@@ -159,9 +158,16 @@ export default function NewBusiness() {
          autoVerifyBusiness(newBusiness.id, formData.websiteUrl);
       }
       
+      // রিডাইরেক্ট হওয়ার আগে একটু সময় দেওয়া হলো যাতে ইউজার মেসেজটা পড়তে পারে
       setTimeout(() => {
         window.location.href = '/dashboard';
       }, 2000);
+
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create workspace. Please try again.");
+    } finally {
+      // 🚀 FIXED: finally ব্লক দেওয়া হয়েছে যাতে এরর এলেও লোডিং বন্ধ হয়ে যায়
+      setLoading(false);
     }
   };
 
