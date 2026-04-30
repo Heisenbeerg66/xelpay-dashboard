@@ -4,8 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, Loader2, Globe,
   Tag, Edit3, Building2, CheckCircle, X, Image as ImageIcon, Zap,
-  Palette, Clock, ToggleLeft, ToggleRight, Eye, Upload, AlertCircle,
-  ChevronDown, Percent, DollarSign
+  Palette, Clock, Eye, Upload, Check
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -41,6 +40,14 @@ type LinkForm = {
   expires_value: string;
 };
 
+type EditForm = {
+  title: string;
+  amount: string;
+  discount: string;
+  discount_type: string;
+  description: string;
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const calcFinal = (amount: number, discount: number, type: string) => {
   if (!amount) return 0;
@@ -51,83 +58,161 @@ const calcFinal = (amount: number, discount: number, type: string) => {
 const symbol = (currency: string) => currency === 'USD' ? '$' : '৳';
 
 const getLiveUrl = (slug: string, linkId: string) =>
-  typeof window !== 'undefined'
-    ? `${window.location.origin}/${slug}/${linkId}`
-    : `/${slug}/${linkId}`;
+  typeof window !== 'undefined' ? `${window.location.origin}/${slug}/${linkId}` : `/${slug}/${linkId}`;
 
 const getDisplayUrl = (slug: string, linkId: string) =>
-  typeof window !== 'undefined'
-    ? `${window.location.host}/${slug}/${linkId}`
-    : `${slug}/${linkId}`;
+  typeof window !== 'undefined' ? `${window.location.host}/${slug}/${linkId}` : `${slug}/${linkId}`;
 
 // ─── Image Upload ─────────────────────────────────────────────────────────────
 async function uploadProductImage(file: File, merchantId: string): Promise<string | null> {
-  const maxSize = 2 * 1024 * 1024; // 2MB
-  if (file.size > maxSize) {
-    toast.error('Image must be under 2MB');
-    return null;
-  }
-
+  if (file.size > 2 * 1024 * 1024) { toast.error('Image must be under 2MB'); return null; }
   const ext = file.name.split('.').pop()?.toLowerCase();
-  const allowed = ['jpg', 'jpeg', 'png', 'webp'];
-  if (!ext || !allowed.includes(ext)) {
-    toast.error('Only JPG, PNG, WEBP allowed');
-    return null;
-  }
-
+  if (!ext || !['jpg', 'jpeg', 'png', 'webp'].includes(ext)) { toast.error('Only JPG, PNG, WEBP allowed'); return null; }
   const fileName = `${merchantId}/${Date.now()}.${ext}`;
-  const { error } = await supabase.storage
-    .from('product-images')
-    .upload(fileName, file, { contentType: file.type, upsert: false });
-
-  if (error) {
-    toast.error('Upload failed: ' + error.message);
-    return null;
-  }
-
+  const { error } = await supabase.storage.from('product-images').upload(fileName, file, { contentType: file.type, upsert: false });
+  if (error) { toast.error('Upload failed: ' + error.message); return null; }
   const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
   return data.publicUrl;
 }
 
-// ─── Link Type Chooser ────────────────────────────────────────────────────────
-function LinkTypeChooser({ onSelect, onClose }: { onSelect: (type: 'default' | 'custom') => void; onClose: () => void }) {
+// ─── Toggle Switch ────────────────────────────────────────────────────────────
+function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-3xl p-8 shadow-2xl relative animate-in zoom-in-95 duration-200">
-        <button onClick={onClose} className="absolute top-5 right-5 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-          <X size={16} className="text-slate-400" />
-        </button>
+    <button
+      type="button"
+      onClick={onChange}
+      disabled={disabled}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50 ${checked ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+    >
+      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-200 ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+    </button>
+  );
+}
 
-        <h3 className="text-lg font-black text-slate-900 dark:text-white mb-1">Create Payment Link</h3>
-        <p className="text-sm text-slate-500 mb-7">Choose the type of link you want to create.</p>
+// ─── Edit Modal ────────────────────────────────────────────────────────────────
+function EditLinkModal({ link, onClose, onUpdated }: { link: PaymentLink; onClose: () => void; onUpdated: () => void }) {
+  const [form, setForm] = useState<EditForm>({
+    title: link.title,
+    amount: link.amount ? String(link.amount) : '',
+    discount: link.discount ? String(link.discount) : '',
+    discount_type: link.discount_type || 'flat',
+    description: link.description || '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const set = (k: keyof EditForm, v: string) => setForm(f => ({ ...f, [k]: v }));
+  const sym = symbol(link.currency);
 
-        <div className="space-y-3">
-          {/* Default Link */}
-          <button
-            onClick={() => onSelect('default')}
-            className="w-full flex items-start gap-4 p-5 bg-slate-50 dark:bg-[#0B1120] hover:bg-blue-50 dark:hover:bg-blue-900/10 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-700 rounded-2xl transition-all group text-left"
-          >
-            <div className="w-10 h-10 bg-slate-200 dark:bg-slate-700 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 rounded-xl flex items-center justify-center shrink-0 transition-colors">
-              <Zap size={18} className="text-slate-500 group-hover:text-blue-600 transition-colors" />
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    const payload: any = {
+      title: form.title,
+      description: form.description,
+      discount: form.discount ? parseFloat(form.discount) : 0,
+      discount_type: form.discount_type,
+    };
+    if (link.amount !== null) payload.amount = form.amount ? parseFloat(form.amount) : null;
+
+    const { error } = await supabase.from('payment_links').update(payload).eq('id', link.id);
+    if (error) {
+      toast.error('Update failed: ' + error.message);
+      setSaving(false);
+    } else {
+      setIsSuccess(true);
+      setTimeout(() => { toast.success('Link updated!'); onUpdated(); }, 1200);
+    }
+  };
+
+  const finalPrice = form.amount && parseFloat(form.amount)
+    ? calcFinal(parseFloat(form.amount), parseFloat(form.discount || '0'), form.discount_type)
+    : null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-lg rounded-2xl shadow-2xl relative overflow-hidden">
+        {isSuccess && (
+          <div className="absolute inset-0 bg-white/95 dark:bg-[#111827]/95 z-50 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300">
+            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle size={32} />
             </div>
-            <div>
-              <p className="font-black text-slate-900 dark:text-white text-sm">Default Link</p>
-              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">Quick link with no fixed amount. Customers enter their own amount. Uses your business name as description.</p>
-            </div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Updated!</h3>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h3 className="font-semibold text-slate-900 dark:text-white">Edit Link</h3>
+            <p className="text-xs text-slate-400 mt-0.5 font-mono">{link.link_id}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+            <X size={16} className="text-slate-400" />
           </button>
+        </div>
 
-          {/* Custom Link */}
-          <button
-            onClick={() => onSelect('custom')}
-            className="w-full flex items-start gap-4 p-5 bg-slate-50 dark:bg-[#0B1120] hover:bg-blue-50 dark:hover:bg-blue-900/10 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-700 rounded-2xl transition-all group text-left"
-          >
-            <div className="w-10 h-10 bg-slate-200 dark:bg-slate-700 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 rounded-xl flex items-center justify-center shrink-0 transition-colors">
-              <Palette size={18} className="text-slate-500 group-hover:text-blue-600 transition-colors" />
+        <form id="edit-form" onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+          {/* Title */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Title</label>
+            <input required type="text" value={form.title} onChange={e => set('title', e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors" />
+          </div>
+
+          {/* Amount (only if not open amount) */}
+          {link.amount !== null && (
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Price ({link.currency})</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{sym}</span>
+                <input required type="number" step="any" min="1" value={form.amount} onChange={e => set('amount', e.target.value)}
+                  className="w-full pl-8 pr-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-semibold text-slate-900 dark:text-white transition-colors" />
+              </div>
             </div>
-            <div>
-              <p className="font-black text-slate-900 dark:text-white text-sm">Custom Link</p>
-              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">Full control — set product title, image, price, discounts, expiry, and custom URL.</p>
+          )}
+
+          {/* Discount */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Tag size={10} />Discount</label>
+            <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-colors bg-slate-50 dark:bg-[#0B1120]">
+              <select value={form.discount_type} onChange={e => set('discount_type', e.target.value)}
+                className="bg-slate-100 dark:bg-slate-800 px-3 py-3 text-xs font-medium text-slate-700 dark:text-slate-300 outline-none border-r border-slate-200 dark:border-slate-700 cursor-pointer">
+                <option value="flat">Flat ({sym})</option>
+                <option value="percentage">Percent (%)</option>
+              </select>
+              <input type="number" step="any" min="0" placeholder="0" value={form.discount} onChange={e => set('discount', e.target.value)}
+                className="w-full px-4 py-3 bg-transparent outline-none text-sm text-slate-900 dark:text-white placeholder:text-slate-400" />
             </div>
+          </div>
+
+          {/* Price preview */}
+          {finalPrice !== null && (
+            <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl px-4 py-3">
+              <div>
+                <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-widest">Customer pays</p>
+                {parseFloat(form.discount || '0') > 0 && (
+                  <p className="text-xs text-slate-400 line-through">{sym}{parseFloat(form.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                )}
+              </div>
+              <span className="text-xl font-semibold text-blue-600">{sym}{finalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            </div>
+          )}
+
+          {/* Description */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Description</label>
+            <textarea rows={2} value={form.description} onChange={e => set('description', e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors resize-none placeholder:text-slate-400" />
+          </div>
+        </form>
+
+        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+          <button type="button" onClick={onClose}
+            className="flex-1 py-3 rounded-xl font-medium text-sm text-slate-500 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+            Cancel
+          </button>
+          <button type="submit" form="edit-form" disabled={saving || isSuccess}
+            className="flex-1 py-3 rounded-xl font-semibold text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 transition-all flex justify-center items-center gap-2">
+            {saving || isSuccess ? <Loader2 size={15} className="animate-spin" /> : 'Save Changes'}
           </button>
         </div>
       </div>
@@ -135,10 +220,40 @@ function LinkTypeChooser({ onSelect, onClose }: { onSelect: (type: 'default' | '
   );
 }
 
+// ─── Link Type Chooser ────────────────────────────────────────────────────────
+function LinkTypeChooser({ onSelect, onClose }: { onSelect: (type: 'default' | 'custom') => void; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-2xl p-7 shadow-2xl relative animate-in zoom-in-95 duration-200">
+        <button onClick={onClose} className="absolute top-5 right-5 p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+          <X size={15} className="text-slate-400" />
+        </button>
+        <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">Create Payment Link</h3>
+        <p className="text-xs text-slate-500 mb-6">Choose the type of link you want to create.</p>
+        <div className="space-y-3">
+          {[
+            { type: 'default' as const, icon: Zap, label: 'Default Link', desc: 'Quick link with no fixed amount. Customers enter their own amount.' },
+            { type: 'custom' as const, icon: Palette, label: 'Custom Link', desc: 'Full control — set product title, image, price, discounts, expiry, and custom URL.' },
+          ].map(opt => (
+            <button key={opt.type} onClick={() => onSelect(opt.type)}
+              className="w-full flex items-start gap-4 p-5 bg-slate-50 dark:bg-[#0B1120] hover:bg-blue-50 dark:hover:bg-blue-900/10 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-700 rounded-xl transition-all group text-left">
+              <div className="w-9 h-9 bg-slate-200 dark:bg-slate-700 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 rounded-xl flex items-center justify-center shrink-0 transition-colors">
+                <opt.icon size={16} className="text-slate-500 group-hover:text-blue-600 transition-colors" />
+              </div>
+              <div>
+                <p className="font-semibold text-slate-900 dark:text-white text-sm">{opt.label}</p>
+                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{opt.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Create Link Modal ────────────────────────────────────────────────────────
-function CreateLinkModal({
-  type, businessId, businessSlug, businessName, onClose, onCreated
-}: {
+function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose, onCreated }: {
   type: 'default' | 'custom';
   businessId: string;
   businessSlug: string;
@@ -158,13 +273,11 @@ function CreateLinkModal({
     expires_type: 'none',
     expires_value: '',
   });
-
   const [saving, setSaving] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [logoPreview, setLogoPreview] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const set = (k: keyof LinkForm, v: string) => setForm(f => ({ ...f, [k]: v }));
 
   const handleTitleChange = (v: string) => {
@@ -175,27 +288,19 @@ function CreateLinkModal({
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Preview
     const reader = new FileReader();
     reader.onload = (ev) => setLogoPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
-
     setUploading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setUploading(false); return; }
-
     const url = await uploadProductImage(file, user.id);
-    if (url) {
-      setForm(f => ({ ...f, product_logo: url }));
-      toast.success('Image uploaded!');
-    } else {
-      setLogoPreview('');
-    }
+    if (url) { setForm(f => ({ ...f, product_logo: url })); toast.success('Image uploaded!'); }
+    else setLogoPreview('');
     setUploading(false);
   };
 
-  const removeImage = async () => {
+  const removeImage = () => {
     setLogoPreview('');
     setForm(f => ({ ...f, product_logo: '' }));
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -204,17 +309,12 @@ function CreateLinkModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-
     const { data: { user } } = await supabase.auth.getUser();
-
     let expires_at: string | null = null;
     if (form.expires_type !== 'none' && form.expires_value) {
-      const hours = form.expires_type === 'days'
-        ? parseInt(form.expires_value) * 24
-        : parseInt(form.expires_value);
+      const hours = form.expires_type === 'days' ? parseInt(form.expires_value) * 24 : parseInt(form.expires_value);
       expires_at = new Date(Date.now() + hours * 3600 * 1000).toISOString();
     }
-
     const payload: any = {
       merchant_id: user?.id,
       business_id: businessId,
@@ -227,144 +327,93 @@ function CreateLinkModal({
       discount_type: form.discount_type,
       product_logo: form.product_logo || null,
     };
-
-    if (type === 'default') {
-      payload.amount = null;
-      payload.description = businessName;
-    } else {
-      payload.amount = form.amount ? parseFloat(form.amount) : null;
-    }
-
+    if (type === 'default') { payload.amount = null; payload.description = businessName; }
+    else payload.amount = form.amount ? parseFloat(form.amount) : null;
     if (expires_at) payload.expires_at = expires_at;
-
     const { error } = await supabase.from('payment_links').insert(payload);
-
     if (error) {
       toast.error(error.message.includes('unique') ? 'Link ID already taken. Try another.' : `Error: ${error.message}`);
       setSaving(false);
     } else {
       setIsSuccess(true);
-      setTimeout(() => {
-        toast.success('Payment link created!');
-        onCreated();
-      }, 1400);
+      setTimeout(() => { toast.success('Payment link created!'); onCreated(); }, 1400);
     }
   };
 
   const sym = symbol(form.currency);
   const isCustom = type === 'custom';
+  const finalPrice = form.amount && parseFloat(form.amount) > 0
+    ? calcFinal(parseFloat(form.amount), parseFloat(form.discount || '0'), form.discount_type)
+    : null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-[#111827] w-full max-w-2xl rounded-3xl shadow-2xl relative overflow-hidden max-h-[92vh] flex flex-col">
-
-        {/* Success overlay */}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-2xl rounded-2xl shadow-2xl relative overflow-hidden max-h-[92vh] flex flex-col">
         {isSuccess && (
           <div className="absolute inset-0 bg-white/95 dark:bg-[#111827]/95 z-50 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300">
-            <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center mb-5">
-              <CheckCircle size={40} />
+            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle size={32} />
             </div>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">Link Created!</h3>
-            <p className="text-sm text-slate-500 mt-1">Redirecting...</p>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Link Created!</h3>
+            <p className="text-xs text-slate-500 mt-1">Redirecting...</p>
           </div>
         )}
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div>
-            <h3 className="font-black text-slate-900 dark:text-white">
-              {type === 'default' ? '⚡ Default Link' : '🎨 Custom Link'}
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {type === 'default' ? 'Creates a quick open-amount payment link' : 'Create a fully customized payment link'}
-            </p>
+            <h3 className="font-semibold text-slate-900 dark:text-white">{type === 'default' ? '⚡ Default Link' : '🎨 Custom Link'}</h3>
+            <p className="text-xs text-slate-400 mt-0.5">{type === 'default' ? 'Quick open-amount payment link' : 'Fully customized payment link'}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-            <X size={18} className="text-slate-400" />
+            <X size={16} className="text-slate-400" />
           </button>
         </div>
 
-        {/* Form */}
-        <div className="overflow-y-auto flex-1 px-7 py-6">
-          <form id="link-form" onSubmit={handleSubmit} className="space-y-5">
+        <div className="overflow-y-auto flex-1 px-6 py-5">
+          <form id="link-form" onSubmit={handleSubmit} className="space-y-4">
 
             {/* Title */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                Product / Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                required
-                type="text"
-                placeholder={type === 'default' ? businessName : 'e.g. Premium Smartwatch'}
-                value={form.title}
+              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Product / Title <span className="text-red-500">*</span></label>
+              <input required type="text" placeholder={type === 'default' ? businessName : 'e.g. Premium Smartwatch'} value={form.title}
                 onChange={e => isCustom ? handleTitleChange(e.target.value) : set('title', e.target.value)}
-                className="w-full px-4 py-3.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white transition-colors placeholder:text-slate-400"
-              />
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors placeholder:text-slate-400" />
             </div>
 
             {/* Custom URL */}
             {isCustom && (
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <Edit3 size={10} /> Customize URL <span className="text-red-500">*</span>
-                </label>
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Edit3 size={10} />Customize URL <span className="text-red-500">*</span></label>
                 <div className="flex bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-colors">
-                  <span className="pl-4 py-3.5 text-xs font-mono text-slate-400 items-center flex shrink-0 hidden sm:flex">
-                    {getDisplayUrl(businessSlug, '')}
-                  </span>
-                  <input
-                    required
-                    type="text"
-                    value={form.link_id}
-                    onChange={e => set('link_id', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-                    className="w-full px-3 py-3.5 bg-transparent outline-none text-sm font-mono font-bold text-blue-600 dark:text-blue-400"
-                    placeholder="my-product"
-                  />
+                  <span className="pl-4 py-3 text-xs font-mono text-slate-400 items-center hidden sm:flex shrink-0">{getDisplayUrl(businessSlug, '')}</span>
+                  <input required type="text" value={form.link_id} onChange={e => set('link_id', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                    className="w-full px-3 py-3 bg-transparent outline-none text-sm font-mono font-semibold text-blue-600 dark:text-blue-400" placeholder="my-product" />
                 </div>
               </div>
             )}
 
-            {/* Product Image (Custom only) */}
+            {/* Product Image */}
             {isCustom && (
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <ImageIcon size={10} /> Product Image <span className="text-red-500">*</span>
-                  <span className="text-[9px] font-bold text-slate-300 normal-case tracking-normal">(Max 2MB · JPG, PNG, WEBP)</span>
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                  <ImageIcon size={10} />Product Image <span className="text-red-500">*</span>
+                  <span className="text-[9px] font-normal text-slate-300 normal-case tracking-normal">(Max 2MB · JPG, PNG, WEBP)</span>
                 </label>
-
                 {logoPreview ? (
-                  <div className="relative w-full h-36 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                  <div className="relative w-full h-32 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
                     <img src={logoPreview} alt="preview" className="w-full h-full object-contain" />
-                    {uploading && (
-                      <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 flex items-center justify-center">
-                        <Loader2 size={22} className="animate-spin text-blue-600" />
-                      </div>
-                    )}
-                    <div className="absolute top-2 right-2 flex gap-2">
-                      <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-md text-slate-600 hover:text-blue-600 transition-colors">
-                        <Upload size={13} />
-                      </button>
-                      <button type="button" onClick={removeImage} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow-md text-slate-600 hover:text-red-500 transition-colors">
-                        <Trash2 size={13} />
-                      </button>
+                    {uploading && <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 flex items-center justify-center"><Loader2 size={20} className="animate-spin text-blue-600" /></div>}
+                    <div className="absolute top-2 right-2 flex gap-1.5">
+                      <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-blue-600"><Upload size={12} /></button>
+                      <button type="button" onClick={removeImage} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-red-500"><Trash2 size={12} /></button>
                     </div>
-                    {form.product_logo && (
-                      <div className="absolute bottom-2 left-2">
-                        <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-md font-bold">Uploaded ✓</span>
-                      </div>
-                    )}
+                    {form.product_logo && <div className="absolute bottom-2 left-2"><span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-md font-medium">Uploaded ✓</span></div>}
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-28 bg-slate-50 dark:bg-[#0B1120] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-700 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors group"
-                  >
-                    <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 rounded-xl flex items-center justify-center transition-colors">
-                      <Upload size={16} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
-                    </div>
-                    <p className="text-xs font-bold text-slate-400 group-hover:text-blue-600 transition-colors">Click to upload product image</p>
+                  <button type="button" onClick={() => fileInputRef.current?.click()}
+                    className="w-full h-24 bg-slate-50 dark:bg-[#0B1120] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-700 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors group">
+                    <Upload size={15} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+                    <p className="text-xs text-slate-400 group-hover:text-blue-600 transition-colors">Click to upload product image</p>
                   </button>
                 )}
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
@@ -373,89 +422,68 @@ function CreateLinkModal({
 
             {/* Amount & Currency */}
             {isCustom && (
-              <div className="grid grid-cols-2 gap-4 p-5 bg-slate-50 dark:bg-[#0B1120]/60 border border-slate-100 dark:border-slate-800 rounded-2xl">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Currency
-                  </label>
-                  <div className="flex bg-white dark:bg-[#111827] p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-                    {['BDT', 'USD'].map(c => (
-                      <button
-                        key={c} type="button"
-                        onClick={() => set('currency', c)}
-                        className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
-                          form.currency === c ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    ))}
+              <div className="p-4 bg-slate-50 dark:bg-[#0B1120]/60 border border-slate-100 dark:border-slate-800 rounded-xl space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Currency */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Currency</label>
+                    <div className="flex bg-white dark:bg-[#111827] p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                      {['BDT', 'USD'].map(c => (
+                        <button key={c} type="button" onClick={() => set('currency', c)}
+                          className={`flex-1 py-2 rounded-lg text-xs font-semibold uppercase tracking-widest transition-all ${form.currency === c ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                          {c}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Price <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">{sym}</span>
-                    <input
-                      required
-                      type="number"
-                      step="any"
-                      min="1"
-                      placeholder="0.00"
-                      value={form.amount}
-                      onChange={e => set('amount', e.target.value)}
-                      className="w-full pl-8 pr-3 py-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-black text-slate-900 dark:text-white transition-colors"
-                    />
+                  {/* Price */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Price <span className="text-red-500">*</span></label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{sym}</span>
+                      <input required type="number" step="any" min="1" placeholder="0.00" value={form.amount} onChange={e => set('amount', e.target.value)}
+                        className="w-full pl-8 pr-3 py-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-semibold text-slate-900 dark:text-white transition-colors" />
+                    </div>
                   </div>
                 </div>
 
                 {/* Discount */}
-                <div className="col-span-2 space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <Tag size={10} /> Discount
-                  </label>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Tag size={10} />Discount</label>
                   <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-colors bg-white dark:bg-[#111827]">
-                    <select
-                      value={form.discount_type}
-                      onChange={e => set('discount_type', e.target.value)}
-                      className="bg-slate-50 dark:bg-[#0B1120] px-3 py-3 text-xs font-black text-slate-700 dark:text-slate-300 outline-none border-r border-slate-200 dark:border-slate-700 cursor-pointer"
-                    >
+                    <select value={form.discount_type} onChange={e => set('discount_type', e.target.value)}
+                      className="bg-slate-50 dark:bg-[#0B1120] px-3 py-3 text-xs font-medium text-slate-700 dark:text-slate-300 outline-none border-r border-slate-200 dark:border-slate-700 cursor-pointer">
                       <option value="flat">Flat ({sym})</option>
                       <option value="percentage">Percent (%)</option>
                     </select>
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      placeholder="0"
-                      value={form.discount}
-                      onChange={e => set('discount', e.target.value)}
-                      className="w-full px-4 py-3 bg-transparent outline-none text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
-                    />
+                    <input type="number" step="any" min="0" placeholder="0" value={form.discount} onChange={e => set('discount', e.target.value)}
+                      className="w-full px-4 py-3 bg-transparent outline-none text-sm text-slate-900 dark:text-white placeholder:text-slate-400" />
                   </div>
                 </div>
 
-                {/* Price Preview */}
-                {form.amount && (
-                  <div className="col-span-2 flex items-center justify-between bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Customer pays</span>
-                      {parseFloat(form.discount || '0') > 0 && (
-                        <span className="text-xs text-slate-400 line-through">
-                          {sym}{parseFloat(form.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </span>
-                      )}
+                {/* Price breakdown */}
+                {form.amount && parseFloat(form.amount) > 0 && (
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center p-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl">
+                      <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Original</p>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{sym}{parseFloat(form.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                     </div>
-                    <span className="text-2xl font-black text-blue-600">
-                      {sym}{calcFinal(
-                        parseFloat(form.amount),
-                        parseFloat(form.discount || '0'),
-                        form.discount_type
-                      ).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </span>
+                    <div className="text-center p-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl">
+                      <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Discount</p>
+                      <p className="text-sm font-semibold text-orange-500">
+                        {parseFloat(form.discount || '0') > 0
+                          ? form.discount_type === 'percentage'
+                            ? `-${form.discount}%`
+                            : `-${sym}${parseFloat(form.discount).toLocaleString('en-IN')}`
+                          : '—'}
+                      </p>
+                    </div>
+                    <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl">
+                      <p className="text-[9px] font-semibold text-blue-500 uppercase tracking-widest mb-1">Final</p>
+                      <p className="text-sm font-semibold text-blue-600">
+                        {sym}{(finalPrice ?? parseFloat(form.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -463,72 +491,40 @@ function CreateLinkModal({
 
             {/* Description */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                Description {isCustom && <span className="text-red-500">*</span>}
-              </label>
-              <textarea
-                required={isCustom}
-                rows={2}
-                placeholder="Brief product description..."
-                value={form.description}
-                onChange={e => set('description', e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors resize-none placeholder:text-slate-400"
-              />
+              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Description {isCustom && <span className="text-red-500">*</span>}</label>
+              <textarea required={isCustom} rows={2} placeholder="Brief product description..." value={form.description} onChange={e => set('description', e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors resize-none placeholder:text-slate-400" />
             </div>
 
-            {/* Link Expiry (Custom only) */}
+            {/* Link Expiry */}
             {isCustom && (
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <Clock size={10} /> Link Expiry
-                </label>
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Clock size={10} />Link Expiry</label>
                 <div className="flex gap-2">
                   {['none', 'hours', 'days'].map(t => (
-                    <button
-                      key={t} type="button"
-                      onClick={() => set('expires_type', t as any)}
-                      className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${
-                        form.expires_type === t
-                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent'
-                          : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-400'
-                      }`}
-                    >
+                    <button key={t} type="button" onClick={() => set('expires_type', t as any)}
+                      className={`px-3 py-2 rounded-xl text-xs font-medium uppercase tracking-widest border transition-all ${form.expires_type === t ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-400'}`}>
                       {t === 'none' ? 'No Expiry' : t}
                     </button>
                   ))}
                   {form.expires_type !== 'none' && (
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder={form.expires_type === 'hours' ? 'e.g. 24' : 'e.g. 7'}
-                      value={form.expires_value}
-                      onChange={e => set('expires_value', e.target.value)}
-                      className="flex-1 px-4 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white transition-colors"
-                    />
+                    <input type="number" min="1" placeholder={form.expires_type === 'hours' ? 'e.g. 24' : 'e.g. 7'} value={form.expires_value} onChange={e => set('expires_value', e.target.value)}
+                      className="flex-1 px-4 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white" />
                   )}
                 </div>
               </div>
             )}
-
           </form>
         </div>
 
-        {/* Footer */}
-        <div className="px-7 py-5 border-t border-slate-100 dark:border-slate-800 flex gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-3.5 rounded-xl font-bold text-sm text-slate-500 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 uppercase tracking-widest transition-colors"
-          >
+        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex gap-3 shrink-0">
+          <button type="button" onClick={onClose}
+            className="flex-1 py-3 rounded-xl font-medium text-sm text-slate-500 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
             Cancel
           </button>
-          <button
-            type="submit"
-            form="link-form"
-            disabled={saving || isSuccess || uploading}
-            className="flex-1 py-3.5 rounded-xl font-black text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all flex justify-center items-center gap-2"
-          >
-            {saving || isSuccess ? <Loader2 size={16} className="animate-spin" /> : 'Create Link'}
+          <button type="submit" form="link-form" disabled={saving || isSuccess || uploading}
+            className="flex-1 py-3 rounded-xl font-semibold text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 shadow-lg shadow-blue-600/20 transition-all flex justify-center items-center gap-2">
+            {saving || isSuccess ? <Loader2 size={15} className="animate-spin" /> : 'Create Link'}
           </button>
         </div>
       </div>
@@ -537,15 +533,13 @@ function CreateLinkModal({
 }
 
 // ─── Link Row ─────────────────────────────────────────────────────────────────
-function LinkRow({
-  link, index, slug, onDelete, onToggle, onRefresh
-}: {
+function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
   link: PaymentLink;
   index: number;
   slug: string;
   onDelete: (id: string) => void;
   onToggle: (id: string, status: string) => void;
-  onRefresh: () => void;
+  onEdit: (link: PaymentLink) => void;
 }) {
   const [toggling, setToggling] = useState(false);
   const sym_ = symbol(link.currency);
@@ -554,110 +548,93 @@ function LinkRow({
   const liveUrl = getLiveUrl(slug, link.link_id);
   const isActive = link.status === 'active';
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(liveUrl);
-    toast.success('Link copied!');
-  };
+  const handleCopy = () => { navigator.clipboard.writeText(liveUrl); toast.success('Link copied!'); };
 
   const handleToggle = async () => {
     setToggling(true);
     const newStatus = isActive ? 'inactive' : 'active';
     const { error } = await supabase.from('payment_links').update({ status: newStatus }).eq('id', link.id);
-    if (!error) {
-      toast.success(`Link ${newStatus === 'active' ? 'activated' : 'deactivated'}`);
-      onToggle(link.id, newStatus);
-    } else {
-      toast.error('Failed to update status');
-    }
+    if (!error) { toast.success(`Link ${newStatus === 'active' ? 'activated' : 'deactivated'}`); onToggle(link.id, newStatus); }
+    else toast.error('Failed to update status');
     setToggling(false);
   };
 
   return (
-    <tr className="hover:bg-slate-50/60 dark:hover:bg-slate-800/20 transition-colors group">
-      <td className="px-5 py-4 text-center">
-        <span className="text-xs font-black text-slate-300 dark:text-slate-600">{String(index + 1).padStart(2, '0')}</span>
-      </td>
+    <tr className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors group">
 
       {/* Product */}
       <td className="px-5 py-4">
         <div className="flex items-center gap-3">
-          {link.product_logo ? (
-            <img src={link.product_logo} alt={link.title} className="w-10 h-10 rounded-xl object-cover border border-slate-100 dark:border-slate-800 shrink-0" />
-          ) : (
-            <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center shrink-0">
-              <LinkIcon size={16} className="text-slate-400" />
-            </div>
-          )}
+          {link.product_logo
+            ? <img src={link.product_logo} alt={link.title} className="w-9 h-9 rounded-xl object-cover border border-slate-100 dark:border-slate-800 shrink-0" />
+            : <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center shrink-0"><LinkIcon size={14} className="text-slate-400" /></div>
+          }
           <div>
-            <p className="font-black text-slate-900 dark:text-white text-sm group-hover:text-blue-600 transition-colors">{link.title}</p>
-            {link.description && (
-              <p className="text-[10px] text-slate-400 mt-0.5 max-w-[180px] truncate">{link.description}</p>
-            )}
+            <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">{link.title}</p>
+            {link.description && <p className="text-[10px] text-slate-400 mt-0.5 max-w-[160px] truncate">{link.description}</p>}
           </div>
         </div>
       </td>
 
       {/* URL */}
       <td className="px-5 py-4">
-        <div className="flex items-center gap-1.5 text-[11px] font-mono text-blue-500 bg-blue-50 dark:bg-blue-900/10 px-2.5 py-1.5 rounded-lg w-fit max-w-[200px]">
-          <Globe size={11} className="shrink-0" />
+        <div className="flex items-center gap-1.5 text-[11px] font-mono text-blue-500 max-w-[200px] truncate">
+          <Globe size={10} className="shrink-0" />
           <span className="truncate">{displayUrl}</span>
         </div>
       </td>
 
-      {/* Price */}
+      {/* Original Price */}
       <td className="px-5 py-4">
-        {link.amount ? (
-          <div>
-            {link.discount > 0 && (
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <span className="text-xs text-slate-400 line-through">{sym_}{link.amount}</span>
-                <span className="text-[9px] font-black bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 px-1.5 py-0.5 rounded-md uppercase tracking-wider">
-                  -{link.discount}{link.discount_type === 'percentage' ? '%' : sym_}
-                </span>
-              </div>
-            )}
-            {link.discount === 0 && (
-              <p className="text-[10px] text-slate-400 font-bold mb-0.5">No discount</p>
-            )}
-            <p className="font-black text-slate-900 dark:text-white text-base">
+        {link.amount
+          ? <p className="text-sm font-semibold text-slate-900 dark:text-white">{sym_}{link.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+          : <span className="text-xs text-slate-400">Open</span>}
+      </td>
+
+      {/* Discount */}
+      <td className="px-5 py-4">
+        {link.discount > 0
+          ? <span className="text-xs font-medium text-orange-500">
+              {link.discount_type === 'percentage' ? `-${link.discount}%` : `-${sym_}${link.discount}`}
+            </span>
+          : <span className="text-xs text-slate-400">—</span>}
+      </td>
+
+      {/* After Discount */}
+      <td className="px-5 py-4">
+        {link.amount
+          ? <p className="text-sm font-semibold text-blue-600">
               {sym_}{(finalPrice ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </p>
-          </div>
-        ) : (
-          <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg text-xs font-bold uppercase tracking-wider">
-            Open Amount
-          </span>
-        )}
+          : <span className="text-xs text-slate-400">—</span>}
       </td>
 
       {/* Status Toggle */}
       <td className="px-5 py-4">
-        <button
-          onClick={handleToggle}
-          disabled={toggling}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all text-xs font-bold ${
-            isActive
-              ? 'bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 border-emerald-200 dark:border-emerald-800'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700'
-          }`}
-        >
-          {toggling ? <Loader2 size={12} className="animate-spin" /> : isActive ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
-          {isActive ? 'Active' : 'Inactive'}
-        </button>
+        <div className="flex items-center gap-2">
+          {toggling
+            ? <Loader2 size={14} className="animate-spin text-slate-400" />
+            : <ToggleSwitch checked={isActive} onChange={handleToggle} />}
+          <span className={`text-[10px] font-medium ${isActive ? 'text-emerald-600' : 'text-slate-400'}`}>
+            {isActive ? 'Active' : 'Inactive'}
+          </span>
+        </div>
       </td>
 
       {/* Actions */}
       <td className="px-5 py-4">
         <div className="flex items-center gap-1.5 justify-end">
-          <button onClick={handleCopy} title="Copy Link" className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-500 hover:text-blue-600 rounded-xl transition-colors">
-            <Copy size={14} />
+          <button onClick={() => onEdit(link)} title="Edit" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-colors">
+            <Edit3 size={13} />
           </button>
-          <a href={liveUrl} target="_blank" rel="noopener noreferrer" title="Open Link" className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-500 hover:text-blue-600 rounded-xl transition-colors inline-flex">
-            <ExternalLink size={14} />
+          <button onClick={handleCopy} title="Copy Link" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-colors">
+            <Copy size={13} />
+          </button>
+          <a href={liveUrl} target="_blank" rel="noopener noreferrer" title="Open Link" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-colors inline-flex">
+            <ExternalLink size={13} />
           </a>
           <button onClick={() => onDelete(link.id)} title="Delete" className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors">
-            <Trash2 size={14} />
+            <Trash2 size={13} />
           </button>
         </div>
       </td>
@@ -674,19 +651,16 @@ export default function PaymentLinks() {
   const [businessName, setBusinessName] = useState('My Business');
   const [showChooser, setShowChooser] = useState(false);
   const [createType, setCreateType] = useState<'default' | 'custom' | null>(null);
+  const [editLink, setEditLink] = useState<PaymentLink | null>(null);
 
   const fetchData = async (bizId: string) => {
     setLoading(true);
+    // Fetch slug from businesses table using business id
     const { data: biz } = await supabase.from('businesses').select('slug, name').eq('id', bizId).single();
     if (biz?.slug) setBusinessSlug(biz.slug);
     if (biz?.name) setBusinessName(biz.name);
 
-    const { data } = await supabase
-      .from('payment_links')
-      .select('*')
-      .eq('business_id', bizId)
-      .order('created_at', { ascending: false });
-
+    const { data } = await supabase.from('payment_links').select('*').eq('business_id', bizId).order('created_at', { ascending: false });
     if (data) setLinks(data);
     setLoading(false);
   };
@@ -705,10 +679,7 @@ export default function PaymentLinks() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this payment link?')) return;
     const { error } = await supabase.from('payment_links').delete().eq('id', id);
-    if (!error) {
-      setLinks(l => l.filter(x => x.id !== id));
-      toast.success('Link deleted');
-    }
+    if (!error) { setLinks(l => l.filter(x => x.id !== id)); toast.success('Link deleted'); }
   };
 
   const handleToggle = (id: string, status: string) => {
@@ -721,13 +692,18 @@ export default function PaymentLinks() {
     if (businessId) fetchData(businessId);
   };
 
+  const handleUpdated = () => {
+    setEditLink(null);
+    if (businessId) fetchData(businessId);
+  };
+
   if (!businessId) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
         <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center mb-4">
           <Building2 size={32} />
         </div>
-        <h2 className="text-xl font-black text-slate-900 dark:text-white">No Workspace Selected</h2>
+        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">No Workspace Selected</h2>
         <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">Select a business from the sidebar to manage payment links.</p>
       </div>
     );
@@ -736,27 +712,23 @@ export default function PaymentLinks() {
   const activeLinks = links.filter(l => l.status === 'active').length;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="max-w-7xl mx-auto space-y-5 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <LinkIcon size={24} className="text-blue-600" /> Payment Links
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <LinkIcon size={22} className="text-blue-600" /> Payment Links
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Create and manage payment links for your products and services.
-          </p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Create and manage payment links for your products and services.</p>
         </div>
-        <button
-          onClick={() => setShowChooser(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-blue-600/25 hover:-translate-y-0.5"
-        >
-          <Plus size={17} /> Create New Link
+        <button onClick={() => setShowChooser(true)}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-blue-600/25 hover:-translate-y-0.5">
+          <Plus size={16} /> Create New Link
         </button>
       </div>
 
-      {/* ── Stats ──────────────────────────────────────────────────────────── */}
+      {/* Stats */}
       {!loading && links.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
           {[
@@ -765,56 +737,43 @@ export default function PaymentLinks() {
             { label: 'Inactive', value: links.length - activeLinks, color: 'text-slate-400' },
           ].map(s => (
             <div key={s.label} className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 text-center">
-              <p className={`text-2xl font-black ${s.color}`}>{s.value}</p>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{s.label}</p>
+              <p className={`text-xl font-semibold ${s.color}`}>{s.value}</p>
+              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>
       )}
 
-      {/* ── Table ──────────────────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+      {/* Table */}
+      <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
         {loading ? (
-          <div className="flex justify-center items-center py-28">
-            <Loader2 className="animate-spin text-blue-600" size={28} />
-          </div>
+          <div className="flex justify-center items-center py-28"><Loader2 className="animate-spin text-blue-600" size={26} /></div>
         ) : links.length === 0 ? (
           <div className="py-24 text-center">
-            <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/10 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <LinkIcon size={22} />
+            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/10 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <LinkIcon size={20} />
             </div>
-            <h3 className="text-base font-black text-slate-900 dark:text-white mb-1.5">No Links Yet</h3>
-            <p className="text-slate-400 text-sm mb-6">Create your first payment link to start accepting payments.</p>
-            <button
-              onClick={() => setShowChooser(true)}
-              className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-3 rounded-xl font-black text-sm uppercase tracking-widest hover:-translate-y-0.5 transition-all shadow-lg"
-            >
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">No Links Yet</h3>
+            <p className="text-slate-400 text-xs mb-5">Create your first payment link to start accepting payments.</p>
+            <button onClick={() => setShowChooser(true)}
+              className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-2.5 rounded-xl font-semibold text-sm hover:-translate-y-0.5 transition-all shadow-lg">
               Create Payment Link
             </button>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse whitespace-nowrap">
+            <table className="w-full text-left whitespace-nowrap">
               <thead>
-                <tr className="bg-slate-50 dark:bg-[#0B1120]/60 border-b border-slate-100 dark:border-slate-800/50">
-                  {['#', 'Product', 'URL', 'Price & Discount', 'Status', 'Actions'].map(h => (
-                    <th key={h} className="px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      {h}
-                    </th>
+                <tr className="border-b border-slate-100 dark:border-slate-800">
+                  {['Product', 'URL', 'Price', 'Discount', 'After Discount', 'Status', 'Actions'].map(h => (
+                    <th key={h} className="px-5 py-3.5 text-[10px] font-semibold text-slate-400 uppercase tracking-widest bg-slate-50/60 dark:bg-[#0B1120]/40">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30">
+              <tbody>
                 {links.map((link, i) => (
-                  <LinkRow
-                    key={link.id}
-                    link={link}
-                    index={i}
-                    slug={businessSlug}
-                    onDelete={handleDelete}
-                    onToggle={handleToggle}
-                    onRefresh={() => businessId && fetchData(businessId)}
-                  />
+                  <LinkRow key={link.id} link={link} index={i} slug={businessSlug}
+                    onDelete={handleDelete} onToggle={handleToggle} onEdit={setEditLink} />
                 ))}
               </tbody>
             </table>
@@ -823,30 +782,21 @@ export default function PaymentLinks() {
 
         {!loading && links.length > 0 && (
           <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50">
-            <p className="text-xs font-bold text-slate-400">
-              {links.length} {links.length === 1 ? 'link' : 'links'} total · {activeLinks} active
-            </p>
+            <p className="text-xs text-slate-400">{links.length} {links.length === 1 ? 'link' : 'links'} · {activeLinks} active</p>
           </div>
         )}
       </div>
 
-      {/* ── Modals ─────────────────────────────────────────────────────────── */}
+      {/* Modals */}
       {showChooser && !createType && (
-        <LinkTypeChooser
-          onSelect={type => setCreateType(type)}
-          onClose={() => setShowChooser(false)}
-        />
+        <LinkTypeChooser onSelect={type => setCreateType(type)} onClose={() => setShowChooser(false)} />
       )}
-
       {createType && businessId && (
-        <CreateLinkModal
-          type={createType}
-          businessId={businessId}
-          businessSlug={businessSlug}
-          businessName={businessName}
-          onClose={() => { setCreateType(null); setShowChooser(false); }}
-          onCreated={handleCreated}
-        />
+        <CreateLinkModal type={createType} businessId={businessId} businessSlug={businessSlug} businessName={businessName}
+          onClose={() => { setCreateType(null); setShowChooser(false); }} onCreated={handleCreated} />
+      )}
+      {editLink && (
+        <EditLinkModal link={editLink} onClose={() => setEditLink(null)} onUpdated={handleUpdated} />
       )}
     </div>
   );
