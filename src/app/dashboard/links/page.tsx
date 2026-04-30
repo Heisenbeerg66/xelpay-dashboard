@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, Loader2, Globe,
-  Tag, Edit3, Building2, CheckCircle, X, Image as ImageIcon,
-  Clock, Upload, Check, Zap, Palette
+  Tag, Edit3, Building2, X, Image as ImageIcon,
+  Clock, Upload, Check, Zap, CheckCircle
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -84,6 +84,9 @@ const isExpired = (expires_at: string | null | undefined) => {
   return new Date(expires_at) < new Date();
 };
 
+const isDefaultLink = (link_id: string) =>
+  link_id === 'payment' || link_id.startsWith('default-');
+
 // ─── Extract storage path from public URL ─────────────────────────────────────
 const extractStoragePath = (url: string | null): string | null => {
   if (!url) return null;
@@ -105,10 +108,7 @@ async function uploadProductImage(file: File, merchantId: string): Promise<strin
 
   const { error } = await supabase.storage
     .from('product-images')
-    .upload(fileName, file, {
-      contentType: file.type,
-      upsert: false,
-    });
+    .upload(fileName, file, { contentType: file.type, upsert: false });
 
   if (error) {
     console.error('Upload error:', error);
@@ -141,6 +141,24 @@ function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onCha
   );
 }
 
+// ─── Success Overlay (clean, minimal, premium) ────────────────────────────────
+function SuccessOverlay({ message }: { message: string }) {
+  return (
+    <div className="absolute inset-0 bg-white/97 dark:bg-[#111827]/97 z-50 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-300">
+      {/* Minimal checkmark circle */}
+      <div className="relative mb-5">
+        <div className="w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 dark:border-emerald-800 flex items-center justify-center">
+          <CheckCircle size={28} strokeWidth={1.5} className="text-emerald-600 dark:text-emerald-400" />
+        </div>
+        {/* Subtle ring animation */}
+        <div className="absolute inset-0 rounded-full border-2 border-emerald-400/30 animate-ping" style={{ animationDuration: '1.2s', animationIterationCount: 1 }} />
+      </div>
+      <p className="text-base font-semibold text-slate-900 dark:text-white tracking-tight">{message}</p>
+      <p className="text-xs text-slate-400 mt-1">Redirecting you back…</p>
+    </div>
+  );
+}
+
 // ─── Edit Modal ────────────────────────────────────────────────────────────────
 function EditLinkModal({ link, slug, onClose, onUpdated }: {
   link: PaymentLink;
@@ -148,7 +166,7 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
   onClose: () => void;
   onUpdated: () => void;
 }) {
-  const isDefault = link.link_id.startsWith('default-') || link.link_id === 'payment';
+  const isDefault = isDefaultLink(link.link_id);
   const [form, setForm] = useState<EditForm>({
     title: link.title,
     amount: link.amount ? String(link.amount) : '',
@@ -171,31 +189,21 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (ev) => setLogoPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
-
     setUploading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { toast.error('Not authenticated'); setUploading(false); return; }
-
     if (logoUrl) await deleteStorageImage(logoUrl);
-
     const url = await uploadProductImage(file, user.id);
-    if (url) {
-      setLogoUrl(url);
-      toast.success('Image uploaded!');
-    } else {
-      setLogoPreview(logoUrl);
-    }
+    if (url) { setLogoUrl(url); toast.success('Image uploaded!'); } else { setLogoPreview(logoUrl); }
     setUploading(false);
   };
 
   const handleRemoveImage = async () => {
     if (logoUrl) await deleteStorageImage(logoUrl);
-    setLogoPreview('');
-    setLogoUrl('');
+    setLogoPreview(''); setLogoUrl('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -204,23 +212,15 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
     setSaving(true);
     const newLinkId = titleToSlug(form.title) || link.link_id;
     const payload: any = {
-      title: form.title,
-      link_id: newLinkId,
-      description: form.description,
+      title: form.title, link_id: newLinkId, description: form.description,
       discount: form.discount ? parseFloat(form.discount) : 0,
       discount_type: form.discount_type,
       product_logo: logoUrl || null,
     };
     if (link.amount !== null) payload.amount = form.amount ? parseFloat(form.amount) : null;
-
     const { error } = await supabase.from('payment_links').update(payload).eq('id', link.id);
-    if (error) {
-      toast.error('Update failed: ' + error.message);
-      setSaving(false);
-    } else {
-      setIsSuccess(true);
-      setTimeout(() => { toast.success('Link updated!'); onUpdated(); }, 1200);
-    }
+    if (error) { toast.error('Update failed: ' + error.message); setSaving(false); }
+    else { setIsSuccess(true); setTimeout(() => { toast.success('Link updated!'); onUpdated(); }, 1400); }
   };
 
   const finalPrice = form.amount && parseFloat(form.amount)
@@ -230,14 +230,7 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
       <div className="bg-white dark:bg-[#111827] w-full max-w-lg rounded-2xl shadow-2xl relative overflow-hidden max-h-[92vh] flex flex-col">
-        {isSuccess && (
-          <div className="absolute inset-0 bg-white/95 dark:bg-[#111827]/95 z-50 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300">
-            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle size={32} />
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Updated!</h3>
-          </div>
-        )}
+        {isSuccess && <SuccessOverlay message="Link Updated!" />}
 
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div>
@@ -321,7 +314,7 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
                   <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageSelect} />
                 </div>
 
-                {/* Amount (only if not open amount) */}
+                {/* Amount */}
                 {link.amount !== null && (
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Price ({link.currency})</label>
@@ -429,11 +422,12 @@ function LinkTypeChooser({ onSelect, onClose }: { onSelect: (type: 'default' | '
 }
 
 // ─── Create Link Modal ────────────────────────────────────────────────────────
-function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose, onCreated }: {
+function CreateLinkModal({ type, businessId, businessSlug, businessName, existingLinks, onClose, onCreated }: {
   type: 'default' | 'custom';
   businessId: string;
   businessSlug: string;
   businessName: string;
+  existingLinks: PaymentLink[];
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -473,23 +467,27 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { toast.error('Not authenticated'); setUploading(false); return; }
     const url = await uploadProductImage(file, user.id);
-    if (url) {
-      setForm(f => ({ ...f, product_logo: url }));
-      toast.success('Image uploaded!');
-    } else {
-      setLogoPreview('');
-    }
+    if (url) { setForm(f => ({ ...f, product_logo: url })); toast.success('Image uploaded!'); }
+    else { setLogoPreview(''); }
     setUploading(false);
   };
 
   const removeImage = () => {
-    setLogoPreview('');
-    setForm(f => ({ ...f, product_logo: '' }));
+    setLogoPreview(''); setForm(f => ({ ...f, product_logo: '' }));
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // ── Default link limit validation ──────────────────────────────────────
+    if (type === 'default') {
+      const hasDefault = existingLinks.some(l => isDefaultLink(l.link_id));
+      if (hasDefault) {
+        toast.error('You can create 1 default link');
+        return;
+      }
+    }
 
     if (type === 'custom' && !form.product_logo) {
       toast.error('Please upload a product image');
@@ -515,8 +513,7 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
     const payload: any = {
       merchant_id: user?.id,
       business_id: businessId,
-      // BUG FIX #11: Default links must have a fallback title to satisfy NOT NULL constraint
-      title: type === 'default' ? 'Default Payment' : form.title,
+      title: type === 'default' ? `Payment for ${businessName}` : form.title,
       link_id: finalLinkId,
       currency: form.currency,
       status: 'active',
@@ -539,7 +536,7 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
       setSaving(false);
     } else {
       setIsSuccess(true);
-      setTimeout(() => { toast.success('Payment link created!'); onCreated(); }, 1400);
+      setTimeout(() => { toast.success('Payment link created!'); onCreated(); }, 1500);
     }
   };
 
@@ -555,15 +552,7 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
       <div className="bg-white dark:bg-[#111827] w-full max-w-2xl rounded-2xl shadow-2xl relative overflow-hidden max-h-[92vh] flex flex-col">
-        {isSuccess && (
-          <div className="absolute inset-0 bg-white/95 dark:bg-[#111827]/95 z-50 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300">
-            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle size={32} />
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Link Created!</h3>
-            <p className="text-xs text-slate-500 mt-1">Redirecting...</p>
-          </div>
-        )}
+        {isSuccess && <SuccessOverlay message="Link Created!" />}
 
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
@@ -590,7 +579,6 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
               </div>
             )}
 
-            {/* Title — only for custom */}
             {isCustom && (
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Product / Title <span className="text-red-500">*</span></label>
@@ -600,7 +588,6 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
               </div>
             )}
 
-            {/* Custom URL */}
             {isCustom && (
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Edit3 size={10} />Customize URL <span className="text-red-500">*</span></label>
@@ -613,7 +600,6 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
               </div>
             )}
 
-            {/* Product Image — mandatory for custom */}
             {isCustom && (
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1">
@@ -651,7 +637,6 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
               </div>
             )}
 
-            {/* Amount & Currency */}
             {isCustom && (
               <div className="p-4 bg-slate-50 dark:bg-[#0B1120]/60 border border-slate-100 dark:border-slate-800 rounded-xl space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -712,7 +697,6 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
               </div>
             )}
 
-            {/* Description — only for custom */}
             {isCustom && (
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Description <span className="text-red-500">*</span></label>
@@ -721,7 +705,6 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
               </div>
             )}
 
-            {/* Link Expiry */}
             {isCustom && (
               <div className="space-y-2">
                 <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Clock size={10} />Link Expiry</label>
@@ -790,9 +773,8 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
   const displayUrl = getDisplayUrl(slug, link.link_id);
   const liveUrl = getLiveUrl(slug, link.link_id);
   const isActive = link.status === 'active';
-  const isDefault = link.link_id === 'payment' || link.link_id.startsWith('default-');
+  const isDefault = isDefaultLink(link.link_id);
   const expired = isExpired(link.expires_at);
-  // Inactive muted styling — req #12
   const isInactive = link.status === 'inactive';
 
   const handleCopy = () => { navigator.clipboard.writeText(liveUrl); toast.success('Link copied!'); };
@@ -806,12 +788,10 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
     setToggling(false);
   };
 
-  // Inactive row gets a muted "dead" styling
   const rowBg = isInactive
     ? 'bg-slate-50 dark:bg-slate-900/40 opacity-70'
     : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/10';
 
-  // Standard text — bold in active rows, muted if inactive
   const textBase = isInactive
     ? 'text-sm font-medium text-slate-400 dark:text-slate-500'
     : 'text-sm font-semibold text-slate-800 dark:text-white';
@@ -825,7 +805,7 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
           {link.product_logo
             ? <img src={link.product_logo} alt={link.title}
                 className={`w-9 h-9 rounded-xl object-cover border border-slate-100 dark:border-slate-800 shrink-0 ${isInactive ? 'grayscale opacity-60' : ''}`} />
-            : <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isInactive ? 'bg-slate-100 dark:bg-slate-800' : 'bg-slate-100 dark:bg-slate-800'}`}>
+            : <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-slate-100 dark:bg-slate-800">
                 <LinkIcon size={14} className={isInactive ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400'} />
               </div>
           }
@@ -846,7 +826,7 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
         </div>
       </td>
 
-      {/* URL — req #10: blue clickable link, white copy/open icons */}
+      {/* URL */}
       <td className="px-5 py-4">
         <div className="flex items-center gap-1.5">
           <Globe size={12} className={`shrink-0 ${isInactive ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400'}`} />
@@ -908,7 +888,7 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
           : <ToggleSwitch checked={isActive} onChange={handleToggle} />}
       </td>
 
-      {/* Actions — req #10: larger icons, red delete */}
+      {/* Actions */}
       <td className="px-5 py-4">
         <div className="flex items-center gap-2 justify-end">
           <button
@@ -963,7 +943,7 @@ export default function PaymentLinks() {
 
   const handleDelete = async (id: string) => {
     const link = links.find(l => l.id === id);
-    if (link && (link.link_id === 'payment' || link.link_id.startsWith('default-'))) {
+    if (link && isDefaultLink(link.link_id)) {
       toast.error('Default links cannot be deleted');
       return;
     }
@@ -1020,9 +1000,9 @@ export default function PaymentLinks() {
         </button>
       </div>
 
-      {/* ── Stats Cards — req #8: premium sizing ── */}
+      {/* ── Stats Cards — hidden on mobile, visible md+ ── */}
       {!loading && links.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="hidden md:grid grid-cols-3 gap-4">
           {/* Total Links */}
           <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl px-6 py-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
@@ -1040,9 +1020,9 @@ export default function PaymentLinks() {
           {/* Active */}
           <div className="bg-white dark:bg-[#111827] border border-emerald-100 dark:border-emerald-900/30 rounded-2xl px-6 py-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold text-emerald-500 uppercase tracking-widest">Active</p>
+              <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-widest">Active</p>
               <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center">
-                <CheckCircle size={16} className="text-emerald-500" />
+                <CheckCircle size={16} className="text-emerald-600" />
               </div>
             </div>
             <div>
@@ -1089,7 +1069,6 @@ export default function PaymentLinks() {
           <div className="overflow-x-auto">
             <table className="w-full text-left whitespace-nowrap">
               <thead>
-                {/* req #9: premium blue header, white text */}
                 <tr>
                   {['Product', 'URL', 'Price', 'Discount', 'After Discount', 'Expires', 'Status', 'Actions'].map(h => (
                     <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-white uppercase tracking-widest bg-blue-600 dark:bg-blue-700">
@@ -1123,8 +1102,15 @@ export default function PaymentLinks() {
         <LinkTypeChooser onSelect={type => setCreateType(type)} onClose={() => setShowChooser(false)} />
       )}
       {createType && businessId && (
-        <CreateLinkModal type={createType} businessId={businessId} businessSlug={businessSlug} businessName={businessName}
-          onClose={() => { setCreateType(null); setShowChooser(false); }} onCreated={handleCreated} />
+        <CreateLinkModal
+          type={createType}
+          businessId={businessId}
+          businessSlug={businessSlug}
+          businessName={businessName}
+          existingLinks={links}
+          onClose={() => { setCreateType(null); setShowChooser(false); }}
+          onCreated={handleCreated}
+        />
       )}
       {editLink && (
         <EditLinkModal link={editLink} slug={businessSlug} onClose={() => setEditLink(null)} onUpdated={handleUpdated} />

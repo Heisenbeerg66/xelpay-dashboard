@@ -422,13 +422,6 @@ export default function Transactions() {
     setCurrentPage(1);
   }, [searchTerm, transactions, appliedFilters]);
 
-  const stats = {
-    total: filteredData.length,
-    success: filteredData.filter(t => ['success', 'paid', 'completed'].includes(t.status?.toLowerCase())).length,
-    pending: filteredData.filter(t => t.status?.toLowerCase() === 'pending').length,
-    volume: filteredData.filter(t => ['success', 'paid', 'completed'].includes(t.status?.toLowerCase())).reduce((sum, t) => sum + Number(t.amount), 0),
-  };
-
   const activeFilterCount = appliedFilters.status.length + appliedFilters.method_category.length +
     (appliedFilters.date_from ? 1 : 0) + (appliedFilters.date_to ? 1 : 0) + (appliedFilters.trx_id ? 1 : 0);
 
@@ -464,9 +457,8 @@ export default function Transactions() {
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Monitor and manage all payments across your workspaces.</p>
         </div>
 
-        {/* Controls — all at identical height via h-9 */}
+        {/* Controls */}
         <div className="flex items-center gap-3">
-          {/* Export button — h-9 to match tab pills */}
           <button
             onClick={() => exportToCSV(filteredData)}
             className="flex items-center gap-2 h-9 px-4 bg-blue-600 rounded-xl text-sm font-medium text-white hover:bg-blue-700 transition-all shadow-sm shadow-blue-600/20"
@@ -474,7 +466,6 @@ export default function Transactions() {
             <Download size={14} /> Export
           </button>
 
-          {/* View Mode Tab — h-9 container, h-7 inner pills */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 h-9 px-1 rounded-xl">
             {(['business', 'all'] as const).map(m => (
               <button key={m} onClick={() => setViewMode(m)}
@@ -488,64 +479,8 @@ export default function Transactions() {
         </div>
       </div>
 
-      {/* ── Stats Cards ── */}
-      {!loading && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            {
-              label: 'Total Orders',
-              value: stats.total,
-              icon: Receipt,
-              iconBg: 'bg-slate-100 dark:bg-slate-800',
-              iconColor: 'text-slate-500 dark:text-slate-400',
-              valueColor: 'text-slate-900 dark:text-white',
-              accent: 'border-slate-200 dark:border-slate-800',
-            },
-            {
-              label: 'Successful',
-              value: stats.success,
-              icon: TrendingUp,
-              iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
-              iconColor: 'text-emerald-500',
-              valueColor: 'text-emerald-600 dark:text-emerald-400',
-              accent: 'border-slate-200 dark:border-slate-800',
-            },
-            {
-              label: 'Pending',
-              value: stats.pending,
-              icon: Clock,
-              iconBg: 'bg-amber-50 dark:bg-amber-900/20',
-              iconColor: 'text-amber-500',
-              valueColor: 'text-amber-600 dark:text-amber-400',
-              accent: 'border-slate-200 dark:border-slate-800',
-            },
-            {
-              label: 'Volume (BDT)',
-              value: `৳${stats.volume.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
-              icon: CreditCard,
-              iconBg: 'bg-blue-50 dark:bg-blue-900/20',
-              iconColor: 'text-blue-500',
-              valueColor: 'text-blue-600 dark:text-blue-400',
-              accent: 'border-slate-200 dark:border-slate-800',
-            },
-          ].map(s => (
-            <div key={s.label}
-              className={`bg-white dark:bg-[#111827] border ${s.accent} rounded-2xl px-5 py-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow`}>
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-tight">{s.label}</p>
-                <div className={`w-9 h-9 ${s.iconBg} rounded-xl flex items-center justify-center shrink-0`}>
-                  <s.icon size={16} className={s.iconColor} />
-                </div>
-              </div>
-              <p className={`text-2xl font-bold tracking-tight leading-none ${s.valueColor}`}>{s.value}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* ── Search & Filter ── */}
       <div className="flex items-center gap-3">
-        {/* Search Bar */}
         <div className="relative flex-1 group">
           <Search
             className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors"
@@ -565,7 +500,6 @@ export default function Transactions() {
           )}
         </div>
 
-        {/* Filter Button */}
         <div className="relative" ref={filterRef}>
           <button
             onClick={() => setShowFilter(!showFilter)}
@@ -585,7 +519,6 @@ export default function Transactions() {
           )}
         </div>
 
-        {/* Reload Button */}
         <button
           onClick={() => fetchTransactions(businessId, merchantId, viewMode)}
           className="h-9 w-9 flex items-center justify-center bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 hover:text-emerald-600 hover:border-emerald-400 transition-colors"
@@ -652,7 +585,7 @@ export default function Transactions() {
               <thead>
                 <tr>
                   {['Order No', 'Date', 'Customer Name', 'Email', 'Phone', 'Product', 'Source', 'Amount', 'Method', 'TRX ID', 'Status'].map(h => (
-                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-white uppercase tracking-widest bg-blue-600 dark:bg-blue-700 first:rounded-tl-none last:rounded-tr-none">
+                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-white uppercase tracking-widest bg-blue-600 dark:bg-blue-700">
                       {h}
                     </th>
                   ))}
@@ -661,7 +594,6 @@ export default function Transactions() {
               <tbody>
                 {paginatedData.map((trx, idx) => {
                   const badge = statusConfig(trx.status);
-                  // Req #5: solid white in dark, solid black in light
                   const cellBase = "text-sm font-semibold text-slate-900 dark:text-white";
                   return (
                     <tr key={trx.id}
@@ -712,7 +644,6 @@ export default function Transactions() {
                         )}
                       </td>
 
-                      {/* TRX ID + Eye Icon */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
                           {trx.trx_id
