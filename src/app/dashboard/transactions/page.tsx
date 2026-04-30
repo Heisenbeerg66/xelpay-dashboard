@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Receipt, Search, Filter, Loader2, Building2,
   Calendar, X, Check, CreditCard, Smartphone, Globe, Landmark,
-  RefreshCw, TrendingUp, Clock, Download
+  RefreshCw, TrendingUp, Clock, Download, Eye
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -25,6 +25,17 @@ type Order = {
   source: string | null;
   product_name: string | null;
   created_at: string;
+};
+
+type SmsTransaction = {
+  id: string;
+  sender: string;
+  method: string;
+  message: string;
+  trx_id: string;
+  amount: number;
+  received_at: string;
+  is_used: boolean;
 };
 
 type FilterState = {
@@ -108,6 +119,133 @@ function exportToCSV(data: Order[]) {
   URL.revokeObjectURL(url);
 }
 
+// ─── SMS Details Modal ────────────────────────────────────────────────────────
+function SmsDetailsModal({ trxId, onClose }: { trxId: string; onClose: () => void }) {
+  const [loading, setLoading] = useState(true);
+  const [smsData, setSmsData] = useState<SmsTransaction | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetch = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('sms_transactions')
+        .select('*')
+        .eq('trx_id', trxId)
+        .single();
+      if (error || !data) {
+        setError('No SMS record found for this transaction.');
+      } else {
+        setSmsData(data);
+      }
+      setLoading(false);
+    };
+    fetch();
+  }, [trxId]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-in zoom-in-95 duration-200"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+              <Eye size={14} className="text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">SMS Verification</p>
+              <p className="text-[10px] text-slate-400 font-mono mt-0.5">#{trxId}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+          >
+            <X size={14} className="text-slate-400" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-5">
+          {loading ? (
+            <div className="flex justify-center items-center py-10">
+              <Loader2 className="animate-spin text-blue-600" size={22} />
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                <Receipt size={16} className="text-slate-400" />
+              </div>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{error}</p>
+              <p className="text-xs text-slate-400 mt-1">The sender may have used a manual entry.</p>
+            </div>
+          ) : smsData ? (
+            <div className="space-y-3">
+              {/* Sender */}
+              <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
+                    <Smartphone size={12} className="text-blue-600" />
+                  </div>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Sender</p>
+                </div>
+                <p className="text-sm font-semibold font-mono text-slate-900 dark:text-white">{smsData.sender}</p>
+              </div>
+
+              {/* Method */}
+              <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg flex items-center justify-center">
+                    <CreditCard size={12} className="text-emerald-600" />
+                  </div>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Method</p>
+                </div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">{smsData.method}</p>
+              </div>
+
+              {/* Amount */}
+              <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 bg-amber-100 dark:bg-amber-900/40 rounded-lg flex items-center justify-center">
+                    <TrendingUp size={12} className="text-amber-600" />
+                  </div>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Amount</p>
+                </div>
+                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">৳{Number(smsData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+              </div>
+
+              {/* Received At */}
+              <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                    <Clock size={12} className="text-slate-500 dark:text-slate-400" />
+                  </div>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Received</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-semibold text-slate-900 dark:text-white">{formatDateShort(smsData.received_at)}</p>
+                  <p className="text-[10px] text-slate-400">{formatTime(smsData.received_at)}</p>
+                </div>
+              </div>
+
+              {/* Status Badge */}
+              <div className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold uppercase tracking-widest ${smsData.is_used ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>
+                {smsData.is_used ? <><Check size={10} /> Verified & Used</> : <><Clock size={10} /> Not Yet Used</>}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Filter Panel ─────────────────────────────────────────────────────────────
 function FilterPanel({ filters, setFilters, onClose, onApply }: {
   filters: FilterState;
@@ -142,8 +280,8 @@ function FilterPanel({ filters, setFilters, onClose, onApply }: {
               return (
                 <button key={opt.value} onClick={() => toggle('status', opt.value)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${active
-                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400'}`}>
+                    ? 'bg-emerald-600 text-white border-transparent'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500'}`}>
                   {active && <Check size={10} />}{opt.label}
                 </button>
               );
@@ -215,6 +353,7 @@ export default function Transactions() {
   const [filters, setFilters] = useState<FilterState>({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' });
   const [appliedFilters, setAppliedFilters] = useState<FilterState>({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' });
   const [currentPage, setCurrentPage] = useState(1);
+  const [smsTrxId, setSmsTrxId] = useState<string | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -311,7 +450,12 @@ export default function Transactions() {
   return (
     <div className="max-w-[1600px] mx-auto space-y-5 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-      {/* Header */}
+      {/* SMS Details Modal */}
+      {smsTrxId && (
+        <SmsDetailsModal trxId={smsTrxId} onClose={() => setSmsTrxId(null)} />
+      )}
+
+      {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
@@ -319,18 +463,22 @@ export default function Transactions() {
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Monitor and manage all payments across your workspaces.</p>
         </div>
-        {/* FIX 3: Both buttons same size */}
+
+        {/* Controls — all at identical height via h-9 */}
         <div className="flex items-center gap-3">
+          {/* Export button — h-9 to match tab pills */}
           <button
             onClick={() => exportToCSV(filteredData)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 border border-blue-600 rounded-xl text-sm font-medium text-white hover:bg-blue-700 transition-all"
+            className="flex items-center gap-2 h-9 px-4 bg-blue-600 rounded-xl text-sm font-medium text-white hover:bg-blue-700 transition-all shadow-sm shadow-blue-600/20"
           >
-            <Download size={15} /> Export
+            <Download size={14} /> Export
           </button>
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl">
+
+          {/* View Mode Tab — h-9 container, h-7 inner pills */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 h-9 px-1 rounded-xl">
             {(['business', 'all'] as const).map(m => (
               <button key={m} onClick={() => setViewMode(m)}
-                className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${viewMode === m
+                className={`h-7 px-4 rounded-lg text-xs font-medium transition-all ${viewMode === m
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
                 {m === 'business' ? 'This Business' : 'All'}
@@ -340,51 +488,110 @@ export default function Transactions() {
         </div>
       </div>
 
-      {/* FIX 2: Stats Cards — clean, minimal, premium. Shorter width, taller height */}
+      {/* ── Stats Cards ── */}
       {!loading && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Total Orders', value: stats.total, icon: Receipt, iconColor: 'text-slate-500 dark:text-slate-400', valueColor: 'text-slate-900 dark:text-white' },
-            { label: 'Successful', value: stats.success, icon: TrendingUp, iconColor: 'text-emerald-500', valueColor: 'text-emerald-600 dark:text-emerald-400' },
-            { label: 'Pending', value: stats.pending, icon: Clock, iconColor: 'text-amber-500', valueColor: 'text-amber-600 dark:text-amber-400' },
-            { label: 'Volume (BDT)', value: `৳${stats.volume.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: CreditCard, iconColor: 'text-blue-500', valueColor: 'text-blue-600 dark:text-blue-400' },
+            {
+              label: 'Total Orders',
+              value: stats.total,
+              icon: Receipt,
+              iconBg: 'bg-slate-100 dark:bg-slate-800',
+              iconColor: 'text-slate-500 dark:text-slate-400',
+              valueColor: 'text-slate-900 dark:text-white',
+              accent: 'border-slate-200 dark:border-slate-800',
+            },
+            {
+              label: 'Successful',
+              value: stats.success,
+              icon: TrendingUp,
+              iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
+              iconColor: 'text-emerald-500',
+              valueColor: 'text-emerald-600 dark:text-emerald-400',
+              accent: 'border-slate-200 dark:border-slate-800',
+            },
+            {
+              label: 'Pending',
+              value: stats.pending,
+              icon: Clock,
+              iconBg: 'bg-amber-50 dark:bg-amber-900/20',
+              iconColor: 'text-amber-500',
+              valueColor: 'text-amber-600 dark:text-amber-400',
+              accent: 'border-slate-200 dark:border-slate-800',
+            },
+            {
+              label: 'Volume (BDT)',
+              value: `৳${stats.volume.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
+              icon: CreditCard,
+              iconBg: 'bg-blue-50 dark:bg-blue-900/20',
+              iconColor: 'text-blue-500',
+              valueColor: 'text-blue-600 dark:text-blue-400',
+              accent: 'border-slate-200 dark:border-slate-800',
+            },
           ].map(s => (
-            <div key={s.label} className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-5 flex flex-col gap-3">
+            <div key={s.label}
+              className={`bg-white dark:bg-[#111827] border ${s.accent} rounded-2xl px-5 py-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow`}>
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{s.label}</p>
-                <div className={`w-8 h-8 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center`}>
-                  <s.icon size={15} className={s.iconColor} />
+                <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-tight">{s.label}</p>
+                <div className={`w-9 h-9 ${s.iconBg} rounded-xl flex items-center justify-center shrink-0`}>
+                  <s.icon size={16} className={s.iconColor} />
                 </div>
               </div>
-              <p className={`text-2xl font-bold tracking-tight ${s.valueColor}`}>{s.value}</p>
+              <p className={`text-2xl font-bold tracking-tight leading-none ${s.valueColor}`}>{s.value}</p>
             </div>
           ))}
         </div>
       )}
 
-      {/* Search & Filter */}
+      {/* ── Search & Filter ── */}
       <div className="flex items-center gap-3">
+        {/* Search Bar */}
         <div className="relative flex-1 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
-          <input type="text" placeholder="Search by TRX ID, Order No, Name, Email, Phone..."
-            value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-all placeholder:text-slate-400" />
-          {searchTerm && <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2"><X size={14} className="text-slate-400" /></button>}
+          <Search
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors"
+            size={15}
+          />
+          <input
+            type="text"
+            placeholder="Search by TRX ID, Order No, Name, Email, Phone..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full h-9 pl-11 pr-10 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 text-sm text-slate-900 dark:text-white transition-all placeholder:text-slate-400"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors">
+              <X size={13} className="text-slate-400" />
+            </button>
+          )}
         </div>
+
+        {/* Filter Button */}
         <div className="relative" ref={filterRef}>
-          <button onClick={() => setShowFilter(!showFilter)}
-            className={`flex items-center gap-2 px-4 py-2.5 border rounded-xl text-sm font-medium transition-all ${activeFilterCount > 0
-              ? 'bg-blue-600 border-blue-600 text-white'
+          <button
+            onClick={() => setShowFilter(!showFilter)}
+            className={`flex items-center gap-2 h-9 px-4 border rounded-xl text-sm font-medium transition-all ${activeFilterCount > 0
+              ? 'bg-emerald-600 border-emerald-600 text-white'
               : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-blue-400'}`}>
-            <Filter size={15} />
+            <Filter size={14} className={activeFilterCount > 0 ? 'text-white' : 'text-blue-500'} />
             <span className="hidden sm:inline">Filter</span>
-            {activeFilterCount > 0 && <span className="bg-white/30 text-white text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center">{activeFilterCount}</span>}
+            {activeFilterCount > 0 && (
+              <span className="bg-white/30 text-white text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
           </button>
-          {showFilter && <FilterPanel filters={filters} setFilters={setFilters} onClose={() => setShowFilter(false)} onApply={() => setAppliedFilters(filters)} />}
+          {showFilter && (
+            <FilterPanel filters={filters} setFilters={setFilters} onClose={() => setShowFilter(false)} onApply={() => setAppliedFilters(filters)} />
+          )}
         </div>
-        <button onClick={() => fetchTransactions(businessId, merchantId, viewMode)}
-          className="p-2.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 hover:text-blue-600 hover:border-blue-400 transition-colors" title="Refresh">
-          <RefreshCw size={15} />
+
+        {/* Reload Button */}
+        <button
+          onClick={() => fetchTransactions(businessId, merchantId, viewMode)}
+          className="h-9 w-9 flex items-center justify-center bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 hover:text-emerald-600 hover:border-emerald-400 transition-colors"
+          title="Refresh"
+        >
+          <RefreshCw size={14} />
         </button>
       </div>
 
@@ -393,29 +600,42 @@ export default function Transactions() {
         <div className="flex flex-wrap gap-2">
           {appliedFilters.status.map(s => (
             <span key={s} className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-[10px] font-medium uppercase tracking-wider">
-              {s}<button onClick={() => { const f = { ...appliedFilters, status: appliedFilters.status.filter(x => x !== s) }; setAppliedFilters(f); setFilters(f); }}><X size={10} /></button>
+              {s}
+              <button onClick={() => { const f = { ...appliedFilters, status: appliedFilters.status.filter(x => x !== s) }; setAppliedFilters(f); setFilters(f); }}>
+                <X size={10} />
+              </button>
             </span>
           ))}
           {appliedFilters.method_category.map(c => (
             <span key={c} className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-medium uppercase tracking-wider">
-              {c}<button onClick={() => { const f = { ...appliedFilters, method_category: appliedFilters.method_category.filter(x => x !== c) }; setAppliedFilters(f); setFilters(f); }}><X size={10} /></button>
+              {c}
+              <button onClick={() => { const f = { ...appliedFilters, method_category: appliedFilters.method_category.filter(x => x !== c) }; setAppliedFilters(f); setFilters(f); }}>
+                <X size={10} />
+              </button>
             </span>
           ))}
           {(appliedFilters.date_from || appliedFilters.date_to) && (
             <span className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-medium">
               <Calendar size={10} />{appliedFilters.date_from || '...'} – {appliedFilters.date_to || '...'}
-              <button onClick={() => { const f = { ...appliedFilters, date_from: '', date_to: '' }; setAppliedFilters(f); setFilters(f); }}><X size={10} /></button>
+              <button onClick={() => { const f = { ...appliedFilters, date_from: '', date_to: '' }; setAppliedFilters(f); setFilters(f); }}>
+                <X size={10} />
+              </button>
             </span>
           )}
-          <button onClick={() => { setAppliedFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' }); setFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' }); }}
-            className="px-3 py-1 text-red-500 text-[10px] font-medium hover:text-red-700">Clear All</button>
+          <button
+            onClick={() => { setAppliedFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' }); setFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' }); }}
+            className="px-3 py-1 text-red-500 text-[10px] font-medium hover:text-red-700">
+            Clear All
+          </button>
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+      {/* ── Table ── */}
+      <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         {loading ? (
-          <div className="flex justify-center items-center py-32"><Loader2 className="animate-spin text-blue-600" size={26} /></div>
+          <div className="flex justify-center items-center py-32">
+            <Loader2 className="animate-spin text-blue-600" size={26} />
+          </div>
         ) : filteredData.length === 0 ? (
           <div className="py-24 text-center">
             <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -430,47 +650,86 @@ export default function Transactions() {
           <div className="overflow-x-auto">
             <table className="w-full text-left whitespace-nowrap">
               <thead>
-                {/* FIX 1: Table header bg — indigo-700/indigo-800 — visible in both light & dark */}
-                <tr className="border-b border-slate-100 dark:border-slate-800">
+                <tr>
                   {['Order No', 'Date', 'Customer Name', 'Email', 'Phone', 'Product', 'Source', 'Amount', 'Method', 'TRX ID', 'Status'].map(h => (
-                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-white uppercase tracking-widest bg-indigo-700 dark:bg-indigo-900">{h}</th>
+                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-white uppercase tracking-widest bg-blue-600 dark:bg-blue-700 first:rounded-tl-none last:rounded-tr-none">
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {paginatedData.map((trx, idx) => {
                   const badge = statusConfig(trx.status);
-                  const cellText = "text-sm font-semibold text-slate-900 dark:text-white";
+                  // Req #5: solid white in dark, solid black in light
+                  const cellBase = "text-sm font-semibold text-slate-900 dark:text-white";
                   return (
                     <tr key={trx.id}
-                      className={`border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors ${idx === paginatedData.length - 1 ? 'border-b-0' : ''}`}>
-                      <td className="px-5 py-4"><span className={cellText}>{trx.order_no || '—'}</span></td>
+                      className={`border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors ${idx === paginatedData.length - 1 ? 'border-b-0' : ''}`}>
+
                       <td className="px-5 py-4">
-                        <p className={cellText}>{formatDateShort(trx.created_at)}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{formatTime(trx.created_at)}</p>
+                        <span className={cellBase}>{trx.order_no || '—'}</span>
                       </td>
-                      <td className="px-5 py-4"><span className={cellText}>{trx.customer_name || '—'}</span></td>
-                      <td className="px-5 py-4"><span className={cellText}>{trx.customer_email || '—'}</span></td>
-                      <td className="px-5 py-4"><span className={`${cellText} font-mono`}>{trx.customer_number || '—'}</span></td>
-                      <td className="px-5 py-4"><span className={cellText}>{trx.product_name || '—'}</span></td>
+
                       <td className="px-5 py-4">
-                        <span className="text-xs font-semibold text-white uppercase tracking-wider bg-slate-500 dark:bg-slate-600 px-2.5 py-1 rounded-lg">{trx.source || 'api'}</span>
+                        <p className={cellBase}>{formatDateShort(trx.created_at)}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{formatTime(trx.created_at)}</p>
                       </td>
+
                       <td className="px-5 py-4">
-                        <p className={cellText}>{trx.currency === 'USD' ? '$' : '৳'}{Number(trx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                        <p className="text-[10px] text-slate-400">{trx.currency || 'BDT'}</p>
+                        <span className={cellBase}>{trx.customer_name || '—'}</span>
                       </td>
+
                       <td className="px-5 py-4">
-                        <p className={cellText}>{trx.method || '—'}</p>
+                        <span className={cellBase}>{trx.customer_email || '—'}</span>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <span className={`${cellBase} font-mono`}>{trx.customer_number || '—'}</span>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <span className={cellBase}>{trx.product_name || '—'}</span>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <span className="text-xs font-semibold text-white uppercase tracking-wider bg-slate-500 dark:bg-slate-600 px-2.5 py-1 rounded-lg">
+                          {trx.source || 'api'}
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <p className={cellBase}>
+                          {trx.currency === 'USD' ? '$' : '৳'}{Number(trx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500">{trx.currency || 'BDT'}</p>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <p className={cellBase}>{trx.method || '—'}</p>
                         {getMethodCategory(trx.method) && (
-                          <p className="text-[10px] text-slate-400 capitalize">{getMethodCategory(trx.method)}</p>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 capitalize">{getMethodCategory(trx.method)}</p>
                         )}
                       </td>
+
+                      {/* TRX ID + Eye Icon */}
                       <td className="px-5 py-4">
-                        {trx.trx_id
-                          ? <span className={`${cellText} font-mono`}>#{trx.trx_id}</span>
-                          : <span className="text-sm text-slate-400 italic">Awaiting</span>}
+                        <div className="flex items-center gap-2">
+                          {trx.trx_id
+                            ? <span className={`${cellBase} font-mono`}>#{trx.trx_id}</span>
+                            : <span className="text-sm text-slate-400 dark:text-slate-500 italic">Awaiting</span>}
+                          {trx.trx_id && (
+                            <button
+                              onClick={() => setSmsTrxId(trx.trx_id)}
+                              title="View SMS Verification"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors shrink-0"
+                            >
+                              <Eye size={13} />
+                            </button>
+                          )}
+                        </div>
                       </td>
+
                       <td className="px-5 py-4">
                         <span className={`text-sm ${badge.cls}`}>{badge.label}</span>
                       </td>
@@ -486,11 +745,19 @@ export default function Transactions() {
         {!loading && filteredData.length > 0 && (
           <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-xs text-slate-400">
-              Showing <span className="text-slate-700 dark:text-slate-200 font-medium">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)}</span> of <span className="text-slate-700 dark:text-slate-200 font-medium">{filteredData.length}</span> transactions
+              Showing{' '}
+              <span className="text-slate-700 dark:text-slate-200 font-medium">
+                {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)}
+              </span>{' '}
+              of{' '}
+              <span className="text-slate-700 dark:text-slate-200 font-medium">{filteredData.length}</span>{' '}
+              transactions
             </p>
             {totalPages > 1 && (
               <div className="flex items-center gap-1.5">
-                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                   ← Prev
                 </button>
@@ -502,12 +769,16 @@ export default function Transactions() {
                   else page = currentPage - 3 + i;
                   return (
                     <button key={page} onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${currentPage === page ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+                      className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${currentPage === page
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
                       {page}
                     </button>
                   );
                 })}
-                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                   Next →
                 </button>

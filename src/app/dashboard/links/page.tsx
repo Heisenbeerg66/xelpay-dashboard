@@ -172,7 +172,6 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Show local preview immediately
     const reader = new FileReader();
     reader.onload = (ev) => setLogoPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
@@ -181,25 +180,20 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { toast.error('Not authenticated'); setUploading(false); return; }
 
-    // Delete old image from storage first
-    if (logoUrl) {
-      await deleteStorageImage(logoUrl);
-    }
+    if (logoUrl) await deleteStorageImage(logoUrl);
 
     const url = await uploadProductImage(file, user.id);
     if (url) {
       setLogoUrl(url);
       toast.success('Image uploaded!');
     } else {
-      setLogoPreview(logoUrl); // revert preview on failure
+      setLogoPreview(logoUrl);
     }
     setUploading(false);
   };
 
   const handleRemoveImage = async () => {
-    if (logoUrl) {
-      await deleteStorageImage(logoUrl);
-    }
+    if (logoUrl) await deleteStorageImage(logoUrl);
     setLogoPreview('');
     setLogoUrl('');
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -497,7 +491,6 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Custom link requires image
     if (type === 'custom' && !form.product_logo) {
       toast.error('Please upload a product image');
       return;
@@ -522,7 +515,8 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
     const payload: any = {
       merchant_id: user?.id,
       business_id: businessId,
-      title: type === 'default' ? null : form.title,
+      // BUG FIX #11: Default links must have a fallback title to satisfy NOT NULL constraint
+      title: type === 'default' ? 'Default Payment' : form.title,
       link_id: finalLinkId,
       currency: form.currency,
       status: 'active',
@@ -798,6 +792,8 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
   const isActive = link.status === 'active';
   const isDefault = link.link_id === 'payment' || link.link_id.startsWith('default-');
   const expired = isExpired(link.expires_at);
+  // Inactive muted styling — req #12
+  const isInactive = link.status === 'inactive';
 
   const handleCopy = () => { navigator.clipboard.writeText(liveUrl); toast.success('Link copied!'); };
 
@@ -810,40 +806,65 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
     setToggling(false);
   };
 
+  // Inactive row gets a muted "dead" styling
+  const rowBg = isInactive
+    ? 'bg-slate-50 dark:bg-slate-900/40 opacity-70'
+    : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/10';
+
+  // Standard text — bold in active rows, muted if inactive
+  const textBase = isInactive
+    ? 'text-sm font-medium text-slate-400 dark:text-slate-500'
+    : 'text-sm font-semibold text-slate-800 dark:text-white';
+
   return (
-    <tr className="border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors group">
+    <tr className={`border-b border-slate-100 dark:border-slate-800/60 transition-colors group ${rowBg}`}>
 
       {/* Product */}
       <td className="px-5 py-4">
         <div className="flex items-center gap-3">
           {link.product_logo
-            ? <img src={link.product_logo} alt={link.title} className="w-9 h-9 rounded-xl object-cover border border-slate-100 dark:border-slate-800 shrink-0" />
-            : <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center shrink-0"><LinkIcon size={14} className="text-slate-400" /></div>
+            ? <img src={link.product_logo} alt={link.title}
+                className={`w-9 h-9 rounded-xl object-cover border border-slate-100 dark:border-slate-800 shrink-0 ${isInactive ? 'grayscale opacity-60' : ''}`} />
+            : <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isInactive ? 'bg-slate-100 dark:bg-slate-800' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                <LinkIcon size={14} className={isInactive ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400'} />
+              </div>
           }
           <div>
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 transition-colors">
+            <p className={`${textBase} ${!isInactive ? 'group-hover:text-blue-600 transition-colors' : ''}`}>
               {link.title || <span className="text-slate-400 italic text-xs">Default</span>}
             </p>
-            {isDefault && <span className="text-[9px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600 px-1.5 py-0.5 rounded-md">Default</span>}
-            {link.description && !isDefault && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-[160px] truncate">{link.description}</p>}
+            {isDefault && (
+              <span className="text-[9px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600 px-1.5 py-0.5 rounded-md">Default</span>
+            )}
+            {link.description && !isDefault && (
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 max-w-[160px] truncate">{link.description}</p>
+            )}
+            {isInactive && (
+              <span className="text-[9px] font-medium bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-md mt-0.5 inline-block">Inactive</span>
+            )}
           </div>
         </div>
       </td>
 
-      {/* URL */}
+      {/* URL — req #10: blue clickable link, white copy/open icons */}
       <td className="px-5 py-4">
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 text-xs font-mono text-blue-500 max-w-[180px] truncate">
-            <Globe size={11} className="shrink-0 text-slate-400" />
-            <span className="truncate text-slate-700 dark:text-slate-300">{displayUrl}</span>
-          </div>
+        <div className="flex items-center gap-1.5">
+          <Globe size={12} className={`shrink-0 ${isInactive ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400'}`} />
+          <a
+            href={liveUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`text-xs font-mono max-w-[160px] truncate ${isInactive ? 'text-slate-400 cursor-default pointer-events-none' : 'text-blue-500 hover:text-blue-700 hover:underline'}`}
+          >
+            {displayUrl}
+          </a>
           <button onClick={handleCopy} title="Copy"
-            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors shrink-0">
-            <Copy size={13} />
+            className={`p-1.5 rounded-lg transition-colors shrink-0 ${isInactive ? 'text-slate-300 dark:text-slate-600' : 'text-white bg-slate-400 hover:bg-blue-600 dark:bg-slate-600 dark:hover:bg-blue-600'}`}>
+            <Copy size={14} />
           </button>
           <a href={liveUrl} target="_blank" rel="noopener noreferrer" title="Open"
-            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors inline-flex shrink-0">
-            <ExternalLink size={13} />
+            className={`p-1.5 rounded-lg transition-colors inline-flex shrink-0 ${isInactive ? 'text-slate-300 dark:text-slate-600 pointer-events-none' : 'text-white bg-slate-400 hover:bg-blue-600 dark:bg-slate-600 dark:hover:bg-blue-600'}`}>
+            <ExternalLink size={14} />
           </a>
         </div>
       </td>
@@ -851,14 +872,14 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
       {/* Original Price */}
       <td className="px-5 py-4">
         {link.amount
-          ? <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{sym_}{link.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+          ? <p className={textBase}>{sym_}{link.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
           : <span className="text-xs text-slate-400">Open</span>}
       </td>
 
       {/* Discount */}
       <td className="px-5 py-4">
         {link.discount > 0
-          ? <span className="text-xs font-semibold text-orange-500">
+          ? <span className={`text-xs font-semibold ${isInactive ? 'text-slate-400' : 'text-orange-500'}`}>
               {link.discount_type === 'percentage' ? `-${link.discount}%` : `-${sym_}${link.discount}`}
             </span>
           : <span className="text-xs text-slate-400">—</span>}
@@ -867,7 +888,7 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
       {/* After Discount */}
       <td className="px-5 py-4">
         {link.amount
-          ? <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+          ? <p className={`text-sm font-semibold ${isInactive ? 'text-slate-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
               {sym_}{(finalPrice ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </p>
           : <span className="text-xs text-slate-400">—</span>}
@@ -875,7 +896,7 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
 
       {/* Expiry */}
       <td className="px-5 py-4">
-        <span className={`text-xs font-medium ${expired ? 'text-red-500' : link.expires_at ? 'text-amber-500' : 'text-slate-400'}`}>
+        <span className={`text-xs font-medium ${isInactive ? 'text-slate-400' : expired ? 'text-red-500' : link.expires_at ? 'text-amber-500' : 'text-slate-400 dark:text-slate-500'}`}>
           {formatExpiry(link.expires_at)}
         </span>
       </td>
@@ -887,20 +908,20 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
           : <ToggleSwitch checked={isActive} onChange={handleToggle} />}
       </td>
 
-      {/* Actions */}
+      {/* Actions — req #10: larger icons, red delete */}
       <td className="px-5 py-4">
-        <div className="flex items-center gap-1.5 justify-end">
+        <div className="flex items-center gap-2 justify-end">
           <button
-            onClick={() => onEdit(link)}
+            onClick={() => !isDefault && onEdit(link)}
             title={isDefault ? 'Default links cannot be edited' : 'Edit'}
             className={`p-2 rounded-xl transition-colors ${isDefault ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}>
-            <Edit3 size={13} />
+            <Edit3 size={16} />
           </button>
           <button
             onClick={() => !isDefault && onDelete(link.id)}
             title={isDefault ? 'Default links cannot be deleted' : 'Delete'}
-            className={`p-2 rounded-xl transition-colors ${isDefault ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'}`}>
-            <Trash2 size={13} />
+            className={`p-2 rounded-xl transition-colors ${isDefault ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'}`}>
+            <Trash2 size={16} />
           </button>
         </div>
       </td>
@@ -947,10 +968,7 @@ export default function PaymentLinks() {
       return;
     }
     if (!confirm('Delete this payment link?')) return;
-    // Delete image from storage first
-    if (link?.product_logo) {
-      await deleteStorageImage(link.product_logo);
-    }
+    if (link?.product_logo) await deleteStorageImage(link.product_logo);
     const { error } = await supabase.from('payment_links').delete().eq('id', id);
     if (!error) { setLinks(l => l.filter(x => x.id !== id)); toast.success('Link deleted'); }
   };
@@ -983,11 +1001,12 @@ export default function PaymentLinks() {
   }
 
   const activeLinks = links.filter(l => l.status === 'active').length;
+  const inactiveLinks = links.length - activeLinks;
 
   return (
     <div className="max-w-7xl mx-auto space-y-5 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
@@ -996,60 +1015,64 @@ export default function PaymentLinks() {
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Create and manage payment links for your products and services.</p>
         </div>
         <button onClick={() => setShowChooser(true)}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-blue-600/25 hover:-translate-y-0.5">
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-blue-600/25 hover:-translate-y-0.5">
           <Plus size={16} /> Create New Link
         </button>
       </div>
 
-      {/* Stats Cards — clean minimal premium */}
+      {/* ── Stats Cards — req #8: premium sizing ── */}
       {!loading && links.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            {
-              label: 'Total Links',
-              value: links.length,
-              valueColor: 'text-slate-800 dark:text-white',
-              icon: LinkIcon,
-              iconBg: 'bg-slate-100 dark:bg-slate-800',
-              iconColor: 'text-slate-500 dark:text-slate-400',
-              border: 'border-slate-200 dark:border-slate-800',
-            },
-            {
-              label: 'Active',
-              value: activeLinks,
-              valueColor: 'text-emerald-600',
-              icon: CheckCircle,
-              iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
-              iconColor: 'text-emerald-500',
-              border: 'border-emerald-100 dark:border-emerald-900/30',
-            },
-            {
-              label: 'Inactive',
-              value: links.length - activeLinks,
-              valueColor: 'text-slate-400',
-              icon: X,
-              iconBg: 'bg-slate-100 dark:bg-slate-800',
-              iconColor: 'text-slate-400',
-              border: 'border-slate-200 dark:border-slate-800',
-            },
-          ].map(s => (
-            <div key={s.label} className={`bg-white dark:bg-[#111827] border ${s.border} rounded-2xl px-5 py-4 flex items-center gap-4`}>
-              <div className={`w-10 h-10 ${s.iconBg} rounded-xl flex items-center justify-center shrink-0`}>
-                <s.icon size={16} className={s.iconColor} />
-              </div>
-              <div>
-                <p className={`text-2xl font-bold ${s.valueColor} leading-none`}>{s.value}</p>
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mt-1">{s.label}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Total Links */}
+          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl px-6 py-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Total Links</p>
+              <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
+                <LinkIcon size={16} className="text-slate-500 dark:text-slate-400" />
               </div>
             </div>
-          ))}
+            <div>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white leading-none">{links.length}</p>
+              <p className="text-xs text-slate-400 mt-1.5">Payment links created</p>
+            </div>
+          </div>
+
+          {/* Active */}
+          <div className="bg-white dark:bg-[#111827] border border-emerald-100 dark:border-emerald-900/30 rounded-2xl px-6 py-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold text-emerald-500 uppercase tracking-widest">Active</p>
+              <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center">
+                <CheckCircle size={16} className="text-emerald-500" />
+              </div>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 leading-none">{activeLinks}</p>
+              <p className="text-xs text-slate-400 mt-1.5">Currently accepting payments</p>
+            </div>
+          </div>
+
+          {/* Inactive */}
+          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl px-6 py-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Inactive</p>
+              <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
+                <X size={16} className="text-slate-400" />
+              </div>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-400 leading-none">{inactiveLinks}</p>
+              <p className="text-xs text-slate-400 mt-1.5">Disabled or paused links</p>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+      {/* ── Table ── */}
+      <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         {loading ? (
-          <div className="flex justify-center items-center py-28"><Loader2 className="animate-spin text-blue-600" size={26} /></div>
+          <div className="flex justify-center items-center py-28">
+            <Loader2 className="animate-spin text-blue-600" size={26} />
+          </div>
         ) : links.length === 0 ? (
           <div className="py-24 text-center">
             <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/10 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -1066,9 +1089,10 @@ export default function PaymentLinks() {
           <div className="overflow-x-auto">
             <table className="w-full text-left whitespace-nowrap">
               <thead>
+                {/* req #9: premium blue header, white text */}
                 <tr>
                   {['Product', 'URL', 'Price', 'Discount', 'After Discount', 'Expires', 'Status', 'Actions'].map(h => (
-                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
+                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-white uppercase tracking-widest bg-blue-600 dark:bg-blue-700">
                       {h}
                     </th>
                   ))}
@@ -1086,12 +1110,15 @@ export default function PaymentLinks() {
 
         {!loading && links.length > 0 && (
           <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50">
-            <p className="text-xs text-slate-400">{links.length} {links.length === 1 ? 'link' : 'links'} · {activeLinks} active</p>
+            <p className="text-xs text-slate-400">
+              {links.length} {links.length === 1 ? 'link' : 'links'} · <span className="text-emerald-600 dark:text-emerald-400 font-medium">{activeLinks} active</span>
+              {inactiveLinks > 0 && <> · <span className="text-slate-400">{inactiveLinks} inactive</span></>}
+            </p>
           </div>
         )}
       </div>
 
-      {/* Modals */}
+      {/* ── Modals ── */}
       {showChooser && !createType && (
         <LinkTypeChooser onSelect={type => setCreateType(type)} onClose={() => setShowChooser(false)} />
       )}
