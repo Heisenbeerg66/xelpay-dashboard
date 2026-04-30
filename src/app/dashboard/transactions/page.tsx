@@ -48,10 +48,8 @@ const STATUS_OPTIONS = [
   { label: 'Cancelled', value: 'cancel' },
 ];
 
-// ─── Pagination ───────────────────────────────────────────────────────────────
 const PAGE_SIZE = 25;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatDateShort = (d: string) =>
   new Date(d).toLocaleDateString('en-US', {
     year: 'numeric', month: 'short', day: 'numeric',
@@ -68,7 +66,6 @@ const formatDate = (d: string) =>
     hour: '2-digit', minute: '2-digit',
   });
 
-// ─── Status: plain text only, no badge/dot ────────────────────────────────────
 const statusConfig = (s: string) => {
   switch (s?.toLowerCase()) {
     case 'paid': case 'success': case 'completed':
@@ -93,22 +90,13 @@ const getMethodCategory = (method: string | null) => {
   return null;
 };
 
-// ─── Export to CSV ────────────────────────────────────────────────────────────
 function exportToCSV(data: Order[]) {
   const headers = ['Order No', 'Date', 'Customer Name', 'Email', 'Phone', 'Product', 'Source', 'Amount', 'Currency', 'Method', 'TRX ID', 'Status'];
   const rows = data.map(t => [
-    t.order_no || '',
-    formatDate(t.created_at),
-    t.customer_name || '',
-    t.customer_email || '',
-    t.customer_number || '',
-    t.product_name || '',
-    t.source || '',
-    t.amount,
-    t.currency || 'BDT',
-    t.method || '',
-    t.trx_id || '',
-    t.status || '',
+    t.order_no || '', formatDate(t.created_at), t.customer_name || '',
+    t.customer_email || '', t.customer_number || '', t.product_name || '',
+    t.source || '', t.amount, t.currency || 'BDT', t.method || '',
+    t.trx_id || '', t.status || '',
   ]);
   const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
@@ -145,51 +133,59 @@ function FilterPanel({ filters, setFilters, onClose, onApply }: {
         </div>
       </div>
       <div className="p-5 space-y-5">
+        {/* Status */}
         <div>
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2.5">Status</p>
+          <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2.5">Status</p>
           <div className="flex flex-wrap gap-2">
             {STATUS_OPTIONS.map(opt => {
               const active = filters.status.includes(opt.value);
               return (
                 <button key={opt.value} onClick={() => toggle('status', opt.value)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${active ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-400'}`}>
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${active
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400'}`}>
                   {active && <Check size={10} />}{opt.label}
                 </button>
               );
             })}
           </div>
         </div>
+        {/* Payment Method */}
         <div>
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2.5">Payment Method</p>
+          <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2.5">Payment Method</p>
           <div className="flex flex-wrap gap-2">
             {PAYMENT_CATEGORIES.map(cat => {
               const Icon = cat.icon;
               const active = filters.method_category.includes(cat.value);
               return (
                 <button key={cat.value} onClick={() => toggle('method_category', cat.value)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${active ? 'bg-blue-600 text-white border-transparent' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-blue-300'}`}>
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${active
+                    ? 'bg-blue-600 text-white border-transparent'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-blue-300'}`}>
                   <Icon size={11} />{cat.label}
                 </button>
               );
             })}
           </div>
         </div>
+        {/* TRX ID */}
         <div>
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2.5">TRX ID</p>
+          <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2.5">TRX ID</p>
           <input type="text" placeholder="Enter transaction ID..." value={filters.trx_id}
             onChange={e => setFilters({ ...filters, trx_id: e.target.value })}
             className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-xs font-mono text-slate-900 dark:text-white transition-colors placeholder:text-slate-400" />
         </div>
+        {/* Date Range */}
         <div>
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2.5">Date Range</p>
+          <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2.5">Date Range</p>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <p className="text-[9px] font-medium text-slate-400 mb-1">FROM</p>
+              <p className="text-[9px] font-medium text-slate-500 dark:text-slate-400 mb-1">FROM</p>
               <input type="date" value={filters.date_from} onChange={e => setFilters({ ...filters, date_from: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-xs text-slate-900 dark:text-white" />
             </div>
             <div>
-              <p className="text-[9px] font-medium text-slate-400 mb-1">TO</p>
+              <p className="text-[9px] font-medium text-slate-500 dark:text-slate-400 mb-1">TO</p>
               <input type="date" value={filters.date_to} onChange={e => setFilters({ ...filters, date_to: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-xs text-slate-900 dark:text-white" />
             </div>
@@ -218,7 +214,6 @@ export default function Transactions() {
   const [showFilter, setShowFilter] = useState(false);
   const [filters, setFilters] = useState<FilterState>({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' });
   const [appliedFilters, setAppliedFilters] = useState<FilterState>({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' });
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const filterRef = useRef<HTMLDivElement>(null);
 
@@ -285,7 +280,7 @@ export default function Transactions() {
     if (appliedFilters.date_from) { const from = new Date(appliedFilters.date_from); data = data.filter(t => new Date(t.created_at) >= from); }
     if (appliedFilters.date_to) { const to = new Date(appliedFilters.date_to); to.setHours(23, 59, 59, 999); data = data.filter(t => new Date(t.created_at) <= to); }
     setFilteredData(data);
-    setCurrentPage(1); // reset to page 1 on filter change
+    setCurrentPage(1);
   }, [searchTerm, transactions, appliedFilters]);
 
   const stats = {
@@ -298,7 +293,6 @@ export default function Transactions() {
   const activeFilterCount = appliedFilters.status.length + appliedFilters.method_category.length +
     (appliedFilters.date_from ? 1 : 0) + (appliedFilters.date_to ? 1 : 0) + (appliedFilters.trx_id ? 1 : 0);
 
-  // Pagination calculations
   const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
   const paginatedData = filteredData.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
@@ -325,15 +319,14 @@ export default function Transactions() {
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Monitor and manage all payments across your workspaces.</p>
         </div>
+        {/* FIX 3: Both buttons same size */}
         <div className="flex items-center gap-3">
-          {/* Export */}
           <button
             onClick={() => exportToCSV(filteredData)}
             className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 border border-blue-600 rounded-xl text-sm font-medium text-white hover:bg-blue-700 transition-all"
           >
             <Download size={15} /> Export
           </button>
-          {/* View Mode */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl">
             {(['business', 'all'] as const).map(m => (
               <button key={m} onClick={() => setViewMode(m)}
@@ -347,21 +340,23 @@ export default function Transactions() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* FIX 2: Stats Cards — clean, minimal, premium. Shorter width, taller height */}
       {!loading && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Total Orders', value: stats.total, icon: Receipt, color: 'text-slate-700 dark:text-slate-200' },
-            { label: 'Successful', value: stats.success, icon: TrendingUp, color: 'text-emerald-600' },
-            { label: 'Pending', value: stats.pending, icon: Clock, color: 'text-amber-600' },
-            { label: 'Volume (BDT)', value: `৳${stats.volume.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: CreditCard, color: 'text-blue-600' },
+            { label: 'Total Orders', value: stats.total, icon: Receipt, iconColor: 'text-slate-500 dark:text-slate-400', valueColor: 'text-slate-900 dark:text-white' },
+            { label: 'Successful', value: stats.success, icon: TrendingUp, iconColor: 'text-emerald-500', valueColor: 'text-emerald-600 dark:text-emerald-400' },
+            { label: 'Pending', value: stats.pending, icon: Clock, iconColor: 'text-amber-500', valueColor: 'text-amber-600 dark:text-amber-400' },
+            { label: 'Volume (BDT)', value: `৳${stats.volume.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: CreditCard, iconColor: 'text-blue-500', valueColor: 'text-blue-600 dark:text-blue-400' },
           ].map(s => (
-            <div key={s.label} className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 flex items-center gap-3">
-              <s.icon size={18} className={s.color} />
-              <div>
-                <p className="text-[10px] font-bold text-white dark:text-white uppercase tracking-widest bg-slate-700 dark:bg-slate-600 px-2 py-0.5 rounded-md mb-1">{s.label}</p>
-                <p className={`text-lg font-semibold ${s.color}`}>{s.value}</p>
+            <div key={s.label} className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-5 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{s.label}</p>
+                <div className={`w-8 h-8 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center`}>
+                  <s.icon size={15} className={s.iconColor} />
+                </div>
               </div>
+              <p className={`text-2xl font-bold tracking-tight ${s.valueColor}`}>{s.value}</p>
             </div>
           ))}
         </div>
@@ -378,7 +373,9 @@ export default function Transactions() {
         </div>
         <div className="relative" ref={filterRef}>
           <button onClick={() => setShowFilter(!showFilter)}
-            className={`flex items-center gap-2 px-4 py-2.5 border rounded-xl text-sm font-medium transition-all ${activeFilterCount > 0 ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-blue-400'}`}>
+            className={`flex items-center gap-2 px-4 py-2.5 border rounded-xl text-sm font-medium transition-all ${activeFilterCount > 0
+              ? 'bg-blue-600 border-blue-600 text-white'
+              : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-blue-400'}`}>
             <Filter size={15} />
             <span className="hidden sm:inline">Filter</span>
             {activeFilterCount > 0 && <span className="bg-white/30 text-white text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center">{activeFilterCount}</span>}
@@ -433,82 +430,47 @@ export default function Transactions() {
           <div className="overflow-x-auto">
             <table className="w-full text-left whitespace-nowrap">
               <thead>
+                {/* FIX 1: Table header bg — indigo-700/indigo-800 — visible in both light & dark */}
                 <tr className="border-b border-slate-100 dark:border-slate-800">
-                  {/* Column headers: bold + white text */}
                   {['Order No', 'Date', 'Customer Name', 'Email', 'Phone', 'Product', 'Source', 'Amount', 'Method', 'TRX ID', 'Status'].map(h => (
-                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-white uppercase tracking-widest bg-slate-700 dark:bg-slate-800">{h}</th>
+                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-white uppercase tracking-widest bg-indigo-700 dark:bg-indigo-900">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {paginatedData.map((trx, idx) => {
                   const badge = statusConfig(trx.status);
-                  // Use same text style as Order No for all main cells
                   const cellText = "text-sm font-semibold text-slate-900 dark:text-white";
                   return (
                     <tr key={trx.id}
                       className={`border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors ${idx === paginatedData.length - 1 ? 'border-b-0' : ''}`}>
-
-                      {/* Order No */}
-                      <td className="px-5 py-4">
-                        <span className={cellText}>{trx.order_no || '—'}</span>
-                      </td>
-
-                      {/* Date */}
+                      <td className="px-5 py-4"><span className={cellText}>{trx.order_no || '—'}</span></td>
                       <td className="px-5 py-4">
                         <p className={cellText}>{formatDateShort(trx.created_at)}</p>
                         <p className="text-[10px] text-slate-400 mt-0.5">{formatTime(trx.created_at)}</p>
                       </td>
-
-                      {/* Customer Name */}
+                      <td className="px-5 py-4"><span className={cellText}>{trx.customer_name || '—'}</span></td>
+                      <td className="px-5 py-4"><span className={cellText}>{trx.customer_email || '—'}</span></td>
+                      <td className="px-5 py-4"><span className={`${cellText} font-mono`}>{trx.customer_number || '—'}</span></td>
+                      <td className="px-5 py-4"><span className={cellText}>{trx.product_name || '—'}</span></td>
                       <td className="px-5 py-4">
-                        <span className={cellText}>{trx.customer_name || '—'}</span>
+                        <span className="text-xs font-semibold text-white uppercase tracking-wider bg-slate-500 dark:bg-slate-600 px-2.5 py-1 rounded-lg">{trx.source || 'api'}</span>
                       </td>
-
-                      {/* Email */}
                       <td className="px-5 py-4">
-                        <span className={cellText}>{trx.customer_email || '—'}</span>
-                      </td>
-
-                      {/* Phone */}
-                      <td className="px-5 py-4">
-                        <span className={`${cellText} font-mono`}>{trx.customer_number || '—'}</span>
-                      </td>
-
-                      {/* Product */}
-                      <td className="px-5 py-4">
-                        <span className={cellText}>{trx.product_name || '—'}</span>
-                      </td>
-
-                      {/* Source — white text */}
-                      <td className="px-5 py-4">
-                        <span className="text-sm font-semibold text-white dark:text-white uppercase tracking-wider bg-slate-600 dark:bg-slate-700 px-2 py-0.5 rounded-md">{trx.source || 'api'}</span>
-                      </td>
-
-                      {/* Amount */}
-                      <td className="px-5 py-4">
-                        <p className={cellText}>
-                          {trx.currency === 'USD' ? '$' : '৳'}{Number(trx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </p>
+                        <p className={cellText}>{trx.currency === 'USD' ? '$' : '৳'}{Number(trx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                         <p className="text-[10px] text-slate-400">{trx.currency || 'BDT'}</p>
                       </td>
-
-                      {/* Method */}
                       <td className="px-5 py-4">
                         <p className={cellText}>{trx.method || '—'}</p>
                         {getMethodCategory(trx.method) && (
                           <p className="text-[10px] text-slate-400 capitalize">{getMethodCategory(trx.method)}</p>
                         )}
                       </td>
-
-                      {/* TRX ID */}
                       <td className="px-5 py-4">
                         {trx.trx_id
                           ? <span className={`${cellText} font-mono`}>#{trx.trx_id}</span>
-                          : <span className="text-sm font-semibold text-white dark:text-slate-300 italic">Awaiting</span>}
+                          : <span className="text-sm text-slate-400 italic">Awaiting</span>}
                       </td>
-
-                      {/* Status — plain text only */}
                       <td className="px-5 py-4">
                         <span className={`text-sm ${badge.cls}`}>{badge.label}</span>
                       </td>
@@ -520,7 +482,7 @@ export default function Transactions() {
           </div>
         )}
 
-        {/* Footer with pagination */}
+        {/* Pagination */}
         {!loading && filteredData.length > 0 && (
           <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-xs text-slate-400">
@@ -528,9 +490,7 @@ export default function Transactions() {
             </p>
             {totalPages > 1 && (
               <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                   ← Prev
                 </button>
@@ -547,9 +507,7 @@ export default function Transactions() {
                     </button>
                   );
                 })}
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
+                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                   Next →
                 </button>

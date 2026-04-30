@@ -60,7 +60,6 @@ const calcFinal = (amount: number, discount: number, type: string) => {
 
 const symbol = (currency: string) => currency === 'USD' ? '$' : '৳';
 
-// URL uses slug + product title (spaces → dashes)
 const titleToSlug = (title: string) =>
   title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/(^-|-$)/g, '');
 
@@ -85,6 +84,17 @@ const isExpired = (expires_at: string | null | undefined) => {
   return new Date(expires_at) < new Date();
 };
 
+// ─── Extract storage path from public URL ─────────────────────────────────────
+const extractStoragePath = (url: string | null): string | null => {
+  if (!url) return null;
+  try {
+    const match = url.match(/product-images\/(.+)$/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+};
+
 // ─── Image Upload ─────────────────────────────────────────────────────────────
 async function uploadProductImage(file: File, merchantId: string): Promise<string | null> {
   if (file.size > 2 * 1024 * 1024) { toast.error('Image must be under 2MB'); return null; }
@@ -93,7 +103,6 @@ async function uploadProductImage(file: File, merchantId: string): Promise<strin
 
   const fileName = `${merchantId}/${Date.now()}.${ext}`;
 
-  // Upload with explicit content-type, no auth header override — relies on bucket being public
   const { error } = await supabase.storage
     .from('product-images')
     .upload(fileName, file, {
@@ -109,6 +118,13 @@ async function uploadProductImage(file: File, merchantId: string): Promise<strin
 
   const { data } = supabase.storage.from('product-images').getPublicUrl(fileName);
   return data.publicUrl;
+}
+
+// ─── Delete storage image ─────────────────────────────────────────────────────
+async function deleteStorageImage(url: string | null): Promise<void> {
+  const path = extractStoragePath(url);
+  if (!path) return;
+  await supabase.storage.from('product-images').remove([path]);
 }
 
 // ─── Toggle Switch ────────────────────────────────────────────────────────────
@@ -132,7 +148,7 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
   onClose: () => void;
   onUpdated: () => void;
 }) {
-  const isDefault = link.link_id.startsWith('default-');
+  const isDefault = link.link_id.startsWith('default-') || link.link_id === 'payment';
   const [form, setForm] = useState<EditForm>({
     title: link.title,
     amount: link.amount ? String(link.amount) : '',
@@ -142,12 +158,52 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
   });
   const [saving, setSaving] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string>(link.product_logo || '');
+  const [logoUrl, setLogoUrl] = useState<string>(link.product_logo || '');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const set = (k: keyof EditForm, v: string) => setForm(f => ({ ...f, [k]: v }));
   const sym = symbol(link.currency);
 
-  // Derived link_id from title
   const derivedLinkId = titleToSlug(form.title) || link.link_id;
   const previewUrl = getDisplayUrl(slug, derivedLinkId);
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Show local preview immediately
+    const reader = new FileReader();
+    reader.onload = (ev) => setLogoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+
+    setUploading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { toast.error('Not authenticated'); setUploading(false); return; }
+
+    // Delete old image from storage first
+    if (logoUrl) {
+      await deleteStorageImage(logoUrl);
+    }
+
+    const url = await uploadProductImage(file, user.id);
+    if (url) {
+      setLogoUrl(url);
+      toast.success('Image uploaded!');
+    } else {
+      setLogoPreview(logoUrl); // revert preview on failure
+    }
+    setUploading(false);
+  };
+
+  const handleRemoveImage = async () => {
+    if (logoUrl) {
+      await deleteStorageImage(logoUrl);
+    }
+    setLogoPreview('');
+    setLogoUrl('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,6 +215,7 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
       description: form.description,
       discount: form.discount ? parseFloat(form.discount) : 0,
       discount_type: form.discount_type,
+      product_logo: logoUrl || null,
     };
     if (link.amount !== null) payload.amount = form.amount ? parseFloat(form.amount) : null;
 
@@ -178,7 +235,7 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-[#111827] w-full max-w-lg rounded-2xl shadow-2xl relative overflow-hidden">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-lg rounded-2xl shadow-2xl relative overflow-hidden max-h-[92vh] flex flex-col">
         {isSuccess && (
           <div className="absolute inset-0 bg-white/95 dark:bg-[#111827]/95 z-50 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-300">
             <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500 rounded-full flex items-center justify-center mb-4">
@@ -188,7 +245,7 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
           </div>
         )}
 
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div>
             <h3 className="font-semibold text-slate-900 dark:text-white">Edit Link</h3>
             <p className="text-xs text-slate-400 mt-0.5 font-mono">{link.link_id}</p>
@@ -199,99 +256,136 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
         </div>
 
         {isDefault ? (
-          <div className="px-6 py-8 text-center">
-            <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-3">
-              <LinkIcon size={20} className="text-slate-400" />
+          <>
+            <div className="px-6 py-8 text-center">
+              <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <LinkIcon size={20} className="text-slate-400" />
+              </div>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Default links cannot be edited</p>
+              <p className="text-xs text-slate-400 mt-1">Default payment links are managed automatically.</p>
             </div>
-            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Default links cannot be edited</p>
-            <p className="text-xs text-slate-400 mt-1">Default payment links are managed automatically.</p>
-          </div>
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+              <button type="button" onClick={onClose}
+                className="w-full py-3 rounded-xl font-medium text-sm text-slate-500 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                Close
+              </button>
+            </div>
+          </>
         ) : (
           <>
-            <form id="edit-form" onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-              {/* Title */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Title</label>
-                <input required type="text" value={form.title} onChange={e => set('title', e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors" />
-              </div>
-
-              {/* URL Preview */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Link Preview</label>
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl">
-                  <Globe size={12} className="text-slate-400 shrink-0" />
-                  <span className="text-xs font-mono text-blue-500 truncate">{previewUrl}</span>
-                </div>
-              </div>
-
-              {/* Amount (only if not open amount) */}
-              {link.amount !== null && (
+            <div className="overflow-y-auto flex-1 px-6 py-5">
+              <form id="edit-form" onSubmit={handleSubmit} className="space-y-4">
+                {/* Title */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Price ({link.currency})</label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{sym}</span>
-                    <input required type="number" step="any" min="1" value={form.amount} onChange={e => set('amount', e.target.value)}
-                      className="w-full pl-8 pr-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-semibold text-slate-900 dark:text-white transition-colors" />
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Title</label>
+                  <input required type="text" value={form.title} onChange={e => set('title', e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors" />
+                </div>
+
+                {/* URL Preview */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Link Preview</label>
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl">
+                    <Globe size={12} className="text-slate-400 shrink-0" />
+                    <span className="text-xs font-mono text-blue-500 truncate">{previewUrl}</span>
                   </div>
                 </div>
-              )}
 
-              {/* Discount */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Tag size={10} />Discount</label>
-                <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-colors bg-slate-50 dark:bg-[#0B1120]">
-                  <select value={form.discount_type} onChange={e => set('discount_type', e.target.value)}
-                    className="bg-slate-100 dark:bg-slate-800 px-3 py-3 text-xs font-medium text-slate-700 dark:text-slate-300 outline-none border-r border-slate-200 dark:border-slate-700 cursor-pointer">
-                    <option value="flat">Flat ({sym})</option>
-                    <option value="percentage">Percent (%)</option>
-                  </select>
-                  <input type="number" step="any" min="0" placeholder="0" value={form.discount} onChange={e => set('discount', e.target.value)}
-                    className="w-full px-4 py-3 bg-transparent outline-none text-sm text-slate-900 dark:text-white placeholder:text-slate-400" />
+                {/* Product Image */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                    <ImageIcon size={10} />Product Image
+                    <span className="text-[9px] font-normal text-slate-300 normal-case tracking-normal">(Max 2MB · JPG, PNG, WEBP)</span>
+                  </label>
+                  {logoPreview ? (
+                    <div className="relative w-full h-32 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                      <img src={logoPreview} alt="preview" className="w-full h-full object-contain" />
+                      {uploading && (
+                        <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 flex items-center justify-center">
+                          <Loader2 size={20} className="animate-spin text-blue-600" />
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2 flex gap-1.5">
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-blue-600 transition-colors"><Upload size={12} /></button>
+                        <button type="button" onClick={handleRemoveImage} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-red-500 transition-colors"><Trash2 size={12} /></button>
+                      </div>
+                      {logoUrl && !uploading && (
+                        <div className="absolute bottom-2 left-2">
+                          <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
+                            <Check size={9} /> Saved
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-24 bg-slate-50 dark:bg-[#0B1120] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-700 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors group">
+                      <Upload size={15} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+                      <p className="text-xs text-slate-400 group-hover:text-blue-600 transition-colors">Click to upload product image</p>
+                    </button>
+                  )}
+                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageSelect} />
                 </div>
-              </div>
 
-              {/* Price preview */}
-              {finalPrice !== null && (
-                <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl px-4 py-3">
-                  <div>
-                    <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-widest">Customer pays</p>
-                    {parseFloat(form.discount || '0') > 0 && (
-                      <p className="text-xs text-slate-400 line-through">{sym}{parseFloat(form.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                    )}
+                {/* Amount (only if not open amount) */}
+                {link.amount !== null && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Price ({link.currency})</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{sym}</span>
+                      <input required type="number" step="any" min="1" value={form.amount} onChange={e => set('amount', e.target.value)}
+                        className="w-full pl-8 pr-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-semibold text-slate-900 dark:text-white transition-colors" />
+                    </div>
                   </div>
-                  <span className="text-xl font-semibold text-blue-600">{sym}{finalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                )}
+
+                {/* Discount */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Tag size={10} />Discount</label>
+                  <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-colors bg-slate-50 dark:bg-[#0B1120]">
+                    <select value={form.discount_type} onChange={e => set('discount_type', e.target.value)}
+                      className="bg-slate-100 dark:bg-slate-800 px-3 py-3 text-xs font-medium text-slate-700 dark:text-slate-300 outline-none border-r border-slate-200 dark:border-slate-700 cursor-pointer">
+                      <option value="flat">Flat ({sym})</option>
+                      <option value="percentage">Percent (%)</option>
+                    </select>
+                    <input type="number" step="any" min="0" placeholder="0" value={form.discount} onChange={e => set('discount', e.target.value)}
+                      className="w-full px-4 py-3 bg-transparent outline-none text-sm text-slate-900 dark:text-white placeholder:text-slate-400" />
+                  </div>
                 </div>
-              )}
 
-              {/* Description */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Description</label>
-                <textarea rows={2} value={form.description} onChange={e => set('description', e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors resize-none placeholder:text-slate-400" />
-              </div>
-            </form>
+                {/* Price preview */}
+                {finalPrice !== null && (
+                  <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl px-4 py-3">
+                    <div>
+                      <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-widest">Customer pays</p>
+                      {parseFloat(form.discount || '0') > 0 && (
+                        <p className="text-xs text-slate-400 line-through">{sym}{parseFloat(form.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                      )}
+                    </div>
+                    <span className="text-xl font-semibold text-blue-600">{sym}{finalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
 
-            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Description</label>
+                  <textarea rows={2} value={form.description} onChange={e => set('description', e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors resize-none placeholder:text-slate-400" />
+                </div>
+              </form>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex gap-3 shrink-0">
               <button type="button" onClick={onClose}
                 className="flex-1 py-3 rounded-xl font-medium text-sm text-slate-500 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                 Cancel
               </button>
-              <button type="submit" form="edit-form" disabled={saving || isSuccess}
+              <button type="submit" form="edit-form" disabled={saving || isSuccess || uploading}
                 className="flex-1 py-3 rounded-xl font-semibold text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 transition-all flex justify-center items-center gap-2">
                 {saving || isSuccess ? <Loader2 size={15} className="animate-spin" /> : 'Save Changes'}
               </button>
             </div>
           </>
-        )}
-
-        {isDefault && (
-          <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800">
-            <button type="button" onClick={onClose}
-              className="w-full py-3 rounded-xl font-medium text-sm text-slate-500 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-              Close
-            </button>
-          </div>
         )}
       </div>
     </div>
@@ -312,13 +406,13 @@ function LinkTypeChooser({ onSelect, onClose }: { onSelect: (type: 'default' | '
           {[
             {
               type: 'default' as const,
-              icon: Zap,           // Original Zap icon
+              icon: Zap,
               label: 'Default Link',
               desc: 'Quick link with no fixed amount. Customers enter their own amount.',
             },
             {
               type: 'custom' as const,
-              icon: LinkIcon,      // Original Link icon
+              icon: LinkIcon,
               label: 'Custom Link',
               desc: 'Full control — set product title, image, price, discounts, expiry, and custom URL.',
             },
@@ -378,7 +472,6 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Show local preview immediately
     const reader = new FileReader();
     reader.onload = (ev) => setLogoPreview(ev.target?.result as string);
     reader.readAsDataURL(file);
@@ -403,6 +496,13 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Custom link requires image
+    if (type === 'custom' && !form.product_logo) {
+      toast.error('Please upload a product image');
+      return;
+    }
+
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -410,7 +510,6 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
     if (form.expires_type === 'hours' && form.expires_hours) {
       expires_at = new Date(Date.now() + parseInt(form.expires_hours) * 3600 * 1000).toISOString();
     } else if (form.expires_type === 'days' && form.expires_date_to) {
-      // Use the end of selected "to" date
       const to = new Date(form.expires_date_to);
       to.setHours(23, 59, 59, 999);
       expires_at = to.toISOString();
@@ -423,18 +522,18 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
     const payload: any = {
       merchant_id: user?.id,
       business_id: businessId,
-      title: form.title,
+      title: type === 'default' ? null : form.title,
       link_id: finalLinkId,
       currency: form.currency,
       status: 'active',
-      description: form.description || '',
+      description: type === 'default' ? null : (form.description || null),
       discount: form.discount ? parseFloat(form.discount) : 0,
       discount_type: form.discount_type,
-      product_logo: form.product_logo || null,
+      product_logo: type === 'default' ? null : (form.product_logo || null),
     };
+
     if (type === 'default') {
       payload.amount = null;
-      payload.description = businessName;
     } else {
       payload.amount = form.amount ? parseFloat(form.amount) : null;
     }
@@ -456,7 +555,6 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
     ? calcFinal(parseFloat(form.amount), parseFloat(form.discount || '0'), form.discount_type)
     : null;
 
-  // Default link URL preview: site/slug/payment
   const defaultLinkPreview = getDisplayUrl(businessSlug, 'payment');
   const customLinkPreview = getDisplayUrl(businessSlug, form.link_id || 'your-product');
 
@@ -475,7 +573,6 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
 
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
-            {/* Original link icon for header */}
             <div className="w-9 h-9 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
               <LinkIcon size={16} className="text-blue-600" />
             </div>
@@ -492,7 +589,6 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
         <div className="overflow-y-auto flex-1 px-6 py-5">
           <form id="link-form" onSubmit={handleSubmit} className="space-y-4">
 
-            {/* Default link URL preview */}
             {!isCustom && (
               <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl">
                 <Globe size={13} className="text-blue-500 shrink-0" />
@@ -500,15 +596,17 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
               </div>
             )}
 
-            {/* Title */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Product / Title <span className="text-red-500">*</span></label>
-              <input required type="text" placeholder={type === 'default' ? businessName : 'e.g. Premium Smartwatch'} value={form.title}
-                onChange={e => isCustom ? handleTitleChange(e.target.value) : set('title', e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors placeholder:text-slate-400" />
-            </div>
+            {/* Title — only for custom */}
+            {isCustom && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Product / Title <span className="text-red-500">*</span></label>
+                <input required type="text" placeholder="e.g. Premium Smartwatch" value={form.title}
+                  onChange={e => handleTitleChange(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors placeholder:text-slate-400" />
+              </div>
+            )}
 
-            {/* Custom URL — auto-derived from title but editable */}
+            {/* Custom URL */}
             {isCustom && (
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Edit3 size={10} />Customize URL <span className="text-red-500">*</span></label>
@@ -521,11 +619,11 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
               </div>
             )}
 
-            {/* Product Image */}
+            {/* Product Image — mandatory for custom */}
             {isCustom && (
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                  <ImageIcon size={10} />Product Image
+                  <ImageIcon size={10} />Product Image <span className="text-red-500">*</span>
                   <span className="text-[9px] font-normal text-slate-300 normal-case tracking-normal">(Max 2MB · JPG, PNG, WEBP)</span>
                 </label>
                 {logoPreview ? (
@@ -552,7 +650,7 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
                   <button type="button" onClick={() => fileInputRef.current?.click()}
                     className="w-full h-24 bg-slate-50 dark:bg-[#0B1120] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-700 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors group">
                     <Upload size={15} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
-                    <p className="text-xs text-slate-400 group-hover:text-blue-600 transition-colors">Click to upload product image</p>
+                    <p className="text-xs text-slate-400 group-hover:text-blue-600 transition-colors">Click to upload product image <span className="text-red-400">(required)</span></p>
                   </button>
                 )}
                 <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageSelect} />
@@ -620,12 +718,14 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, onClose
               </div>
             )}
 
-            {/* Description */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Description {isCustom && <span className="text-red-500">*</span>}</label>
-              <textarea required={isCustom} rows={2} placeholder="Brief product description..." value={form.description} onChange={e => set('description', e.target.value)}
-                className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors resize-none placeholder:text-slate-400" />
-            </div>
+            {/* Description — only for custom */}
+            {isCustom && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Description <span className="text-red-500">*</span></label>
+                <textarea required rows={2} placeholder="Brief product description..." value={form.description} onChange={e => set('description', e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors resize-none placeholder:text-slate-400" />
+              </div>
+            )}
 
             {/* Link Expiry */}
             {isCustom && (
@@ -721,25 +821,29 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
             : <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center shrink-0"><LinkIcon size={14} className="text-slate-400" /></div>
           }
           <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">{link.title}</p>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 transition-colors">
+              {link.title || <span className="text-slate-400 italic text-xs">Default</span>}
+            </p>
             {isDefault && <span className="text-[9px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600 px-1.5 py-0.5 rounded-md">Default</span>}
-            {link.description && !isDefault && <p className="text-[10px] text-slate-400 mt-0.5 max-w-[160px] truncate">{link.description}</p>}
+            {link.description && !isDefault && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-[160px] truncate">{link.description}</p>}
           </div>
         </div>
       </td>
 
-      {/* URL — with copy and open icons inline */}
+      {/* URL */}
       <td className="px-5 py-4">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 text-[11px] font-mono text-blue-500 max-w-[180px] truncate">
-            <Globe size={10} className="shrink-0" />
-            <span className="truncate">{displayUrl}</span>
+          <div className="flex items-center gap-1 text-xs font-mono text-blue-500 max-w-[180px] truncate">
+            <Globe size={11} className="shrink-0 text-slate-400" />
+            <span className="truncate text-slate-700 dark:text-slate-300">{displayUrl}</span>
           </div>
-          <button onClick={handleCopy} title="Copy" className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors shrink-0">
-            <Copy size={11} />
+          <button onClick={handleCopy} title="Copy"
+            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors shrink-0">
+            <Copy size={13} />
           </button>
-          <a href={liveUrl} target="_blank" rel="noopener noreferrer" title="Open" className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors inline-flex shrink-0">
-            <ExternalLink size={11} />
+          <a href={liveUrl} target="_blank" rel="noopener noreferrer" title="Open"
+            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors inline-flex shrink-0">
+            <ExternalLink size={13} />
           </a>
         </div>
       </td>
@@ -747,20 +851,20 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
       {/* Original Price */}
       <td className="px-5 py-4">
         {link.amount
-          ? <p className="text-sm font-semibold text-slate-900 dark:text-white">{sym_}{link.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+          ? <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{sym_}{link.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
           : <span className="text-xs text-slate-400">Open</span>}
       </td>
 
       {/* Discount */}
       <td className="px-5 py-4">
         {link.discount > 0
-          ? <span className="text-xs font-medium text-orange-500">
+          ? <span className="text-xs font-semibold text-orange-500">
               {link.discount_type === 'percentage' ? `-${link.discount}%` : `-${sym_}${link.discount}`}
             </span>
           : <span className="text-xs text-slate-400">—</span>}
       </td>
 
-      {/* After Discount — green color (light & dark) */}
+      {/* After Discount */}
       <td className="px-5 py-4">
         {link.amount
           ? <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
@@ -776,14 +880,14 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
         </span>
       </td>
 
-      {/* Status Toggle — switch only, no text */}
+      {/* Status Toggle */}
       <td className="px-5 py-4">
         {toggling
           ? <Loader2 size={14} className="animate-spin text-slate-400" />
           : <ToggleSwitch checked={isActive} onChange={handleToggle} />}
       </td>
 
-      {/* Actions — edit & delete only (copy/open moved to URL column) */}
+      {/* Actions */}
       <td className="px-5 py-4">
         <div className="flex items-center gap-1.5 justify-end">
           <button
@@ -820,7 +924,6 @@ export default function PaymentLinks() {
     const { data: biz } = await supabase.from('businesses').select('slug, business_name').eq('id', bizId).single();
     if (biz?.slug) setBusinessSlug(biz.slug);
     if (biz?.business_name) setBusinessName(biz.business_name);
-
     const { data } = await supabase.from('payment_links').select('*').eq('business_id', bizId).order('created_at', { ascending: false });
     if (data) setLinks(data);
     setLoading(false);
@@ -844,6 +947,10 @@ export default function PaymentLinks() {
       return;
     }
     if (!confirm('Delete this payment link?')) return;
+    // Delete image from storage first
+    if (link?.product_logo) {
+      await deleteStorageImage(link.product_logo);
+    }
     const { error } = await supabase.from('payment_links').delete().eq('id', id);
     if (!error) { setLinks(l => l.filter(x => x.id !== id)); toast.success('Link deleted'); }
   };
@@ -894,17 +1001,46 @@ export default function PaymentLinks() {
         </button>
       </div>
 
-      {/* Stats — wider cards */}
+      {/* Stats Cards — clean minimal premium */}
       {!loading && links.length > 0 && (
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: 'Total Links', value: links.length, color: 'text-slate-700 dark:text-slate-200' },
-            { label: 'Active', value: activeLinks, color: 'text-emerald-600' },
-            { label: 'Inactive', value: links.length - activeLinks, color: 'text-slate-400' },
+            {
+              label: 'Total Links',
+              value: links.length,
+              valueColor: 'text-slate-800 dark:text-white',
+              icon: LinkIcon,
+              iconBg: 'bg-slate-100 dark:bg-slate-800',
+              iconColor: 'text-slate-500 dark:text-slate-400',
+              border: 'border-slate-200 dark:border-slate-800',
+            },
+            {
+              label: 'Active',
+              value: activeLinks,
+              valueColor: 'text-emerald-600',
+              icon: CheckCircle,
+              iconBg: 'bg-emerald-50 dark:bg-emerald-900/20',
+              iconColor: 'text-emerald-500',
+              border: 'border-emerald-100 dark:border-emerald-900/30',
+            },
+            {
+              label: 'Inactive',
+              value: links.length - activeLinks,
+              valueColor: 'text-slate-400',
+              icon: X,
+              iconBg: 'bg-slate-100 dark:bg-slate-800',
+              iconColor: 'text-slate-400',
+              border: 'border-slate-200 dark:border-slate-800',
+            },
           ].map(s => (
-            <div key={s.label} className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl px-6 py-5 text-center">
-              <p className={`text-2xl font-semibold ${s.color}`}>{s.value}</p>
-              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest mt-1">{s.label}</p>
+            <div key={s.label} className={`bg-white dark:bg-[#111827] border ${s.border} rounded-2xl px-5 py-4 flex items-center gap-4`}>
+              <div className={`w-10 h-10 ${s.iconBg} rounded-xl flex items-center justify-center shrink-0`}>
+                <s.icon size={16} className={s.iconColor} />
+              </div>
+              <div>
+                <p className={`text-2xl font-bold ${s.valueColor} leading-none`}>{s.value}</p>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mt-1">{s.label}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -930,9 +1066,11 @@ export default function PaymentLinks() {
           <div className="overflow-x-auto">
             <table className="w-full text-left whitespace-nowrap">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800">
+                <tr>
                   {['Product', 'URL', 'Price', 'Discount', 'After Discount', 'Expires', 'Status', 'Actions'].map(h => (
-                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-white uppercase tracking-widest bg-slate-700 dark:bg-slate-800">{h}</th>
+                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700">
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
