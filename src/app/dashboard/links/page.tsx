@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, Loader2, Globe,
-  Tag, Edit3, Building2, X, Image as ImageIcon,
-  Clock, Upload, Check, Zap, CheckCircle
+  Tag, Edit3, Building2, X, Image as ImageIcon, Edit,
+  Clock, Upload, Check, Zap, CheckCircle, AlertCircle
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -50,6 +50,8 @@ type EditForm = {
   discount_type: string;
   description: string;
 };
+
+type BusinessStatus = 'active' | 'inactive' | 'suspended' | 'pending';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const calcFinal = (amount: number, discount: number, type: string) => {
@@ -155,6 +157,81 @@ function SuccessOverlay({ message }: { message: string }) {
       </div>
       <p className="text-base font-semibold text-slate-900 dark:text-white tracking-tight">{message}</p>
       <p className="text-xs text-slate-400 mt-1">Redirecting you back…</p>
+    </div>
+  );
+}
+
+// ─── Business Pending Notice ─────────────────────────────────────────────────
+function BusinessPendingNotice({ supportTelegram }: { supportTelegram: string | null }) {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-[#111827] border border-amber-200 dark:border-amber-900/30 rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+        {/* Header with gradient */}
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 px-6 py-8 border-b border-amber-100 dark:border-amber-900/30">
+          <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <AlertCircle size={32} className="text-amber-500" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white text-center">Business Verification Pending</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-300 text-center mt-2">আপনার বিজনেস যাচাইকরণ প্রক্রিয়াধীন আছে</p>
+        </div>
+
+        {/* Content */}
+        <div className="px-6 py-6 space-y-4">
+          <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 rounded-xl px-4 py-3.5">
+            <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+              আপনার workspace টি এই মুহূর্তে <span className="font-semibold text-amber-600 dark:text-amber-400">পেন্ডিং</span> স্ট্যাটাসে রয়েছে। 
+              অনুগ্রহ করে যাচাইকরণ সম্পন্ন না হওয়া পর্যন্ত অপেক্ষা করুন।
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-start gap-3 text-sm">
+              <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0 mt-0.5">
+                <Clock size={12} className="text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="font-medium text-slate-900 dark:text-white">Verification Time</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">সাধারণত ২৪-৪৮ ঘন্টার মধ্যে সম্পন্ন হয়</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 text-sm">
+              <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0 mt-0.5">
+                <CheckCircle size={12} className="text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="font-medium text-slate-900 dark:text-white">What's Next?</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">যাচাইকরণ সম্পন্ন হলে আপনি ইমেইল পাবেন</p>
+              </div>
+            </div>
+          </div>
+
+          {supportTelegram && (
+            <>
+              <div className="relative my-5">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200 dark:border-slate-700"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-white dark:bg-[#111827] px-3 text-slate-500 dark:text-slate-400">Need Help?</span>
+                </div>
+              </div>
+
+              <a
+                href={supportTelegram}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2.5 bg-[#0088cc] hover:bg-[#0077b3] text-white font-semibold py-3.5 px-4 rounded-xl transition-all shadow-lg shadow-[#0088cc]/25 hover:shadow-xl hover:-translate-y-0.5"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                </svg>
+                Contact Support
+              </a>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -293,7 +370,7 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
                         </div>
                       )}
                       <div className="absolute top-2 right-2 flex gap-1.5">
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-blue-600 transition-colors"><Upload size={12} /></button>
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-blue-600 transition-colors"><Edit size={12} /></button>
                         <button type="button" onClick={handleRemoveImage} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-red-500 transition-colors"><Trash2 size={12} /></button>
                       </div>
                       {logoUrl && !uploading && (
@@ -615,7 +692,7 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, existin
                       </div>
                     )}
                     <div className="absolute top-2 right-2 flex gap-1.5">
-                      <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-blue-600"><Upload size={12} /></button>
+                      <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-blue-600"><Edit size={12} /></button>
                       <button type="button" onClick={removeImage} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-red-500"><Trash2 size={12} /></button>
                     </div>
                     {form.product_logo && !uploading && (
@@ -826,15 +903,14 @@ function LinkRow({ link, index, slug, onDelete, onToggle, onEdit }: {
         </div>
       </td>
 
-      {/* URL */}
+      {/* Payment Link */}
       <td className="px-5 py-4">
-        <div className="flex items-center gap-1.5">
-          <Globe size={12} className={`shrink-0 ${isInactive ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400'}`} />
+        <div className="flex items-center gap-2">
           <a
             href={liveUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className={`text-xs font-mono max-w-[160px] truncate ${isInactive ? 'text-slate-400 cursor-default pointer-events-none' : 'text-blue-500 hover:text-blue-700 hover:underline'}`}
+            className={`text-sm font-mono max-w-[180px] truncate ${isInactive ? 'text-slate-400 cursor-default pointer-events-none' : 'text-blue-500 hover:text-blue-700 hover:underline'}`}
           >
             {displayUrl}
           </a>
@@ -916,17 +992,51 @@ export default function PaymentLinks() {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessSlug, setBusinessSlug] = useState('business');
   const [businessName, setBusinessName] = useState('My Business');
+  const [businessStatus, setBusinessStatus] = useState<BusinessStatus | null>(null);
+  const [supportTelegram, setSupportTelegram] = useState<string | null>(null);
   const [showChooser, setShowChooser] = useState(false);
   const [createType, setCreateType] = useState<'default' | 'custom' | null>(null);
   const [editLink, setEditLink] = useState<PaymentLink | null>(null);
 
   const fetchData = async (bizId: string) => {
     setLoading(true);
-    const { data: biz } = await supabase.from('businesses').select('slug, business_name').eq('id', bizId).single();
-    if (biz?.slug) setBusinessSlug(biz.slug);
-    if (biz?.business_name) setBusinessName(biz.business_name);
-    const { data } = await supabase.from('payment_links').select('*').eq('business_id', bizId).order('created_at', { ascending: false });
-    if (data) setLinks(data);
+    
+    // Fetch business data including status
+    const { data: biz } = await supabase
+      .from('businesses')
+      .select('slug, business_name, status')
+      .eq('id', bizId)
+      .single();
+    
+    if (biz) {
+      if (biz.slug) setBusinessSlug(biz.slug);
+      if (biz.business_name) setBusinessName(biz.business_name);
+      if (biz.status) setBusinessStatus(biz.status as BusinessStatus);
+    }
+
+    // Fetch support telegram link
+    const { data: settings } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key_name', 'support_telegram')
+      .eq('is_active', true)
+      .single();
+    
+    if (settings?.value) {
+      setSupportTelegram(settings.value);
+    }
+
+    // Only fetch links if business is active
+    if (biz?.status === 'active') {
+      const { data } = await supabase
+        .from('payment_links')
+        .select('*')
+        .eq('business_id', bizId)
+        .order('created_at', { ascending: false });
+      
+      if (data) setLinks(data);
+    }
+    
     setLoading(false);
   };
 
@@ -978,6 +1088,11 @@ export default function PaymentLinks() {
         <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">Select a business from the sidebar to manage payment links.</p>
       </div>
     );
+  }
+
+  // Show pending notice if business is not active
+  if (businessStatus && businessStatus !== 'active') {
+    return <BusinessPendingNotice supportTelegram={supportTelegram} />;
   }
 
   const activeLinks = links.filter(l => l.status === 'active').length;
@@ -1070,7 +1185,7 @@ export default function PaymentLinks() {
             <table className="w-full text-left whitespace-nowrap">
               <thead>
                 <tr>
-                  {['Product', 'URL', 'Price', 'Discount', 'After Discount', 'Expires', 'Status', 'Actions'].map(h => (
+                  {['Product', 'Payment Link', 'Price', 'Discount', 'After Discount', 'Expires', 'Status', 'Actions'].map(h => (
                     <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-white uppercase tracking-widest bg-blue-600 dark:bg-blue-700">
                       {h}
                     </th>
