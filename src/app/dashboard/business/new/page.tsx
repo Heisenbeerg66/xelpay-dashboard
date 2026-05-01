@@ -29,17 +29,27 @@ export default function NewBusiness() {
   // Fetch Merchant Plan Limits & Current Business Count
   useEffect(() => {
     async function loadInitialData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: merchant } = await supabase.from('merchants').select('plan_id').eq('id', user.id).single();
-        if (merchant?.plan_id) {
-           const { data: plan } = await supabase.from('plans').select('business_limit, allowed_method').eq('id', merchant.plan_id).single();
-           setPlanData(plan);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: merchant } = await supabase.from('merchants').select('plan_id').eq('id', user.id).single();
+          
+          if (merchant?.plan_id) {
+             const { data: plan } = await supabase.from('plans').select('business_limit, allowed_method').eq('id', merchant.plan_id).single();
+             setPlanData(plan || { business_limit: 1, allowed_method: {} });
+          } else {
+             // Fallback if no plan attached
+             setPlanData({ business_limit: 1, allowed_method: {} });
+          }
+
+          const { count } = await supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('merchant_id', user.id);
+          setBusinessCount(count || 0);
         }
-        const { count } = await supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('merchant_id', user.id);
-        setBusinessCount(count || 0);
+      } catch (error) {
+        console.error("Error fetching initial data:", error);
+      } finally {
+        setFetchingPlan(false);
       }
-      setFetchingPlan(false);
     }
     loadInitialData();
   }, []);
@@ -107,8 +117,9 @@ export default function NewBusiness() {
     setErrorMessage('');
 
     // Fast UI Validation Check
-    if (planData && Number(businessCount) >= Number(planData.business_limit)) {
-       const msg = `আপনার প্ল্যানের লিমিট শেষ (সর্বোচ্চ ${planData.business_limit} টি)। আরো Business অ্যাড করতে প্ল্যান আপগ্রেড করুন।`;
+    const currentLimit = planData?.business_limit !== undefined ? Number(planData.business_limit) : 1;
+    if (planData && Number(businessCount) >= currentLimit) {
+       const msg = `আপনার প্ল্যানের লিমিট শেষ (সর্বোচ্চ ${currentLimit} টি)। আরো Business অ্যাড করতে প্ল্যান আপগ্রেড করুন।`;
        toast.error(msg);
        setErrorMessage(msg);
        return;
@@ -139,20 +150,24 @@ export default function NewBusiness() {
 
       // 🚀 BULLETPROOF LIMIT CHECK: সাবমিট করার ঠিক আগ মুহূর্তে রিয়েল-টাইমে ডাটাবেস চেক করা
       const { data: currentMerchant } = await supabase.from('merchants').select('plan_id').eq('id', user.id).single();
+      let dbLimit = 1; // Default fallback
+
       if (currentMerchant?.plan_id) {
           const { data: currentPlan } = await supabase.from('plans').select('business_limit').eq('id', currentMerchant.plan_id).single();
-          const { count: exactBusinessCount } = await supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('merchant_id', user.id);
-          
-          const limit = Number(currentPlan?.business_limit || 0);
-          const current = Number(exactBusinessCount || 0);
-
-          if (current >= limit) {
-             const msg = `আপনার বর্তমান প্ল্যানের লিমিট শেষ (সর্বোচ্চ ${limit} টি)। দয়া করে প্ল্যান আপগ্রেড করুন।`;
-             toast.error(msg);
-             setErrorMessage(msg);
-             setLoading(false);
-             return; // ডেটাবেসে ইনসার্ট হওয়া থেকে আটকে দিল
+          if (currentPlan && currentPlan.business_limit !== null) {
+              dbLimit = Number(currentPlan.business_limit);
           }
+      }
+
+      const { count: exactBusinessCount } = await supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('merchant_id', user.id);
+      const current = Number(exactBusinessCount || 0);
+
+      if (current >= dbLimit) {
+         const msg = `আপনার বর্তমান প্ল্যানের লিমিট শেষ (সর্বোচ্চ ${dbLimit} টি)। দয়া করে প্ল্যান আপগ্রেড করুন।`;
+         toast.error(msg);
+         setErrorMessage(msg);
+         setLoading(false);
+         return; // ডেটাবেসে ইনসার্ট হওয়া থেকে আটকে দিল
       }
 
       // Limit Check Passed, Proceed to Insert
@@ -254,8 +269,8 @@ export default function NewBusiness() {
                 Business / App Name <span className="text-red-500">*</span>
               </label>
               <div className="relative group">
-                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
-                <input required type="text" placeholder="e.g. Easy Earn App" value={formData.businessName} onChange={(e) => setFormData({...formData, businessName: e.target.value})} className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-[#2E7D32] focus:ring-1 focus:ring-[#2E7D32]/20 text-sm font-medium text-slate-900 dark:text-white transition-all" />
+                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
+                <input required type="text" placeholder="e.g. Easy Earn App" value={formData.businessName} onChange={(e) => setFormData({...formData, businessName: e.target.value})} className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all" />
               </div>
             </div>
 
@@ -264,8 +279,8 @@ export default function NewBusiness() {
                 Business Type <span className="text-red-500">*</span>
               </label>
               <div className="relative group">
-                <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
-                <select required value={formData.businessType} onChange={(e) => setFormData({...formData, businessType: e.target.value, websiteUrl: ''})} className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-[#2E7D32] focus:ring-1 focus:ring-[#2E7D32]/20 text-sm font-medium text-slate-900 dark:text-white transition-all appearance-none">
+                <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
+                <select required value={formData.businessType} onChange={(e) => setFormData({...formData, businessType: e.target.value, websiteUrl: ''})} className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all appearance-none">
                   <option value="Website">Website</option>
                   <option value="Mobile App">Mobile App</option>
                   <option value="F Commerce">F-Commerce (Facebook)</option>
@@ -279,8 +294,8 @@ export default function NewBusiness() {
               {linkConfig.label} <span className="text-red-500">*</span>
             </label>
             <div className="relative group">
-              <linkConfig.icon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
-              <input required type="url" placeholder={linkConfig.placeholder} value={formData.websiteUrl} onChange={(e) => setFormData({...formData, websiteUrl: e.target.value})} className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-[#2E7D32] focus:ring-1 focus:ring-[#2E7D32]/20 text-sm font-medium text-slate-900 dark:text-white transition-all" />
+              <linkConfig.icon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
+              <input required type="url" placeholder={linkConfig.placeholder} value={formData.websiteUrl} onChange={(e) => setFormData({...formData, websiteUrl: e.target.value})} className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all" />
             </div>
           </div>
 
@@ -290,8 +305,8 @@ export default function NewBusiness() {
                 Support Email <span className="text-red-500">*</span>
               </label>
               <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
-                <input required type="email" placeholder="support@domain.com" value={formData.supportEmail} onChange={(e) => setFormData({...formData, supportEmail: e.target.value})} className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-[#2E7D32] focus:ring-1 focus:ring-[#2E7D32]/20 text-sm font-medium text-slate-900 dark:text-white transition-all" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
+                <input required type="email" placeholder="support@domain.com" value={formData.supportEmail} onChange={(e) => setFormData({...formData, supportEmail: e.target.value})} className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all" />
               </div>
             </div>
 
@@ -300,8 +315,8 @@ export default function NewBusiness() {
                 Support Phone <span className="text-red-500">*</span>
               </label>
               <div className="relative group">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
-                <input required type="tel" placeholder="01XXXXXXXXX" value={formData.supportPhone} onChange={handlePhoneChange} className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-[#2E7D32] focus:ring-1 focus:ring-[#2E7D32]/20 text-sm font-medium text-slate-900 dark:text-white transition-all" />
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
+                <input required type="tel" placeholder="01XXXXXXXXX" value={formData.supportPhone} onChange={handlePhoneChange} className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all" />
               </div>
             </div>
           </div>
@@ -312,8 +327,8 @@ export default function NewBusiness() {
                 Base Currency <span className="text-red-500">*</span>
               </label>
               <div className="relative group">
-                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#2E7D32] transition-colors" size={18} />
-                <select required value={formData.currency} onChange={handleCurrencyChange} disabled={fetchingPlan} className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-[#2E7D32] focus:ring-1 focus:ring-[#2E7D32]/20 text-sm font-medium text-slate-900 dark:text-white transition-all appearance-none disabled:opacity-50">
+                <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
+                <select required value={formData.currency} onChange={handleCurrencyChange} disabled={fetchingPlan} className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all appearance-none disabled:opacity-50">
                   <option value="BDT">BDT (Bangladeshi Taka)</option>
                   <option value="USD">USD (US Dollar)</option>
                 </select>
@@ -326,15 +341,15 @@ export default function NewBusiness() {
                   Exchange Rate (USD to BDT) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative group">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold group-focus-within:text-[#2E7D32] transition-colors">৳</span>
-                  <input required type="number" step="0.01" placeholder="e.g. 120.50" value={formData.exchangeRate} onChange={(e) => setFormData({...formData, exchangeRate: e.target.value})} className="w-full pl-10 pr-4 py-3.5 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-[#2E7D32] focus:ring-1 focus:ring-[#2E7D32]/20 text-sm font-medium text-slate-900 dark:text-white transition-all" />
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold group-focus-within:text-blue-600 transition-colors">৳</span>
+                  <input required type="number" step="0.01" placeholder="e.g. 120.50" value={formData.exchangeRate} onChange={(e) => setFormData({...formData, exchangeRate: e.target.value})} className="w-full pl-10 pr-4 py-3.5 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all" />
                 </div>
               </div>
             )}
           </div>
 
           <div className="pt-6">
-             <button disabled={loading || fetchingPlan} type="submit" className="w-full bg-gradient-to-r from-[#124329] to-[#2E7D32] hover:from-[#0d331f] hover:to-[#215a24] disabled:from-slate-400 disabled:to-slate-500 text-white py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-3 shadow-lg shadow-[#124329]/20 uppercase">
+             <button disabled={loading || fetchingPlan} type="submit" className="w-full bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-800 hover:to-blue-700 disabled:from-slate-400 disabled:to-slate-500 text-white py-4 rounded-xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-3 shadow-lg shadow-blue-700/20 uppercase">
                {loading || fetchingPlan ? <><Loader2 className="animate-spin" size={20}/> Processing...</> : <>Submit for Approval <ArrowRight size={20} /></>}
              </button>
              <p className="text-center text-xs font-medium text-slate-500 dark:text-slate-400 mt-4">By submitting, you agree to our verification process. Results take 24-48 hours.</p>
