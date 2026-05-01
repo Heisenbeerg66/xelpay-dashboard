@@ -328,8 +328,8 @@ export default function BrandSettings() {
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-0 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-      {/* ── Fixed Header ── */}
-      <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md border-b border-slate-100 dark:border-slate-800/60 -mx-4 md:-mx-0 px-4 md:px-0 py-4 mb-8">
+      {/* ── Page Header ── */}
+      <div className="py-4 mb-8">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
