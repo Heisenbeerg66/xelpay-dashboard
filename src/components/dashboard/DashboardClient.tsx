@@ -10,7 +10,6 @@ import { Loader2 } from 'lucide-react';
 function useIsMobileDevice() {
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    // 💥 Perfect hardware check
     const mq = window.matchMedia('(pointer: coarse)');
     setIsMobile(mq.matches);
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
@@ -48,17 +47,22 @@ export default function DashboardClient({ merchant, user, children }: any) {
       
       <Sidebar merchant={merchant} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
-      {/* 💥 Real PC হলে ml-72 কাজ করবে, Mobile হলে ফুল স্ক্রিন */}
-      <div className={`flex-1 flex flex-col min-h-screen w-full transition-all duration-300 relative z-10 ${!isMobileDevice ? 'ml-72' : 'max-w-[100vw]'}`}>
+      {/*
+        💥 KEY FIX: এই column কে h-screen + overflow-hidden করা হয়েছে।
+        Header sticky থাকবে, শুধু main এর ভেতরের content scroll করবে।
+      */}
+      <div className={`flex flex-col h-screen w-full overflow-hidden transition-all duration-300 relative z-10 ${!isMobileDevice ? 'ml-72' : 'max-w-[100vw]'}`}>
         
+        {/* Header — এখন এই column-এর top-এ fixed থাকবে, কখনো scroll হবে না */}
         <Header merchant={merchant} setSidebarOpen={setIsSidebarOpen} />
 
-        <main className="flex-1 w-full max-w-full overflow-x-hidden p-4 md:p-8 overflow-y-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* Main — শুধু এই অংশটুকু scroll করবে */}
+        <main className="flex-1 w-full max-w-full overflow-x-hidden overflow-y-auto p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {children}
         </main>
       </div>
 
-      {/* 💥 Overlay শুধু টাচ ডিভাইসেই আসবে যখন মেনু ওপেন থাকবে */}
+      {/* Overlay শুধু touch device-এ sidebar open থাকলে */}
       {isSidebarOpen && isMobileDevice && (
         <div 
           onClick={() => setIsSidebarOpen(false)} 
