@@ -68,10 +68,19 @@ const formatDate = (d: string) =>
 
 const statusConfig = (status: string) => {
   const s = status?.toLowerCase();
-  if (['paid', 'success', 'completed'].includes(s)) return { label: 'Paid', cls: 'text-emerald-600 dark:text-emerald-400 font-semibold' };
-  if (s === 'pending') return { label: 'Pending', cls: 'text-amber-500 dark:text-amber-400 font-semibold' };
-  if (['failed', 'rejected', 'cancelled'].includes(s)) return { label: 'Failed', cls: 'text-red-500 dark:text-red-400 font-semibold' };
-  return { label: status || '—', cls: 'text-slate-400 font-semibold' };
+  if (['paid', 'success', 'completed'].includes(s)) return { label: 'Paid', cls: 'text-emerald-600 dark:text-emerald-400 font-bold' };
+  if (s === 'pending') return { label: 'Pending', cls: 'text-amber-500 dark:text-amber-400 font-bold' };
+  if (['failed', 'rejected', 'cancelled'].includes(s)) return { label: 'Failed', cls: 'text-red-500 dark:text-red-400 font-bold' };
+  return { label: status || '—', cls: 'text-slate-400 font-bold' };
+};
+
+const getMethodTextColor = (method: string | null) => {
+  const m = (method || '').toLowerCase();
+  if (m.includes('bkash')) return 'text-pink-600 dark:text-pink-400';
+  if (m.includes('nagad')) return 'text-orange-600 dark:text-orange-400';
+  if (m.includes('rocket')) return 'text-purple-600 dark:text-purple-400';
+  if (m.includes('upay')) return 'text-blue-600 dark:text-blue-400';
+  return 'text-slate-600 dark:text-slate-400';
 };
 
 const getMethodCategory = (method: string | null): string | null => {
@@ -139,10 +148,10 @@ function SmsDetailsModal({ trxId, onClose }: { trxId: string; onClose: () => voi
             <div className="space-y-3">
               {[
                 { label: 'Sender', value: smsData.sender },
-                { label: 'Method', value: smsData.method },
-                { label: 'Trx ID', value: smsData.trx_id, color: 'text-blue-600 dark:text-blue-400 font-mono' },
+                { label: 'Method', value: smsData.method, color: getMethodTextColor(smsData.method) + ' uppercase font-bold' },
+                { label: 'Trx ID', value: smsData.trx_id, color: 'text-purple-600 dark:text-purple-400 font-mono font-bold' },
                 { label: 'Amount', value: `৳ ${parseFloat(String(smsData.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: 'text-emerald-600 font-bold' },
-                { label: 'Status', value: smsData.is_used ? 'Used / Paid' : 'Unused / Pending', color: smsData.is_used ? 'text-emerald-600' : 'text-amber-600' },
+                { label: 'Status', value: smsData.is_used ? 'Used / Paid' : 'Unused / Pending', color: smsData.is_used ? 'text-emerald-600 font-bold' : 'text-amber-600 font-bold' },
                 { label: 'Received At', value: formatDate(smsData.received_at) },
               ].map(r => (
                 <div key={r.label} className="flex items-start justify-between py-2 border-b border-slate-50 dark:border-slate-800/60 last:border-0">
@@ -173,7 +182,6 @@ function FilterPanel({ filters, setFilters, onApply, onClose }: {
     const arr = filters[key];
     setFilters({ ...filters, [key]: arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val] });
   };
-
   return (
     <div className="absolute right-0 top-full mt-2 z-40 w-72 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-150">
       <div>
@@ -181,7 +189,7 @@ function FilterPanel({ filters, setFilters, onApply, onClose }: {
         <div className="flex flex-wrap gap-2">
           {STATUS_OPTIONS.map(s => (
             <button key={s.value} onClick={() => toggle('status', s.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${filters.status.includes(s.value)
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${filters.status.includes(s.value)
                 ? 'bg-blue-600 text-white border-blue-600'
                 : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-blue-400'}`}>
               {s.label}
@@ -194,7 +202,7 @@ function FilterPanel({ filters, setFilters, onApply, onClose }: {
         <div className="flex flex-wrap gap-2">
           {PAYMENT_CATEGORIES.map(c => (
             <button key={c.value} onClick={() => toggle('method_category', c.value)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${filters.method_category.includes(c.value)
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${filters.method_category.includes(c.value)
                 ? 'bg-blue-600 text-white border-blue-600'
                 : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-blue-400'}`}>
               <c.icon size={11} /> {c.label}
@@ -208,17 +216,17 @@ function FilterPanel({ filters, setFilters, onApply, onClose }: {
           {(['date_from', 'date_to'] as const).map(key => (
             <input key={key} type="date" value={filters[key]}
               onChange={e => setFilters({ ...filters, [key]: e.target.value })}
-              className="px-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-white outline-none focus:border-blue-500 transition-colors" />
+              className="px-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-white outline-none focus:border-blue-500 transition-colors" />
           ))}
         </div>
       </div>
       <div className="flex gap-2 pt-1">
         <button onClick={() => setFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' })}
-          className="flex-1 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+          className="flex-1 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
           Clear All
         </button>
         <button onClick={() => { onApply(); onClose(); }}
-          className="flex-1 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+          className="flex-1 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 transition-colors">
           Apply
         </button>
       </div>
@@ -314,8 +322,8 @@ export default function Transactions() {
         <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center mb-4">
           <Building2 size={32} />
         </div>
-        <h2 className="text-xl font-semibold text-slate-900 dark:text-white">No Workspace Selected</h2>
-        <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">Select a business from the sidebar to view transactions.</p>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">No Workspace Selected</h2>
+        <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm font-medium">Select a business from the sidebar to view transactions.</p>
       </div>
     );
   }
@@ -325,66 +333,31 @@ export default function Transactions() {
 
       {smsTrxId && <SmsDetailsModal trxId={smsTrxId} onClose={() => setSmsTrxId(null)} />}
 
-      {/* ── Page Title + Controls Row (aligned) ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-
-        {/* Left: Title aligned with table */}
-        <div className="flex items-center gap-3">
-          <Receipt size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
-          <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-[0.1em]">
-            All Transactions
-          </h1>
+      {/* ── Page Title + Controls Row (Mobile Optimized Flex Wrap) ── */}
+      <div className="flex flex-col md:flex-row justify-between gap-4">
+        
+        {/* Title Area + Mobile Refresh */}
+        <div className="flex items-center justify-between md:justify-start gap-3">
+          <div className="flex items-center gap-3">
+            <Receipt size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
+            <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-[0.1em]">
+              All Transactions
+            </h1>
+          </div>
+          <button onClick={() => fetchOrders(businessId, viewMode)}
+            className="md:hidden flex items-center justify-center h-9 w-9 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-300 shadow-sm">
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          </button>
         </div>
 
-        {/* Right: Search + Controls */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-wrap">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-            <input
-              type="text"
-              placeholder="Search name, order, trx ID..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full sm:w-64 pl-10 pr-4 py-2.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-700 dark:text-white outline-none focus:border-blue-500 transition-colors shadow-sm"
-            />
-          </div>
-
-          {/* Filter */}
-          <div className="relative" ref={filterRef}>
-            <button onClick={() => setShowFilter(v => !v)}
-              className={`flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-medium border transition-all ${showFilter || activeFilterCount > 0
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 shadow-sm hover:border-blue-400'}`}>
-              <Filter size={14} />
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="w-5 h-5 rounded-full bg-white/30 text-white text-[10px] font-bold flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-            {showFilter && (
-              <FilterPanel
-                filters={filters}
-                setFilters={setFilters}
-                onApply={() => setAppliedFilters(filters)}
-                onClose={() => setShowFilter(false)}
-              />
-            )}
-          </div>
-
-          {/* Export */}
-          <button onClick={() => exportToCSV(filteredData)}
-            className="flex items-center gap-2 h-10 px-4 bg-blue-600 rounded-xl text-sm font-medium text-white hover:bg-blue-700 transition-all shadow-sm">
-            <Download size={14} /> Export
-          </button>
-
+        {/* Controls Area */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+          
           {/* Business / All tabs */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 h-10 px-1 rounded-xl">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 h-10 px-1 rounded-xl w-full sm:w-auto justify-between sm:justify-start">
             {(['business', 'all'] as const).map(m => (
               <button key={m} onClick={() => setViewMode(m)}
-                className={`h-8 px-4 rounded-lg text-xs font-medium transition-all ${viewMode === m
+                className={`flex-1 sm:flex-none h-8 px-4 rounded-lg text-xs font-bold transition-all ${viewMode === m
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
                 {m === 'business' ? 'Business' : 'All'}
@@ -392,11 +365,54 @@ export default function Transactions() {
             ))}
           </div>
 
-          {/* Refresh */}
-          <button onClick={() => fetchOrders(businessId, viewMode)}
-            className="flex items-center justify-center h-10 w-10 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
-            <RefreshCw size={14} />
-          </button>
+          {/* Search */}
+          <div className="relative flex-grow sm:flex-grow-0">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+            <input
+              type="text"
+              placeholder="Search name, order, trx ID..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full sm:w-56 pl-10 pr-4 py-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-700 dark:text-white outline-none focus:border-blue-500 transition-colors shadow-sm"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+            {/* Filter */}
+            <div className="relative flex-1 sm:flex-none" ref={filterRef}>
+              <button onClick={() => setShowFilter(v => !v)}
+                className={`flex w-full items-center justify-center gap-2 h-10 px-4 rounded-xl text-sm font-bold border transition-all ${showFilter || activeFilterCount > 0
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 shadow-sm hover:border-blue-400'}`}>
+                <Filter size={14} /> Filters
+                {activeFilterCount > 0 && (
+                  <span className="w-5 h-5 rounded-full bg-white/30 text-white text-[10px] font-black flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+              {showFilter && (
+                <FilterPanel
+                  filters={filters}
+                  setFilters={setFilters}
+                  onApply={() => setAppliedFilters(filters)}
+                  onClose={() => setShowFilter(false)}
+                />
+              )}
+            </div>
+
+            {/* Export */}
+            <button onClick={() => exportToCSV(filteredData)}
+              className="flex flex-1 sm:flex-none items-center justify-center gap-2 h-10 px-4 bg-blue-600 rounded-xl text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-sm">
+              <Download size={14} /> <span className="hidden sm:inline">Export</span>
+            </button>
+
+            {/* Desktop Refresh */}
+            <button onClick={() => fetchOrders(businessId, viewMode)}
+              className="hidden md:flex items-center justify-center h-10 w-10 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -404,7 +420,7 @@ export default function Transactions() {
       {activeFilterCount > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           {appliedFilters.status.map(s => (
-            <span key={s} className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-medium">
+            <span key={s} className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-bold">
               {s}
               <button onClick={() => setAppliedFilters(f => ({ ...f, status: f.status.filter(x => x !== s) }))}>
                 <X size={10} />
@@ -412,7 +428,7 @@ export default function Transactions() {
             </span>
           ))}
           <button onClick={() => setAppliedFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' })}
-            className="px-3 py-1 text-red-500 text-[10px] font-medium hover:text-red-700">
+            className="px-3 py-1 text-red-500 text-[10px] font-bold hover:text-red-700">
             Clear All
           </button>
         </div>
@@ -429,8 +445,8 @@ export default function Transactions() {
             <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Receipt size={20} />
             </div>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">No Transactions Found</h3>
-            <p className="text-slate-400 text-xs max-w-xs mx-auto">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">No Transactions Found</h3>
+            <p className="text-slate-400 text-xs font-medium max-w-xs mx-auto">
               {searchTerm || activeFilterCount > 0 ? 'No results match your criteria.' : 'No payments received yet.'}
             </p>
           </div>
@@ -440,7 +456,7 @@ export default function Transactions() {
               <thead>
                 <tr>
                   {['Order No', 'Date', 'Customer Name', 'Email', 'Phone', 'Product', 'Source', 'Amount', 'Method', 'TRX ID', 'Status'].map(h => (
-                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-[#0B1120]/60 border-b border-slate-100 dark:border-slate-800">
+                    <th key={h} className="px-5 py-3.5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-[#0B1120]/60 border-b border-slate-100 dark:border-slate-800">
                       {h}
                     </th>
                   ))}
@@ -449,25 +465,26 @@ export default function Transactions() {
               <tbody>
                 {paginatedData.map((trx, idx) => {
                   const badge = statusConfig(trx.status);
+                  const methodColor = getMethodTextColor(trx.method);
                   return (
                     <tr key={trx.id}
                       className={`border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors ${idx === paginatedData.length - 1 ? 'border-b-0' : ''}`}>
-                      <td className="px-5 py-3.5 text-xs font-mono font-bold text-slate-700 dark:text-slate-300">{trx.order_no || '—'}</td>
-                      <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400">{formatDate(trx.created_at)}</td>
-                      <td className="px-5 py-3.5 text-xs text-slate-700 dark:text-slate-300 font-medium max-w-[140px] truncate">{trx.customer_name || '—'}</td>
+                      <td className="px-5 py-3.5 text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">{trx.order_no || '—'}</td>
+                      <td className="px-5 py-3.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">{formatDate(trx.created_at)}</td>
+                      <td className="px-5 py-3.5 text-xs text-blue-600 dark:text-blue-400 font-bold max-w-[140px] truncate">{trx.customer_name || '—'}</td>
                       <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400 max-w-[160px] truncate">{trx.customer_email || '—'}</td>
-                      <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400">{trx.customer_number || '—'}</td>
-                      <td className="px-5 py-3.5 text-xs text-slate-600 dark:text-slate-400 max-w-[130px] truncate">{trx.product_name || '—'}</td>
+                      <td className="px-5 py-3.5 text-xs font-medium text-slate-500 dark:text-slate-400">{trx.customer_number || '—'}</td>
+                      <td className="px-5 py-3.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 max-w-[130px] truncate">{trx.product_name || '—'}</td>
                       <td className="px-5 py-3.5 text-xs text-slate-400 capitalize">{trx.source || 'link'}</td>
                       <td className="px-5 py-3.5 text-xs font-bold text-slate-900 dark:text-white">
                         ৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400">{trx.method || '—'}</td>
+                      <td className={`px-5 py-3.5 text-xs font-bold uppercase ${methodColor}`}>{trx.method || '—'}</td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-1.5">
                           {trx.trx_id
-                            ? <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">{trx.trx_id}</span>
-                            : <span className="text-xs text-slate-400 italic">Awaiting</span>}
+                            ? <span className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400">{trx.trx_id}</span>
+                            : <span className="text-xs text-slate-400 italic font-medium">Awaiting</span>}
                           {trx.trx_id && (
                             <button onClick={() => setSmsTrxId(trx.trx_id!)}
                               title="View SMS Verification"
@@ -491,8 +508,8 @@ export default function Transactions() {
         {/* Pagination */}
         {!loading && filteredData.length > 0 && (
           <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-xs text-slate-400">
-              Showing <span className="text-slate-700 dark:text-slate-200 font-medium">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)}</span> of <span className="text-slate-700 dark:text-slate-200 font-medium">{filteredData.length}</span> transactions
+            <p className="text-[11px] font-medium text-slate-500">
+              Showing <span className="text-slate-700 dark:text-slate-200 font-bold">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)}</span> of <span className="text-slate-700 dark:text-slate-200 font-bold">{filteredData.length}</span> transactions
             </p>
             {totalPages > 1 && (
               <div className="flex items-center gap-1.5">
@@ -508,7 +525,7 @@ export default function Transactions() {
                   else page = currentPage - 3 + i;
                   return (
                     <button key={page} onClick={() => setCurrentPage(page)}
-                      className={`w-7 h-7 text-xs font-medium rounded-lg transition-colors ${currentPage === page
+                      className={`w-7 h-7 text-xs font-bold rounded-lg transition-colors ${currentPage === page
                         ? 'bg-blue-600 text-white'
                         : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                       {page}
@@ -526,4 +543,4 @@ export default function Transactions() {
       </div>
     </div>
   );
-}
+                                               }
