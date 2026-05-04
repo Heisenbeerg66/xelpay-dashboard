@@ -395,9 +395,10 @@ export default function DashboardHome() {
               ) : (
                 <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
-                    <Pie 
+                                        <Pie 
                       data={chartData.pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} dataKey="value" paddingAngle={5} stroke="none" style={{ outline: 'none' }} labelLine={false}
-                      label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                      // এখানে : any এবং ডিফল্ট = 0 ব্যবহার করে টাইপস্ক্রিপ্ট এরর ফিক্স করা হয়েছে
+                      label={({ cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, percent = 0 }: any) => {
                         const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
                         const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
                         const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
@@ -411,6 +412,7 @@ export default function DashboardHome() {
                     >
                       {chartData.pieData.map((entry, i) => <Cell key={i} fill={getPieColor(entry.name)} style={{ outline: 'none' }} />)}
                     </Pie>
+
                     <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} itemStyle={{ color: '#fff', fontWeight: 'bold' }} cursor={{ fill: 'transparent' }} />
                     <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, fontWeight: '600', paddingTop: '10px' }} />
                   </PieChart>
