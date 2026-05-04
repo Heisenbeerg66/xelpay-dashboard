@@ -11,7 +11,7 @@ import {
   PanelRightClose, Webhook, X, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
 
@@ -34,15 +34,21 @@ interface Order {
   created_at: string;
 }
 
+interface ChartSlot {
+  label: string;
+  revenue: number;
+  orders: number;
+  match: (d: Date) => boolean;
+}
+
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10;
 
-// Specific Colors for Status
 const getPieColor = (name: string) => {
-  if (name === 'Paid') return '#10b981'; // Emerald 500 (Green)
-  if (name === 'Pending') return '#f59e0b'; // Amber 500 (Yellow/Orange)
-  if (name === 'Failed') return '#ef4444'; // Red 500
-  return '#6366f1'; // Indigo 500 (Default)
+  if (name === 'Paid') return '#10b981';    // Emerald
+  if (name === 'Pending') return '#f59e0b'; // Amber
+  if (name === 'Failed') return '#ef4444';  // Red
+  return '#6366f1'; // Indigo
 };
 
 const statusConfig = (status: string) => {
@@ -84,16 +90,15 @@ function DashboardSkeleton() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[...Array(5)].map((_, i) => <div key={i} className="h-28 bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />)}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 h-[260px] bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />
-        <div className="h-[260px] bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+        <div className="lg:col-span-3 h-[280px] bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />
+        <div className="h-[280px] bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />
       </div>
       <div className="h-96 bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />
     </div>
   );
 }
 
-// ─── Transaction Drawer ───────────────────────────────────────────────────────
 function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose: () => void, onResend: (id: string) => void }) {
   const badge = statusConfig(order.status);
   return (
@@ -136,7 +141,6 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
   );
 }
 
-// ─── Customer Modal ───────────────────────────────────────────────────────────
 function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
@@ -242,7 +246,7 @@ export default function DashboardHome() {
     return () => window.removeEventListener('businessChanged', load);
   }, []);
 
-  // Filtering by Date for Stat Cards & Pie Chart
+  // Filtering Orders by Selected Date Tab
   const displayOrders = useMemo(() => {
     const now = new Date();
     return allOrders.filter(o => {
@@ -269,18 +273,40 @@ export default function DashboardHome() {
     };
   }, [displayOrders, activeLinksCount]);
 
+  // Dynamic Chart Generation
   const chartData = useMemo(() => {
-    const last7 = Array.from({ length: 7 }).map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      return { day: d.toLocaleDateString('en-US', { weekday: 'short' }), fullDate: d.toDateString(), revenue: 0, orders: 0 };
-    });
-    // Line Chart always shows last 7 days for consistency
-    allOrders.forEach(o => {
+    let chartArray: ChartSlot[] = [];
+    const now = new Date();
+
+    if (dateFilter === 'today') {
+      for (let i = 0; i <= 23; i++) {
+        chartArray.push({ label: `${i}:00`, revenue: 0, orders: 0, match: (d: Date) => d.getHours() === i && d.getDate() === now.getDate() && d.getMonth() === now.getMonth() });
+      }
+    } else if (dateFilter === '7d') {
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        chartArray.push({ label: d.toLocaleDateString('en-US', { weekday: 'short' }), revenue: 0, orders: 0, match: (dt: Date) => dt.toDateString() === d.toDateString() });
+      }
+    } else if (dateFilter === '30d') {
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        chartArray.push({ label: d.getDate().toString(), revenue: 0, orders: 0, match: (dt: Date) => dt.toDateString() === d.toDateString() });
+      }
+    } else {
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(); d.setMonth(d.getMonth() - i);
+        chartArray.push({ label: d.toLocaleDateString('en-US', { month: 'short' }), revenue: 0, orders: 0, match: (dt: Date) => dt.getMonth() === d.getMonth() && dt.getFullYear() === d.getFullYear() });
+      }
+    }
+
+    displayOrders.forEach(o => {
       const isPaid = ['paid', 'success', 'completed'].includes(o.status?.toLowerCase());
-      const d = new Date(o.created_at).toDateString();
-      const slot = last7.find(x => x.fullDate === d);
-      if (slot && isPaid) { slot.orders++; slot.revenue += parseFloat(String(o.amount || 0)); }
+      const d = new Date(o.created_at);
+      const slot = chartArray.find(x => x.match(d));
+      if (slot && isPaid) {
+        slot.orders++;
+        slot.revenue += parseFloat(String(o.amount || 0));
+      }
     });
 
     const statusMap: Record<string, number> = {};
@@ -289,8 +315,8 @@ export default function DashboardHome() {
       statusMap[key] = (statusMap[key] || 0) + 1;
     });
 
-    return { last7, pieData: Object.entries(statusMap).map(([name, value]) => ({ name, value })) };
-  }, [allOrders, displayOrders]);
+    return { barData: chartArray, pieData: Object.entries(statusMap).map(([name, value]) => ({ name, value })) };
+  }, [displayOrders, dateFilter]);
 
   const filteredOrders = useMemo(() => {
     if (!searchTerm.trim()) return displayOrders;
@@ -312,12 +338,17 @@ export default function DashboardHome() {
     toast.promise(promise, { loading: 'Resending Webhook...', success: 'Webhook sent successfully!', error: 'Failed to send webhook.' });
   };
 
+  const getFilterLabel = () => {
+    if (dateFilter === 'today') return 'Today';
+    if (dateFilter === '7d') return 'Last 7 Days';
+    if (dateFilter === '30d') return 'Last 30 Days';
+    return 'All Time';
+  };
+
   if (!businessId) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center animate-in zoom-in-95">
-        <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-full flex items-center justify-center mb-4">
-          <Building2 size={32} />
-        </div>
+        <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-full flex items-center justify-center mb-4"><Building2 size={32} /></div>
         <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase">No Workspace Selected</h2>
         <p className="text-slate-500 mt-2 font-bold text-sm">Select a business from the sidebar to view its performance.</p>
       </div>
@@ -361,62 +392,64 @@ export default function DashboardHome() {
               value={String(stats.pendingOrders)} />
           </div>
 
-          {/* ── Charts (Area & Pie) ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            {/* Revenue Area Chart */}
-            <div className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-              <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-4">Revenue — Last 7 Days</h2>
-              {chartData.last7.every(d => d.revenue === 0) ? (
-                <div className="h-48 flex items-center justify-center text-sm font-bold text-slate-400">No revenue data yet.</div>
+          {/* ── Charts (Dynamic Pillar & Pie) ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+            {/* Revenue Bar Chart (3 Columns) */}
+            <div className="lg:col-span-3 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col">
+              <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-4">Revenue — {getFilterLabel()}</h2>
+              {chartData.barData.every(d => d.revenue === 0) ? (
+                <div className="flex-1 flex items-center justify-center text-sm font-bold text-slate-400 min-h-[200px]">No revenue data found for this period.</div>
               ) : (
-                <ResponsiveContainer width="100%" height={240}>
-                  <AreaChart data={chartData.last7} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={chartData.barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.15)" />
-                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} dy={10} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} dy={10} />
                     <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(val) => `৳${val >= 1000 ? (val/1000).toFixed(1)+'k' : val}`} />
-                    <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelStyle={{ color: '#94a3b8', marginBottom: 4 }} itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }} />
-                    <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} style={{ outline: 'none' }}/>
-                  </AreaChart>
+                    <Tooltip cursor={{ fill: 'rgba(148,163,184,0.1)' }} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelStyle={{ color: '#94a3b8', marginBottom: 4 }} itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }} />
+                    <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} style={{ outline: 'none' }} />
+                  </BarChart>
                 </ResponsiveContainer>
               )}
             </div>
 
-            {/* Perfect Pie Chart */}
-            <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+            {/* Perfect Pie Chart (1 Column - Better aspect ratio) */}
+            <div className="lg:col-span-1 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col">
               <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-4">Order Status</h2>
               {displayOrders.length === 0 ? (
-                <div className="h-48 flex items-center justify-center text-sm font-bold text-slate-400">No orders yet.</div>
+                <div className="flex-1 flex items-center justify-center text-sm font-bold text-slate-400 min-h-[200px]">No orders yet.</div>
               ) : (
-                <ResponsiveContainer width="100%" height={240}>
-                  <PieChart>
-                                        <Pie 
-                      data={chartData.pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} dataKey="value" paddingAngle={5} stroke="none" style={{ outline: 'none' }} labelLine={false}
-                      // এখানে : any এবং ডিফল্ট = 0 ব্যবহার করে টাইপস্ক্রিপ্ট এরর ফিক্স করা হয়েছে
-                      label={({ cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, percent = 0 }: any) => {
-                        const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                        const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
-                        const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
-                        if (percent < 0.05) return null;
-                        return (
-                          <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold">
-                            {`${(percent * 100).toFixed(0)}%`}
-                          </text>
-                        );
-                      }}
-                    >
-                      {chartData.pieData.map((entry, i) => <Cell key={i} fill={getPieColor(entry.name)} style={{ outline: 'none' }} />)}
-                    </Pie>
-
-                    <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} itemStyle={{ color: '#fff', fontWeight: 'bold' }} cursor={{ fill: 'transparent' }} />
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, fontWeight: '600', paddingTop: '10px' }} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="flex-1 flex flex-col items-center justify-center min-h-[200px]">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie 
+                        data={chartData.pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={4} stroke="none" style={{ outline: 'none' }} labelLine={false}
+                        label={({ cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, percent = 0 }: any) => {
+                          const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                          const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+                          const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+                          if (percent < 0.05) return null;
+                          return (
+                            <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight="bold">
+                              {`${(percent * 100).toFixed(0)}%`}
+                            </text>
+                          );
+                        }}
+                      >
+                        {chartData.pieData.map((entry, i) => <Cell key={i} fill={getPieColor(entry.name)} style={{ outline: 'none' }} />)}
+                      </Pie>
+                      <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} itemStyle={{ color: '#fff', fontWeight: 'bold' }} cursor={{ fill: 'transparent' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {/* Legend positioned below nicely */}
+                  <div className="flex flex-wrap justify-center gap-3 mt-2">
+                    {chartData.pieData.map((entry, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: getPieColor(entry.name) }}></div>
+                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">{entry.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -517,4 +550,4 @@ export default function DashboardHome() {
       )}
     </div>
   );
-}
+                            }
