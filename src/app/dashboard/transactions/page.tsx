@@ -393,11 +393,39 @@ export default function Transactions() {
     });
   };
 
-  const bulkExport = () => {
+    const bulkExport = () => {
     const dataToExport = orders.filter(o => selectedRows.includes(o.id));
-    exportToCSV(dataToExport);
+    
+    // Create CSV based on selected rows and visible columns
+    const headers = ['Order No', ...TOGGLEABLE_COLUMNS.filter(c => visibleCols.includes(c.id)).map(c => c.label)];
+    const rows = dataToExport.map(t => {
+      let row = [`"${t.order_no || ''}"`];
+      if (visibleCols.includes('date')) row.push(`"${formatDate(t.created_at)}"`);
+      if (visibleCols.includes('customer')) row.push(`"${t.customer_name || ''}"`);
+      if (visibleCols.includes('email')) row.push(`"${t.customer_email || ''}"`);
+      if (visibleCols.includes('phone')) row.push(`"${t.customer_number || ''}"`);
+      if (visibleCols.includes('product')) row.push(`"${t.product_name || ''}"`);
+      if (visibleCols.includes('source')) row.push(`"${t.source || ''}"`);
+      if (visibleCols.includes('amount')) row.push(`"${t.amount}"`);
+      if (visibleCols.includes('method')) row.push(`"${t.method || ''}"`);
+      if (visibleCols.includes('trx_id')) row.push(`"${t.trx_id || ''}"`);
+      if (visibleCols.includes('status')) row.push(`"${t.status || ''}"`);
+      return row;
+    });
+    
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `selected-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success('Selected records exported successfully!');
     setSelectedRows([]);
   };
+
 
   const bulkResend = async () => {
     const promise = new Promise(resolve => setTimeout(resolve, 2000));
