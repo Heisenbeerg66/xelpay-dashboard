@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   MessageSquare, Search, Loader2, Smartphone,
   CheckCircle2, Clock, RefreshCw, Building2, Globe
@@ -11,7 +12,7 @@ import { supabase } from '@/lib/supabase';
 type SmsTransaction = {
   id: string;
   merchant_id: string;
-  business_id?: string;   // Added business_id column
+  business_id?: string;
   sender: string;
   method: string;
   message: string;
@@ -45,18 +46,16 @@ const formatDate = (d: string) =>
 const formatTime = (d: string) =>
   new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-export default function SmsData() {
+// ─── Main Component Body ──────────────────────────────────────────────────────
+function SmsDataContent() {
+  const searchParams = useSearchParams();
+  const currentBusinessId = searchParams.get('business_id') || searchParams.get('business') || '409b29ae-dc4c-495c-9d69-bd6b80ea37f1';
+
   const [loading, setLoading] = useState(true);
   const [smsList, setSmsList] = useState<SmsTransaction[]>([]);
   const [filtered, setFiltered] = useState<SmsTransaction[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Added Tab State
   const [activeTab, setActiveTab] = useState<'all' | 'business'>('all');
-
-  // TODO: Replace this with your actual selected business ID from your context/state
-  const currentBusinessId = 'YOUR_SELECTED_BUSINESS_ID';
 
   const fetchSMS = async () => {
     setLoading(true);
@@ -69,7 +68,6 @@ export default function SmsData() {
         .eq('merchant_id', user.id)
         .order('received_at', { ascending: false });
 
-      // Apply business filter if "business" tab is active
       if (activeTab === 'business' && currentBusinessId) {
         query = query.eq('business_id', currentBusinessId);
       }
@@ -79,15 +77,16 @@ export default function SmsData() {
       if (!error && data) {
         setSmsList(data as SmsTransaction[]);
         setFiltered(data as SmsTransaction[]);
+      } else if (error) {
+        console.error("Error fetching SMS:", error.message);
       }
     }
     setLoading(false);
   };
 
-  // Refetch when tab changes
   useEffect(() => { 
     fetchSMS(); 
-  }, [activeTab]);
+  }, [activeTab, currentBusinessId]);
 
   useEffect(() => {
     if (!searchTerm.trim()) {
@@ -103,7 +102,6 @@ export default function SmsData() {
     }
   }, [searchTerm, smsList]);
 
-  // Summary stats
   const totalCount = smsList.length;
   const usedCount = smsList.filter(s => s.is_used).length;
   const pendingCount = smsList.filter(s => !s.is_used).length;
@@ -111,19 +109,19 @@ export default function SmsData() {
   return (
     <div className="max-w-[1600px] mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
 
-      {/* ── Bold Top Bar ── */}
-      <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* ── Bold Top Bar & Tabs ── */}
+      <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl px-6 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-black text-white uppercase tracking-[0.15em] flex items-center gap-3">
             <MessageSquare size={20} className="text-blue-400" />
-            ALL SMS DATA
+            SMS DATA
           </h1>
           <p className="text-slate-400 text-xs font-medium mt-0.5">
             Real-time feed of all SMS received by your Android automated reader app.
           </p>
         </div>
 
-        {/* ── Tabs: All vs Selected Business ── */}
+        {/* ── Tabs ── */}
         <div className="flex bg-slate-800 dark:bg-slate-900 p-1 rounded-xl shadow-inner border border-slate-700/50">
           <button
             onClick={() => setActiveTab('all')}
@@ -199,7 +197,6 @@ export default function SmsData() {
 
       {/* ── Table ── */}
       <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-
         {loading ? (
           <div className="flex justify-center items-center py-32">
             <Loader2 className="animate-spin text-blue-600" size={32} />
@@ -235,7 +232,6 @@ export default function SmsData() {
 
                   return (
                     <tr key={sms.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
-
                       {/* Sender */}
                       <td className="px-5 py-4">
                         <p className="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-wider">
@@ -279,7 +275,7 @@ export default function SmsData() {
                         <p className="text-[10px] text-slate-400 mt-0.5">{formatTime(sms.received_at)}</p>
                       </td>
 
-                      {/* Status — based on is_used */}
+                      {/* Status */}
                       <td className="px-5 py-4">
                         {isPaid ? (
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
@@ -310,5 +306,14 @@ export default function SmsData() {
         )}
       </div>
     </div>
+  );
+}
+
+// Next.js SearchParams requires Suspense boundary
+export default function SmsData() {
+  return (
+    <Suspense fallback={<div className="flex justify-center py-20"><Loader2 className="animate-spin text-blue-600" size={32} /></div>}>
+      <SmsDataContent />
+    </Suspense>
   );
 }
