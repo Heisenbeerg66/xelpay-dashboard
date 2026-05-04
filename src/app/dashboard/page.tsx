@@ -306,18 +306,20 @@ export default function DashboardHome() {
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
                     <Pie 
-                      data={chartData.pieData} 
-                      cx="50%" cy="50%" 
-                      innerRadius={50} outerRadius={80}
-                      dataKey="value" 
-                      paddingAngle={3}
-                      labelLine={false}
-                      label={({ name, value, percent }) => `${name} ${value} (${(percent * 100).toFixed(0)}%)`}
-                    >
-                      {chartData.pieData.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
+  data={chartData.pieData} 
+  cx="50%" cy="50%" 
+  innerRadius={50} outerRadius={80}
+  dataKey="value" 
+  paddingAngle={3}
+  labelLine={false}
+  // এখানে (percent || 0) দেয়া হয়েছে টাইপস্ক্রিপ্ট এরর ফিক্স করতে
+  label={({ name, value, percent }) => `${name} ${value} (${((percent || 0) * 100).toFixed(0)}%)`}
+>
+  {chartData.pieData.map((_, i) => (
+    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+  ))}
+</Pie>
+
                     <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 10, fontSize: 12, color: '#f1f5f9' }} />
                     <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
                   </PieChart>
