@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   MessageSquare, Search, Loader2, Smartphone,
-  CheckCircle2, Clock, RefreshCw
+  CheckCircle2, Clock, RefreshCw, Building2, Globe
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -11,13 +11,14 @@ import { supabase } from '@/lib/supabase';
 type SmsTransaction = {
   id: string;
   merchant_id: string;
-  sender: string;         // column: sender
-  method: string;         // column: method
-  message: string;        // column: message
-  trx_id: string;         // column: trx_id
-  amount: number;         // column: amount
-  received_at: string;    // column: received_at
-  is_used: boolean;       // column: is_used → true = Success/Paid, false = Pending/Unused
+  business_id?: string;   // Added business_id column
+  sender: string;
+  method: string;
+  message: string;
+  trx_id: string;
+  amount: number;
+  received_at: string;
+  is_used: boolean;
   created_at: string;
 };
 
@@ -50,17 +51,30 @@ export default function SmsData() {
   const [smsList, setSmsList] = useState<SmsTransaction[]>([]);
   const [filtered, setFiltered] = useState<SmsTransaction[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Added Tab State
+  const [activeTab, setActiveTab] = useState<'all' | 'business'>('all');
+
+  // TODO: Replace this with your actual selected business ID from your context/state
+  const currentBusinessId = 'YOUR_SELECTED_BUSINESS_ID';
 
   const fetchSMS = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
-      const { data, error } = await supabase
+      let query = supabase
         .from('sms_transactions')
-        .select('id, merchant_id, sender, method, message, trx_id, amount, received_at, is_used, created_at')
+        .select('id, merchant_id, business_id, sender, method, message, trx_id, amount, received_at, is_used, created_at')
         .eq('merchant_id', user.id)
         .order('received_at', { ascending: false });
+
+      // Apply business filter if "business" tab is active
+      if (activeTab === 'business' && currentBusinessId) {
+        query = query.eq('business_id', currentBusinessId);
+      }
+
+      const { data, error } = await query;
 
       if (!error && data) {
         setSmsList(data as SmsTransaction[]);
@@ -70,7 +84,10 @@ export default function SmsData() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchSMS(); }, []);
+  // Refetch when tab changes
+  useEffect(() => { 
+    fetchSMS(); 
+  }, [activeTab]);
 
   useEffect(() => {
     if (!searchTerm.trim()) {
@@ -95,14 +112,42 @@ export default function SmsData() {
     <div className="max-w-[1600px] mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
 
       {/* ── Bold Top Bar ── */}
-      <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl px-6 py-4">
-        <h1 className="text-xl font-black text-white uppercase tracking-[0.15em] flex items-center gap-3">
-          <MessageSquare size={20} className="text-blue-400" />
-          SMS DATA
-        </h1>
-        <p className="text-slate-400 text-xs font-medium mt-0.5">
-          Real-time feed of all SMS received by your Android automated reader app.
-        </p>
+      <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-black text-white uppercase tracking-[0.15em] flex items-center gap-3">
+            <MessageSquare size={20} className="text-blue-400" />
+            ALL SMS DATA
+          </h1>
+          <p className="text-slate-400 text-xs font-medium mt-0.5">
+            Real-time feed of all SMS received by your Android automated reader app.
+          </p>
+        </div>
+
+        {/* ── Tabs: All vs Selected Business ── */}
+        <div className="flex bg-slate-800 dark:bg-slate-900 p-1 rounded-xl shadow-inner border border-slate-700/50">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg transition-all ${
+              activeTab === 'all'
+                ? 'bg-slate-700 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <Globe size={16} />
+            All Merchants
+          </button>
+          <button
+            onClick={() => setActiveTab('business')}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg transition-all ${
+              activeTab === 'business'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <Building2 size={16} />
+            Selected Business
+          </button>
+        </div>
       </div>
 
       {/* ── Controls ── */}
@@ -119,7 +164,7 @@ export default function SmsData() {
         </div>
         <button onClick={fetchSMS}
           className="flex items-center gap-2 h-10 px-4 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
-          <RefreshCw size={14} /> Refresh
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
 

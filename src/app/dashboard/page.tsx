@@ -1,95 +1,99 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import {
-  DollarSign, Link as LinkIcon, Activity, Wallet, FileText,
-  ArrowRight, Loader2, Building2, Eye, X, ShoppingCart,
-  TrendingUp, Package, CreditCard, Hash, User, Search,
-  ChevronLeft, ChevronRight, BarChart2, PieChart as PieChartIcon,
-  CheckCircle2, Clock, XCircle
-} from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-
-// ─── Recharts (bundled with most Next.js projects; add if missing: npm i recharts) ───
 import {
-  ResponsiveContainer,
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, PieChart, Pie, Cell, Legend
+  DollarSign, TrendingUp, ArrowRight, FileText, Loader2,
+  CheckCircle, Clock, XCircle, AlertCircle, Eye, Receipt,
+  LinkIcon, Building2, RefreshCw, User, Phone
+} from 'lucide-react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
+import { Search } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Order = {
+interface Order {
   id: string;
   order_no: string;
-  customer_name: string | null;
-  customer_number: string | null;
-  customer_email: string | null;
+  customer_name: string;
+  customer_number: string;
+  customer_email: string;
   amount: number;
   currency: string;
-  method: string | null;
+  method: string;
   trx_id: string | null;
   status: string;
-  product_name: string | null;
+  product_name: string;
+  source: string;
   created_at: string;
-};
+}
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const formatDate = (d: string) =>
-  new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+// ─── Config ───────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 10;
+const PIE_COLORS = ['#10b981', '#f59e0b', '#ef4444', '#6366f1'];
 
-const statusConfig = (s: string) => {
-  switch (s?.toLowerCase()) {
-    case 'paid': case 'success': case 'completed':
-      return { cls: 'text-emerald-600 dark:text-emerald-400 font-semibold', label: 'Success' };
-    case 'pending':
-      return { cls: 'text-amber-600 dark:text-amber-400 font-semibold', label: 'Pending' };
-    case 'rejected': case 'failed':
-      return { cls: 'text-red-500 dark:text-red-400 font-semibold', label: 'Rejected' };
-    case 'cancel': case 'cancelled':
-      return { cls: 'text-rose-500 dark:text-rose-400 font-semibold', label: 'Cancelled' };
-    default:
-      return { cls: 'text-slate-400 font-medium', label: s || 'Unknown' };
+const statusConfig = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case 'paid':
+    case 'success':
+    case 'completed': return { label: 'Paid', icon: CheckCircle, cls: 'text-emerald-600 dark:text-emerald-400 font-semibold' };
+    case 'pending': return { label: 'Pending', icon: Clock, cls: 'text-amber-500 dark:text-amber-400 font-semibold' };
+    case 'failed':
+    case 'cancelled': return { label: 'Failed', icon: XCircle, cls: 'text-red-500 dark:text-red-400 font-semibold' };
+    default: return { label: status || 'Unknown', icon: AlertCircle, cls: 'text-slate-400 font-semibold' };
   }
 };
 
-const PAGE_SIZE = 5;
+const formatDate = (d: string) => {
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
 
-// ─── Trx Detail Modal ─────────────────────────────────────────────────────────
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
+  return (
+    <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
+      <div className={`w-9 h-9 rounded-xl ${color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+        <Icon size={18} />
+      </div>
+      <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">{label}</p>
+      <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">{value}</p>
+    </div>
+  );
+}
+
+// ─── TRX Modal ────────────────────────────────────────────────────────────────
 function TrxModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
   const badge = statusConfig(trx.status);
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-          <div>
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm">Transaction Detail</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5 font-mono">{trx.trx_id || 'Awaiting'}</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-            <X size={16} className="text-slate-400" />
-          </button>
-        </div>
-        <div className="px-6 py-5 space-y-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+        <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+          <Receipt size={16} className="text-blue-600" /> Transaction Detail
+        </h3>
+        <div className="space-y-3 text-xs">
           {[
-            { label: 'Order ID', value: trx.order_no, color: 'text-violet-600 dark:text-violet-400' },
-            { label: 'Trx ID', value: trx.trx_id || '—', color: 'text-blue-600 dark:text-blue-400 font-mono' },
-            { label: 'Product', value: trx.product_name || '—', color: 'text-teal-600 dark:text-teal-400' },
-            { label: 'Amount', value: `৳ ${parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: 'text-emerald-600 dark:text-emerald-400 font-bold' },
-            { label: 'Method', value: trx.method || '—', color: 'text-slate-700 dark:text-slate-300' },
-            { label: 'Date', value: formatDate(trx.created_at), color: 'text-slate-600 dark:text-slate-300' },
-          ].map(r => (
-            <div key={r.label} className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-800/60 last:border-0">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{r.label}</span>
-              <span className={`text-sm ${r.color}`}>{r.value}</span>
+            ['Order No', trx.order_no],
+            ['TRX ID', trx.trx_id || '—'],
+            ['Customer', trx.customer_name],
+            ['Phone', trx.customer_number],
+            ['Product', trx.product_name],
+            ['Method', trx.method],
+            ['Amount', `৳ ${parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`],
+            ['Status', badge.label],
+            ['Date', formatDate(trx.created_at)],
+          ].map(([k, v]) => (
+            <div key={k} className="flex justify-between gap-4 py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+              <span className="text-slate-400 font-medium">{k}</span>
+              <span className={`font-semibold text-right ${k === 'Status' ? badge.cls : 'text-slate-900 dark:text-white'}`}>{v}</span>
             </div>
           ))}
-          <div className="flex items-center justify-between py-2">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</span>
-            <span className={`text-sm ${badge.cls}`}>{badge.label}</span>
-          </div>
         </div>
+        <button onClick={onClose} className="mt-4 w-full py-2.5 bg-slate-900 dark:bg-slate-700 text-white rounded-xl text-xs font-bold hover:bg-slate-700 dark:hover:bg-slate-600 transition-colors">Close</button>
       </div>
     </div>
   );
@@ -98,33 +102,28 @@ function TrxModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
 // ─── Customer Modal ───────────────────────────────────────────────────────────
 function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm">Customer Info</h3>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-            <X size={16} className="text-slate-400" />
-          </button>
-        </div>
-        <div className="px-6 py-5 space-y-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 w-full max-w-xs" onClick={e => e.stopPropagation()}>
+        <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+          <User size={16} className="text-blue-600" /> Customer Info
+        </h3>
+        <div className="space-y-3 text-xs">
           {[
-            { label: 'Name', value: trx.customer_name || '—' },
-            { label: 'Email', value: trx.customer_email || '—' },
-            { label: 'Phone', value: trx.customer_number || '—' },
-          ].map(r => (
-            <div key={r.label} className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-800/60 last:border-0">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{r.label}</span>
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{r.value}</span>
+            ['Name', trx.customer_name || '—'],
+            ['Phone', trx.customer_number || '—'],
+            ['Email', trx.customer_email || '—'],
+          ].map(([k, v]) => (
+            <div key={k} className="flex justify-between gap-4 py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+              <span className="text-slate-400 font-medium">{k}</span>
+              <span className="font-semibold text-slate-900 dark:text-white text-right truncate max-w-[160px]">{v}</span>
             </div>
           ))}
         </div>
+        <button onClick={onClose} className="mt-4 w-full py-2.5 bg-slate-900 dark:bg-slate-700 text-white rounded-xl text-xs font-bold hover:bg-slate-700 dark:hover:bg-slate-600 transition-colors">Close</button>
       </div>
     </div>
   );
 }
-
-// ─── Pie Chart Colors ─────────────────────────────────────────────────────────
-const PIE_COLORS = ['#10b981', '#f59e0b', '#ef4444', '#6366f1'];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function DashboardHome() {
@@ -139,21 +138,17 @@ export default function DashboardHome() {
     pendingOrders: 0,
   });
 
-  // Modals
   const [trxModal, setTrxModal] = useState<Order | null>(null);
   const [customerModal, setCustomerModal] = useState<Order | null>(null);
-
-  // Table
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
   const fetchDashboardData = async (bizId: string) => {
     try {
       setLoading(true);
-
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
-        .select('id, order_no, customer_name, customer_number, customer_email, amount, currency, method, trx_id, status, product_name, created_at')
+        .select('id, order_no, customer_name, customer_number, customer_email, amount, currency, method, trx_id, status, product_name, source, created_at')
         .eq('business_id', bizId)
         .order('created_at', { ascending: false });
 
@@ -166,8 +161,7 @@ export default function DashboardHome() {
         .eq('status', 'active');
 
       if (orders) {
-        const paidOrders = orders.filter((o: any) =>
-          o.status === 'paid' || o.status === 'success' || o.status === 'completed');
+        const paidOrders = orders.filter((o: any) => ['paid', 'success', 'completed'].includes(o.status));
         const pendingOrders = orders.filter((o: any) => o.status === 'pending');
         const totalRev = paidOrders.reduce((sum: number, o: any) => sum + parseFloat(o.amount || '0'), 0);
         const rate = orders.length > 0 ? (paidOrders.length / orders.length) * 100 : 0;
@@ -199,53 +193,38 @@ export default function DashboardHome() {
     return () => window.removeEventListener('businessChanged', load);
   }, []);
 
-  // ─── Derived analytics data ───────────────────────────────────────────────
   const chartData = useMemo(() => {
-    // Last 7 days revenue line chart
     const last7 = Array.from({ length: 7 }).map((_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (6 - i));
-      return {
-        day: d.toLocaleDateString('en-US', { weekday: 'short' }),
-        fullDate: d.toDateString(),
-        revenue: 0,
-        orders: 0,
-      };
+      return { day: d.toLocaleDateString('en-US', { weekday: 'short' }), fullDate: d.toDateString(), revenue: 0, orders: 0 };
     });
-    allOrders.forEach((o) => {
-      const isPaid = o.status === 'paid' || o.status === 'success' || o.status === 'completed';
+    allOrders.forEach(o => {
+      const isPaid = ['paid', 'success', 'completed'].includes(o.status);
       const d = new Date(o.created_at).toDateString();
       const slot = last7.find(x => x.fullDate === d);
-      if (slot) {
-        slot.orders++;
-        if (isPaid) slot.revenue += parseFloat(String(o.amount || 0));
-      }
+      if (slot) { slot.orders++; if (isPaid) slot.revenue += parseFloat(String(o.amount || 0)); }
     });
-
-    // Status distribution pie
     const statusMap: Record<string, number> = {};
     allOrders.forEach(o => {
       const key = statusConfig(o.status).label;
       statusMap[key] = (statusMap[key] || 0) + 1;
     });
-    const pieData = Object.entries(statusMap).map(([name, value]) => ({ name, value }));
-
-    return { last7, pieData };
+    return { last7, pieData: Object.entries(statusMap).map(([name, value]) => ({ name, value })) };
   }, [allOrders]);
 
-  // ─── Filtered + paginated table ───────────────────────────────────────────
   const filteredOrders = useMemo(() => {
     if (!searchTerm.trim()) return allOrders;
     const q = searchTerm.toLowerCase();
     return allOrders.filter(o =>
       (o.trx_id && o.trx_id.toLowerCase().includes(q)) ||
-      (o.order_no && o.order_no.toLowerCase().includes(q))
+      (o.order_no && o.order_no.toLowerCase().includes(q)) ||
+      (o.customer_name && o.customer_name.toLowerCase().includes(q))
     );
   }, [allOrders, searchTerm]);
 
   const totalPages = Math.ceil(filteredOrders.length / PAGE_SIZE);
   const paginatedOrders = filteredOrders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
   useEffect(() => { setCurrentPage(1); }, [searchTerm]);
 
   if (!businessId) {
@@ -262,17 +241,12 @@ export default function DashboardHome() {
 
   return (
     <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-
-      {/* Modals */}
       {trxModal && <TrxModal trx={trxModal} onClose={() => setTrxModal(null)} />}
       {customerModal && <CustomerModal trx={customerModal} onClose={() => setCustomerModal(null)} />}
 
-      {/* ── Header ── */}
+      {/* ── Header — overview only, no subtitle ── */}
       <div>
         <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Overview</h1>
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
-          Track your payments, links, and business growth dynamically.
-        </p>
       </div>
 
       {loading ? (
@@ -281,93 +255,44 @@ export default function DashboardHome() {
         </div>
       ) : (
         <>
-          {/* ── Stats Cards (5 cards) ── */}
+          {/* ── Stats Cards ── */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-
-            {/* Total Revenue */}
-            <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
-              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <DollarSign size={18} />
-              </div>
-              <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total Revenue</p>
-              <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">
-                ৳ {stats.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-
-            {/* Active Links */}
-            <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
-              <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <LinkIcon size={18} />
-              </div>
-              <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Active Links</p>
-              <p className="text-lg font-black text-slate-900 dark:text-white">{stats.activeLinks}</p>
-            </div>
-
-            {/* Success Rate */}
-            <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Activity size={18} />
-              </div>
-              <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Success Rate</p>
-              <p className="text-lg font-black text-slate-900 dark:text-white">
-                {stats.successRate.toFixed(1)}<span className="text-sm text-slate-400">%</span>
-              </p>
-            </div>
-
-            {/* Total Orders */}
-            <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
-              <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-900/20 text-orange-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <ShoppingCart size={18} />
-              </div>
-              <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total Orders</p>
-              <p className="text-lg font-black text-slate-900 dark:text-white">{stats.totalOrders}</p>
-            </div>
-
-            {/* Pending Orders */}
-            <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group col-span-2 sm:col-span-1">
-              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                <Clock size={18} />
-              </div>
-              <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Pending Orders</p>
-              <p className="text-lg font-black text-slate-900 dark:text-white">{stats.pendingOrders}</p>
-            </div>
+            <StatCard icon={DollarSign} label="Total Revenue" color="bg-blue-50 dark:bg-blue-900/20 text-blue-600"
+              value={`৳ ${stats.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} />
+            <StatCard icon={LinkIcon} label="Active Links" color="bg-purple-50 dark:bg-purple-900/20 text-purple-600"
+              value={String(stats.activeLinks)} />
+            <StatCard icon={TrendingUp} label="Success Rate" color="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600"
+              value={`${stats.successRate.toFixed(1)}%`} />
+            <StatCard icon={Receipt} label="Total Orders" color="bg-amber-50 dark:bg-amber-900/20 text-amber-600"
+              value={String(stats.totalOrders)} />
+            <StatCard icon={Clock} label="Pending" color="bg-rose-50 dark:bg-rose-900/20 text-rose-600"
+              value={String(stats.pendingOrders)} />
           </div>
 
-          {/* ── Analytics Charts ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-            {/* Revenue Line/Bar Chart */}
-            <div className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <BarChart2 size={16} className="text-blue-600" />
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white">Revenue — Last 7 Days</h3>
-              </div>
+          {/* ── Charts ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {/* Revenue Line */}
+            <div className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+              <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-4">Revenue — Last 7 Days</h2>
               {chartData.last7.every(d => d.revenue === 0) ? (
                 <div className="h-48 flex items-center justify-center text-sm text-slate-400">No revenue data yet.</div>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={chartData.last7} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" strokeOpacity={0.5} />
+                  <LineChart data={chartData.last7} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
                     <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{ background: 'var(--tooltip-bg, #1e293b)', border: 'none', borderRadius: 10, fontSize: 12, color: '#f1f5f9' }}
-                      formatter={(v: any) => [`৳ ${Number(v).toLocaleString('en-IN')}`, 'Revenue']}
-                    />
-                    <Bar dataKey="revenue" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                  </BarChart>
+                    <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 10, fontSize: 12, color: '#f1f5f9' }} />
+                    <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2.5} dot={{ fill: '#3b82f6', r: 4 }} activeDot={{ r: 6 }} />
+                  </LineChart>
                 </ResponsiveContainer>
               )}
             </div>
 
-            {/* Status Pie Chart */}
-            <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <PieChartIcon size={16} className="text-purple-600" />
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white">Order Status</h3>
-              </div>
-              {chartData.pieData.length === 0 ? (
+            {/* Pie */}
+            <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+              <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-4">Order Status</h2>
+              {allOrders.length === 0 ? (
                 <div className="h-48 flex items-center justify-center text-sm text-slate-400">No orders yet.</div>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
@@ -395,12 +320,11 @@ export default function DashboardHome() {
                 <FileText size={16} className="text-blue-600" /> Recent Transactions
               </h2>
               <div className="flex items-center gap-3">
-                {/* Search */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
                   <input
                     type="text"
-                    placeholder="Search Trx ID or Order ID..."
+                    placeholder="Search order, trx, name..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                     className="pl-8 pr-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-white outline-none focus:border-blue-500 transition-colors w-52"
@@ -419,87 +343,82 @@ export default function DashboardHome() {
               </div>
             ) : (
               <div className="w-full overflow-x-auto">
-                <table className="w-full text-left border-collapse whitespace-nowrap min-w-[780px]">
+                <table className="w-full text-left border-collapse whitespace-nowrap min-w-[900px]">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-[#0B1120]/60 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      {/* Column order matches Transactions page exactly */}
+                      <th className="px-5 py-3">Order No</th>
                       <th className="px-5 py-3">Date</th>
-                      <th className="px-5 py-3">Trx ID</th>
-                      <th className="px-5 py-3">Order ID</th>
                       <th className="px-5 py-3">Customer</th>
                       <th className="px-5 py-3">Product</th>
+                      <th className="px-5 py-3">Source</th>
                       <th className="px-5 py-3">Amount</th>
                       <th className="px-5 py-3">Method</th>
+                      <th className="px-5 py-3">TRX ID</th>
                       <th className="px-5 py-3">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50 dark:divide-slate-800/40">
-                    {paginatedOrders.map((trx) => {
+                    {paginatedOrders.map(trx => {
                       const badge = statusConfig(trx.status);
                       return (
                         <tr key={trx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+
+                          {/* Order No */}
+                          <td className="px-5 py-3.5 text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
+                            {trx.order_no || '—'}
+                          </td>
 
                           {/* Date */}
                           <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
                             {formatDate(trx.created_at)}
                           </td>
 
-                          {/* Trx ID + eye */}
+                          {/* Customer */}
                           <td className="px-5 py-3.5">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
-                                {trx.trx_id || '—'}
-                              </span>
-                              {trx.trx_id && (
-                                <button onClick={() => setTrxModal(trx)}
-                                  className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-                                  <Eye size={12} />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Order ID */}
-                          <td className="px-5 py-3.5">
-                            <span className="text-xs font-bold text-violet-600 dark:text-violet-400">
-                              {trx.order_no || '—'}
-                            </span>
-                          </td>
-
-                          {/* Customer + eye */}
-                          <td className="px-5 py-3.5">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
-                                {trx.customer_name || 'Anonymous'}
-                              </span>
-                              <button onClick={() => setCustomerModal(trx)}
-                                className="p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
-                                <Eye size={12} />
-                              </button>
-                            </div>
+                            <button
+                              onClick={() => setCustomerModal(trx)}
+                              className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                            >
+                              <Phone size={11} className="text-slate-400" />
+                              {trx.customer_name || trx.customer_number || '—'}
+                            </button>
                           </td>
 
                           {/* Product */}
-                          <td className="px-5 py-3.5">
-                            <span className="text-xs font-semibold text-teal-600 dark:text-teal-400">
-                              {trx.product_name || '—'}
-                            </span>
+                          <td className="px-5 py-3.5 text-xs text-slate-600 dark:text-slate-400 max-w-[140px] truncate">
+                            {trx.product_name || '—'}
+                          </td>
+
+                          {/* Source */}
+                          <td className="px-5 py-3.5 text-xs text-slate-400 capitalize">
+                            {trx.source || 'link'}
                           </td>
 
                           {/* Amount */}
-                          <td className="px-5 py-3.5">
-                            <span className="text-xs font-black text-emerald-700 dark:text-emerald-400">
-                              ৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                            </span>
+                          <td className="px-5 py-3.5 text-xs font-bold text-slate-900 dark:text-white">
+                            ৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </td>
 
                           {/* Method */}
-                          <td className="px-5 py-3.5">
-                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md uppercase tracking-wide">
-                              {trx.method || 'Auto'}
-                            </span>
+                          <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400">
+                            {trx.method || '—'}
                           </td>
 
-                          {/* Status — text-only, no bg */}
+                          {/* TRX ID */}
+                          <td className="px-5 py-3.5">
+                            <button
+                              onClick={() => setTrxModal(trx)}
+                              className="flex items-center gap-1 group"
+                            >
+                              {trx.trx_id
+                                ? <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400 group-hover:underline">{trx.trx_id}</span>
+                                : <span className="text-xs text-slate-400 italic">Awaiting</span>}
+                              <Eye size={11} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+                            </button>
+                          </td>
+
+                          {/* Status */}
                           <td className="px-5 py-3.5">
                             <span className={`text-xs ${badge.cls}`}>{badge.label}</span>
                           </td>
@@ -512,43 +431,38 @@ export default function DashboardHome() {
             )}
 
             {/* Pagination */}
-            {filteredOrders.length > 0 && (
-              <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between gap-3">
+            {!loading && filteredOrders.length > 0 && (
+              <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
                 <p className="text-xs text-slate-400">
-                  Showing{' '}
-                  <span className="text-slate-700 dark:text-slate-200 font-medium">
-                    {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)}
-                  </span>{' '}
-                  of <span className="text-slate-700 dark:text-slate-200 font-medium">{filteredOrders.length}</span>
+                  Showing <span className="font-medium text-slate-700 dark:text-slate-200">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)}</span> of <span className="font-medium text-slate-700 dark:text-slate-200">{filteredOrders.length}</span>
                 </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="p-1.5 rounded-lg text-slate-500 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                    <ChevronLeft size={14} />
-                  </button>
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    const page = totalPages <= 5 ? i + 1
-                      : currentPage <= 3 ? i + 1
-                      : currentPage >= totalPages - 2 ? totalPages - 4 + i
-                      : currentPage - 2 + i;
-                    return (
-                      <button key={page} onClick={() => setCurrentPage(page)}
-                        className={`w-7 h-7 text-xs font-medium rounded-lg transition-colors ${currentPage === page
-                          ? 'bg-blue-600 text-white'
-                          : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                        {page}
-                      </button>
-                    );
-                  })}
-                  <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages || totalPages === 0}
-                    className="p-1.5 rounded-lg text-slate-500 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                      ← Prev
+                    </button>
+                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                      let page: number;
+                      if (totalPages <= 7) page = i + 1;
+                      else if (currentPage <= 4) page = i + 1;
+                      else if (currentPage >= totalPages - 3) page = totalPages - 6 + i;
+                      else page = currentPage - 3 + i;
+                      return (
+                        <button key={page} onClick={() => setCurrentPage(page)}
+                          className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${currentPage === page
+                            ? 'bg-blue-600 text-white'
+                            : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                          {page}
+                        </button>
+                      );
+                    })}
+                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                      Next →
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

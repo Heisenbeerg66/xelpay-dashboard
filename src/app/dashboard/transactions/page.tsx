@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Receipt, Search, Filter, Loader2, Building2,
-  Calendar, X, Check, CreditCard, Smartphone, Globe, Landmark,
-  RefreshCw, TrendingUp, Clock, Download, Eye
+  X, Smartphone, Globe, Landmark,
+  RefreshCw, Download, Eye, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -46,6 +46,9 @@ type FilterState = {
   trx_id: string;
 };
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 20;
+
 const PAYMENT_CATEGORIES = [
   { label: 'Mobile', value: 'mobile', icon: Smartphone },
   { label: 'Bank', value: 'bank', icon: Landmark },
@@ -56,44 +59,27 @@ const STATUS_OPTIONS = [
   { label: 'Pending', value: 'pending' },
   { label: 'Success', value: 'success' },
   { label: 'Rejected', value: 'rejected' },
-  { label: 'Cancelled', value: 'cancel' },
+  { label: 'Cancelled', value: 'cancelled' },
 ];
 
-const PAGE_SIZE = 25;
-
-const formatDateShort = (d: string) =>
-  new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-
-const formatTime = (d: string) =>
-  new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (d: string) =>
-  new Date(d).toLocaleString('en-US', {
-    year: 'numeric', month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+  new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
-const statusConfig = (s: string) => {
-  switch (s?.toLowerCase()) {
-    case 'paid': case 'success': case 'completed':
-      return { cls: 'text-emerald-600 dark:text-emerald-400 font-semibold', label: 'Success' };
-    case 'pending':
-      return { cls: 'text-amber-600 dark:text-amber-400 font-semibold', label: 'Pending' };
-    case 'rejected': case 'failed':
-      return { cls: 'text-red-500 dark:text-red-400 font-semibold', label: 'Rejected' };
-    case 'cancel': case 'cancelled':
-      return { cls: 'text-rose-500 dark:text-rose-400 font-semibold', label: 'Cancelled' };
-    default:
-      return { cls: 'text-slate-400 font-medium', label: s || 'Unknown' };
-  }
+const statusConfig = (status: string) => {
+  const s = status?.toLowerCase();
+  if (['paid', 'success', 'completed'].includes(s)) return { label: 'Paid', cls: 'text-emerald-600 dark:text-emerald-400 font-semibold' };
+  if (s === 'pending') return { label: 'Pending', cls: 'text-amber-500 dark:text-amber-400 font-semibold' };
+  if (['failed', 'rejected', 'cancelled'].includes(s)) return { label: 'Failed', cls: 'text-red-500 dark:text-red-400 font-semibold' };
+  return { label: status || '—', cls: 'text-slate-400 font-semibold' };
 };
 
-const getMethodCategory = (method: string | null) => {
+const getMethodCategory = (method: string | null): string | null => {
   if (!method) return null;
   const m = method.toLowerCase();
-  if (['bkash', 'nagad', 'rocket', 'upay', 'tap', 'ok wallet', 'mcash', 'shurjopay'].some(x => m.includes(x))) return 'mobile';
-  if (['bank', 'nrb', 'dbbl', 'brac', 'dutch', 'islami', 'premier'].some(x => m.includes(x))) return 'bank';
-  if (['stripe', 'paypal', 'wise', 'usdt', 'crypto', 'international'].some(x => m.includes(x))) return 'international';
+  if (['bkash', 'nagad', 'rocket', 'upay', 'tap'].some(x => m.includes(x))) return 'mobile';
+  if (['bank', 'dbbl', 'brac', 'dutch', 'islami', 'ucb'].some(x => m.includes(x))) return 'bank';
+  if (['stripe', 'paypal', 'visa', 'master', 'binance'].some(x => m.includes(x))) return 'international';
   return null;
 };
 
@@ -122,26 +108,22 @@ function SmsDetailsModal({ trxId, onClose }: { trxId: string; onClose: () => voi
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    (async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('sms_transactions')
         .select('*')
         .eq('trx_id', trxId)
         .single();
-      if (error || !data) {
-        setError('No SMS record found for this transaction.');
-      } else {
-        setSmsData(data as SmsTransaction);
-      }
+      if (error || !data) setError('No SMS record found for this transaction.');
+      else setSmsData(data as SmsTransaction);
       setLoading(false);
-    };
-    fetchData();
+    })();
   }, [trxId]);
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
           <h3 className="font-bold text-slate-900 dark:text-white text-sm">SMS Verification Record</h3>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
@@ -181,42 +163,38 @@ function SmsDetailsModal({ trxId, onClose }: { trxId: string; onClose: () => voi
 }
 
 // ─── Filter Panel ─────────────────────────────────────────────────────────────
-function FilterPanel({ filters, setFilters, onApply, onClose }:
-  { filters: FilterState; setFilters: (f: FilterState) => void; onApply: () => void; onClose: () => void }) {
+function FilterPanel({ filters, setFilters, onApply, onClose }: {
+  filters: FilterState;
+  setFilters: (f: FilterState) => void;
+  onApply: () => void;
+  onClose: () => void;
+}) {
   const toggle = (key: 'status' | 'method_category', val: string) => {
     const arr = filters[key];
     setFilters({ ...filters, [key]: arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val] });
   };
 
   return (
-    <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 p-5 space-y-4 animate-in zoom-in-95 duration-200">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Filters</h3>
-        <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
-          <X size={14} className="text-slate-400" />
-        </button>
-      </div>
-
+    <div className="absolute right-0 top-full mt-2 z-40 w-72 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-150">
       <div>
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Status</p>
         <div className="flex flex-wrap gap-2">
-          {STATUS_OPTIONS.map(o => (
-            <button key={o.value} onClick={() => toggle('status', o.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${filters.status.includes(o.value)
+          {STATUS_OPTIONS.map(s => (
+            <button key={s.value} onClick={() => toggle('status', s.value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${filters.status.includes(s.value)
                 ? 'bg-blue-600 text-white border-blue-600'
                 : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-blue-400'}`}>
-              {o.label}
+              {s.label}
             </button>
           ))}
         </div>
       </div>
-
       <div>
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Payment Method</p>
         <div className="flex flex-wrap gap-2">
           {PAYMENT_CATEGORIES.map(c => (
             <button key={c.value} onClick={() => toggle('method_category', c.value)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${filters.method_category.includes(c.value)
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${filters.method_category.includes(c.value)
                 ? 'bg-blue-600 text-white border-blue-600'
                 : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-blue-400'}`}>
               <c.icon size={11} /> {c.label}
@@ -224,18 +202,16 @@ function FilterPanel({ filters, setFilters, onApply, onClose }:
           ))}
         </div>
       </div>
-
       <div>
         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Date Range</p>
         <div className="grid grid-cols-2 gap-2">
-          {['date_from', 'date_to'].map(key => (
-            <input key={key} type="date" value={(filters as any)[key]}
+          {(['date_from', 'date_to'] as const).map(key => (
+            <input key={key} type="date" value={filters[key]}
               onChange={e => setFilters({ ...filters, [key]: e.target.value })}
               className="px-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-white outline-none focus:border-blue-500 transition-colors" />
           ))}
         </div>
       </div>
-
       <div className="flex gap-2 pt-1">
         <button onClick={() => setFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' })}
           className="flex-1 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
@@ -272,8 +248,9 @@ export default function Transactions() {
       .select('id, order_no, merchant_id, business_id, customer_name, customer_number, customer_email, amount, currency, method, trx_id, status, source, product_name, created_at')
       .order('created_at', { ascending: false });
 
-    if (mode === 'business' && bizId) query = query.eq('business_id', bizId);
-    else {
+    if (mode === 'business' && bizId) {
+      query = query.eq('business_id', bizId);
+    } else {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) query = query.eq('merchant_id', user.id);
     }
@@ -315,12 +292,10 @@ export default function Transactions() {
     if (appliedFilters.trx_id && !(t.trx_id || '').toLowerCase().includes(appliedFilters.trx_id.toLowerCase())) return false;
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
-      if (!(
-        (t.order_no || '').toLowerCase().includes(q) ||
+      if (!((t.order_no || '').toLowerCase().includes(q) ||
         (t.customer_name || '').toLowerCase().includes(q) ||
         (t.trx_id || '').toLowerCase().includes(q) ||
-        (t.product_name || '').toLowerCase().includes(q)
-      )) return false;
+        (t.product_name || '').toLowerCase().includes(q))) return false;
     }
     return true;
   });
@@ -350,36 +325,37 @@ export default function Transactions() {
 
       {smsTrxId && <SmsDetailsModal trxId={smsTrxId} onClose={() => setSmsTrxId(null)} />}
 
-      {/* ── Bold Top Bar ── */}
-      <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl px-6 py-4">
-        <h1 className="text-xl font-black text-white uppercase tracking-[0.15em] flex items-center gap-3">
-          <Receipt size={20} className="text-blue-400" />
-          ALL TRANSACTIONS
-        </h1>
-        <p className="text-slate-400 text-xs font-medium mt-0.5">Monitor and manage all payments across your workspaces.</p>
-      </div>
-
-      {/* ── Controls ── */}
+      {/* ── Page Title + Controls Row (aligned) ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        {/* Search */}
-        <div className="relative w-full md:w-72">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-          <input
-            type="text"
-            placeholder="Search name, order, trx ID..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-700 dark:text-white outline-none focus:border-blue-500 transition-colors shadow-sm"
-          />
+
+        {/* Left: Title aligned with table */}
+        <div className="flex items-center gap-3">
+          <Receipt size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
+          <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-[0.1em]">
+            All Transactions
+          </h1>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Right: Search + Controls */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-wrap">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+            <input
+              type="text"
+              placeholder="Search name, order, trx ID..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full sm:w-64 pl-10 pr-4 py-2.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-700 dark:text-white outline-none focus:border-blue-500 transition-colors shadow-sm"
+            />
+          </div>
+
           {/* Filter */}
           <div className="relative" ref={filterRef}>
             <button onClick={() => setShowFilter(v => !v)}
-              className={`flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-medium border transition-all ${showFilter || activeFilterCount > 0
+              className={`flex items-center gap-2 h-10 px-4 rounded-xl text-sm font-medium border transition-all ${showFilter || activeFilterCount > 0
                 ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 shadow-sm'}`}>
+                : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 shadow-sm hover:border-blue-400'}`}>
               <Filter size={14} />
               Filters
               {activeFilterCount > 0 && (
@@ -400,15 +376,15 @@ export default function Transactions() {
 
           {/* Export */}
           <button onClick={() => exportToCSV(filteredData)}
-            className="flex items-center gap-2 h-9 px-4 bg-blue-600 rounded-xl text-sm font-medium text-white hover:bg-blue-700 transition-all shadow-sm">
+            className="flex items-center gap-2 h-10 px-4 bg-blue-600 rounded-xl text-sm font-medium text-white hover:bg-blue-700 transition-all shadow-sm">
             <Download size={14} /> Export
           </button>
 
-          {/* View Mode */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 h-9 px-1 rounded-xl">
+          {/* Business / All tabs */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 h-10 px-1 rounded-xl">
             {(['business', 'all'] as const).map(m => (
               <button key={m} onClick={() => setViewMode(m)}
-                className={`h-7 px-4 rounded-lg text-xs font-medium transition-all ${viewMode === m
+                className={`h-8 px-4 rounded-lg text-xs font-medium transition-all ${viewMode === m
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
                 {m === 'business' ? 'Business' : 'All'}
@@ -418,13 +394,13 @@ export default function Transactions() {
 
           {/* Refresh */}
           <button onClick={() => fetchOrders(businessId, viewMode)}
-            className="flex items-center gap-2 h-9 px-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
+            className="flex items-center justify-center h-10 w-10 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
             <RefreshCw size={14} />
           </button>
         </div>
       </div>
 
-      {/* Active Filters */}
+      {/* Active Filter Tags */}
       {activeFilterCount > 0 && (
         <div className="flex flex-wrap items-center gap-2">
           {appliedFilters.status.map(s => (
@@ -435,8 +411,7 @@ export default function Transactions() {
               </button>
             </span>
           ))}
-          <button
-            onClick={() => setAppliedFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' })}
+          <button onClick={() => setAppliedFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' })}
             className="px-3 py-1 text-red-500 text-[10px] font-medium hover:text-red-700">
             Clear All
           </button>
@@ -477,66 +452,24 @@ export default function Transactions() {
                   return (
                     <tr key={trx.id}
                       className={`border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors ${idx === paginatedData.length - 1 ? 'border-b-0' : ''}`}>
-
-                      {/* Order No */}
-                      <td className="px-5 py-4">
-                        <span className="text-xs font-bold text-violet-600 dark:text-violet-400">{trx.order_no || '—'}</span>
+                      <td className="px-5 py-3.5 text-xs font-mono font-bold text-slate-700 dark:text-slate-300">{trx.order_no || '—'}</td>
+                      <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400">{formatDate(trx.created_at)}</td>
+                      <td className="px-5 py-3.5 text-xs text-slate-700 dark:text-slate-300 font-medium max-w-[140px] truncate">{trx.customer_name || '—'}</td>
+                      <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400 max-w-[160px] truncate">{trx.customer_email || '—'}</td>
+                      <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400">{trx.customer_number || '—'}</td>
+                      <td className="px-5 py-3.5 text-xs text-slate-600 dark:text-slate-400 max-w-[130px] truncate">{trx.product_name || '—'}</td>
+                      <td className="px-5 py-3.5 text-xs text-slate-400 capitalize">{trx.source || 'link'}</td>
+                      <td className="px-5 py-3.5 text-xs font-bold text-slate-900 dark:text-white">
+                        ৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
-
-                      {/* Date */}
-                      <td className="px-5 py-4">
-                        <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">{formatDateShort(trx.created_at)}</p>
-                        <p className="text-[10px] text-slate-400">{formatTime(trx.created_at)}</p>
-                      </td>
-
-                      {/* Customer Name */}
-                      <td className="px-5 py-4">
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{trx.customer_name || '—'}</span>
-                      </td>
-
-                      {/* Email */}
-                      <td className="px-5 py-4">
-                        <span className="text-xs text-slate-500 dark:text-slate-400">{trx.customer_email || '—'}</span>
-                      </td>
-
-                      {/* Phone */}
-                      <td className="px-5 py-4">
-                        <span className="text-xs text-slate-500 dark:text-slate-400">{trx.customer_number || '—'}</span>
-                      </td>
-
-                      {/* Product */}
-                      <td className="px-5 py-4">
-                        <span className="text-xs font-semibold text-teal-600 dark:text-teal-400">{trx.product_name || '—'}</span>
-                      </td>
-
-                      {/* Source */}
-                      <td className="px-5 py-4">
-                        <span className="text-xs text-slate-400 uppercase">{trx.source || '—'}</span>
-                      </td>
-
-                      {/* Amount */}
-                      <td className="px-5 py-4">
-                        <span className="text-xs font-black text-emerald-700 dark:text-emerald-400">
-                          {trx.currency === 'USD' ? '$' : '৳'} {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </span>
-                      </td>
-
-                      {/* Method */}
-                      <td className="px-5 py-4">
-                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md uppercase tracking-wide">
-                          {trx.method || '—'}
-                        </span>
-                      </td>
-
-                      {/* TRX ID + SMS eye */}
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400">{trx.method || '—'}</td>
+                      <td className="px-5 py-3.5">
                         <div className="flex items-center gap-1.5">
                           {trx.trx_id
-                            ? <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">#{trx.trx_id}</span>
+                            ? <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">{trx.trx_id}</span>
                             : <span className="text-xs text-slate-400 italic">Awaiting</span>}
                           {trx.trx_id && (
-                            <button
-                              onClick={() => setSmsTrxId(trx.trx_id!)}
+                            <button onClick={() => setSmsTrxId(trx.trx_id!)}
                               title="View SMS Verification"
                               className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
                               <Eye size={12} />
@@ -544,9 +477,7 @@ export default function Transactions() {
                           )}
                         </div>
                       </td>
-
-                      {/* Status — solid text only */}
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-3.5">
                         <span className={`text-xs ${badge.cls}`}>{badge.label}</span>
                       </td>
                     </tr>
@@ -561,15 +492,13 @@ export default function Transactions() {
         {!loading && filteredData.length > 0 && (
           <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-xs text-slate-400">
-              Showing <span className="text-slate-700 dark:text-slate-200 font-medium">
-                {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)}
-              </span> of <span className="text-slate-700 dark:text-slate-200 font-medium">{filteredData.length}</span> transactions
+              Showing <span className="text-slate-700 dark:text-slate-200 font-medium">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)}</span> of <span className="text-slate-700 dark:text-slate-200 font-medium">{filteredData.length}</span> transactions
             </p>
             {totalPages > 1 && (
               <div className="flex items-center gap-1.5">
                 <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                  ← Prev
+                  className="p-1.5 rounded-lg text-slate-500 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  <ChevronLeft size={14} />
                 </button>
                 {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                   let page: number;
@@ -579,16 +508,16 @@ export default function Transactions() {
                   else page = currentPage - 3 + i;
                   return (
                     <button key={page} onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${currentPage === page
+                      className={`w-7 h-7 text-xs font-medium rounded-lg transition-colors ${currentPage === page
                         ? 'bg-blue-600 text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+                        : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                       {page}
                     </button>
                   );
                 })}
                 <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                  Next →
+                  className="p-1.5 rounded-lg text-slate-500 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  <ChevronRight size={14} />
                 </button>
               </div>
             )}
