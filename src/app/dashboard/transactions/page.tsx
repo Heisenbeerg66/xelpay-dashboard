@@ -76,13 +76,13 @@ const formatDate = (d: string) =>
 const statusConfig = (s: string) => {
   switch (s?.toLowerCase()) {
     case 'paid': case 'success': case 'completed':
-      return { cls: 'text-emerald-500 dark:text-emerald-400 font-semibold', label: 'Success' };
+      return { cls: 'text-emerald-600 dark:text-emerald-400 font-semibold', label: 'Success' };
     case 'pending':
-      return { cls: 'text-amber-500 dark:text-amber-400 font-semibold', label: 'Pending' };
+      return { cls: 'text-amber-600 dark:text-amber-400 font-semibold', label: 'Pending' };
     case 'rejected': case 'failed':
       return { cls: 'text-red-500 dark:text-red-400 font-semibold', label: 'Rejected' };
     case 'cancel': case 'cancelled':
-      return { cls: 'text-red-400 dark:text-red-400 font-semibold', label: 'Cancelled' };
+      return { cls: 'text-rose-500 dark:text-rose-400 font-semibold', label: 'Cancelled' };
     default:
       return { cls: 'text-slate-400 font-medium', label: s || 'Unknown' };
   }
@@ -122,87 +122,55 @@ function SmsDetailsModal({ trxId, onClose }: { trxId: string; onClose: () => voi
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('sms_transactions')
         .select('*')
         .eq('trx_id', trxId)
         .single();
-      if (error || !data) setError('No SMS record found for this transaction.');
-      else setSmsData(data);
+      if (error || !data) {
+        setError('No SMS record found for this transaction.');
+      } else {
+        setSmsData(data as SmsTransaction);
+      }
       setLoading(false);
     };
-    fetch();
+    fetchData();
   }, [trxId]);
 
   return (
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-in zoom-in-95 duration-200"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
-              <Eye size={14} className="text-slate-600 dark:text-slate-300" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">SMS Verification</p>
-              <p className="text-[10px] text-slate-400 font-mono mt-0.5">#{trxId}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-            <X size={14} className="text-slate-400" />
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="font-bold text-slate-900 dark:text-white text-sm">SMS Verification Record</h3>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+            <X size={16} className="text-slate-400" />
           </button>
         </div>
-        <div className="p-5">
+        <div className="px-6 py-5">
           {loading ? (
-            <div className="flex justify-center items-center py-10">
-              <Loader2 className="animate-spin text-slate-400" size={22} />
-            </div>
+            <div className="flex justify-center py-8"><Loader2 className="animate-spin text-blue-600" size={24} /></div>
           ) : error ? (
-            <div className="text-center py-8">
-              <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <Receipt size={16} className="text-slate-400" />
-              </div>
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{error}</p>
-              <p className="text-xs text-slate-400 mt-1">The sender may have used a manual entry.</p>
-            </div>
+            <p className="text-sm text-red-500 text-center py-4">{error}</p>
           ) : smsData ? (
             <div className="space-y-3">
               {[
-                { icon: Smartphone, label: 'Sender', value: smsData.sender },
-                { icon: CreditCard, label: 'Method', value: smsData.method },
-                {
-                  icon: TrendingUp, label: 'Amount',
-                  value: `৳${Number(smsData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-                  valueClass: 'text-emerald-600 dark:text-emerald-400',
-                },
-                {
-                  icon: Clock, label: 'Received',
-                  value: formatDateShort(smsData.received_at),
-                  sub: formatTime(smsData.received_at),
-                },
-              ].map(({ icon: Icon, label, value, valueClass, sub }) => (
-                <div key={label} className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-                      <Icon size={12} className="text-slate-500 dark:text-slate-400" />
-                    </div>
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{label}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-semibold font-mono text-slate-900 dark:text-white ${valueClass || ''}`}>{value}</p>
-                    {sub && <p className="text-[10px] text-slate-400">{sub}</p>}
-                  </div>
+                { label: 'Sender', value: smsData.sender },
+                { label: 'Method', value: smsData.method },
+                { label: 'Trx ID', value: smsData.trx_id, color: 'text-blue-600 dark:text-blue-400 font-mono' },
+                { label: 'Amount', value: `৳ ${parseFloat(String(smsData.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: 'text-emerald-600 font-bold' },
+                { label: 'Status', value: smsData.is_used ? 'Used / Paid' : 'Unused / Pending', color: smsData.is_used ? 'text-emerald-600' : 'text-amber-600' },
+                { label: 'Received At', value: formatDate(smsData.received_at) },
+              ].map(r => (
+                <div key={r.label} className="flex items-start justify-between py-2 border-b border-slate-50 dark:border-slate-800/60 last:border-0">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{r.label}</span>
+                  <span className={`text-xs font-medium text-right max-w-[60%] ${r.color || 'text-slate-700 dark:text-slate-200'}`}>{r.value}</span>
                 </div>
               ))}
-              <div className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold uppercase tracking-widest ${smsData.is_used ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>
-                {smsData.is_used ? <><Check size={10} /> Verified & Used</> : <><Clock size={10} /> Not Yet Used</>}
+              <div className="mt-3 p-3 bg-slate-50 dark:bg-[#0B1120] rounded-xl border border-slate-100 dark:border-slate-800">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Raw SMS</p>
+                <p className="text-xs text-slate-600 dark:text-slate-300 font-mono leading-relaxed">{smsData.message}</p>
               </div>
             </div>
           ) : null}
@@ -213,110 +181,118 @@ function SmsDetailsModal({ trxId, onClose }: { trxId: string; onClose: () => voi
 }
 
 // ─── Filter Panel ─────────────────────────────────────────────────────────────
-function FilterPanel({ filters, setFilters, onClose, onApply }: {
-  filters: FilterState;
-  setFilters: (f: FilterState) => void;
-  onClose: () => void;
-  onApply: () => void;
-}) {
+function FilterPanel({ filters, setFilters, onApply, onClose }:
+  { filters: FilterState; setFilters: (f: FilterState) => void; onApply: () => void; onClose: () => void }) {
   const toggle = (key: 'status' | 'method_category', val: string) => {
     const arr = filters[key];
     setFilters({ ...filters, [key]: arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val] });
   };
-  const clearAll = () => setFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' });
 
   return (
-    <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in slide-in-from-top-2 duration-200">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
-        <span className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-widest">Filters</span>
-        <div className="flex items-center gap-2">
-          <button onClick={clearAll} className="text-[10px] font-medium text-slate-400 hover:text-red-500 uppercase tracking-widest transition-colors">Clear</button>
-          <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
-            <X size={14} className="text-slate-400" />
-          </button>
+    <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 p-5 space-y-4 animate-in zoom-in-95 duration-200">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white">Filters</h3>
+        <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+          <X size={14} className="text-slate-400" />
+        </button>
+      </div>
+
+      <div>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Status</p>
+        <div className="flex flex-wrap gap-2">
+          {STATUS_OPTIONS.map(o => (
+            <button key={o.value} onClick={() => toggle('status', o.value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${filters.status.includes(o.value)
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-blue-400'}`}>
+              {o.label}
+            </button>
+          ))}
         </div>
       </div>
-      <div className="p-5 space-y-5">
-        <div>
-          <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2.5">Status</p>
-          <div className="flex flex-wrap gap-2">
-            {STATUS_OPTIONS.map(opt => {
-              const active = filters.status.includes(opt.value);
-              return (
-                <button key={opt.value} onClick={() => toggle('status', opt.value)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${active
-                    ? 'bg-emerald-600 text-white border-transparent'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500'}`}>
-                  {active && <Check size={10} />}{opt.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div>
-          <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2.5">Payment Method</p>
-          <div className="flex flex-wrap gap-2">
-            {PAYMENT_CATEGORIES.map(cat => {
-              const Icon = cat.icon;
-              const active = filters.method_category.includes(cat.value);
-              return (
-                <button key={cat.value} onClick={() => toggle('method_category', cat.value)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${active
-                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400'}`}>
-                  <Icon size={11} />{cat.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div>
-          <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2.5">TRX ID</p>
-          <input type="text" placeholder="Enter transaction ID..." value={filters.trx_id}
-            onChange={e => setFilters({ ...filters, trx_id: e.target.value })}
-            className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-slate-400 text-xs font-mono text-slate-900 dark:text-white transition-colors placeholder:text-slate-400" />
-        </div>
-        <div>
-          <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2.5">Date Range</p>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <p className="text-[9px] font-medium text-slate-500 dark:text-slate-400 mb-1">FROM</p>
-              <input type="date" value={filters.date_from} onChange={e => setFilters({ ...filters, date_from: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-slate-400 text-xs text-slate-900 dark:text-white" />
-            </div>
-            <div>
-              <p className="text-[9px] font-medium text-slate-500 dark:text-slate-400 mb-1">TO</p>
-              <input type="date" value={filters.date_to} onChange={e => setFilters({ ...filters, date_to: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-slate-400 text-xs text-slate-900 dark:text-white" />
-            </div>
-          </div>
+
+      <div>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Payment Method</p>
+        <div className="flex flex-wrap gap-2">
+          {PAYMENT_CATEGORIES.map(c => (
+            <button key={c.value} onClick={() => toggle('method_category', c.value)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${filters.method_category.includes(c.value)
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-blue-400'}`}>
+              <c.icon size={11} /> {c.label}
+            </button>
+          ))}
         </div>
       </div>
-      <div className="px-5 pb-5">
+
+      <div>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Date Range</p>
+        <div className="grid grid-cols-2 gap-2">
+          {['date_from', 'date_to'].map(key => (
+            <input key={key} type="date" value={(filters as any)[key]}
+              onChange={e => setFilters({ ...filters, [key]: e.target.value })}
+              className="px-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-white outline-none focus:border-blue-500 transition-colors" />
+          ))}
+        </div>
+      </div>
+
+      <div className="flex gap-2 pt-1">
+        <button onClick={() => setFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' })}
+          className="flex-1 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+          Clear All
+        </button>
         <button onClick={() => { onApply(); onClose(); }}
-          className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold uppercase tracking-widest rounded-xl hover:opacity-90 transition-opacity">
-          Apply Filters
+          className="flex-1 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+          Apply
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Transactions() {
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState<Order[]>([]);
-  const [filteredData, setFilteredData] = useState<Order[]>([]);
-  const [merchantId, setMerchantId] = useState<string | null>(null);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'business' | 'all'>('business');
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilter, setShowFilter] = useState(false);
+  const [smsTrxId, setSmsTrxId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const filterRef = useRef<HTMLDivElement>(null);
+
   const [filters, setFilters] = useState<FilterState>({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' });
   const [appliedFilters, setAppliedFilters] = useState<FilterState>({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [smsTrxId, setSmsTrxId] = useState<string | null>(null);
-  const filterRef = useRef<HTMLDivElement>(null);
+
+  const fetchOrders = useCallback(async (bizId: string | null, mode: 'business' | 'all') => {
+    setLoading(true);
+    let query = supabase
+      .from('orders')
+      .select('id, order_no, merchant_id, business_id, customer_name, customer_number, customer_email, amount, currency, method, trx_id, status, source, product_name, created_at')
+      .order('created_at', { ascending: false });
+
+    if (mode === 'business' && bizId) query = query.eq('business_id', bizId);
+    else {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) query = query.eq('merchant_id', user.id);
+    }
+
+    const { data } = await query;
+    setOrders((data as Order[]) || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    const load = () => {
+      const id = localStorage.getItem('active_business_id');
+      setBusinessId(id);
+      fetchOrders(id, viewMode);
+    };
+    load();
+    window.addEventListener('businessChanged', load);
+    return () => window.removeEventListener('businessChanged', load);
+  }, [viewMode, fetchOrders]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -326,69 +302,36 @@ export default function Transactions() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const fetchTransactions = useCallback(async (bizId: string | null, mId: string | null, mode: 'business' | 'all') => {
-    setLoading(true);
-    let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
-    if (mode === 'business' && bizId) query = query.eq('business_id', bizId);
-    else if (mode === 'all' && mId) query = query.eq('merchant_id', mId);
-    const { data } = await query;
-    if (data) { setTransactions(data); setFilteredData(data); }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    const loadData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoading(false); return; }
-      setMerchantId(user.id);
-      const activeId = localStorage.getItem('active_business_id');
-      setBusinessId(activeId);
-      fetchTransactions(activeId, user.id, viewMode);
-    };
-    loadData();
-    const handleBusinessChange = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      const activeId = localStorage.getItem('active_business_id');
-      setBusinessId(activeId);
-      fetchTransactions(activeId, user?.id || null, viewMode);
-    };
-    window.addEventListener('businessChanged', handleBusinessChange);
-    return () => window.removeEventListener('businessChanged', handleBusinessChange);
-  }, [viewMode, fetchTransactions]);
-
-  useEffect(() => {
-    let data = [...transactions];
-    const s = searchTerm.toLowerCase().trim();
-    if (s) {
-      data = data.filter(t =>
-        t.trx_id?.toLowerCase().includes(s) ||
-        t.order_no?.toLowerCase().includes(s) ||
-        t.customer_email?.toLowerCase().includes(s) ||
-        t.customer_name?.toLowerCase().includes(s) ||
-        t.customer_number?.toLowerCase().includes(s)
-      );
+  const filteredData = orders.filter(t => {
+    if (appliedFilters.status.length && !appliedFilters.status.some(s =>
+      s === 'success' ? ['paid', 'success', 'completed'].includes(t.status?.toLowerCase())
+        : t.status?.toLowerCase() === s)) return false;
+    if (appliedFilters.method_category.length) {
+      const cat = getMethodCategory(t.method);
+      if (!cat || !appliedFilters.method_category.includes(cat)) return false;
     }
-    if (appliedFilters.status.length > 0) {
-      data = data.filter(t => {
-        const st = t.status?.toLowerCase();
-        return appliedFilters.status.some(f => f === 'success' ? ['success', 'paid', 'completed'].includes(st) : st === f);
-      });
+    if (appliedFilters.date_from && new Date(t.created_at) < new Date(appliedFilters.date_from)) return false;
+    if (appliedFilters.date_to && new Date(t.created_at) > new Date(appliedFilters.date_to + 'T23:59:59')) return false;
+    if (appliedFilters.trx_id && !(t.trx_id || '').toLowerCase().includes(appliedFilters.trx_id.toLowerCase())) return false;
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      if (!(
+        (t.order_no || '').toLowerCase().includes(q) ||
+        (t.customer_name || '').toLowerCase().includes(q) ||
+        (t.trx_id || '').toLowerCase().includes(q) ||
+        (t.product_name || '').toLowerCase().includes(q)
+      )) return false;
     }
-    if (appliedFilters.method_category.length > 0) {
-      data = data.filter(t => { const cat = getMethodCategory(t.method); return cat && appliedFilters.method_category.includes(cat); });
-    }
-    if (appliedFilters.trx_id) data = data.filter(t => t.trx_id?.toLowerCase().includes(appliedFilters.trx_id.toLowerCase()));
-    if (appliedFilters.date_from) { const from = new Date(appliedFilters.date_from); data = data.filter(t => new Date(t.created_at) >= from); }
-    if (appliedFilters.date_to) { const to = new Date(appliedFilters.date_to); to.setHours(23, 59, 59, 999); data = data.filter(t => new Date(t.created_at) <= to); }
-    setFilteredData(data);
-    setCurrentPage(1);
-  }, [searchTerm, transactions, appliedFilters]);
+    return true;
+  });
 
-  const activeFilterCount = appliedFilters.status.length + appliedFilters.method_category.length +
-    (appliedFilters.date_from ? 1 : 0) + (appliedFilters.date_to ? 1 : 0) + (appliedFilters.trx_id ? 1 : 0);
+  const activeFilterCount = appliedFilters.status.length + appliedFilters.method_category.length
+    + (appliedFilters.date_from ? 1 : 0) + (appliedFilters.date_to ? 1 : 0) + (appliedFilters.trx_id ? 1 : 0);
 
   const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
   const paginatedData = filteredData.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, appliedFilters]);
 
   if (!businessId && viewMode !== 'all') {
     return (
@@ -402,118 +345,98 @@ export default function Transactions() {
     );
   }
 
-  const cellBase = 'text-sm font-medium text-slate-800 dark:text-slate-200';
-
   return (
     <div className="max-w-[1600px] mx-auto space-y-5 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-      {/* SMS Details Modal */}
       {smsTrxId && <SmsDetailsModal trxId={smsTrxId} onClose={() => setSmsTrxId(null)} />}
 
-      {/* ── Page Header ── */}
-      <div className="pb-4 border-b border-slate-100 dark:border-slate-800">
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Transactions</p>
-        <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">All Transactions</h1>
+      {/* ── Bold Top Bar ── */}
+      <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl px-6 py-4">
+        <h1 className="text-xl font-black text-white uppercase tracking-[0.15em] flex items-center gap-3">
+          <Receipt size={20} className="text-blue-400" />
+          ALL TRANSACTIONS
+        </h1>
+        <p className="text-slate-400 text-xs font-medium mt-0.5">Monitor and manage all payments across your workspaces.</p>
       </div>
 
       {/* ── Controls ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Monitor and manage all payments across your workspaces.</p>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => exportToCSV(filteredData)}
-            className="flex items-center gap-2 h-9 px-4 bg-slate-900 dark:bg-white rounded-xl text-xs font-semibold text-white dark:text-slate-900 hover:opacity-90 transition-all shadow-sm"
-          >
-            <Download size={13} /> Export
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Search */}
+        <div className="relative w-full md:w-72">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+          <input
+            type="text"
+            placeholder="Search name, order, trx ID..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-700 dark:text-white outline-none focus:border-blue-500 transition-colors shadow-sm"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Filter */}
+          <div className="relative" ref={filterRef}>
+            <button onClick={() => setShowFilter(v => !v)}
+              className={`flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-medium border transition-all ${showFilter || activeFilterCount > 0
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 shadow-sm'}`}>
+              <Filter size={14} />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="w-5 h-5 rounded-full bg-white/30 text-white text-[10px] font-bold flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+            {showFilter && (
+              <FilterPanel
+                filters={filters}
+                setFilters={setFilters}
+                onApply={() => setAppliedFilters(filters)}
+                onClose={() => setShowFilter(false)}
+              />
+            )}
+          </div>
+
+          {/* Export */}
+          <button onClick={() => exportToCSV(filteredData)}
+            className="flex items-center gap-2 h-9 px-4 bg-blue-600 rounded-xl text-sm font-medium text-white hover:bg-blue-700 transition-all shadow-sm">
+            <Download size={14} /> Export
           </button>
+
+          {/* View Mode */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 h-9 px-1 rounded-xl">
             {(['business', 'all'] as const).map(m => (
               <button key={m} onClick={() => setViewMode(m)}
                 className={`h-7 px-4 rounded-lg text-xs font-medium transition-all ${viewMode === m
-                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
+                  ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
-                {m === 'business' ? 'This Business' : 'All'}
+                {m === 'business' ? 'Business' : 'All'}
               </button>
             ))}
           </div>
-        </div>
-      </div>
 
-      {/* ── Search & Filter ── */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 dark:group-focus-within:text-slate-300 transition-colors" size={15} />
-          <input
-            type="text"
-            placeholder="Search by TRX ID, Order No, Name, Email, Phone..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full h-9 pl-11 pr-10 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-slate-400 dark:focus:border-slate-600 text-sm text-slate-900 dark:text-white transition-all placeholder:text-slate-400"
-          />
-          {searchTerm && (
-            <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors">
-              <X size={13} className="text-slate-400" />
-            </button>
-          )}
-        </div>
-
-        <div className="relative" ref={filterRef}>
-          <button
-            onClick={() => setShowFilter(!showFilter)}
-            className={`flex items-center gap-2 h-9 px-4 border rounded-xl text-xs font-medium transition-all ${activeFilterCount > 0
-              ? 'bg-slate-900 dark:bg-white border-transparent text-white dark:text-slate-900'
-              : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400'}`}>
-            <Filter size={13} />
-            <span className="hidden sm:inline">Filter</span>
-            {activeFilterCount > 0 && (
-              <span className="bg-white/20 dark:bg-slate-900/20 text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center">
-                {activeFilterCount}
-              </span>
-            )}
+          {/* Refresh */}
+          <button onClick={() => fetchOrders(businessId, viewMode)}
+            className="flex items-center gap-2 h-9 px-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
+            <RefreshCw size={14} />
           </button>
-          {showFilter && (
-            <FilterPanel filters={filters} setFilters={setFilters} onClose={() => setShowFilter(false)} onApply={() => setAppliedFilters(filters)} />
-          )}
         </div>
-
-        <button
-          onClick={() => fetchTransactions(businessId, merchantId, viewMode)}
-          className="h-9 w-9 flex items-center justify-center bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white hover:border-slate-400 transition-colors"
-          title="Refresh"
-        >
-          <RefreshCw size={14} />
-        </button>
       </div>
 
-      {/* Active filter chips */}
+      {/* Active Filters */}
       {activeFilterCount > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {appliedFilters.status.map(s => (
-            <span key={s} className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-[10px] font-medium uppercase tracking-wider">
+            <span key={s} className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-medium">
               {s}
-              <button onClick={() => { const f = { ...appliedFilters, status: appliedFilters.status.filter(x => x !== s) }; setAppliedFilters(f); setFilters(f); }}>
+              <button onClick={() => setAppliedFilters(f => ({ ...f, status: f.status.filter(x => x !== s) }))}>
                 <X size={10} />
               </button>
             </span>
           ))}
-          {appliedFilters.method_category.map(c => (
-            <span key={c} className="flex items-center gap-1.5 px-3 py-1 bg-slate-700 dark:bg-slate-300 text-white dark:text-slate-900 rounded-lg text-[10px] font-medium uppercase tracking-wider">
-              {c}
-              <button onClick={() => { const f = { ...appliedFilters, method_category: appliedFilters.method_category.filter(x => x !== c) }; setAppliedFilters(f); setFilters(f); }}>
-                <X size={10} />
-              </button>
-            </span>
-          ))}
-          {(appliedFilters.date_from || appliedFilters.date_to) && (
-            <span className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-medium">
-              <Calendar size={10} />{appliedFilters.date_from || '...'} – {appliedFilters.date_to || '...'}
-              <button onClick={() => { const f = { ...appliedFilters, date_from: '', date_to: '' }; setAppliedFilters(f); setFilters(f); }}>
-                <X size={10} />
-              </button>
-            </span>
-          )}
           <button
-            onClick={() => { setAppliedFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' }); setFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' }); }}
+            onClick={() => setAppliedFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' })}
             className="px-3 py-1 text-red-500 text-[10px] font-medium hover:text-red-700">
             Clear All
           </button>
@@ -524,7 +447,7 @@ export default function Transactions() {
       <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         {loading ? (
           <div className="flex justify-center items-center py-32">
-            <Loader2 className="animate-spin text-slate-400" size={26} />
+            <Loader2 className="animate-spin text-blue-600" size={26} />
           </div>
         ) : filteredData.length === 0 ? (
           <div className="py-24 text-center">
@@ -533,16 +456,16 @@ export default function Transactions() {
             </div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">No Transactions Found</h3>
             <p className="text-slate-400 text-xs max-w-xs mx-auto">
-              {searchTerm || activeFilterCount > 0 ? 'No results match your search or filter criteria.' : 'No payments have been received yet.'}
+              {searchTerm || activeFilterCount > 0 ? 'No results match your criteria.' : 'No payments received yet.'}
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left whitespace-nowrap">
               <thead>
-                <tr className="bg-slate-50 dark:bg-[#0B1120] border-b border-slate-200 dark:border-slate-800">
+                <tr>
                   {['Order No', 'Date', 'Customer Name', 'Email', 'Phone', 'Product', 'Source', 'Amount', 'Method', 'TRX ID', 'Status'].map(h => (
-                    <th key={h} className="px-5 py-3.5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-[#0B1120]/60 border-b border-slate-100 dark:border-slate-800">
                       {h}
                     </th>
                   ))}
@@ -553,70 +476,76 @@ export default function Transactions() {
                   const badge = statusConfig(trx.status);
                   return (
                     <tr key={trx.id}
-                      className={`border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors ${idx === paginatedData.length - 1 ? 'border-b-0' : ''}`}>
+                      className={`border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors ${idx === paginatedData.length - 1 ? 'border-b-0' : ''}`}>
 
+                      {/* Order No */}
                       <td className="px-5 py-4">
-                        <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">{trx.order_no || '—'}</span>
+                        <span className="text-xs font-bold text-violet-600 dark:text-violet-400">{trx.order_no || '—'}</span>
                       </td>
 
+                      {/* Date */}
                       <td className="px-5 py-4">
-                        <p className={`${cellBase} text-xs`}>{formatDateShort(trx.created_at)}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{formatTime(trx.created_at)}</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">{formatDateShort(trx.created_at)}</p>
+                        <p className="text-[10px] text-slate-400">{formatTime(trx.created_at)}</p>
                       </td>
 
+                      {/* Customer Name */}
                       <td className="px-5 py-4">
-                        <span className={`${cellBase} text-xs`}>{trx.customer_name || '—'}</span>
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{trx.customer_name || '—'}</span>
                       </td>
 
+                      {/* Email */}
                       <td className="px-5 py-4">
-                        <span className="text-xs text-slate-600 dark:text-slate-400">{trx.customer_email || '—'}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">{trx.customer_email || '—'}</span>
                       </td>
 
+                      {/* Phone */}
                       <td className="px-5 py-4">
-                        <span className="text-xs font-mono text-slate-600 dark:text-slate-400">{trx.customer_number || '—'}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">{trx.customer_number || '—'}</span>
                       </td>
 
+                      {/* Product */}
                       <td className="px-5 py-4">
-                        <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{trx.product_name || '—'}</span>
+                        <span className="text-xs font-semibold text-teal-600 dark:text-teal-400">{trx.product_name || '—'}</span>
                       </td>
 
+                      {/* Source */}
                       <td className="px-5 py-4">
-                        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg">
-                          {trx.source || 'api'}
+                        <span className="text-xs text-slate-400 uppercase">{trx.source || '—'}</span>
+                      </td>
+
+                      {/* Amount */}
+                      <td className="px-5 py-4">
+                        <span className="text-xs font-black text-emerald-700 dark:text-emerald-400">
+                          {trx.currency === 'USD' ? '$' : '৳'} {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </span>
                       </td>
 
+                      {/* Method */}
                       <td className="px-5 py-4">
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">
-                          {trx.currency === 'USD' ? '$' : '৳'}{Number(trx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500">{trx.currency || 'BDT'}</p>
+                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md uppercase tracking-wide">
+                          {trx.method || '—'}
+                        </span>
                       </td>
 
+                      {/* TRX ID + SMS eye */}
                       <td className="px-5 py-4">
-                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{trx.method || '—'}</p>
-                        {getMethodCategory(trx.method) && (
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500 capitalize">{getMethodCategory(trx.method)}</p>
-                        )}
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           {trx.trx_id
-                            ? <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">#{trx.trx_id}</span>
-                            : <span className="text-xs text-slate-400 dark:text-slate-500 italic">Awaiting</span>}
+                            ? <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">#{trx.trx_id}</span>
+                            : <span className="text-xs text-slate-400 italic">Awaiting</span>}
                           {trx.trx_id && (
                             <button
-                              onClick={() => setSmsTrxId(trx.trx_id)}
+                              onClick={() => setSmsTrxId(trx.trx_id!)}
                               title="View SMS Verification"
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
-                            >
-                              <Eye size={13} />
+                              className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                              <Eye size={12} />
                             </button>
                           )}
                         </div>
                       </td>
 
+                      {/* Status — solid text only */}
                       <td className="px-5 py-4">
                         <span className={`text-xs ${badge.cls}`}>{badge.label}</span>
                       </td>
@@ -632,19 +561,13 @@ export default function Transactions() {
         {!loading && filteredData.length > 0 && (
           <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-xs text-slate-400">
-              Showing{' '}
-              <span className="text-slate-700 dark:text-slate-200 font-medium">
+              Showing <span className="text-slate-700 dark:text-slate-200 font-medium">
                 {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)}
-              </span>{' '}
-              of{' '}
-              <span className="text-slate-700 dark:text-slate-200 font-medium">{filteredData.length}</span>{' '}
-              transactions
+              </span> of <span className="text-slate-700 dark:text-slate-200 font-medium">{filteredData.length}</span> transactions
             </p>
             {totalPages > 1 && (
               <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                   ← Prev
                 </button>
@@ -657,21 +580,18 @@ export default function Transactions() {
                   return (
                     <button key={page} onClick={() => setCurrentPage(page)}
                       className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${currentPage === page
-                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
                       {page}
                     </button>
                   );
                 })}
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
+                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                   Next →
                 </button>
               </div>
             )}
-            <p className="text-xs text-slate-400">{viewMode === 'all' ? 'All Businesses' : 'Current Business'}</p>
           </div>
         )}
       </div>

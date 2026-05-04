@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Link as LinkIcon, Plus, Copy, ExternalLink, Trash2, Loader2, Globe,
   Tag, Edit3, Building2, X, Image as ImageIcon, Edit,
-  Clock, Upload, Check, Zap, CheckCircle, AlertCircle, Calendar
+  Clock, Upload, Check, Zap, CheckCircle, AlertCircle
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -49,6 +49,7 @@ type EditForm = {
   discount: string;
   discount_type: string;
   description: string;
+  expires_at: string; // NEW — editable expiration date
 };
 
 type BusinessStatus = 'active' | 'inactive' | 'suspended' | 'pending';
@@ -124,18 +125,13 @@ function ToggleSwitch({ checked, onChange, disabled }: { checked: boolean; onCha
   );
 }
 
-// ─── Success Overlay ──────────────────────────────────────────────────────────
 function SuccessOverlay({ message }: { message: string }) {
   return (
     <div className="absolute inset-0 bg-white/97 dark:bg-[#111827]/97 z-50 flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-300">
-      <div className="relative mb-5">
-        <div className="w-14 h-14 rounded-full bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 dark:border-emerald-800 flex items-center justify-center">
-          <CheckCircle size={28} strokeWidth={1.5} className="text-emerald-600 dark:text-emerald-400" />
-        </div>
-        <div className="absolute inset-0 rounded-full border-2 border-emerald-400/30 animate-ping" style={{ animationDuration: '1.2s', animationIterationCount: 1 }} />
+      <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center mb-4">
+        <Check size={28} className="text-emerald-600" />
       </div>
-      <p className="text-base font-semibold text-slate-900 dark:text-white tracking-tight">{message}</p>
-      <p className="text-xs text-slate-400 mt-1">Redirecting you back…</p>
+      <p className="text-base font-bold text-slate-900 dark:text-white">{message}</p>
     </div>
   );
 }
@@ -143,154 +139,274 @@ function SuccessOverlay({ message }: { message: string }) {
 // ─── Business Pending Notice ──────────────────────────────────────────────────
 function BusinessPendingNotice({ supportTelegram }: { supportTelegram: string | null }) {
   return (
-    <div className="min-h-[60vh] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-[#111827] border border-amber-200 dark:border-amber-900/30 rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
-        <div className="bg-amber-50 dark:bg-amber-900/10 px-6 py-8 border-b border-amber-100 dark:border-amber-900/30">
-          <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <AlertCircle size={32} className="text-amber-500" />
-          </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white text-center">Business Verification Pending</h2>
-          <p className="text-sm text-slate-600 dark:text-slate-300 text-center mt-2">আপনার বিজনেস যাচাইকরণ প্রক্রিয়াধীন আছে</p>
-        </div>
-        <div className="px-6 py-6 space-y-4">
-          <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/20 rounded-xl px-4 py-3.5">
-            <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
-              আপনার workspace টি এই মুহূর্তে <span className="font-semibold text-amber-600 dark:text-amber-400">পেন্ডিং</span> স্ট্যাটাসে রয়েছে।
-              অনুগ্রহ করে যাচাইকরণ সম্পন্ন না হওয়া পর্যন্ত অপেক্ষা করুন।
-            </p>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-start gap-3 text-sm">
-              <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 mt-0.5">
-                <Clock size={12} className="text-slate-500" />
-              </div>
-              <div>
-                <p className="font-medium text-slate-900 dark:text-white">Verification Time</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">সাধারণত ২৪-৪৮ ঘন্টার মধ্যে সম্পন্ন হয়</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 text-sm">
-              <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0 mt-0.5">
-                <CheckCircle size={12} className="text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div>
-                <p className="font-medium text-slate-900 dark:text-white">What's Next?</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">যাচাইকরণ সম্পন্ন হলে আপনি ইমেইল পাবেন</p>
-              </div>
-            </div>
-          </div>
-          {supportTelegram && (
-            <a href={supportTelegram} target="_blank" rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2.5 bg-[#0088cc] hover:bg-[#0077b3] text-white font-semibold py-3.5 px-4 rounded-xl transition-all shadow-lg shadow-[#0088cc]/25 hover:-translate-y-0.5 mt-4">
-              Contact Support
-            </a>
-          )}
-        </div>
+    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-8">
+      <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 text-amber-600 rounded-2xl flex items-center justify-center mb-4">
+        <AlertCircle size={32} />
       </div>
+      <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Business Pending Approval</h2>
+      <p className="text-slate-500 dark:text-slate-400 text-sm max-w-sm">
+        Your business is currently under review. Payment links will be available once approved.
+      </p>
+      {supportTelegram && (
+        <a href={supportTelegram} target="_blank" rel="noreferrer"
+          className="mt-4 inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-blue-700 transition-colors">
+          Contact Support
+        </a>
+      )}
     </div>
   );
 }
 
-// ─── Edit Expiry Modal (expiration date only) ─────────────────────────────────
-function EditExpiryModal({ link, onClose, onUpdated }: {
+// ─── Edit Link Modal ──────────────────────────────────────────────────────────
+function EditLinkModal({ link, slug, onClose, onUpdated }: {
   link: PaymentLink;
+  slug: string;
   onClose: () => void;
   onUpdated: () => void;
 }) {
-  const [expiresType, setExpiresType] = useState<'none' | 'hours' | 'days'>('none');
-  const [expiresHours, setExpiresHours] = useState('');
-  const [expiresDateTo, setExpiresDateTo] = useState('');
+  const isDefault = isDefaultLink(link.link_id);
+
+  // Pre-fill expires_at for the date input (format: YYYY-MM-DDTHH:MM)
+  const existingExpiry = link.expires_at
+    ? new Date(link.expires_at).toISOString().slice(0, 16)
+    : '';
+
+  const [form, setForm] = useState<EditForm>({
+    title: link.title,
+    amount: link.amount ? String(link.amount) : '',
+    discount: link.discount ? String(link.discount) : '',
+    discount_type: link.discount_type || 'flat',
+    description: link.description || '',
+    expires_at: existingExpiry,
+  });
   const [saving, setSaving] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string>(link.product_logo || '');
+  const [logoUrl, setLogoUrl] = useState<string>(link.product_logo || '');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const set = (k: keyof EditForm, v: string) => setForm(f => ({ ...f, [k]: v }));
+  const sym = symbol(link.currency);
+  const previewUrl = getDisplayUrl(slug, titleToSlug(form.title) || link.link_id);
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setLogoPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+    setUploading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { toast.error('Not authenticated'); setUploading(false); return; }
+    if (logoUrl) await deleteStorageImage(logoUrl);
+    const url = await uploadProductImage(file, user.id);
+    if (url) { setLogoUrl(url); toast.success('Image uploaded!'); } else { setLogoPreview(logoUrl); }
+    setUploading(false);
+  };
+
+  const handleRemoveImage = async () => {
+    if (logoUrl) await deleteStorageImage(logoUrl);
+    setLogoPreview(''); setLogoUrl('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    const newLinkId = titleToSlug(form.title) || link.link_id;
+    const payload: any = {
+      title: form.title,
+      link_id: newLinkId,
+      description: form.description,
+      discount: form.discount ? parseFloat(form.discount) : 0,
+      discount_type: form.discount_type,
+      product_logo: logoUrl || null,
+      expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
+    };
+    if (link.amount !== null) payload.amount = form.amount ? parseFloat(form.amount) : null;
 
-    let expires_at: string | null = null;
-    if (expiresType === 'hours' && expiresHours) {
-      expires_at = new Date(Date.now() + parseInt(expiresHours) * 3600 * 1000).toISOString();
-    } else if (expiresType === 'days' && expiresDateTo) {
-      const to = new Date(expiresDateTo);
-      to.setHours(23, 59, 59, 999);
-      expires_at = to.toISOString();
-    }
-
-    const { error } = await supabase
-      .from('payment_links')
-      .update({ expires_at })
-      .eq('id', link.id);
-
+    const { error } = await supabase.from('payment_links').update(payload).eq('id', link.id);
     if (error) { toast.error('Update failed: ' + error.message); setSaving(false); }
-    else { setIsSuccess(true); setTimeout(() => { toast.success('Expiration updated!'); onUpdated(); }, 1400); }
+    else { setIsSuccess(true); setTimeout(() => { toast.success('Link updated!'); onUpdated(); }, 1400); }
   };
+
+  const finalPrice = form.amount && parseFloat(form.amount)
+    ? calcFinal(parseFloat(form.amount), parseFloat(form.discount || '0'), form.discount_type)
+    : null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-2xl shadow-2xl relative overflow-hidden">
-        {isSuccess && <SuccessOverlay message="Expiry Updated!" />}
+      <div className="bg-white dark:bg-[#111827] w-full max-w-lg rounded-2xl shadow-2xl relative overflow-hidden max-h-[92vh] flex flex-col">
+        {isSuccess && <SuccessOverlay message="Link Updated!" />}
 
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
-              <Calendar size={14} className="text-slate-500" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm">Edit Expiration</h3>
-              <p className="text-xs text-slate-400 mt-0.5 font-mono">{link.link_id}</p>
-            </div>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+          <div>
+            <h3 className="font-semibold text-slate-900 dark:text-white">Edit Link</h3>
+            <p className="text-xs text-slate-400 mt-0.5 font-mono">{link.link_id}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-            <X size={15} className="text-slate-400" />
+            <X size={16} className="text-slate-400" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-          <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Current Expiry</p>
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatExpiry(link.expires_at)}</p>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-              <Clock size={10} /> New Expiration
-            </label>
-            <div className="flex gap-2 flex-wrap">
-              {[
-                { val: 'none', label: 'No Expiry' },
-                { val: 'hours', label: 'Hours from Now' },
-                { val: 'days', label: 'Specific Date' },
-              ].map(t => (
-                <button key={t.val} type="button" onClick={() => setExpiresType(t.val as any)}
-                  className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all ${expiresType === t.val ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-400'}`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            {expiresType === 'hours' && (
-              <input type="number" min="1" placeholder="e.g. 24" value={expiresHours} onChange={e => setExpiresHours(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-slate-400 text-sm text-slate-900 dark:text-white" />
-            )}
-            {expiresType === 'days' && (
-              <div>
-                <p className="text-[9px] font-medium text-slate-400 mb-1 uppercase tracking-widest">Expires On</p>
-                <input type="date" value={expiresDateTo} onChange={e => setExpiresDateTo(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-slate-400 text-sm text-slate-900 dark:text-white" />
+        {isDefault ? (
+          <>
+            <div className="px-6 py-8 text-center">
+              <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <LinkIcon size={20} className="text-slate-400" />
               </div>
-            )}
-          </div>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Default links cannot be edited</p>
+              <p className="text-xs text-slate-400 mt-1">Default payment links are managed automatically.</p>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+              <button type="button" onClick={onClose}
+                className="w-full py-3 rounded-xl font-medium text-sm text-slate-500 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                Close
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="overflow-y-auto flex-1 px-6 py-5">
+              <form id="edit-form" onSubmit={handleSubmit} className="space-y-4">
 
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose}
-              className="flex-1 py-3 rounded-xl font-medium text-sm text-slate-500 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-              Cancel
-            </button>
-            <button type="submit" disabled={saving || isSuccess}
-              className="flex-1 py-3 rounded-xl font-semibold text-sm text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:opacity-90 disabled:opacity-60 transition-all flex justify-center items-center gap-2">
-              {saving || isSuccess ? <Loader2 size={15} className="animate-spin" /> : 'Save Changes'}
-            </button>
-          </div>
-        </form>
+                {/* Title */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Title</label>
+                  <input required type="text" value={form.title} onChange={e => set('title', e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors" />
+                </div>
+
+                {/* Link Preview */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Link Preview</label>
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl">
+                    <Globe size={12} className="text-slate-400 shrink-0" />
+                    <span className="text-xs font-mono text-blue-500 truncate">{previewUrl}</span>
+                  </div>
+                </div>
+
+                {/* Product Image */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                    <ImageIcon size={10} /> Product Image
+                    <span className="text-[9px] font-normal text-slate-300 normal-case tracking-normal">(Max 2MB · JPG, PNG, WEBP)</span>
+                  </label>
+                  {logoPreview ? (
+                    <div className="relative w-full h-32 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                      <img src={logoPreview} alt="preview" className="w-full h-full object-contain" />
+                      {uploading && (
+                        <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 flex items-center justify-center">
+                          <Loader2 size={20} className="animate-spin text-blue-600" />
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2 flex gap-1.5">
+                        <button type="button" onClick={() => fileInputRef.current?.click()}
+                          className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-blue-600 transition-colors"><Edit size={12} /></button>
+                        <button type="button" onClick={handleRemoveImage}
+                          className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-red-500 transition-colors"><Trash2 size={12} /></button>
+                      </div>
+                      {logoUrl && !uploading && (
+                        <div className="absolute bottom-2 left-2">
+                          <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
+                            <Check size={9} /> Uploaded
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-24 bg-slate-50 dark:bg-[#0B1120] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-700 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors group">
+                      <Upload size={15} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+                      <p className="text-xs text-slate-400 group-hover:text-blue-600 transition-colors">Click to upload product image</p>
+                    </button>
+                  )}
+                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageSelect} />
+                </div>
+
+                {/* Amount */}
+                {link.amount !== null && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Price ({link.currency})</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{sym}</span>
+                      <input required type="number" step="any" min="1" value={form.amount} onChange={e => set('amount', e.target.value)}
+                        className="w-full pl-8 pr-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-semibold text-slate-900 dark:text-white transition-colors" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Discount */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Tag size={10} /> Discount</label>
+                  <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-colors bg-slate-50 dark:bg-[#0B1120]">
+                    <select value={form.discount_type} onChange={e => set('discount_type', e.target.value)}
+                      className="bg-slate-100 dark:bg-slate-800 px-3 py-3 text-xs font-medium text-slate-700 dark:text-slate-300 outline-none border-r border-slate-200 dark:border-slate-700 cursor-pointer">
+                      <option value="flat">Flat ({sym})</option>
+                      <option value="percentage">Percent (%)</option>
+                    </select>
+                    <input type="number" step="any" min="0" placeholder="0" value={form.discount} onChange={e => set('discount', e.target.value)}
+                      className="w-full px-4 py-3 bg-transparent outline-none text-sm text-slate-900 dark:text-white placeholder:text-slate-400" />
+                  </div>
+                </div>
+
+                {/* Price Preview */}
+                {finalPrice !== null && (
+                  <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl px-4 py-3">
+                    <div>
+                      <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-widest">Customer pays</p>
+                      {parseFloat(form.discount || '0') > 0 && (
+                        <p className="text-xs text-slate-400 line-through">{sym}{parseFloat(form.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                      )}
+                    </div>
+                    <span className="text-xl font-semibold text-blue-600">{sym}{finalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Description</label>
+                  <textarea rows={2} value={form.description} onChange={e => set('description', e.target.value)}
+                    placeholder="Brief product description..."
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors resize-none placeholder:text-slate-400" />
+                </div>
+
+                {/* ── NEW: Expiration Date ── */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Clock size={10} /> Link Expiration Date
+                    <span className="text-[9px] font-normal text-slate-300 normal-case tracking-normal">(leave blank for no expiry)</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={form.expires_at}
+                    onChange={e => set('expires_at', e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors"
+                  />
+                  {form.expires_at && (
+                    <button type="button" onClick={() => set('expires_at', '')}
+                      className="text-[10px] text-red-500 hover:text-red-700 font-medium">
+                      Clear expiry date
+                    </button>
+                  )}
+                </div>
+
+              </form>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex gap-3 shrink-0">
+              <button type="button" onClick={onClose}
+                className="flex-1 py-3 rounded-xl font-medium text-sm text-slate-500 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                Cancel
+              </button>
+              <button type="submit" form="edit-form" disabled={saving || isSuccess || uploading}
+                className="flex-1 py-3 rounded-xl font-semibold text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 transition-all flex justify-center items-center gap-2">
+                {saving || isSuccess ? <Loader2 size={15} className="animate-spin" /> : 'Save Changes'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -312,9 +428,9 @@ function LinkTypeChooser({ onSelect, onClose }: { onSelect: (type: 'default' | '
             { type: 'custom' as const, icon: LinkIcon, label: 'Custom Link', desc: 'Full control — set product title, image, price, discounts, expiry, and custom URL.' },
           ].map(opt => (
             <button key={opt.type} onClick={() => onSelect(opt.type)}
-              className="w-full flex items-start gap-4 p-5 bg-slate-50 dark:bg-[#0B1120] hover:bg-slate-100 dark:hover:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 rounded-xl transition-all group text-left">
-              <div className="w-9 h-9 bg-slate-200 dark:bg-slate-700 group-hover:bg-slate-300 dark:group-hover:bg-slate-600 rounded-xl flex items-center justify-center shrink-0 transition-colors">
-                <opt.icon size={16} className="text-slate-600 dark:text-slate-300" />
+              className="w-full flex items-start gap-4 p-5 bg-slate-50 dark:bg-[#0B1120] hover:bg-blue-50 dark:hover:bg-blue-900/10 border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-700 rounded-xl transition-all group text-left">
+              <div className="w-9 h-9 bg-slate-200 dark:bg-slate-700 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 rounded-xl flex items-center justify-center shrink-0 transition-colors">
+                <opt.icon size={16} className="text-slate-500 group-hover:text-blue-600 transition-colors" />
               </div>
               <div>
                 <p className="font-semibold text-slate-900 dark:text-white text-sm">{opt.label}</p>
@@ -341,10 +457,16 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, existin
   const [form, setForm] = useState<LinkForm>({
     title: type === 'default' ? businessName : '',
     link_id: type === 'default' ? 'payment' : '',
-    amount: '', currency: 'BDT', discount: '', discount_type: 'flat',
+    amount: '',
+    currency: 'BDT',
+    discount: '',
+    discount_type: 'flat',
     description: type === 'default' ? businessName : '',
     product_logo: '',
-    expires_type: 'none', expires_date_from: '', expires_date_to: '', expires_hours: '',
+    expires_type: 'none',
+    expires_date_from: '',
+    expires_date_to: '',
+    expires_hours: '',
   });
   const [saving, setSaving] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -366,49 +488,51 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, existin
     reader.readAsDataURL(file);
     setUploading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { toast.error('Not authenticated'); setUploading(false); return; }
+    if (!user) { setUploading(false); return; }
     const url = await uploadProductImage(file, user.id);
-    if (url) { setForm(f => ({ ...f, product_logo: url })); toast.success('Image uploaded!'); }
-    else { setLogoPreview(''); }
+    if (url) { set('product_logo', url); toast.success('Image uploaded!'); } else { setLogoPreview(''); }
     setUploading(false);
   };
 
-  const removeImage = () => {
-    setLogoPreview(''); setForm(f => ({ ...f, product_logo: '' }));
+  const removeImage = async () => {
+    if (form.product_logo) await deleteStorageImage(form.product_logo);
+    setLogoPreview(''); set('product_logo', '');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (type === 'default') {
-      const hasDefault = existingLinks.some(l => isDefaultLink(l.link_id));
-      if (hasDefault) { toast.error('You can create 1 default link'); return; }
-    }
     if (type === 'custom' && !form.product_logo) { toast.error('Please upload a product image'); return; }
     setSaving(true);
+
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { toast.error('Not authenticated'); setSaving(false); return; }
+
+    const finalLinkId = type === 'default' ? 'payment' : (form.link_id || titleToSlug(form.title));
+    const isDupe = existingLinks.some(l => l.link_id === finalLinkId);
+    if (isDupe) { toast.error('Link ID already taken. Try another.'); setSaving(false); return; }
 
     let expires_at: string | null = null;
     if (form.expires_type === 'hours' && form.expires_hours) {
-      expires_at = new Date(Date.now() + parseInt(form.expires_hours) * 3600 * 1000).toISOString();
+      expires_at = new Date(Date.now() + parseInt(form.expires_hours) * 3600000).toISOString();
     } else if (form.expires_type === 'days' && form.expires_date_to) {
-      const to = new Date(form.expires_date_to);
-      to.setHours(23, 59, 59, 999);
-      expires_at = to.toISOString();
+      expires_at = new Date(form.expires_date_to + 'T23:59:59').toISOString();
     }
 
-    const finalLinkId = type === 'default' ? 'payment' : (form.link_id || Math.random().toString(36).substring(7));
     const payload: any = {
-      merchant_id: user?.id, business_id: businessId,
+      merchant_id: user.id,
+      business_id: businessId,
       title: type === 'default' ? `Payment for ${businessName}` : form.title,
-      link_id: finalLinkId, currency: form.currency, status: 'active',
+      link_id: finalLinkId,
+      currency: form.currency,
+      status: 'active',
       description: type === 'default' ? null : (form.description || null),
       discount: form.discount ? parseFloat(form.discount) : 0,
       discount_type: form.discount_type,
       product_logo: type === 'default' ? null : (form.product_logo || null),
     };
-    if (type === 'default') payload.amount = null;
-    else payload.amount = form.amount ? parseFloat(form.amount) : null;
+    if (type === 'default') { payload.amount = null; }
+    else { payload.amount = form.amount ? parseFloat(form.amount) : null; }
     if (expires_at) payload.expires_at = expires_at;
 
     const { error } = await supabase.from('payment_links').insert(payload);
@@ -433,10 +557,11 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, existin
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
       <div className="bg-white dark:bg-[#111827] w-full max-w-2xl rounded-2xl shadow-2xl relative overflow-hidden max-h-[92vh] flex flex-col">
         {isSuccess && <SuccessOverlay message="Link Created!" />}
+
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
-              <LinkIcon size={16} className="text-slate-600 dark:text-slate-300" />
+            <div className="w-9 h-9 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+              <LinkIcon size={16} className="text-blue-600" />
             </div>
             <div>
               <h3 className="font-semibold text-slate-900 dark:text-white">{type === 'default' ? 'Default Link' : 'Custom Link'}</h3>
@@ -451,150 +576,149 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, existin
         <div className="overflow-y-auto flex-1 px-6 py-5">
           <form id="link-form" onSubmit={handleSubmit} className="space-y-4">
             {!isCustom && (
-              <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl">
-                <Globe size={13} className="text-slate-400 shrink-0" />
-                <span className="text-xs font-mono text-slate-600 dark:text-slate-400">{defaultLinkPreview}</span>
+              <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl">
+                <Globe size={13} className="text-blue-500 shrink-0" />
+                <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{defaultLinkPreview}</span>
               </div>
             )}
             {isCustom && (
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Product / Title <span className="text-red-500">*</span></label>
-                <input required type="text" placeholder="e.g. Premium Smartwatch" value={form.title} onChange={e => handleTitleChange(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-slate-400 text-sm text-slate-900 dark:text-white transition-colors placeholder:text-slate-400" />
-              </div>
-            )}
-            {isCustom && (
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Edit3 size={10} />Customize URL <span className="text-red-500">*</span></label>
-                <div className="flex bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-slate-400 transition-colors">
-                  <span className="pl-4 py-3 text-xs font-mono text-slate-400 items-center hidden sm:flex shrink-0">{getDisplayUrl(businessSlug, '')}</span>
-                  <input required type="text" value={form.link_id} onChange={e => set('link_id', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-                    className="w-full px-3 py-3 bg-transparent outline-none text-sm font-mono font-semibold text-slate-700 dark:text-slate-300" placeholder="my-product" />
-                </div>
-                <p className="text-[10px] text-slate-400">Preview: <span className="text-slate-600 dark:text-slate-400 font-mono">{customLinkPreview}</span></p>
-              </div>
-            )}
-            {isCustom && (
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                  <ImageIcon size={10} />Product Image <span className="text-red-500">*</span>
-                  <span className="text-[9px] font-normal text-slate-300 normal-case tracking-normal">(Max 2MB · JPG, PNG, WEBP)</span>
-                </label>
-                {logoPreview ? (
-                  <div className="relative w-full h-32 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-                    <img src={logoPreview} alt="preview" className="w-full h-full object-contain" />
-                    {uploading && (
-                      <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 flex items-center justify-center">
-                        <Loader2 size={20} className="animate-spin text-slate-600" />
-                      </div>
-                    )}
-                    <div className="absolute top-2 right-2 flex gap-1.5">
-                      <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-slate-700"><Edit size={12} /></button>
-                      <button type="button" onClick={removeImage} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-red-500"><Trash2 size={12} /></button>
-                    </div>
-                    {form.product_logo && !uploading && (
-                      <div className="absolute bottom-2 left-2">
-                        <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
-                          <Check size={9} /> Uploaded
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <button type="button" onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-24 bg-slate-50 dark:bg-[#0B1120] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors group">
-                    <Upload size={15} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
-                    <p className="text-xs text-slate-400 group-hover:text-slate-600 transition-colors">Click to upload product image <span className="text-red-400">(required)</span></p>
-                  </button>
-                )}
-                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageSelect} />
-              </div>
-            )}
-            {isCustom && (
-              <div className="p-4 bg-slate-50 dark:bg-[#0B1120]/60 border border-slate-100 dark:border-slate-800 rounded-xl space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Currency</label>
-                    <div className="flex bg-white dark:bg-[#111827] p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-                      {['BDT', 'USD'].map(c => (
-                        <button key={c} type="button" onClick={() => set('currency', c)}
-                          className={`flex-1 py-2 rounded-lg text-xs font-semibold uppercase tracking-widest transition-all ${form.currency === c ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
-                          {c}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Price <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{sym}</span>
-                      <input required type="number" step="any" min="1" placeholder="0.00" value={form.amount} onChange={e => set('amount', e.target.value)}
-                        className="w-full pl-8 pr-3 py-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-slate-400 text-sm font-semibold text-slate-900 dark:text-white transition-colors" />
-                    </div>
-                  </div>
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Product / Title <span className="text-red-500">*</span></label>
+                  <input required type="text" placeholder="e.g. Premium Smartwatch" value={form.title}
+                    onChange={e => handleTitleChange(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors placeholder:text-slate-400" />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Tag size={10} />Discount</label>
-                  <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-slate-400 transition-colors bg-white dark:bg-[#111827]">
-                    <select value={form.discount_type} onChange={e => set('discount_type', e.target.value)}
-                      className="bg-slate-50 dark:bg-[#0B1120] px-3 py-3 text-xs font-medium text-slate-700 dark:text-slate-300 outline-none border-r border-slate-200 dark:border-slate-700 cursor-pointer">
-                      <option value="flat">Flat ({sym})</option>
-                      <option value="percentage">Percent (%)</option>
-                    </select>
-                    <input type="number" step="any" min="0" placeholder="0" value={form.discount} onChange={e => set('discount', e.target.value)}
-                      className="w-full px-4 py-3 bg-transparent outline-none text-sm text-slate-900 dark:text-white placeholder:text-slate-400" />
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Edit3 size={10} /> Customize URL <span className="text-red-500">*</span></label>
+                  <div className="flex bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-colors">
+                    <span className="pl-4 py-3 text-xs font-mono text-slate-400 items-center hidden sm:flex shrink-0">{getDisplayUrl(businessSlug, '')}</span>
+                    <input required type="text" value={form.link_id} onChange={e => set('link_id', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                      className="w-full px-3 py-3 bg-transparent outline-none text-sm font-mono font-semibold text-blue-600 dark:text-blue-400" placeholder="my-product" />
                   </div>
+                  <p className="text-[10px] text-slate-400">Preview: <span className="text-blue-500 font-mono">{customLinkPreview}</span></p>
                 </div>
-                {form.amount && parseFloat(form.amount) > 0 && (
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { label: 'Original', value: `${sym}${parseFloat(form.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, cls: 'text-slate-700 dark:text-slate-300' },
-                      { label: 'Discount', value: parseFloat(form.discount || '0') > 0 ? (form.discount_type === 'percentage' ? `-${form.discount}%` : `-${sym}${parseFloat(form.discount).toLocaleString('en-IN')}`) : '—', cls: 'text-orange-500' },
-                      { label: 'Final', value: `${sym}${(finalPrice ?? parseFloat(form.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, cls: 'text-emerald-600 dark:text-emerald-400' },
-                    ].map(({ label, value, cls }) => (
-                      <div key={label} className="text-center p-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl">
-                        <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-                        <p className={`text-sm font-semibold ${cls}`}>{value}</p>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                    <ImageIcon size={10} /> Product Image <span className="text-red-500">*</span>
+                    <span className="text-[9px] font-normal text-slate-300 normal-case tracking-normal">(Max 2MB · JPG, PNG, WEBP)</span>
+                  </label>
+                  {logoPreview ? (
+                    <div className="relative w-full h-32 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                      <img src={logoPreview} alt="preview" className="w-full h-full object-contain" />
+                      {uploading && (
+                        <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 flex items-center justify-center">
+                          <Loader2 size={20} className="animate-spin text-blue-600" />
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2 flex gap-1.5">
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-blue-600"><Edit size={12} /></button>
+                        <button type="button" onClick={removeImage} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-500 hover:text-red-500"><Trash2 size={12} /></button>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {isCustom && (
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Description <span className="text-red-500">*</span></label>
-                <textarea required rows={2} placeholder="Brief product description..." value={form.description} onChange={e => set('description', e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-slate-400 text-sm text-slate-900 dark:text-white transition-colors resize-none placeholder:text-slate-400" />
-              </div>
-            )}
-            {isCustom && (
-              <div className="space-y-2">
-                <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Clock size={10} />Link Expiry</label>
-                <div className="flex gap-2 flex-wrap">
-                  {[{ val: 'none', label: 'No Expiry' }, { val: 'hours', label: 'Hours' }, { val: 'days', label: 'Date Range' }].map(t => (
-                    <button key={t.val} type="button" onClick={() => set('expires_type', t.val as any)}
-                      className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all ${form.expires_type === t.val ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-400'}`}>
-                      {t.label}
+                      {form.product_logo && !uploading && (
+                        <div className="absolute bottom-2 left-2">
+                          <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-md font-medium flex items-center gap-1"><Check size={9} /> Uploaded</span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-24 bg-slate-50 dark:bg-[#0B1120] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-700 rounded-xl flex flex-col items-center justify-center gap-2 transition-colors group">
+                      <Upload size={15} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+                      <p className="text-xs text-slate-400 group-hover:text-blue-600 transition-colors">Click to upload product image <span className="text-red-400">(required)</span></p>
                     </button>
-                  ))}
+                  )}
+                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageSelect} />
                 </div>
-                {form.expires_type === 'hours' && (
-                  <input type="number" min="1" placeholder="e.g. 24 hours" value={form.expires_hours} onChange={e => set('expires_hours', e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-slate-400 text-sm text-slate-900 dark:text-white" />
-                )}
-                {form.expires_type === 'days' && (
-                  <div className="grid grid-cols-2 gap-3">
-                    {[{ label: 'From', key: 'expires_date_from' as const }, { label: 'To', key: 'expires_date_to' as const }].map(({ label, key }) => (
-                      <div key={key}>
-                        <p className="text-[9px] font-medium text-slate-400 mb-1 uppercase tracking-widest">{label}</p>
-                        <input type="date" value={form[key]} onChange={e => set(key, e.target.value)}
-                          className="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-slate-400 text-sm text-slate-900 dark:text-white" />
+                <div className="p-4 bg-slate-50 dark:bg-[#0B1120]/60 border border-slate-100 dark:border-slate-800 rounded-xl space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Currency</label>
+                      <div className="flex bg-white dark:bg-[#111827] p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                        {['BDT', 'USD'].map(c => (
+                          <button key={c} type="button" onClick={() => set('currency', c)}
+                            className={`flex-1 py-2 rounded-lg text-xs font-semibold uppercase tracking-widest transition-all ${form.currency === c ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                            {c}
+                          </button>
+                        ))}
                       </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Price <span className="text-red-500">*</span></label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">{sym}</span>
+                        <input required type="number" step="any" min="1" placeholder="0.00" value={form.amount} onChange={e => set('amount', e.target.value)}
+                          className="w-full pl-8 pr-3 py-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-semibold text-slate-900 dark:text-white transition-colors" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Tag size={10} /> Discount</label>
+                    <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-colors bg-white dark:bg-[#111827]">
+                      <select value={form.discount_type} onChange={e => set('discount_type', e.target.value)}
+                        className="bg-slate-50 dark:bg-[#0B1120] px-3 py-3 text-xs font-medium text-slate-700 dark:text-slate-300 outline-none border-r border-slate-200 dark:border-slate-700 cursor-pointer">
+                        <option value="flat">Flat ({sym})</option>
+                        <option value="percentage">Percent (%)</option>
+                      </select>
+                      <input type="number" step="any" min="0" placeholder="0" value={form.discount} onChange={e => set('discount', e.target.value)}
+                        className="w-full px-4 py-3 bg-transparent outline-none text-sm text-slate-900 dark:text-white placeholder:text-slate-400" />
+                    </div>
+                  </div>
+                  {form.amount && parseFloat(form.amount) > 0 && (
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="text-center p-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl">
+                        <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Original</p>
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{sym}{parseFloat(form.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                      </div>
+                      <div className="text-center p-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl">
+                        <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Discount</p>
+                        <p className="text-sm font-semibold text-orange-500">
+                          {parseFloat(form.discount || '0') > 0
+                            ? form.discount_type === 'percentage' ? `-${form.discount}%` : `-${sym}${parseFloat(form.discount).toLocaleString('en-IN')}`
+                            : '—'}
+                        </p>
+                      </div>
+                      <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl">
+                        <p className="text-[9px] font-semibold text-blue-500 uppercase tracking-widest mb-1">Final</p>
+                        <p className="text-sm font-semibold text-blue-600">
+                          {sym}{(finalPrice ?? parseFloat(form.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Description <span className="text-red-500">*</span></label>
+                  <textarea required rows={2} placeholder="Brief product description..." value={form.description} onChange={e => set('description', e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white transition-colors resize-none placeholder:text-slate-400" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest flex items-center gap-1"><Clock size={10} /> Link Expiry</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {[{ val: 'none', label: 'No Expiry' }, { val: 'hours', label: 'Hours' }, { val: 'days', label: 'Date Range' }].map(t => (
+                      <button key={t.val} type="button" onClick={() => set('expires_type', t.val as any)}
+                        className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all ${form.expires_type === t.val ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-400'}`}>
+                        {t.label}
+                      </button>
                     ))}
                   </div>
-                )}
-              </div>
+                  {form.expires_type === 'hours' && (
+                    <input type="number" min="1" placeholder="e.g. 24 hours" value={form.expires_hours} onChange={e => set('expires_hours', e.target.value)}
+                      className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white" />
+                  )}
+                  {form.expires_type === 'days' && (
+                    <div className="grid grid-cols-2 gap-3">
+                      {['expires_date_from', 'expires_date_to'].map((k, i) => (
+                        <div key={k}>
+                          <p className="text-[9px] font-medium text-slate-400 mb-1 uppercase tracking-widest">{i === 0 ? 'From' : 'To'}</p>
+                          <input type="date" value={(form as any)[k]} onChange={e => set(k as keyof LinkForm, e.target.value)}
+                            className="w-full px-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </form>
         </div>
@@ -605,7 +729,7 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, existin
             Cancel
           </button>
           <button type="submit" form="link-form" disabled={saving || isSuccess || uploading}
-            className="flex-1 py-3 rounded-xl font-semibold text-sm text-white bg-slate-900 dark:bg-white dark:text-slate-900 hover:opacity-90 disabled:opacity-60 transition-all flex justify-center items-center gap-2">
+            className="flex-1 py-3 rounded-xl font-semibold text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 shadow-sm transition-all flex justify-center items-center gap-2">
             {saving || isSuccess ? <Loader2 size={15} className="animate-spin" /> : uploading ? 'Uploading...' : 'Create Link'}
           </button>
         </div>
@@ -632,6 +756,9 @@ function LinkRow({ link, slug, onDelete, onToggle, onEdit }: {
   const expired = isExpired(link.expires_at);
   const isInactive = link.status === 'inactive';
 
+  // ── Key business rule: Inactive links block edit/delete ───────────────────
+  const canModify = !isInactive && !isDefault;
+
   const handleCopy = () => { navigator.clipboard.writeText(liveUrl); toast.success('Link copied!'); };
 
   const handleToggle = async () => {
@@ -644,36 +771,33 @@ function LinkRow({ link, slug, onDelete, onToggle, onEdit }: {
   };
 
   const rowBg = isInactive
-    ? 'bg-slate-50/60 dark:bg-slate-900/20 opacity-60'
-    : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/10';
+    ? 'bg-slate-50 dark:bg-slate-900/40 opacity-70'
+    : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/10';
 
-  const textCls = isInactive
+  const textBase = isInactive
     ? 'text-sm font-medium text-slate-400 dark:text-slate-500'
-    : 'text-sm font-medium text-slate-800 dark:text-slate-200';
-
-  // For inactive links: edit and delete are completely disabled
-  const canEdit = !isDefault && !isInactive;
-  const canDelete = !isDefault && !isInactive;
+    : 'text-sm font-semibold text-slate-800 dark:text-white';
 
   return (
-    <tr className={`border-b border-slate-100 dark:border-slate-800/60 transition-colors ${rowBg}`}>
+    <tr className={`border-b border-slate-100 dark:border-slate-800/60 transition-colors group ${rowBg}`}>
 
       {/* Product */}
       <td className="px-5 py-4">
         <div className="flex items-center gap-3">
           {link.product_logo
-            ? <img src={link.product_logo} alt={link.title} className={`w-9 h-9 rounded-xl object-cover border border-slate-100 dark:border-slate-800 shrink-0 ${isInactive ? 'grayscale opacity-50' : ''}`} />
+            ? <img src={link.product_logo} alt={link.title}
+                className={`w-9 h-9 rounded-xl object-cover border border-slate-100 dark:border-slate-800 shrink-0 ${isInactive ? 'grayscale opacity-60' : ''}`} />
             : <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-slate-100 dark:bg-slate-800">
-                <LinkIcon size={14} className="text-slate-400" />
-              </div>
-          }
+                <LinkIcon size={14} className={isInactive ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400'} />
+              </div>}
           <div>
-            <p className={textCls}>{link.title || <span className="text-slate-400 italic text-xs">Default</span>}</p>
-            {isDefault && <span className="text-[9px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded-md">Default</span>}
-            {link.description && !isDefault && (
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 max-w-[160px] truncate">{link.description}</p>
-            )}
-            {isInactive && <span className="text-[9px] font-medium bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-md mt-0.5 inline-block">Inactive</span>}
+            {/* Premium colored Product title */}
+            <p className={`${textBase} ${!isInactive ? 'text-indigo-700 dark:text-indigo-300 group-hover:text-indigo-800 transition-colors' : ''}`}>
+              {link.title || <span className="text-slate-400 italic text-xs">Default</span>}
+            </p>
+            {isDefault && <span className="text-[9px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600 px-1.5 py-0.5 rounded-md">Default</span>}
+            {link.description && !isDefault && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 max-w-[160px] truncate">{link.description}</p>}
+            {isInactive && <span className="text-[9px] font-medium bg-slate-200 dark:bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded-md mt-0.5 inline-block">Inactive</span>}
           </div>
         </div>
       </td>
@@ -682,27 +806,26 @@ function LinkRow({ link, slug, onDelete, onToggle, onEdit }: {
       <td className="px-5 py-4">
         <div className="flex items-center gap-2">
           <a href={liveUrl} target="_blank" rel="noopener noreferrer"
-            className={`text-xs font-mono max-w-[180px] truncate ${isInactive ? 'text-slate-400 cursor-default pointer-events-none' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:underline'}`}>
+            className={`text-sm font-mono max-w-[180px] truncate ${isInactive ? 'text-slate-400 cursor-default pointer-events-none' : 'text-blue-500 hover:text-blue-700 hover:underline'}`}>
             {displayUrl}
           </a>
           <button onClick={handleCopy} title="Copy"
-            className={`p-1.5 rounded-lg transition-colors shrink-0 ${isInactive ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-            disabled={isInactive}>
-            <Copy size={13} />
+            className={`p-1.5 rounded-lg transition-colors shrink-0 ${isInactive ? 'text-slate-300 dark:text-slate-600' : 'text-white bg-slate-400 hover:bg-blue-600 dark:bg-slate-600 dark:hover:bg-blue-600'}`}>
+            <Copy size={14} />
           </button>
-          {!isInactive && (
-            <a href={liveUrl} target="_blank" rel="noopener noreferrer" title="Open"
-              className="p-1.5 rounded-lg transition-colors text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex shrink-0">
-              <ExternalLink size={13} />
-            </a>
-          )}
+          <a href={liveUrl} target="_blank" rel="noopener noreferrer" title="Open"
+            className={`p-1.5 rounded-lg transition-colors inline-flex shrink-0 ${isInactive ? 'text-slate-300 dark:text-slate-600 pointer-events-none' : 'text-white bg-slate-400 hover:bg-blue-600 dark:bg-slate-600 dark:hover:bg-blue-600'}`}>
+            <ExternalLink size={14} />
+          </a>
         </div>
       </td>
 
-      {/* Price */}
+      {/* Price — premium color */}
       <td className="px-5 py-4">
         {link.amount
-          ? <p className={textCls}>{sym_}{link.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+          ? <p className={`text-sm font-bold ${isInactive ? 'text-slate-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+              {sym_}{link.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </p>
           : <span className="text-xs text-slate-400">Open</span>}
       </td>
 
@@ -718,7 +841,7 @@ function LinkRow({ link, slug, onDelete, onToggle, onEdit }: {
       {/* After Discount */}
       <td className="px-5 py-4">
         {link.amount
-          ? <p className={`text-sm font-semibold ${isInactive ? 'text-slate-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+          ? <p className={`text-sm font-semibold ${isInactive ? 'text-slate-400' : 'text-teal-600 dark:text-teal-400'}`}>
               {sym_}{(finalPrice ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </p>
           : <span className="text-xs text-slate-400">—</span>}
@@ -738,22 +861,26 @@ function LinkRow({ link, slug, onDelete, onToggle, onEdit }: {
           : <ToggleSwitch checked={isActive} onChange={handleToggle} />}
       </td>
 
-      {/* Actions */}
+      {/* Actions — disabled if Inactive */}
       <td className="px-5 py-4">
         <div className="flex items-center gap-2 justify-end">
           <button
-            onClick={() => canEdit && onEdit(link)}
-            title={isDefault ? 'Default links cannot be edited' : isInactive ? 'Activate link to edit' : 'Edit expiration date'}
-            disabled={!canEdit}
-            className={`p-2 rounded-xl transition-colors ${canEdit ? 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'}`}>
-            <Edit3 size={15} />
+            onClick={() => canModify && onEdit(link)}
+            disabled={!canModify}
+            title={isDefault ? 'Default links cannot be edited' : isInactive ? 'Activate the link to edit it' : 'Edit'}
+            className={`p-2 rounded-xl transition-colors ${!canModify
+              ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'
+              : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20'}`}>
+            <Edit3 size={16} />
           </button>
           <button
-            onClick={() => canDelete && onDelete(link.id)}
-            title={isDefault ? 'Default links cannot be deleted' : isInactive ? 'Activate link to delete' : 'Delete'}
-            disabled={!canDelete}
-            className={`p-2 rounded-xl transition-colors ${canDelete ? 'text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'}`}>
-            <Trash2 size={15} />
+            onClick={() => canModify && onDelete(link.id)}
+            disabled={!canModify}
+            title={isDefault ? 'Default links cannot be deleted' : isInactive ? 'Activate the link to delete it' : 'Delete'}
+            className={`p-2 rounded-xl transition-colors ${!canModify
+              ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'
+              : 'text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'}`}>
+            <Trash2 size={16} />
           </button>
         </div>
       </td>
@@ -816,22 +943,13 @@ export default function PaymentLinks() {
     setLinks(l => l.map(x => x.id === id ? { ...x, status } : x));
   };
 
-  const handleCreated = () => {
-    setCreateType(null); setShowChooser(false);
-    if (businessId) fetchData(businessId);
-  };
-
-  const handleUpdated = () => {
-    setEditLink(null);
-    if (businessId) fetchData(businessId);
-  };
+  const handleCreated = () => { setCreateType(null); setShowChooser(false); if (businessId) fetchData(businessId); };
+  const handleUpdated = () => { setEditLink(null); if (businessId) fetchData(businessId); };
 
   if (!businessId) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
-        <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center mb-4">
-          <Building2 size={32} />
-        </div>
+        <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center mb-4"><Building2 size={32} /></div>
         <h2 className="text-xl font-semibold text-slate-900 dark:text-white">No Workspace Selected</h2>
         <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">Select a business from the sidebar to manage payment links.</p>
       </div>
@@ -848,56 +966,72 @@ export default function PaymentLinks() {
   return (
     <div className="max-w-7xl mx-auto space-y-5 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-      {/* ── Page Header ── */}
-      <div className="pb-4 border-b border-slate-100 dark:border-slate-800">
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Payment Links</p>
-        <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">All Payment Links</h1>
+      {/* ── Bold Top Bar ── */}
+      <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl px-6 py-4">
+        <h1 className="text-xl font-black text-white uppercase tracking-[0.15em] flex items-center gap-3">
+          <LinkIcon size={20} className="text-blue-400" />
+          ALL PAYMENT LINKS
+        </h1>
+        <p className="text-slate-400 text-xs font-medium mt-0.5">Create and manage payment links for your products and services.</p>
       </div>
 
-      {/* ── Header Controls ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Create and manage payment links for your products and services.</p>
+      {/* ── Header actions ── */}
+      <div className="flex items-center justify-end">
         <button onClick={() => setShowChooser(true)}
-          className="flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all hover:opacity-90 shadow-sm hover:-translate-y-0.5">
-          <Plus size={15} /> Create New Link
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-all shadow-sm hover:-translate-y-0.5">
+          <Plus size={16} /> Create New Link
         </button>
       </div>
 
       {/* ── Stats Cards ── */}
       {!loading && links.length > 0 && (
         <div className="hidden md:grid grid-cols-3 gap-4">
-          {[
-            { label: 'Total Links', value: links.length, sub: 'Payment links created', icon: LinkIcon, border: 'border-slate-200 dark:border-slate-800' },
-            { label: 'Active', value: activeLinks, sub: 'Currently accepting payments', icon: CheckCircle, border: 'border-emerald-100 dark:border-emerald-900/30', valueCls: 'text-emerald-600 dark:text-emerald-400' },
-            { label: 'Inactive', value: inactiveLinks, sub: 'Disabled or paused links', icon: X, border: 'border-slate-200 dark:border-slate-800' },
-          ].map(({ label, value, sub, icon: Icon, border, valueCls }) => (
-            <div key={label} className={`bg-white dark:bg-[#111827] border ${border} rounded-2xl px-6 py-5 flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow`}>
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{label}</p>
-                <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
-                  <Icon size={15} className="text-slate-500 dark:text-slate-400" />
-                </div>
-              </div>
-              <div>
-                <p className={`text-3xl font-bold leading-none ${valueCls || 'text-slate-800 dark:text-white'}`}>{value}</p>
-                <p className="text-xs text-slate-400 mt-1.5">{sub}</p>
+          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl px-6 py-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Total Links</p>
+              <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
+                <LinkIcon size={16} className="text-slate-500 dark:text-slate-400" />
               </div>
             </div>
-          ))}
+            <div>
+              <p className="text-3xl font-bold text-slate-800 dark:text-white leading-none">{links.length}</p>
+              <p className="text-xs text-slate-400 mt-1.5">Payment links created</p>
+            </div>
+          </div>
+          <div className="bg-white dark:bg-[#111827] border border-emerald-100 dark:border-emerald-900/30 rounded-2xl px-6 py-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-widest">Active</p>
+              <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center">
+                <CheckCircle size={16} className="text-emerald-600" />
+              </div>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400 leading-none">{activeLinks}</p>
+              <p className="text-xs text-slate-400 mt-1.5">Currently accepting payments</p>
+            </div>
+          </div>
+          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl px-6 py-5 flex flex-col gap-4 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Inactive</p>
+              <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
+                <X size={16} className="text-slate-400" />
+              </div>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-slate-400 leading-none">{inactiveLinks}</p>
+              <p className="text-xs text-slate-400 mt-1.5">Disabled or paused links</p>
+            </div>
+          </div>
         </div>
       )}
 
       {/* ── Table ── */}
       <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         {loading ? (
-          <div className="flex justify-center items-center py-28">
-            <Loader2 className="animate-spin text-slate-400" size={26} />
-          </div>
+          <div className="flex justify-center items-center py-28"><Loader2 className="animate-spin text-blue-600" size={26} /></div>
         ) : links.length === 0 ? (
           <div className="py-24 text-center">
-            <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <LinkIcon size={20} />
-            </div>
+            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/10 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4"><LinkIcon size={20} /></div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">No Links Yet</h3>
             <p className="text-slate-400 text-xs mb-5">Create your first payment link to start accepting payments.</p>
             <button onClick={() => setShowChooser(true)}
@@ -909,9 +1043,9 @@ export default function PaymentLinks() {
           <div className="overflow-x-auto">
             <table className="w-full text-left whitespace-nowrap">
               <thead>
-                <tr className="bg-slate-50 dark:bg-[#0B1120] border-b border-slate-200 dark:border-slate-800">
+                <tr>
                   {['Product', 'Payment Link', 'Price', 'Discount', 'After Discount', 'Expires', 'Status', 'Actions'].map(h => (
-                    <th key={h} className="px-5 py-3.5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-[#0B1120]/60 border-b border-slate-100 dark:border-slate-800">
                       {h}
                     </th>
                   ))}
@@ -937,20 +1071,23 @@ export default function PaymentLinks() {
         )}
       </div>
 
-      {/* Modals */}
+      {/* ── Modals ── */}
       {showChooser && !createType && (
         <LinkTypeChooser onSelect={type => setCreateType(type)} onClose={() => setShowChooser(false)} />
       )}
       {createType && businessId && (
         <CreateLinkModal
-          type={createType} businessId={businessId} businessSlug={businessSlug}
-          businessName={businessName} existingLinks={links}
+          type={createType}
+          businessId={businessId}
+          businessSlug={businessSlug}
+          businessName={businessName}
+          existingLinks={links}
           onClose={() => { setCreateType(null); setShowChooser(false); }}
           onCreated={handleCreated}
         />
       )}
       {editLink && (
-        <EditExpiryModal link={editLink} onClose={() => setEditLink(null)} onUpdated={handleUpdated} />
+        <EditLinkModal link={editLink} slug={businessSlug} onClose={() => setEditLink(null)} onUpdated={handleUpdated} />
       )}
     </div>
   );

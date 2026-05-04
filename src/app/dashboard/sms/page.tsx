@@ -1,196 +1,250 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MessageSquare, Search, Loader2, Smartphone, CheckCircle2, Clock, ShieldAlert, X } from 'lucide-react';
+import {
+  MessageSquare, Search, Loader2, Smartphone,
+  CheckCircle2, Clock, RefreshCw
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-const providers: Record<string, { name: string; color: string }> = {
-  bkash:   { name: 'bKash',   color: 'text-pink-600 dark:text-pink-400' },
-  nagad:   { name: 'Nagad',   color: 'text-orange-500 dark:text-orange-400' },
-  rocket:  { name: 'Rocket',  color: 'text-purple-600 dark:text-purple-400' },
-  upay:    { name: 'Upay',    color: 'text-blue-600 dark:text-blue-400' },
-  unknown: { name: 'Unknown', color: 'text-slate-500 dark:text-slate-400' },
+// ─── Types ────────────────────────────────────────────────────────────────────
+type SmsTransaction = {
+  id: string;
+  merchant_id: string;
+  sender: string;         // column: sender
+  method: string;         // column: method
+  message: string;        // column: message
+  trx_id: string;         // column: trx_id
+  amount: number;         // column: amount
+  received_at: string;    // column: received_at
+  is_used: boolean;       // column: is_used → true = Success/Paid, false = Pending/Unused
+  created_at: string;
 };
 
-const getProvider = (method: string): { name: string; color: string } => {
-  const m = (method || '').toLowerCase();
-  for (const key of Object.keys(providers)) {
-    if (key !== 'unknown' && m.includes(key)) return providers[key];
+// ─── Method badge color map ───────────────────────────────────────────────────
+const methodColors: Record<string, { bg: string; text: string; border: string }> = {
+  bkash:  { bg: 'bg-pink-50 dark:bg-pink-900/20',   text: 'text-pink-700 dark:text-pink-300',   border: 'border-pink-200 dark:border-pink-800/40' },
+  nagad:  { bg: 'bg-orange-50 dark:bg-orange-900/20', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-800/40' },
+  rocket: { bg: 'bg-purple-50 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-800/40' },
+  upay:   { bg: 'bg-blue-50 dark:bg-blue-900/20',   text: 'text-blue-700 dark:text-blue-300',   border: 'border-blue-200 dark:border-blue-800/40' },
+};
+
+const getMethodColor = (method: string) => {
+  const key = method?.toLowerCase().replace(/\s/g, '') || '';
+  for (const [k, v] of Object.entries(methodColors)) {
+    if (key.includes(k)) return v;
   }
-  return providers.unknown;
+  return { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-500 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-700' };
 };
 
+// ─── Formatters ───────────────────────────────────────────────────────────────
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
 const formatTime = (d: string) =>
   new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function SmsData() {
   const [loading, setLoading] = useState(true);
-  const [smsList, setSmsList] = useState<any[]>([]);
-  const [filteredSms, setFilteredSms] = useState<any[]>([]);
+  const [smsList, setSmsList] = useState<SmsTransaction[]>([]);
+  const [filtered, setFiltered] = useState<SmsTransaction[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    const fetchSMS = async () => {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from('sms_transactions')
-          .select('id, sender, method, message, trx_id, amount, received_at, is_used, created_at')
-          .eq('merchant_id', user.id)
-          .order('received_at', { ascending: false });
-        if (data) { setSmsList(data); setFilteredSms(data); }
+  const fetchSMS = async () => {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (user) {
+      const { data, error } = await supabase
+        .from('sms_transactions')
+        .select('id, merchant_id, sender, method, message, trx_id, amount, received_at, is_used, created_at')
+        .eq('merchant_id', user.id)
+        .order('received_at', { ascending: false });
+
+      if (!error && data) {
+        setSmsList(data as SmsTransaction[]);
+        setFiltered(data as SmsTransaction[]);
       }
-      setLoading(false);
-    };
-    fetchSMS();
-  }, []);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchSMS(); }, []);
 
   useEffect(() => {
-    if (!searchTerm) { setFilteredSms(smsList); return; }
-    const s = searchTerm.toLowerCase();
-    setFilteredSms(smsList.filter(sms =>
-      sms.trx_id?.toLowerCase().includes(s) ||
-      sms.sender?.toLowerCase().includes(s) ||
-      sms.amount?.toString().includes(s) ||
-      sms.method?.toLowerCase().includes(s)
-    ));
+    if (!searchTerm.trim()) {
+      setFiltered(smsList);
+    } else {
+      const q = searchTerm.toLowerCase();
+      setFiltered(smsList.filter(s =>
+        (s.trx_id && s.trx_id.toLowerCase().includes(q)) ||
+        (s.sender && s.sender.toLowerCase().includes(q)) ||
+        (s.method && s.method.toLowerCase().includes(q)) ||
+        (s.amount && String(s.amount).includes(q))
+      ));
+    }
   }, [searchTerm, smsList]);
 
-  const getStatus = (sms: any) => {
-    if (sms.is_used) return { label: 'PAID', cls: 'text-emerald-500 dark:text-emerald-400', icon: CheckCircle2 };
-    return { label: 'PENDING', cls: 'text-amber-500 dark:text-amber-400', icon: Clock };
-  };
+  // Summary stats
+  const totalCount = smsList.length;
+  const usedCount = smsList.filter(s => s.is_used).length;
+  const pendingCount = smsList.filter(s => !s.is_used).length;
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
 
-      {/* Header */}
+      {/* ── Bold Top Bar ── */}
+      <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl px-6 py-4">
+        <h1 className="text-xl font-black text-white uppercase tracking-[0.15em] flex items-center gap-3">
+          <MessageSquare size={20} className="text-blue-400" />
+          SMS DATA
+        </h1>
+        <p className="text-slate-400 text-xs font-medium mt-0.5">
+          Real-time feed of all SMS received by your Android automated reader app.
+        </p>
+      </div>
+
+      {/* ── Controls ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">SMS</p>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <MessageSquare size={22} className="text-slate-600 dark:text-slate-400" />
-            SMS Log
-          </h1>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
-            Real-time feed of all SMS received by your Android automated reader app.
-          </p>
-        </div>
-        <div className="relative w-full md:w-80 group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 dark:group-focus-within:text-slate-300 transition-colors" size={15} />
+        <div className="relative w-full md:w-96 group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
           <input
             type="text"
-            placeholder="Search by TrxID, Sender, Amount..."
+            placeholder="Search by Trx ID, Sender, Method, Amount..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-11 pr-9 py-2.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-slate-400 dark:focus:border-slate-600 text-sm font-medium text-slate-900 dark:text-white transition-all shadow-sm"
+            className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 text-sm font-medium text-slate-900 dark:text-white transition-all shadow-sm"
           />
-          {searchTerm && (
-            <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors">
-              <X size={13} className="text-slate-400" />
-            </button>
-          )}
         </div>
+        <button onClick={fetchSMS}
+          className="flex items-center gap-2 h-10 px-4 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
+          <RefreshCw size={14} /> Refresh
+        </button>
       </div>
 
-      {/* App Sync Notice */}
-      <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-start gap-3">
-        <div className="w-9 h-9 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
-          <Smartphone size={16} className="text-slate-500 dark:text-slate-400" />
+      {/* ── Stats Cards ── */}
+      {!loading && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total SMS</p>
+            <p className="text-2xl font-black text-slate-900 dark:text-white">{totalCount}</p>
+          </div>
+          <div className="bg-white dark:bg-[#111827] border border-emerald-100 dark:border-emerald-900/30 rounded-2xl p-4 shadow-sm">
+            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Used / Paid</p>
+            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{usedCount}</p>
+          </div>
+          <div className="bg-white dark:bg-[#111827] border border-amber-100 dark:border-amber-900/30 rounded-2xl p-4 shadow-sm">
+            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1">Pending / Unused</p>
+            <p className="text-2xl font-black text-amber-600 dark:text-amber-400">{pendingCount}</p>
+          </div>
         </div>
+      )}
+
+      {/* ── App Connection Alert ── */}
+      <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-2xl p-4 flex items-start gap-4">
+        <div className="bg-blue-600 text-white p-2 rounded-lg shrink-0 mt-0.5"><Smartphone size={18} /></div>
         <div>
-          <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest mb-1">Android App Sync Status</h4>
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
-            Ensure your Android SMS Forwarder app is running in the background and connected to the internet. All incoming payment SMS will automatically appear here within 2 seconds.
+          <h4 className="text-sm font-bold text-blue-900 dark:text-blue-400 uppercase tracking-widest mb-1">Android App Sync Status</h4>
+          <p className="text-xs font-medium text-blue-700/80 dark:text-blue-300/80 leading-relaxed">
+            Ensure your Android SMS Forwarder app is running in the background. All incoming payment SMS will automatically appear here within 2 seconds.
           </p>
         </div>
       </div>
 
-      {/* Table */}
+      {/* ── Table ── */}
       <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+
         {loading ? (
           <div className="flex justify-center items-center py-32">
-            <Loader2 className="animate-spin text-slate-400" size={28} />
+            <Loader2 className="animate-spin text-blue-600" size={32} />
           </div>
-        ) : filteredSms.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="py-24 text-center">
-            <div className="w-14 h-14 bg-slate-50 dark:bg-[#0B1120] text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <MessageSquare size={22} />
+            <div className="w-16 h-16 bg-slate-50 dark:bg-[#0B1120] text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+              <MessageSquare size={24} />
             </div>
-            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase mb-2">No SMS Data Found</h3>
-            <p className="text-slate-400 text-xs font-medium max-w-sm mx-auto">
-              {searchTerm ? 'No SMS matches your search query.' : "Your app hasn't forwarded any SMS yet. Make sure the app is running and your API key is correctly set up."}
+            <h3 className="text-base font-bold text-slate-900 dark:text-white uppercase mb-2">No SMS Data Found</h3>
+            <p className="text-slate-500 text-sm font-medium max-w-sm mx-auto">
+              {searchTerm
+                ? 'No SMS matches your search query.'
+                : "Your app hasn't forwarded any SMS yet. Make sure the app is running and your API key is correctly set up."}
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse whitespace-nowrap">
               <thead>
-                <tr className="bg-slate-50 dark:bg-[#0B1120] border-b border-slate-200 dark:border-slate-800">
-                  {['Sender', 'Method', 'TRX ID', 'Amount', 'Message Preview', 'Received At', 'Status'].map(h => (
-                    <th key={h} className="px-5 py-3.5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                <tr className="bg-slate-50 dark:bg-[#0B1120]/60 border-b border-slate-100 dark:border-slate-800">
+                  {['Sender', 'Method', 'Message', 'Trx ID', 'Amount', 'Received At', 'Status'].map(h => (
+                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                {filteredSms.map((sms) => {
-                  const provider = getProvider(sms.method);
-                  const statusInfo = getStatus(sms);
-                  const StatusIcon = statusInfo.icon;
+                {filtered.map((sms) => {
+                  const mc = getMethodColor(sms.method);
+                  const isPaid = sms.is_used;
+
                   return (
-                    <tr key={sms.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
+                    <tr key={sms.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
 
                       {/* Sender */}
                       <td className="px-5 py-4">
-                        <p className="text-sm font-mono font-semibold text-slate-800 dark:text-slate-200">{sms.sender || 'Unknown'}</p>
+                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200 tracking-wider">
+                          {sms.sender || '—'}
+                        </p>
                       </td>
 
                       {/* Method */}
                       <td className="px-5 py-4">
-                        <span className={`text-xs font-bold uppercase tracking-wider ${provider.color}`}>
-                          {provider.name}
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider border ${mc.bg} ${mc.text} ${mc.border}`}>
+                          {sms.method || '—'}
                         </span>
-                        {sms.method && sms.method.toLowerCase() !== provider.name.toLowerCase() && (
-                          <p className="text-[10px] text-slate-400 mt-0.5">{sms.method}</p>
-                        )}
                       </td>
 
-                      {/* TRX ID */}
-                      <td className="px-5 py-4">
-                        <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">{sms.trx_id || '—'}</span>
-                      </td>
-
-                      {/* Amount */}
-                      <td className="px-5 py-4">
-                        <p className="text-sm font-black text-slate-900 dark:text-white">
-                          ৳{parseFloat(sms.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </p>
-                      </td>
-
-                      {/* Message Preview */}
-                      <td className="px-5 py-4 max-w-[220px]">
-                        <div className="bg-slate-50 dark:bg-[#0B1120] px-3 py-1.5 rounded-lg border border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate" title={sms.message}>
+                      {/* Message */}
+                      <td className="px-5 py-4 max-w-xs">
+                        <div
+                          title={sms.message}
+                          className="bg-slate-50 dark:bg-[#0B1120] px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 font-mono truncate max-w-[220px]">
                           {sms.message || '—'}
                         </div>
                       </td>
 
+                      {/* Trx ID */}
+                      <td className="px-5 py-4">
+                        <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
+                          {sms.trx_id || '—'}
+                        </span>
+                      </td>
+
+                      {/* Amount */}
+                      <td className="px-5 py-4">
+                        <p className="text-sm font-black text-emerald-700 dark:text-emerald-400">
+                          ৳ {parseFloat(String(sms.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </p>
+                      </td>
+
                       {/* Received At */}
                       <td className="px-5 py-4">
-                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{formatDate(sms.received_at)}</p>
+                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{formatDate(sms.received_at)}</p>
                         <p className="text-[10px] text-slate-400 mt-0.5">{formatTime(sms.received_at)}</p>
                       </td>
 
-                      {/* Status */}
+                      {/* Status — based on is_used */}
                       <td className="px-5 py-4">
-                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest ${statusInfo.cls}`}>
-                          <StatusIcon size={11} className={sms.is_used ? '' : 'animate-pulse'} />
-                          {statusInfo.label}
-                        </span>
+                        {isPaid ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 size={13} /> Success / Paid
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
+                            <Clock size={13} className="animate-pulse" /> Pending / Unused
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -200,11 +254,12 @@ export default function SmsData() {
           </div>
         )}
 
-        {!loading && filteredSms.length > 0 && (
+        {/* Footer */}
+        {!loading && filtered.length > 0 && (
           <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50">
             <p className="text-xs text-slate-400">
-              {filteredSms.length} records
-              {searchTerm && <> · filtered</>}
+              Showing <span className="font-semibold text-slate-700 dark:text-slate-200">{filtered.length}</span>{' '}
+              {filtered.length !== smsList.length ? `of ${smsList.length} ` : ''}SMS records
             </p>
           </div>
         )}

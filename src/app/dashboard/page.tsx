@@ -1,99 +1,94 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
-  DollarSign, Link as LinkIcon, Activity, Wallet, FileText, ArrowRight,
-  Loader2, Building2, Eye, X, Smartphone, CreditCard, TrendingUp, Clock,
-  Check, User, Mail, Phone, Search, ShoppingBag, Clock3
+  DollarSign, Link as LinkIcon, Activity, Wallet, FileText,
+  ArrowRight, Loader2, Building2, Eye, X, ShoppingCart,
+  TrendingUp, Package, CreditCard, Hash, User, Search,
+  ChevronLeft, ChevronRight, BarChart2, PieChart as PieChartIcon,
+  CheckCircle2, Clock, XCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+
+// ─── Recharts (bundled with most Next.js projects; add if missing: npm i recharts) ───
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
+  ResponsiveContainer,
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, PieChart, Pie, Cell, Legend
 } from 'recharts';
 
-// ─── SMS Modal ────────────────────────────────────────────────────────────────
-function SmsModal({ trxId, onClose }: { trxId: string; onClose: () => void }) {
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+// ─── Types ────────────────────────────────────────────────────────────────────
+type Order = {
+  id: string;
+  order_no: string;
+  customer_name: string | null;
+  customer_number: string | null;
+  customer_email: string | null;
+  amount: number;
+  currency: string;
+  method: string | null;
+  trx_id: string | null;
+  status: string;
+  product_name: string | null;
+  created_at: string;
+};
 
-  useEffect(() => {
-    const fetch = async () => {
-      setLoading(true);
-      const { data: sms, error } = await supabase
-        .from('sms_transactions')
-        .select('*')
-        .eq('trx_id', trxId)
-        .single();
-      if (error || !sms) setError('No SMS record found for this transaction.');
-      else setData(sms);
-      setLoading(false);
-    };
-    fetch();
-  }, [trxId]);
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const formatDate = (d: string) =>
+  new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
+const statusConfig = (s: string) => {
+  switch (s?.toLowerCase()) {
+    case 'paid': case 'success': case 'completed':
+      return { cls: 'text-emerald-600 dark:text-emerald-400 font-semibold', label: 'Success' };
+    case 'pending':
+      return { cls: 'text-amber-600 dark:text-amber-400 font-semibold', label: 'Pending' };
+    case 'rejected': case 'failed':
+      return { cls: 'text-red-500 dark:text-red-400 font-semibold', label: 'Rejected' };
+    case 'cancel': case 'cancelled':
+      return { cls: 'text-rose-500 dark:text-rose-400 font-semibold', label: 'Cancelled' };
+    default:
+      return { cls: 'text-slate-400 font-medium', label: s || 'Unknown' };
+  }
+};
+
+const PAGE_SIZE = 5;
+
+// ─── Trx Detail Modal ─────────────────────────────────────────────────────────
+function TrxModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
+  const badge = statusConfig(trx.status);
   return (
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-in zoom-in-95 duration-200"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
-              <Eye size={14} className="text-slate-600 dark:text-slate-300" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">SMS Verification</p>
-              <p className="text-[10px] text-slate-400 font-mono mt-0.5">#{trxId}</p>
-            </div>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm">Transaction Detail</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5 font-mono">{trx.trx_id || 'Awaiting'}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-            <X size={14} className="text-slate-400" />
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+            <X size={16} className="text-slate-400" />
           </button>
         </div>
-        <div className="p-5">
-          {loading ? (
-            <div className="flex justify-center items-center py-10">
-              <Loader2 className="animate-spin text-slate-400" size={22} />
+        <div className="px-6 py-5 space-y-3">
+          {[
+            { label: 'Order ID', value: trx.order_no, color: 'text-violet-600 dark:text-violet-400' },
+            { label: 'Trx ID', value: trx.trx_id || '—', color: 'text-blue-600 dark:text-blue-400 font-mono' },
+            { label: 'Product', value: trx.product_name || '—', color: 'text-teal-600 dark:text-teal-400' },
+            { label: 'Amount', value: `৳ ${parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: 'text-emerald-600 dark:text-emerald-400 font-bold' },
+            { label: 'Method', value: trx.method || '—', color: 'text-slate-700 dark:text-slate-300' },
+            { label: 'Date', value: formatDate(trx.created_at), color: 'text-slate-600 dark:text-slate-300' },
+          ].map(r => (
+            <div key={r.label} className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-800/60 last:border-0">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{r.label}</span>
+              <span className={`text-sm ${r.color}`}>{r.value}</span>
             </div>
-          ) : error ? (
-            <div className="text-center py-8">
-              <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <FileText size={16} className="text-slate-400" />
-              </div>
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{error}</p>
-              <p className="text-xs text-slate-400 mt-1">The sender may have used a manual entry.</p>
-            </div>
-          ) : data ? (
-            <div className="space-y-2.5">
-              {[
-                { icon: Smartphone, iconBg: 'bg-slate-100 dark:bg-slate-800', iconColor: 'text-slate-500', label: 'Sender', value: data.sender },
-                { icon: CreditCard, iconBg: 'bg-slate-100 dark:bg-slate-800', iconColor: 'text-slate-500', label: 'Method', value: data.method },
-                { icon: TrendingUp, iconBg: 'bg-slate-100 dark:bg-slate-800', iconColor: 'text-slate-500', label: 'Amount', value: `৳${Number(data.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, valueClass: 'text-emerald-600 dark:text-emerald-400 font-bold' },
-                { icon: Clock, iconBg: 'bg-slate-100 dark:bg-slate-800', iconColor: 'text-slate-500', label: 'Received', value: new Date(data.received_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) },
-              ].map(({ icon: Icon, iconBg, iconColor, label, value, valueClass }) => (
-                <div key={label} className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-7 h-7 ${iconBg} rounded-lg flex items-center justify-center`}>
-                      <Icon size={12} className={iconColor} />
-                    </div>
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{label}</p>
-                  </div>
-                  <p className={`text-sm font-semibold font-mono text-slate-900 dark:text-white ${valueClass || ''}`}>{value}</p>
-                </div>
-              ))}
-              <div className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[10px] font-semibold uppercase tracking-widest ${data.is_used ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>
-                {data.is_used ? <><Check size={10} /> Verified & Used</> : <><Clock size={10} /> Not Yet Used</>}
-              </div>
-            </div>
-          ) : null}
+          ))}
+          <div className="flex items-center justify-between py-2">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</span>
+            <span className={`text-sm ${badge.cls}`}>{badge.label}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -101,41 +96,25 @@ function SmsModal({ trxId, onClose }: { trxId: string; onClose: () => void }) {
 }
 
 // ─── Customer Modal ───────────────────────────────────────────────────────────
-function CustomerModal({ customer, onClose }: { customer: { name: string; email?: string; phone?: string }; onClose: () => void }) {
+function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
   return (
-    <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white dark:bg-[#111827] w-full max-w-xs rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-in zoom-in-95 duration-200"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
-              <User size={14} className="text-slate-600 dark:text-slate-300" />
-            </div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Customer Details</p>
-          </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-            <X size={14} className="text-slate-400" />
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="font-bold text-slate-900 dark:text-white text-sm">Customer Info</h3>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+            <X size={16} className="text-slate-400" />
           </button>
         </div>
-        <div className="p-5 space-y-2.5">
+        <div className="px-6 py-5 space-y-3">
           {[
-            { icon: User, label: 'Name', value: customer.name || 'Anonymous' },
-            { icon: Mail, label: 'Email', value: customer.email || '—' },
-            { icon: Phone, label: 'Phone', value: customer.phone || '—' },
-          ].map(({ icon: Icon, label, value }) => (
-            <div key={label} className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-                  <Icon size={12} className="text-slate-500" />
-                </div>
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{label}</p>
-              </div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">{value}</p>
+            { label: 'Name', value: trx.customer_name || '—' },
+            { label: 'Email', value: trx.customer_email || '—' },
+            { label: 'Phone', value: trx.customer_number || '—' },
+          ].map(r => (
+            <div key={r.label} className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-800/60 last:border-0">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{r.label}</span>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{r.value}</span>
             </div>
           ))}
         </div>
@@ -144,34 +123,37 @@ function CustomerModal({ customer, onClose }: { customer: { name: string; email?
   );
 }
 
-// ─── Status dot ───────────────────────────────────────────────────────────────
-function StatusDot({ status }: { status: string }) {
-  const s = status?.toLowerCase();
-  if (s === 'paid' || s === 'success' || s === 'completed')
-    return <span className="text-emerald-500 dark:text-emerald-400 font-semibold text-xs uppercase tracking-wide">Paid</span>;
-  if (s === 'pending')
-    return <span className="text-amber-500 dark:text-amber-400 font-semibold text-xs uppercase tracking-wide">Pending</span>;
-  return <span className="text-red-500 dark:text-red-400 font-semibold text-xs uppercase tracking-wide">Failed</span>;
-}
+// ─── Pie Chart Colors ─────────────────────────────────────────────────────────
+const PIE_COLORS = ['#10b981', '#f59e0b', '#ef4444', '#6366f1'];
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function DashboardHome() {
   const [loading, setLoading] = useState(true);
   const [businessId, setBusinessId] = useState<string | null>(null);
-  const [stats, setStats] = useState({ totalRevenue: 0, activeLinks: 0, successRate: 0, totalOrders: 0, pendingOrders: 0 });
-  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    activeLinks: 0,
+    successRate: 0,
+    totalOrders: 0,
+    pendingOrders: 0,
+  });
+
+  // Modals
+  const [trxModal, setTrxModal] = useState<Order | null>(null);
+  const [customerModal, setCustomerModal] = useState<Order | null>(null);
+
+  // Table
   const [searchTerm, setSearchTerm] = useState('');
-  const [smsTrxId, setSmsTrxId] = useState<string | null>(null);
-  const [customerModal, setCustomerModal] = useState<{ name: string; email?: string; phone?: string } | null>(null);
-  const [chartData, setChartData] = useState<any[]>([]);
-  const [pieData, setPieData] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchDashboardData = async (bizId: string) => {
     try {
       setLoading(true);
+
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
-        .select('amount, status, created_at, order_no, customer_name, customer_number, customer_email, method, trx_id, product_name')
+        .select('id, order_no, customer_name, customer_number, customer_email, amount, currency, method, trx_id, status, product_name, created_at')
         .eq('business_id', bizId)
         .order('created_at', { ascending: false });
 
@@ -184,11 +166,13 @@ export default function DashboardHome() {
         .eq('status', 'active');
 
       if (orders) {
-        const paidOrders = orders.filter((o: any) => ['paid', 'success', 'completed'].includes(o.status?.toLowerCase()));
-        const pendingOrders = orders.filter((o: any) => o.status?.toLowerCase() === 'pending');
+        const paidOrders = orders.filter((o: any) =>
+          o.status === 'paid' || o.status === 'success' || o.status === 'completed');
+        const pendingOrders = orders.filter((o: any) => o.status === 'pending');
         const totalRev = paidOrders.reduce((sum: number, o: any) => sum + parseFloat(o.amount || '0'), 0);
         const rate = orders.length > 0 ? (paidOrders.length / orders.length) * 100 : 0;
 
+        setAllOrders(orders as Order[]);
         setStats({
           totalRevenue: totalRev,
           activeLinks: linksCount || 0,
@@ -196,31 +180,6 @@ export default function DashboardHome() {
           totalOrders: orders.length,
           pendingOrders: pendingOrders.length,
         });
-
-        setRecentTransactions(orders.slice(0, 5));
-
-        // Line chart: last 7 days revenue
-        const now = new Date();
-        const last7: { date: string; revenue: number }[] = [];
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date(now);
-          d.setDate(d.getDate() - i);
-          const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const dayRev = paidOrders
-            .filter((o: any) => new Date(o.created_at).toDateString() === d.toDateString())
-            .reduce((s: number, o: any) => s + parseFloat(o.amount || '0'), 0);
-          last7.push({ date: label, revenue: dayRev });
-        }
-        setChartData(last7);
-
-        // Pie chart: status distribution
-        const statusCount: Record<string, number> = {};
-        orders.forEach((o: any) => {
-          const s = ['paid', 'success', 'completed'].includes(o.status?.toLowerCase()) ? 'Paid' :
-            o.status?.toLowerCase() === 'pending' ? 'Pending' : 'Failed';
-          statusCount[s] = (statusCount[s] || 0) + 1;
-        });
-        setPieData(Object.entries(statusCount).map(([name, value]) => ({ name, value })));
       }
     } catch {
       toast.error('Failed to load dashboard data.');
@@ -230,23 +189,64 @@ export default function DashboardHome() {
   };
 
   useEffect(() => {
-    const loadData = () => {
-      const activeId = localStorage.getItem('active_business_id');
-      if (activeId) { setBusinessId(activeId); fetchDashboardData(activeId); }
+    const load = () => {
+      const id = localStorage.getItem('active_business_id');
+      if (id) { setBusinessId(id); fetchDashboardData(id); }
       else setLoading(false);
     };
-    loadData();
-    window.addEventListener('businessChanged', loadData);
-    return () => window.removeEventListener('businessChanged', loadData);
+    load();
+    window.addEventListener('businessChanged', load);
+    return () => window.removeEventListener('businessChanged', load);
   }, []);
 
-  const filtered = recentTransactions.filter(t => {
-    if (!searchTerm) return true;
-    const s = searchTerm.toLowerCase();
-    return (t.trx_id?.toLowerCase().includes(s) || t.order_no?.toLowerCase().includes(s));
-  });
+  // ─── Derived analytics data ───────────────────────────────────────────────
+  const chartData = useMemo(() => {
+    // Last 7 days revenue line chart
+    const last7 = Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return {
+        day: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        fullDate: d.toDateString(),
+        revenue: 0,
+        orders: 0,
+      };
+    });
+    allOrders.forEach((o) => {
+      const isPaid = o.status === 'paid' || o.status === 'success' || o.status === 'completed';
+      const d = new Date(o.created_at).toDateString();
+      const slot = last7.find(x => x.fullDate === d);
+      if (slot) {
+        slot.orders++;
+        if (isPaid) slot.revenue += parseFloat(String(o.amount || 0));
+      }
+    });
 
-  const PIE_COLORS = ['#10b981', '#f59e0b', '#ef4444'];
+    // Status distribution pie
+    const statusMap: Record<string, number> = {};
+    allOrders.forEach(o => {
+      const key = statusConfig(o.status).label;
+      statusMap[key] = (statusMap[key] || 0) + 1;
+    });
+    const pieData = Object.entries(statusMap).map(([name, value]) => ({ name, value }));
+
+    return { last7, pieData };
+  }, [allOrders]);
+
+  // ─── Filtered + paginated table ───────────────────────────────────────────
+  const filteredOrders = useMemo(() => {
+    if (!searchTerm.trim()) return allOrders;
+    const q = searchTerm.toLowerCase();
+    return allOrders.filter(o =>
+      (o.trx_id && o.trx_id.toLowerCase().includes(q)) ||
+      (o.order_no && o.order_no.toLowerCase().includes(q))
+    );
+  }, [allOrders, searchTerm]);
+
+  const totalPages = Math.ceil(filteredOrders.length / PAGE_SIZE);
+  const paginatedOrders = filteredOrders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => { setCurrentPage(1); }, [searchTerm]);
 
   if (!businessId) {
     return (
@@ -255,223 +255,300 @@ export default function DashboardHome() {
           <Building2 size={32} />
         </div>
         <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase">No Workspace Selected</h2>
-        <p className="text-slate-500 mt-2 font-medium">Please select a business from the sidebar to view its performance.</p>
+        <p className="text-slate-500 mt-2 font-medium text-sm">Select a business from the sidebar to view its performance.</p>
       </div>
     );
   }
-
-  const statCards = [
-    {
-      label: 'Total Revenue',
-      value: `৳ ${stats.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
-      icon: DollarSign,
-      iconBg: 'bg-slate-100 dark:bg-slate-800',
-      iconColor: 'text-slate-600 dark:text-slate-300',
-    },
-    {
-      label: 'Active Links',
-      value: stats.activeLinks,
-      icon: LinkIcon,
-      iconBg: 'bg-slate-100 dark:bg-slate-800',
-      iconColor: 'text-slate-600 dark:text-slate-300',
-    },
-    {
-      label: 'Success Rate',
-      value: `${stats.successRate.toFixed(1)}%`,
-      icon: Activity,
-      iconBg: 'bg-slate-100 dark:bg-slate-800',
-      iconColor: 'text-slate-600 dark:text-slate-300',
-    },
-    {
-      label: 'Total Orders',
-      value: stats.totalOrders,
-      icon: Wallet,
-      iconBg: 'bg-slate-100 dark:bg-slate-800',
-      iconColor: 'text-slate-600 dark:text-slate-300',
-    },
-    {
-      label: 'Pending Orders',
-      value: stats.pendingOrders,
-      icon: Clock3,
-      iconBg: 'bg-amber-50 dark:bg-amber-900/20',
-      iconColor: 'text-amber-600',
-    },
-  ];
 
   return (
     <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
       {/* Modals */}
-      {smsTrxId && <SmsModal trxId={smsTrxId} onClose={() => setSmsTrxId(null)} />}
-      {customerModal && <CustomerModal customer={customerModal} onClose={() => setCustomerModal(null)} />}
+      {trxModal && <TrxModal trx={trxModal} onClose={() => setTrxModal(null)} />}
+      {customerModal && <CustomerModal trx={customerModal} onClose={() => setCustomerModal(null)} />}
 
-      {/* Header */}
+      {/* ── Header ── */}
       <div>
         <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Overview</h1>
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Track your payments, links, and business performance.</p>
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
+          Track your payments, links, and business growth dynamically.
+        </p>
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center py-24">
-          <Loader2 className="animate-spin text-slate-400" size={36} />
+        <div className="flex justify-center items-center py-20">
+          <Loader2 className="animate-spin text-blue-600" size={40} />
         </div>
       ) : (
         <>
-          {/* Stat Cards */}
+          {/* ── Stats Cards (5 cards) ── */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {statCards.map((card) => {
-              const Icon = card.icon;
-              return (
-                <div key={card.label} className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
-                  <div className={`w-8 h-8 rounded-lg ${card.iconBg} flex items-center justify-center mb-3`}>
-                    <Icon size={16} className={card.iconColor} />
-                  </div>
-                  <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">{card.label}</p>
-                  <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">{card.value}</p>
-                </div>
-              );
-            })}
-          </div>
 
-          {/* Analytics Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            {/* Line Chart */}
-            <div className="lg:col-span-2 bg-white dark:bg-[#111827] rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-5">
-              <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-5">Revenue — Last 7 Days</h3>
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => `৳${v}`} />
-                  <Tooltip
-                    contentStyle={{ background: 'var(--color-bg, #fff)', border: '1px solid rgba(148,163,184,0.2)', borderRadius: 12, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', fontSize: 12 }}
-                    formatter={(v: any) => [`৳${Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 'Revenue']}
-                  />
-                  <Line type="monotone" dataKey="revenue" stroke="#64748b" strokeWidth={2} dot={{ r: 3, fill: '#64748b', strokeWidth: 0 }} activeDot={{ r: 5 }} />
-                </LineChart>
-              </ResponsiveContainer>
+            {/* Total Revenue */}
+            <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <DollarSign size={18} />
+              </div>
+              <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total Revenue</p>
+              <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">
+                ৳ {stats.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </p>
             </div>
 
-            {/* Pie Chart */}
-            <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-5">
-              <h3 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-5">Order Distribution</h3>
-              {pieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={180}>
+            {/* Active Links */}
+            <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
+              <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <LinkIcon size={18} />
+              </div>
+              <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Active Links</p>
+              <p className="text-lg font-black text-slate-900 dark:text-white">{stats.activeLinks}</p>
+            </div>
+
+            {/* Success Rate */}
+            <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <Activity size={18} />
+              </div>
+              <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Success Rate</p>
+              <p className="text-lg font-black text-slate-900 dark:text-white">
+                {stats.successRate.toFixed(1)}<span className="text-sm text-slate-400">%</span>
+              </p>
+            </div>
+
+            {/* Total Orders */}
+            <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
+              <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-900/20 text-orange-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <ShoppingCart size={18} />
+              </div>
+              <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total Orders</p>
+              <p className="text-lg font-black text-slate-900 dark:text-white">{stats.totalOrders}</p>
+            </div>
+
+            {/* Pending Orders */}
+            <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group col-span-2 sm:col-span-1">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <Clock size={18} />
+              </div>
+              <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">Pending Orders</p>
+              <p className="text-lg font-black text-slate-900 dark:text-white">{stats.pendingOrders}</p>
+            </div>
+          </div>
+
+          {/* ── Analytics Charts ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+            {/* Revenue Line/Bar Chart */}
+            <div className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart2 size={16} className="text-blue-600" />
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white">Revenue — Last 7 Days</h3>
+              </div>
+              {chartData.last7.every(d => d.revenue === 0) ? (
+                <div className="h-48 flex items-center justify-center text-sm text-slate-400">No revenue data yet.</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={chartData.last7} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" strokeOpacity={0.5} />
+                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{ background: 'var(--tooltip-bg, #1e293b)', border: 'none', borderRadius: 10, fontSize: 12, color: '#f1f5f9' }}
+                      formatter={(v: any) => [`৳ ${Number(v).toLocaleString('en-IN')}`, 'Revenue']}
+                    />
+                    <Bar dataKey="revenue" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            {/* Status Pie Chart */}
+            <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <PieChartIcon size={16} className="text-purple-600" />
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white">Order Status</h3>
+              </div>
+              {chartData.pieData.length === 0 ? (
+                <div className="h-48 flex items-center justify-center text-sm text-slate-400">No orders yet.</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
-                      {pieData.map((_, index) => (
-                        <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    <Pie data={chartData.pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80}
+                      dataKey="value" paddingAngle={3}>
+                      {chartData.pieData.map((_, i) => (
+                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      contentStyle={{ background: 'var(--color-bg, #fff)', border: '1px solid rgba(148,163,184,0.2)', borderRadius: 12, fontSize: 12 }}
-                    />
+                    <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 10, fontSize: 12, color: '#f1f5f9' }} />
                     <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
                   </PieChart>
                 </ResponsiveContainer>
-              ) : (
-                <div className="h-[180px] flex items-center justify-center text-slate-400 text-sm">No data</div>
               )}
             </div>
           </div>
 
-          {/* Recent Transactions */}
+          {/* ── Recent Transactions Table ── */}
           <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+
+            {/* Table header */}
             <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <h2 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <FileText size={14} /> Recent Transactions
+              <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                <FileText size={16} className="text-blue-600" /> Recent Transactions
               </h2>
               <div className="flex items-center gap-3">
+                {/* Search */}
                 <div className="relative">
-                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
                   <input
                     type="text"
-                    placeholder="Search TRX ID or Order..."
+                    placeholder="Search Trx ID or Order ID..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="pl-8 pr-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white outline-none focus:border-slate-400 dark:focus:border-slate-500 transition-colors w-48"
+                    className="pl-8 pr-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-white outline-none focus:border-blue-500 transition-colors w-52"
                   />
                 </div>
-                <Link href="/dashboard/transactions" className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 hover:text-slate-900 dark:hover:text-white transition-colors">
-                  View All <ArrowRight size={12} />
+                <Link href="/dashboard/transactions"
+                  className="text-[11px] font-bold text-blue-600 flex items-center gap-1 hover:gap-2 transition-all whitespace-nowrap">
+                  View All <ArrowRight size={13} />
                 </Link>
               </div>
             </div>
 
-            {filtered.length === 0 ? (
-              <div className="p-10 text-center text-slate-400 text-sm font-medium">No transactions to display.</div>
+            {paginatedOrders.length === 0 ? (
+              <div className="p-10 text-center text-slate-400 text-sm font-medium">
+                {searchTerm ? 'No transactions match your search.' : 'No recent transactions to display.'}
+              </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse whitespace-nowrap min-w-[700px]">
+              <div className="w-full overflow-x-auto">
+                <table className="w-full text-left border-collapse whitespace-nowrap min-w-[780px]">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-[#0B1120] text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      <th className="px-5 py-3.5">Date</th>
-                      <th className="px-5 py-3.5">TRX ID</th>
-                      <th className="px-5 py-3.5">Order ID</th>
-                      <th className="px-5 py-3.5">Product</th>
-                      <th className="px-5 py-3.5">Customer</th>
-                      <th className="px-5 py-3.5">Amount</th>
-                      <th className="px-5 py-3.5">Method</th>
-                      <th className="px-5 py-3.5 text-right">Status</th>
+                    <tr className="bg-slate-50 dark:bg-[#0B1120]/60 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      <th className="px-5 py-3">Date</th>
+                      <th className="px-5 py-3">Trx ID</th>
+                      <th className="px-5 py-3">Order ID</th>
+                      <th className="px-5 py-3">Customer</th>
+                      <th className="px-5 py-3">Product</th>
+                      <th className="px-5 py-3">Amount</th>
+                      <th className="px-5 py-3">Method</th>
+                      <th className="px-5 py-3">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                    {filtered.slice(0, 5).map((trx, index) => (
-                      <tr key={index} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/10 transition-colors">
-                        <td className="px-5 py-4">
-                          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                            {new Date(trx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </p>
-                          <p className="text-[10px] text-slate-400">{new Date(trx.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
-                        </td>
-                        <td className="px-5 py-4">
-                          {trx.trx_id ? (
+                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800/40">
+                    {paginatedOrders.map((trx) => {
+                      const badge = statusConfig(trx.status);
+                      return (
+                        <tr key={trx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+
+                          {/* Date */}
+                          <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            {formatDate(trx.created_at)}
+                          </td>
+
+                          {/* Trx ID + eye */}
+                          <td className="px-5 py-3.5">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">#{trx.trx_id}</span>
-                              <button
-                                onClick={() => setSmsTrxId(trx.trx_id)}
-                                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                              >
+                              <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
+                                {trx.trx_id || '—'}
+                              </span>
+                              {trx.trx_id && (
+                                <button onClick={() => setTrxModal(trx)}
+                                  className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                                  <Eye size={12} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Order ID */}
+                          <td className="px-5 py-3.5">
+                            <span className="text-xs font-bold text-violet-600 dark:text-violet-400">
+                              {trx.order_no || '—'}
+                            </span>
+                          </td>
+
+                          {/* Customer + eye */}
+                          <td className="px-5 py-3.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                                {trx.customer_name || 'Anonymous'}
+                              </span>
+                              <button onClick={() => setCustomerModal(trx)}
+                                className="p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
                                 <Eye size={12} />
                               </button>
                             </div>
-                          ) : (
-                            <span className="text-xs text-slate-400 italic">Awaiting</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">{trx.order_no || '—'}</span>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-1.5">
-                            <ShoppingBag size={11} className="text-slate-400 shrink-0" />
-                            <span className="text-xs font-medium text-slate-700 dark:text-slate-300 max-w-[100px] truncate">{trx.product_name || '—'}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{trx.customer_name || 'Anonymous'}</span>
-                            <button
-                              onClick={() => setCustomerModal({ name: trx.customer_name, email: trx.customer_email, phone: trx.customer_number })}
-                              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                            >
-                              <Eye size={12} />
-                            </button>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className="text-sm font-black text-slate-900 dark:text-white">৳{parseFloat(trx.amount).toLocaleString('en-IN')}</span>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg uppercase tracking-wider">{trx.method || 'Auto'}</span>
-                        </td>
-                        <td className="px-5 py-4 text-right">
-                          <StatusDot status={trx.status} />
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+
+                          {/* Product */}
+                          <td className="px-5 py-3.5">
+                            <span className="text-xs font-semibold text-teal-600 dark:text-teal-400">
+                              {trx.product_name || '—'}
+                            </span>
+                          </td>
+
+                          {/* Amount */}
+                          <td className="px-5 py-3.5">
+                            <span className="text-xs font-black text-emerald-700 dark:text-emerald-400">
+                              ৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                            </span>
+                          </td>
+
+                          {/* Method */}
+                          <td className="px-5 py-3.5">
+                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md uppercase tracking-wide">
+                              {trx.method || 'Auto'}
+                            </span>
+                          </td>
+
+                          {/* Status — text-only, no bg */}
+                          <td className="px-5 py-3.5">
+                            <span className={`text-xs ${badge.cls}`}>{badge.label}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {filteredOrders.length > 0 && (
+              <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between gap-3">
+                <p className="text-xs text-slate-400">
+                  Showing{' '}
+                  <span className="text-slate-700 dark:text-slate-200 font-medium">
+                    {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)}
+                  </span>{' '}
+                  of <span className="text-slate-700 dark:text-slate-200 font-medium">{filteredOrders.length}</span>
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-1.5 rounded-lg text-slate-500 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <ChevronLeft size={14} />
+                  </button>
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    const page = totalPages <= 5 ? i + 1
+                      : currentPage <= 3 ? i + 1
+                      : currentPage >= totalPages - 2 ? totalPages - 4 + i
+                      : currentPage - 2 + i;
+                    return (
+                      <button key={page} onClick={() => setCurrentPage(page)}
+                        className={`w-7 h-7 text-xs font-medium rounded-lg transition-colors ${currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                        {page}
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                    className="p-1.5 rounded-lg text-slate-500 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
               </div>
             )}
           </div>
