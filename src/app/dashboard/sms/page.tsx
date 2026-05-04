@@ -49,7 +49,7 @@ function SmsDataContent() {
   const [currentBusinessId, setCurrentBusinessId] = useState<string | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null); // For Modal
 
-  // Sync Business ID from LocalStorage like other pages
+  // Sync Business ID from LocalStorage
   useEffect(() => {
     const loadId = () => setCurrentBusinessId(localStorage.getItem('active_business_id'));
     loadId();
@@ -67,7 +67,6 @@ function SmsDataContent() {
         .eq('merchant_id', user.id)
         .order('received_at', { ascending: false });
 
-      // Apply business filter correctly
       if (activeTab === 'business' && currentBusinessId) {
         query = query.eq('business_id', currentBusinessId);
       }
@@ -121,7 +120,7 @@ function SmsDataContent() {
               </button>
             </div>
             <div className="p-6">
-              <p className="text-xs text-slate-700 dark:text-slate-300 font-mono leading-relaxed whitespace-pre-wrap bg-slate-50 dark:bg-[#0B1120] p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+              <p className="text-sm text-slate-700 dark:text-slate-300 font-mono leading-relaxed whitespace-pre-wrap bg-slate-50 dark:bg-[#0B1120] p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                 {selectedMessage}
               </p>
             </div>
@@ -129,83 +128,83 @@ function SmsDataContent() {
         </div>
       )}
 
-      {/* ── Bold Top Bar ── */}
-      <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-black text-white uppercase tracking-[0.15em] flex items-center gap-3">
-            <MessageSquare size={20} className="text-blue-400" />
-            SMS DATA
-          </h1>
-          <p className="text-slate-400 text-xs font-medium mt-0.5">
-            Real-time feed of all SMS received by your Android automated reader app.
-          </p>
+      {/* ── Top Bar (Redesigned like App Sync Card) ── */}
+      <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-2xl p-5 md:p-6 flex flex-col xl:flex-row xl:items-center justify-between gap-5 shadow-sm">
+        <div className="flex items-start md:items-center gap-4">
+          <div className="bg-blue-600 text-white p-3 rounded-xl shrink-0 shadow-sm mt-0.5 md:mt-0">
+            <MessageSquare size={22} />
+          </div>
+          <div>
+            <h1 className="text-lg md:text-xl font-black text-blue-900 dark:text-blue-400 uppercase tracking-widest">
+              SMS DATA
+            </h1>
+            <p className="text-xs md:text-sm font-medium text-blue-700/80 dark:text-blue-300/80 mt-1">
+              Real-time feed of all SMS received by your Android automated reader app.
+            </p>
+          </div>
+        </div>
+
+        {/* ── Tabs (Matched with light blue theme) ── */}
+        <div className="flex bg-white/60 dark:bg-[#111827]/60 p-1.5 rounded-xl shadow-sm border border-blue-200/50 dark:border-blue-800/50 w-full xl:w-auto">
+          <button onClick={() => setActiveTab('all')}
+            className={`flex-1 xl:flex-none flex items-center justify-center gap-2 px-4 py-2.5 text-[11px] sm:text-sm font-bold rounded-lg transition-all ${
+              activeTab === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-800'
+            }`}>
+            <Globe size={16} /> All Merchants
+          </button>
+          <button onClick={() => setActiveTab('business')}
+            className={`flex-1 xl:flex-none flex items-center justify-center gap-2 px-4 py-2.5 text-[11px] sm:text-sm font-bold rounded-lg transition-all ${
+              activeTab === 'business' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-white dark:hover:bg-slate-800'
+            }`}>
+            <Building2 size={16} /> Selected Business
+          </button>
         </div>
       </div>
-
-      {/* ── Stats Cards (3 Columns on Mobile) ── */}
+            {/* ── Stats Cards (3 Columns on Mobile, Size Increased) ── */}
       {!loading && (
-        <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-center">
-            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total SMS</p>
-            <p className="text-sm sm:text-2xl font-black text-slate-900 dark:text-white">{totalCount}</p>
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-5">
+          <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm flex flex-col justify-center">
+            <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Total SMS</p>
+            <p className="text-base sm:text-3xl font-black text-slate-900 dark:text-white">{totalCount}</p>
           </div>
-          <div className="bg-white dark:bg-[#111827] border border-emerald-100 dark:border-emerald-900/30 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-center">
-            <p className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Used / Paid</p>
-            <p className="text-sm sm:text-2xl font-black text-emerald-600 dark:text-emerald-400">{usedCount}</p>
+          <div className="bg-white dark:bg-[#111827] border border-emerald-100 dark:border-emerald-900/30 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm flex flex-col justify-center">
+            <p className="text-[10px] sm:text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1.5">Used</p>
+            <p className="text-base sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">{usedCount}</p>
           </div>
-          <div className="bg-white dark:bg-[#111827] border border-amber-100 dark:border-amber-900/30 rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col justify-center">
-            <p className="text-[9px] sm:text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1">Pending</p>
-            <p className="text-sm sm:text-2xl font-black text-amber-600 dark:text-amber-400">{pendingCount}</p>
+          <div className="bg-white dark:bg-[#111827] border border-amber-100 dark:border-amber-900/30 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm flex flex-col justify-center">
+            <p className="text-[10px] sm:text-xs font-bold text-amber-600 uppercase tracking-widest mb-1.5">Unused</p>
+            <p className="text-base sm:text-3xl font-black text-amber-600 dark:text-amber-400">{pendingCount}</p>
           </div>
         </div>
       )}
 
       {/* ── App Connection Alert ── */}
-      <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-2xl p-4 flex items-start gap-4">
-        <div className="bg-blue-600 text-white p-2 rounded-lg shrink-0 mt-0.5"><Smartphone size={18} /></div>
+      <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-900/30 rounded-2xl p-4 flex items-start gap-4">
+        <div className="bg-indigo-600 text-white p-2 rounded-lg shrink-0 mt-0.5"><Smartphone size={18} /></div>
         <div>
-          <h4 className="text-sm font-bold text-blue-900 dark:text-blue-400 uppercase tracking-widest mb-1">Android App Sync Status</h4>
-          <p className="text-[11px] sm:text-xs font-medium text-blue-700/80 dark:text-blue-300/80 leading-relaxed">
+          <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-400 uppercase tracking-widest mb-1">Android App Sync Status</h4>
+          <p className="text-[11px] sm:text-xs font-medium text-indigo-700/80 dark:text-indigo-300/80 leading-relaxed">
             Ensure your Android SMS Forwarder app is running in the background. All incoming payment SMS will automatically appear here within 2 seconds.
           </p>
         </div>
       </div>
 
-      {/* ── Controls (Tabs + Search + Refresh) properly placed above the list ── */}
-      <div className="flex flex-col-reverse md:flex-row md:items-center justify-between gap-4">
-        
-        {/* Tabs */}
-        <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 w-full md:w-auto">
-          <button onClick={() => setActiveTab('all')}
-            className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-[11px] sm:text-sm font-bold rounded-lg transition-all ${
-              activeTab === 'all' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-            }`}>
-            <Globe size={14} /> All Merchants
-          </button>
-          <button onClick={() => setActiveTab('business')}
-            className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-[11px] sm:text-sm font-bold rounded-lg transition-all ${
-              activeTab === 'business' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-            }`}>
-            <Building2 size={14} /> Selected Business
-          </button>
+      {/* ── Controls (Search + Refresh) ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="relative w-full md:w-96 group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+          <input
+            type="text"
+            placeholder="Search SMS..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 text-sm font-medium text-slate-900 dark:text-white transition-all shadow-sm"
+          />
         </div>
-
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <div className="relative flex-grow">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={14} />
-            <input
-              type="text"
-              placeholder="Search SMS..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 text-xs font-medium text-slate-900 dark:text-white transition-all shadow-sm"
-            />
-          </div>
-          <button onClick={fetchSMS}
-            className="flex items-center justify-center gap-2 h-[34px] md:h-9 px-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          </button>
-        </div>
+        <button onClick={fetchSMS}
+          className="flex items-center justify-center gap-2 h-10 px-4 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh List
+        </button>
       </div>
 
       {/* ── Table ── */}
@@ -228,10 +227,10 @@ function SmsDataContent() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse whitespace-nowrap">
+            <table className="w-full text-left border-collapse whitespace-nowrap min-w-[900px]">
               <thead>
                 <tr className="bg-slate-50 dark:bg-[#0B1120]/60 border-b border-slate-100 dark:border-slate-800">
-                  {['Sender', 'Method', 'Message', 'Trx ID', 'Amount', 'Received At', 'Status'].map(h => (
+                  {['Sender', 'Method', 'Message Detail', 'Trx ID', 'Amount', 'Date & Time', 'Status'].map(h => (
                     <th key={h} className="px-5 py-3.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                       {h}
                     </th>
@@ -246,55 +245,56 @@ function SmsDataContent() {
                   return (
                     <tr key={sms.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
                       {/* Sender */}
-                      <td className="px-5 py-3.5">
+                      <td className="px-5 py-4">
                         <p className="text-xs font-bold text-slate-700 dark:text-slate-200 tracking-wider">
                           {sms.sender || '—'}
                         </p>
                       </td>
 
-                      {/* Method (Solid Text, No BG) */}
-                      <td className={`px-5 py-3.5 text-xs font-bold uppercase tracking-wider ${methodColor}`}>
+                      {/* Method */}
+                      <td className={`px-5 py-4 text-xs font-black uppercase tracking-wider ${methodColor}`}>
                         {sms.method || '—'}
                       </td>
 
-                      {/* Message Clickable Modal */}
-                      <td className="px-5 py-3.5 max-w-[150px] sm:max-w-xs">
+                      {/* Message Clickable Box (Boxed, Bold, Interactive) */}
+                      <td className="px-5 py-4 max-w-[200px] sm:max-w-[250px]">
                         <div
                           onClick={() => setSelectedMessage(sms.message)}
-                          className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                          title="Click to view full message"
+                          className="inline-block w-full bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 font-mono truncate cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-all shadow-sm">
                           {sms.message || '—'}
                         </div>
                       </td>
 
                       {/* Trx ID */}
-                      <td className="px-5 py-3.5">
+                      <td className="px-5 py-4">
                         <span className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400">
                           {sms.trx_id || '—'}
                         </span>
                       </td>
 
                       {/* Amount */}
-                      <td className="px-5 py-3.5">
-                        <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                      <td className="px-5 py-4">
+                        <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">
                           ৳ {parseFloat(String(sms.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </p>
                       </td>
 
-                      {/* Received At */}
-                      <td className="px-5 py-3.5">
-                        <p className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{formatDate(sms.received_at)}</p>
-                        <p className="text-[9px] font-bold text-slate-400 mt-0.5">{formatTime(sms.received_at)}</p>
+                      {/* Date & Time (Increased Size & Bold) */}
+                      <td className="px-5 py-4">
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{formatDate(sms.received_at)}</p>
+                        <p className="text-[10px] font-bold text-slate-400 mt-1">{formatTime(sms.received_at)}</p>
                       </td>
 
-                      {/* Status */}
-                      <td className="px-5 py-3.5">
+                      {/* Status (Used / Unused) */}
+                      <td className="px-5 py-4">
                         {isPaid ? (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                            <CheckCircle2 size={12} /> Success
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 size={14} /> Used
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                            <Clock size={12} className="animate-pulse" /> Pending
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
+                            <Clock size={14} className="animate-pulse" /> Unused
                           </span>
                         )}
                       </td>
@@ -328,3 +328,4 @@ export default function SmsData() {
     </Suspense>
   );
 }
+
