@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, Suspense, useRef } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   MessageSquare, Search, Loader2, Package, Activity,
   CheckCircle2, Clock, RefreshCw, Building2, Globe, X,
@@ -44,6 +44,28 @@ const formatTime = (d: string) =>
 
 const PAGE_SIZE = 20;
 
+// ─── Skeleton Components ──────────────────────────────────────────────────────
+function StatSkeleton() {
+  return (
+    <div className="grid grid-cols-3 gap-2.5 sm:gap-4 animate-pulse">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="bg-slate-100 dark:bg-slate-800/50 h-24 sm:h-32 rounded-2xl border border-slate-200 dark:border-slate-800" />
+      ))}
+    </div>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <div className="space-y-3 p-5 animate-pulse">
+      <div className="h-10 bg-slate-100 dark:bg-slate-800 rounded-xl w-full mb-6" />
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className="h-14 bg-slate-50 dark:bg-slate-800/30 rounded-lg w-full" />
+      ))}
+    </div>
+  );
+}
+
 // ─── Main Component Body ──────────────────────────────────────────────────────
 function SmsDataContent() {
   const [loading, setLoading] = useState(true);
@@ -52,9 +74,9 @@ function SmsDataContent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'business'>('all');
   const [currentBusinessId, setCurrentBusinessId] = useState<string | null>(null);
-  
-  // New States for Extra Features
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
+  
+  // States for Extra Features
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilter, setShowFilter] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
@@ -76,6 +98,39 @@ function SmsDataContent() {
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // REALTIME SYNC
+  useEffect(() => {
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const channel = supabase
+        .channel('sms-realtime-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'sms_transactions',
+            filter: `merchant_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const newSms = payload.new as SmsTransaction;
+            // Add new SMS to the top of the list in real-time
+            setSmsList((prev) => [newSms, ...prev]);
+            toast.success('New SMS received!');
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+
+    setupRealtime();
   }, []);
 
   const fetchSMS = async () => {
@@ -156,7 +211,7 @@ function SmsDataContent() {
   return (
     <div className="max-w-[1600px] mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
 
-      {/* ── Message Modal ── */}
+      {/* ── Message Modal (Raw Message without Masking) ── */}
       {selectedMessage && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedMessage(null)}>
           <div className="bg-white dark:bg-[#0B1120] w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -174,6 +229,7 @@ function SmsDataContent() {
               </div>
             </div>
             <div className="p-6">
+              {/* No masking applied, exact database string */}
               <p className="text-sm font-bold text-slate-800 dark:text-slate-200 font-mono leading-relaxed whitespace-pre-wrap bg-slate-50 dark:bg-[#111827] p-4 rounded-xl border border-slate-200 dark:border-slate-800">
                 {selectedMessage}
               </p>
@@ -181,8 +237,7 @@ function SmsDataContent() {
           </div>
         </div>
       )}
-
-      {/* ── SMS DATA Top Card (Styled like App Sync Card + Live Indicator) ── */}
+           {/* ── SMS DATA Top Card (With Live Sync Indicator) ── */}
       <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-900/30 rounded-2xl p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm relative overflow-hidden">
         <div className="flex items-start gap-4">
           <div className="bg-indigo-600 text-white p-2.5 rounded-xl shrink-0 mt-0.5">
@@ -204,8 +259,9 @@ function SmsDataContent() {
           </div>
         </div>
       </div>
-            {/* ── Stats Cards (3 Columns on Mobile - Sized Up) ── */}
-      {!loading && (
+
+      {/* ── Stats Cards (Skeleton or Content) ── */}
+      {loading ? <StatSkeleton /> : (
         <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
           <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm flex flex-col justify-center">
             <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Total SMS</p>
@@ -222,7 +278,7 @@ function SmsDataContent() {
         </div>
       )}
 
-      {/* ── App Connection Alert & Download Button ── */}
+      {/* ── App Connection Alert (With APK Icon and Button) ── */}
       <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-start gap-4">
           <div className="bg-blue-600 text-white p-2.5 rounded-xl shrink-0 mt-0.5">
@@ -312,13 +368,9 @@ function SmsDataContent() {
         </div>
       </div>
 
-      {/* ── Table ── */}
+      {/* ── Table (Skeleton or Content) ── */}
       <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center items-center py-32">
-            <Loader2 className="animate-spin text-blue-600" size={32} />
-          </div>
-        ) : paginatedData.length === 0 ? (
+        {loading ? <TableSkeleton /> : paginatedData.length === 0 ? (
           <div className="py-24 text-center">
             <div className="w-16 h-16 bg-slate-50 dark:bg-[#0B1120] text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
               <MessageSquare size={24} />
@@ -349,7 +401,7 @@ function SmsDataContent() {
 
                   return (
                     <tr key={sms.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors group">
-                      {/* Sender */}
+                      {/* Sender (Raw Database String) */}
                       <td className="px-5 py-4">
                         <p className="text-sm font-black text-slate-800 dark:text-slate-200 tracking-wider">
                           {sms.sender || '—'}
@@ -361,7 +413,7 @@ function SmsDataContent() {
                         {sms.method || '—'}
                       </td>
 
-                      {/* Message Clickable Box (Bigger, Bold, Boxed) */}
+                      {/* Message Clickable Box */}
                       <td className="px-5 py-4 max-w-[200px] sm:max-w-[250px]">
                         <div
                           onClick={() => setSelectedMessage(sms.message)}
@@ -465,5 +517,5 @@ export default function SmsData() {
       <SmsDataContent />
     </Suspense>
   );
-                      }
-                                   
+}
+
