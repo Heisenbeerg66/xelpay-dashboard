@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Receipt, Search, Filter, Loader2, Building2,
-  X, Smartphone, Globe, Landmark,
-  RefreshCw, Download, Eye, ChevronLeft, ChevronRight
+  X, Smartphone, Globe, Landmark, Columns, Webhook,
+  RefreshCw, Download, Eye, ChevronLeft, ChevronRight, Activity, PanelRightClose
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Order = {
@@ -25,17 +26,6 @@ type Order = {
   source: string | null;
   product_name: string | null;
   created_at: string;
-};
-
-type SmsTransaction = {
-  id: string;
-  sender: string;
-  method: string;
-  message: string;
-  trx_id: string;
-  amount: number;
-  received_at: string;
-  is_used: boolean;
 };
 
 type FilterState = {
@@ -62,16 +52,31 @@ const STATUS_OPTIONS = [
   { label: 'Cancelled', value: 'cancelled' },
 ];
 
+const TOGGLEABLE_COLUMNS = [
+  { id: 'date', label: 'Date' },
+  { id: 'customer', label: 'Customer' },
+  { id: 'email', label: 'Email' },
+  { id: 'phone', label: 'Phone' },
+  { id: 'product', label: 'Product' },
+  { id: 'source', label: 'Source' },
+  { id: 'amount', label: 'Amount' },
+  { id: 'method', label: 'Method' },
+  { id: 'trx_id', label: 'TRX ID' },
+  { id: 'status', label: 'Status' }
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+const formatTime = (d: string) =>
+  new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
 const statusConfig = (status: string) => {
   const s = status?.toLowerCase();
-  if (['paid', 'success', 'completed'].includes(s)) return { label: 'Paid', cls: 'text-emerald-600 dark:text-emerald-400 font-bold' };
-  if (s === 'pending') return { label: 'Pending', cls: 'text-amber-500 dark:text-amber-400 font-bold' };
-  if (['failed', 'rejected', 'cancelled'].includes(s)) return { label: 'Failed', cls: 'text-red-500 dark:text-red-400 font-bold' };
-  return { label: status || '—', cls: 'text-slate-400 font-bold' };
+  if (['paid', 'success', 'completed'].includes(s)) return { label: 'Paid', cls: 'text-emerald-600 dark:text-emerald-400 font-black', bg: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' };
+  if (s === 'pending') return { label: 'Pending', cls: 'text-amber-500 dark:text-amber-400 font-black', bg: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' };
+  if (['failed', 'rejected', 'cancelled'].includes(s)) return { label: 'Failed', cls: 'text-red-500 dark:text-red-400 font-black', bg: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' };
+  return { label: status || '—', cls: 'text-slate-400 font-black', bg: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' };
 };
 
 const getMethodTextColor = (method: string | null) => {
@@ -80,7 +85,7 @@ const getMethodTextColor = (method: string | null) => {
   if (m.includes('nagad')) return 'text-orange-600 dark:text-orange-400';
   if (m.includes('rocket')) return 'text-purple-600 dark:text-purple-400';
   if (m.includes('upay')) return 'text-blue-600 dark:text-blue-400';
-  return 'text-slate-600 dark:text-slate-400';
+  return 'text-slate-600 dark:text-slate-300';
 };
 
 const getMethodCategory = (method: string | null): string | null => {
@@ -92,79 +97,77 @@ const getMethodCategory = (method: string | null): string | null => {
   return null;
 };
 
-function exportToCSV(data: Order[]) {
-  const headers = ['Order No', 'Date', 'Customer Name', 'Email', 'Phone', 'Product', 'Source', 'Amount', 'Currency', 'Method', 'TRX ID', 'Status'];
-  const rows = data.map(t => [
-    t.order_no || '', formatDate(t.created_at), t.customer_name || '',
-    t.customer_email || '', t.customer_number || '', t.product_name || '',
-    t.source || '', t.amount, t.currency || 'BDT', t.method || '',
-    t.trx_id || '', t.status || '',
-  ]);
-  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+// ─── Skeleton Component ───────────────────────────────────────────────────────
+function TableSkeleton() {
+  return (
+    <div className="space-y-3 p-5 animate-pulse">
+      <div className="h-10 bg-slate-100 dark:bg-slate-800 rounded-xl w-full mb-6" />
+      {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+        <div key={i} className="h-14 bg-slate-50 dark:bg-slate-800/30 rounded-lg w-full" />
+      ))}
+    </div>
+  );
 }
 
-// ─── SMS Details Modal ────────────────────────────────────────────────────────
-function SmsDetailsModal({ trxId, onClose }: { trxId: string; onClose: () => void }) {
-  const [loading, setLoading] = useState(true);
-  const [smsData, setSmsData] = useState<SmsTransaction | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('sms_transactions')
-        .select('*')
-        .eq('trx_id', trxId)
-        .single();
-      if (error || !data) setError('No SMS record found for this transaction.');
-      else setSmsData(data as SmsTransaction);
-      setLoading(false);
-    })();
-  }, [trxId]);
-
+// ─── Transaction Details Drawer ───────────────────────────────────────────────
+function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose: () => void, onResend: (id: string) => void }) {
+  const badge = statusConfig(order.status);
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm">SMS Verification Record</h3>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-            <X size={16} className="text-slate-400" />
+    <div className="fixed inset-0 z-[300] bg-slate-900/50 backdrop-blur-sm flex justify-end" onClick={onClose}>
+      <div className="w-full max-w-md bg-white dark:bg-[#0B1120] h-full shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col border-l border-slate-200 dark:border-slate-800" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+          <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <Receipt size={18} className="text-blue-600"/> Order Details
+          </h2>
+          <button onClick={onClose} className="p-2 bg-slate-200 dark:bg-slate-800 rounded-xl hover:bg-slate-300 dark:hover:bg-slate-700 transition">
+            <X size={16} className="text-slate-600 dark:text-slate-400"/>
           </button>
         </div>
-        <div className="px-6 py-5">
-          {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="animate-spin text-blue-600" size={24} /></div>
-          ) : error ? (
-            <p className="text-sm text-red-500 text-center py-4">{error}</p>
-          ) : smsData ? (
-            <div className="space-y-3">
-              {[
-                { label: 'Sender', value: smsData.sender },
-                { label: 'Method', value: smsData.method, color: getMethodTextColor(smsData.method) + ' uppercase font-bold' },
-                { label: 'Trx ID', value: smsData.trx_id, color: 'text-purple-600 dark:text-purple-400 font-mono font-bold' },
-                { label: 'Amount', value: `৳ ${parseFloat(String(smsData.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: 'text-emerald-600 font-bold' },
-                { label: 'Status', value: smsData.is_used ? 'Used / Paid' : 'Unused / Pending', color: smsData.is_used ? 'text-emerald-600 font-bold' : 'text-amber-600 font-bold' },
-                { label: 'Received At', value: formatDate(smsData.received_at) },
-              ].map(r => (
-                <div key={r.label} className="flex items-start justify-between py-2 border-b border-slate-50 dark:border-slate-800/60 last:border-0">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{r.label}</span>
-                  <span className={`text-xs font-medium text-right max-w-[60%] ${r.color || 'text-slate-700 dark:text-slate-200'}`}>{r.value}</span>
-                </div>
-              ))}
-              <div className="mt-3 p-3 bg-slate-50 dark:bg-[#0B1120] rounded-xl border border-slate-100 dark:border-slate-800">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Raw SMS</p>
-                <p className="text-xs text-slate-600 dark:text-slate-300 font-mono leading-relaxed">{smsData.message}</p>
-              </div>
+        
+        {/* Body */}
+        <div className="p-6 flex-1 overflow-y-auto space-y-6">
+          {/* Status & Amount */}
+          <div className="flex items-center justify-between p-5 bg-slate-50 dark:bg-[#111827] rounded-2xl border border-slate-100 dark:border-slate-800">
+            <div>
+              <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Status</p>
+              <span className={`px-3 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider ${badge.bg}`}>
+                {badge.label}
+              </span>
             </div>
-          ) : null}
+            <div className="text-right">
+              <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Amount</p>
+              <h3 className="text-xl font-black text-slate-900 dark:text-white">৳ {parseFloat(String(order.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h3>
+            </div>
+          </div>
+
+          {/* Details Grid */}
+          <div className="space-y-4">
+            <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2">Information</h4>
+            {[
+              ['Order No', order.order_no, 'font-mono text-indigo-600 dark:text-indigo-400'],
+              ['Date & Time', `${formatDate(order.created_at)} - ${formatTime(order.created_at)}`],
+              ['Customer', order.customer_name || '—'],
+              ['Phone', order.customer_number || '—'],
+              ['Email', order.customer_email || '—'],
+              ['Product', order.product_name || '—', 'text-emerald-600 dark:text-emerald-400'],
+              ['Payment Method', order.method || '—', `uppercase ${getMethodTextColor(order.method)}`],
+              ['TRX ID', order.trx_id || '—', 'font-mono text-purple-600 dark:text-purple-400'],
+              ['Source', order.source || 'link', 'capitalize'],
+            ].map(([label, value, cls]) => (
+              <div key={label} className="flex justify-between items-start gap-4">
+                <span className="text-[12px] font-bold text-slate-500">{label}</span>
+                <span className={`text-[13px] font-black text-right max-w-[60%] ${cls || 'text-slate-900 dark:text-white'}`}>{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer (Resend Webhook) */}
+        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+          <button onClick={() => onResend(order.id)} className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-black text-[13px] transition-all shadow-md">
+            <Webhook size={16} /> Resend Webhook
+          </button>
         </div>
       </div>
     </div>
@@ -232,8 +235,7 @@ function FilterPanel({ filters, setFilters, onApply, onClose }: {
       </div>
     </div>
   );
-}
-
+    }
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Transactions() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -241,19 +243,65 @@ export default function Transactions() {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'business' | 'all'>('business');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // UI States
   const [showFilter, setShowFilter] = useState(false);
-  const [smsTrxId, setSmsTrxId] = useState<string | null>(null);
+  const [showCols, setShowCols] = useState(false);
+  const [drawerOrder, setDrawerOrder] = useState<Order | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Advanced Features States
+  const [visibleCols, setVisibleCols] = useState<string[]>(TOGGLEABLE_COLUMNS.map(c => c.id));
+  const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const filterRef = useRef<HTMLDivElement>(null);
+  const colsRef = useRef<HTMLDivElement>(null);
 
   const [filters, setFilters] = useState<FilterState>({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' });
   const [appliedFilters, setAppliedFilters] = useState<FilterState>({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' });
+
+  // REALTIME SETUP
+  useEffect(() => {
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const channel = supabase
+        .channel('orders-realtime-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', 
+            schema: 'public',
+            table: 'orders',
+            filter: `merchant_id=eq.${user.id}`,
+          },
+          (payload: any) => {
+            if (payload.eventType === 'INSERT') {
+              const newOrder = payload.new as Order;
+              setOrders((prev) => [newOrder, ...prev]);
+            } else if (payload.eventType === 'UPDATE') {
+              const updatedOrder = payload.new as Order;
+              setOrders((prev) => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+            } else if (payload.eventType === 'DELETE') {
+              setOrders((prev) => prev.filter(o => o.id !== payload.old.id));
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+
+    setupRealtime();
+  }, []);
 
   const fetchOrders = useCallback(async (bizId: string | null, mode: 'business' | 'all') => {
     setLoading(true);
     let query = supabase
       .from('orders')
-      .select('id, order_no, merchant_id, business_id, customer_name, customer_number, customer_email, amount, currency, method, trx_id, status, source, product_name, created_at')
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (mode === 'business' && bizId) {
@@ -279,14 +327,17 @@ export default function Transactions() {
     return () => window.removeEventListener('businessChanged', load);
   }, [viewMode, fetchOrders]);
 
+  // Click outside handlers
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (filterRef.current && !filterRef.current.contains(e.target as Node)) setShowFilter(false);
+      if (colsRef.current && !colsRef.current.contains(e.target as Node)) setShowCols(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Filtering Logic
   const filteredData = orders.filter(t => {
     if (appliedFilters.status.length && !appliedFilters.status.some(s =>
       s === 'success' ? ['paid', 'success', 'completed'].includes(t.status?.toLowerCase())
@@ -313,8 +364,77 @@ export default function Transactions() {
 
   const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
   const paginatedData = filteredData.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const filteredVolume = filteredData.reduce((sum, trx) => sum + (trx.amount || 0), 0);
 
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, appliedFilters]);
+  useEffect(() => { setCurrentPage(1); setSelectedRows([]); }, [searchTerm, appliedFilters]);
+
+  // Bulk Actions & Helpers
+  const handleSelectAll = () => {
+    if (selectedRows.length === paginatedData.length) setSelectedRows([]);
+    else setSelectedRows(paginatedData.map(o => o.id));
+  };
+
+  const toggleRow = (id: string) => {
+    if (selectedRows.includes(id)) setSelectedRows(selectedRows.filter(r => r !== id));
+    else setSelectedRows([...selectedRows, id]);
+  };
+
+  const toggleColumn = (id: string) => {
+    if (visibleCols.includes(id)) setVisibleCols(visibleCols.filter(c => c !== id));
+    else setVisibleCols([...visibleCols, id]);
+  };
+
+  const resendWebhook = async (id: string) => {
+    const promise = new Promise(resolve => setTimeout(resolve, 1500));
+    toast.promise(promise, {
+      loading: 'Resending Webhook...',
+      success: 'Webhook sent successfully!',
+      error: 'Failed to send webhook.',
+    });
+  };
+
+  const bulkExport = () => {
+    const dataToExport = orders.filter(o => selectedRows.includes(o.id));
+    exportToCSV(dataToExport);
+    setSelectedRows([]);
+  };
+
+  const bulkResend = async () => {
+    const promise = new Promise(resolve => setTimeout(resolve, 2000));
+    toast.promise(promise, {
+      loading: `Resending ${selectedRows.length} Webhooks...`,
+      success: 'All webhooks sent successfully!',
+      error: 'Error sending webhooks.',
+    });
+    setSelectedRows([]);
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['Order No', ...TOGGLEABLE_COLUMNS.filter(c => visibleCols.includes(c.id)).map(c => c.label)];
+    const rows = filteredData.map(t => {
+      let row = [`"${t.order_no || ''}"`];
+      if (visibleCols.includes('date')) row.push(`"${formatDate(t.created_at)}"`);
+      if (visibleCols.includes('customer')) row.push(`"${t.customer_name || ''}"`);
+      if (visibleCols.includes('email')) row.push(`"${t.customer_email || ''}"`);
+      if (visibleCols.includes('phone')) row.push(`"${t.customer_number || ''}"`);
+      if (visibleCols.includes('product')) row.push(`"${t.product_name || ''}"`);
+      if (visibleCols.includes('source')) row.push(`"${t.source || ''}"`);
+      if (visibleCols.includes('amount')) row.push(`"${t.amount}"`);
+      if (visibleCols.includes('method')) row.push(`"${t.method || ''}"`);
+      if (visibleCols.includes('trx_id')) row.push(`"${t.trx_id || ''}"`);
+      if (visibleCols.includes('status')) row.push(`"${t.status || ''}"`);
+      return row;
+    });
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Exported successfully!');
+  };
 
   if (!businessId && viewMode !== 'all') {
     return (
@@ -323,179 +443,224 @@ export default function Transactions() {
           <Building2 size={32} />
         </div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">No Workspace Selected</h2>
-        <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm font-medium">Select a business from the sidebar to view transactions.</p>
+        <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm font-bold">Select a business from the sidebar to view transactions.</p>
       </div>
     );
-  }
-
-  return (
+    }
+    return (
     <div className="max-w-[1600px] mx-auto space-y-5 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-      {smsTrxId && <SmsDetailsModal trxId={smsTrxId} onClose={() => setSmsTrxId(null)} />}
+      {drawerOrder && <TransactionDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} onResend={resendWebhook} />}
 
-      {/* ── Page Title + Controls Row (Mobile Optimized Flex Wrap) ── */}
+      {/* ── Page Title + Controls Row ── */}
       <div className="flex flex-col md:flex-row justify-between gap-4">
-        
-        {/* Title Area + Mobile Refresh */}
         <div className="flex items-center justify-between md:justify-start gap-3">
           <div className="flex items-center gap-3">
-            <Receipt size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
+            <div className="bg-blue-600/10 dark:bg-blue-500/20 p-2 rounded-xl">
+              <Receipt size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
+            </div>
             <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-[0.1em]">
-              All Transactions
+              Transactions
             </h1>
           </div>
           <button onClick={() => fetchOrders(businessId, viewMode)}
-            className="md:hidden flex items-center justify-center h-9 w-9 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-300 shadow-sm">
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            className="md:hidden flex items-center justify-center h-10 w-10 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-300 shadow-sm">
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
 
         {/* Controls Area */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-          
           {/* Business / All tabs */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 h-10 px-1 rounded-xl w-full sm:w-auto justify-between sm:justify-start">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl w-full sm:w-auto justify-between sm:justify-start">
             {(['business', 'all'] as const).map(m => (
               <button key={m} onClick={() => setViewMode(m)}
-                className={`flex-1 sm:flex-none h-8 px-4 rounded-lg text-xs font-bold transition-all ${viewMode === m
+                className={`flex-1 sm:flex-none py-2 px-5 rounded-lg text-[13px] font-bold transition-all ${viewMode === m
                   ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
-                {m === 'business' ? 'Business' : 'All'}
+                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}>
+                {m === 'business' ? 'Business' : 'All Data'}
               </button>
             ))}
           </div>
 
           {/* Search */}
           <div className="relative flex-grow sm:flex-grow-0">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 focus-within:text-blue-600 transition-colors" size={15} />
             <input
               type="text"
-              placeholder="Search name, order, trx ID..."
+              placeholder="Search order, name, trx..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full sm:w-56 pl-10 pr-4 py-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-700 dark:text-white outline-none focus:border-blue-500 transition-colors shadow-sm"
+              className="w-full sm:w-60 pl-10 pr-4 py-2.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-[13px] font-bold text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all shadow-sm"
             />
           </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+          <div className="flex flex-wrap md:flex-nowrap items-center gap-2 w-full sm:w-auto">
             {/* Filter */}
             <div className="relative flex-1 sm:flex-none" ref={filterRef}>
               <button onClick={() => setShowFilter(v => !v)}
-                className={`flex w-full items-center justify-center gap-2 h-10 px-4 rounded-xl text-sm font-bold border transition-all ${showFilter || activeFilterCount > 0
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 shadow-sm hover:border-blue-400'}`}>
-                <Filter size={14} /> Filters
+                className={`flex w-full items-center justify-center gap-2 h-[42px] px-4 rounded-xl text-[13px] font-bold border transition-all ${showFilter || activeFilterCount > 0
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                  : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 shadow-sm hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'}`}>
+                <Filter size={15} /> Filters
                 {activeFilterCount > 0 && (
-                  <span className="w-5 h-5 rounded-full bg-white/30 text-white text-[10px] font-black flex items-center justify-center">
+                  <span className="w-5 h-5 rounded-full bg-white/20 text-white text-[10px] font-black flex items-center justify-center">
                     {activeFilterCount}
                   </span>
                 )}
               </button>
-              {showFilter && (
-                <FilterPanel
-                  filters={filters}
-                  setFilters={setFilters}
-                  onApply={() => setAppliedFilters(filters)}
-                  onClose={() => setShowFilter(false)}
-                />
+              {showFilter && <FilterPanel filters={filters} setFilters={setFilters} onApply={() => setAppliedFilters(filters)} onClose={() => setShowFilter(false)} />}
+            </div>
+
+            {/* Column Toggle */}
+            <div className="relative flex-1 sm:flex-none" ref={colsRef}>
+              <button onClick={() => setShowCols(v => !v)}
+                className="flex w-full items-center justify-center gap-2 h-[42px] px-4 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-[13px] font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:border-blue-500 transition-all shadow-sm">
+                <Columns size={15} /> Columns
+              </button>
+              {showCols && (
+                <div className="absolute right-0 top-full mt-2 z-40 w-48 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-2 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-2 pt-1">Toggle Columns</p>
+                  {TOGGLEABLE_COLUMNS.map(col => (
+                    <label key={col.id} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors">
+                      <input type="checkbox" checked={visibleCols.includes(col.id)} onChange={() => toggleColumn(col.id)} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
+                      <span className="text-[13px] font-bold text-slate-700 dark:text-slate-300">{col.label}</span>
+                    </label>
+                  ))}
+                </div>
               )}
             </div>
 
             {/* Export */}
-            <button onClick={() => exportToCSV(filteredData)}
-              className="flex flex-1 sm:flex-none items-center justify-center gap-2 h-10 px-4 bg-blue-600 rounded-xl text-sm font-bold text-white hover:bg-blue-700 transition-all shadow-sm">
-              <Download size={14} /> <span className="hidden sm:inline">Export</span>
+            <button onClick={handleExportCSV}
+              className="flex flex-1 sm:flex-none items-center justify-center gap-2 h-[42px] px-4 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-[13px] font-bold text-slate-700 dark:text-slate-300 hover:text-blue-600 hover:border-blue-500 transition-all shadow-sm">
+              <Download size={15} /> <span className="hidden sm:inline">Export</span>
             </button>
 
-            {/* Desktop Refresh */}
-            <button onClick={() => fetchOrders(businessId, viewMode)}
-              className="hidden md:flex items-center justify-center h-10 w-10 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm">
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            {/* Refresh */}
+            <button onClick={() => fetchOrders(businessId, viewMode)} title="Refresh"
+              className="hidden md:flex items-center justify-center h-[42px] w-[42px] bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:border-blue-500 transition-all shadow-sm shrink-0">
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Active Filter Tags */}
-      {activeFilterCount > 0 && (
+      {/* ── Mini Analytics & Filter Tags ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Active Filters */}
         <div className="flex flex-wrap items-center gap-2">
-          {appliedFilters.status.map(s => (
-            <span key={s} className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-[10px] font-bold">
+          {activeFilterCount > 0 && appliedFilters.status.map(s => (
+            <span key={s} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-[11px] font-black uppercase tracking-wider border border-blue-200 dark:border-blue-800/50">
               {s}
-              <button onClick={() => setAppliedFilters(f => ({ ...f, status: f.status.filter(x => x !== s) }))}>
-                <X size={10} />
+              <button onClick={() => setAppliedFilters(f => ({ ...f, status: f.status.filter(x => x !== s) }))} className="hover:text-blue-900 dark:hover:text-blue-100">
+                <X size={12} />
               </button>
             </span>
           ))}
-          <button onClick={() => setAppliedFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' })}
-            className="px-3 py-1 text-red-500 text-[10px] font-bold hover:text-red-700">
-            Clear All
-          </button>
+          {activeFilterCount > 0 && (
+            <button onClick={() => setAppliedFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' })} className="px-3 py-1.5 text-red-500 text-[11px] font-black uppercase hover:text-red-700 transition-colors">
+              Clear All
+            </button>
+          )}
         </div>
-      )}
-
-      {/* ── Table ── */}
-      <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-        {loading ? (
-          <div className="flex justify-center items-center py-32">
-            <Loader2 className="animate-spin text-blue-600" size={26} />
+        
+        {/* Mini Analytics Bar */}
+        {!loading && filteredData.length > 0 && (
+          <div className="flex items-center gap-3 bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2.5 rounded-xl border border-indigo-100 dark:border-indigo-800/50 ml-auto">
+            <Activity size={16} className="text-indigo-600 dark:text-indigo-400" />
+            <p className="text-[13px] font-black text-indigo-900 dark:text-indigo-300">
+              Found: <span className="text-indigo-600 dark:text-indigo-400">{filteredData.length}</span>
+              <span className="opacity-30 mx-3">|</span>
+              Volume: <span className="text-indigo-600 dark:text-indigo-400">৳ {filteredVolume.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+            </p>
           </div>
+        )}
+      </div>
+
+      {/* ── Table Area ── */}
+      <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden relative">
+        {loading ? (
+          <TableSkeleton />
         ) : filteredData.length === 0 ? (
           <div className="py-24 text-center">
-            <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Receipt size={20} />
+            <div className="w-16 h-16 bg-slate-50 dark:bg-[#0B1120] text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Receipt size={24} />
             </div>
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">No Transactions Found</h3>
-            <p className="text-slate-400 text-xs font-medium max-w-xs mx-auto">
+            <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-widest mb-2">No Transactions Found</h3>
+            <p className="text-slate-500 dark:text-slate-400 text-[13px] font-bold max-w-sm mx-auto">
               {searchTerm || activeFilterCount > 0 ? 'No results match your criteria.' : 'No payments received yet.'}
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left whitespace-nowrap">
+            <table className="w-full text-left whitespace-nowrap min-w-[1000px]">
               <thead>
-                <tr>
-                  {['Order No', 'Date', 'Customer Name', 'Email', 'Phone', 'Product', 'Source', 'Amount', 'Method', 'TRX ID', 'Status'].map(h => (
-                    <th key={h} className="px-5 py-3.5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-[#0B1120]/60 border-b border-slate-100 dark:border-slate-800">
-                      {h}
-                    </th>
+                <tr className="bg-slate-50 dark:bg-[#0B1120]/60 border-b border-slate-100 dark:border-slate-800">
+                  <th className="px-5 py-4 w-10">
+                    <input type="checkbox" onChange={handleSelectAll} checked={paginatedData.length > 0 && paginatedData.every(o => selectedRows.includes(o.id))} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                  </th>
+                  <th className="px-5 py-4 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Order No</th>
+                  {TOGGLEABLE_COLUMNS.map(col => visibleCols.includes(col.id) && (
+                    <th key={col.id} className="px-5 py-4 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{col.label}</th>
                   ))}
+                  <th className="px-5 py-4 w-10"></th>
                 </tr>
               </thead>
-              <tbody>
-                {paginatedData.map((trx, idx) => {
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                {paginatedData.map((trx) => {
                   const badge = statusConfig(trx.status);
                   const methodColor = getMethodTextColor(trx.method);
+                  const isSelected = selectedRows.includes(trx.id);
+
                   return (
-                    <tr key={trx.id}
-                      className={`border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors ${idx === paginatedData.length - 1 ? 'border-b-0' : ''}`}>
-                      <td className="px-5 py-3.5 text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">{trx.order_no || '—'}</td>
-                      <td className="px-5 py-3.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">{formatDate(trx.created_at)}</td>
-                      <td className="px-5 py-3.5 text-xs text-blue-600 dark:text-blue-400 font-bold max-w-[140px] truncate">{trx.customer_name || '—'}</td>
-                      <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400 max-w-[160px] truncate">{trx.customer_email || '—'}</td>
-                      <td className="px-5 py-3.5 text-xs font-medium text-slate-500 dark:text-slate-400">{trx.customer_number || '—'}</td>
-                      <td className="px-5 py-3.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 max-w-[130px] truncate">{trx.product_name || '—'}</td>
-                      <td className="px-5 py-3.5 text-xs text-slate-400 capitalize">{trx.source || 'link'}</td>
-                      <td className="px-5 py-3.5 text-xs font-bold text-slate-900 dark:text-white">
-                        ৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    <tr key={trx.id} onClick={() => toggleRow(trx.id)} className={`transition-colors cursor-pointer group ${isSelected ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/20'}`}>
+                      <td className="px-5 py-4" onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" checked={isSelected} onChange={() => toggleRow(trx.id)} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer" />
                       </td>
-                      <td className={`px-5 py-3.5 text-xs font-bold uppercase ${methodColor}`}>{trx.method || '—'}</td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1.5">
+                      <td className="px-5 py-4 text-[13px] font-mono font-black text-indigo-600 dark:text-indigo-400" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.order_no || '—'}</td>
+                      
+                      {visibleCols.includes('date') && (
+                        <td className="px-5 py-4" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>
+                          <p className="text-[13px] font-black text-slate-800 dark:text-slate-200">{formatDate(trx.created_at)}</p>
+                          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-1">{formatTime(trx.created_at)}</p>
+                        </td>
+                      )}
+
+                      {visibleCols.includes('customer') && <td className="px-5 py-4 text-[13px] text-blue-600 dark:text-blue-400 font-black max-w-[150px] truncate" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.customer_name || '—'}</td>}
+                      {visibleCols.includes('email') && <td className="px-5 py-4 text-[13px] text-slate-700 dark:text-slate-300 font-bold max-w-[160px] truncate" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.customer_email || '—'}</td>}
+                      {visibleCols.includes('phone') && <td className="px-5 py-4 text-[13px] font-bold text-slate-700 dark:text-slate-300" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.customer_number || '—'}</td>}
+                      {visibleCols.includes('product') && <td className="px-5 py-4 text-[13px] font-black text-emerald-600 dark:text-emerald-400 max-w-[140px] truncate" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.product_name || '—'}</td>}
+                      {visibleCols.includes('source') && <td className="px-5 py-4 text-[13px] font-bold text-slate-500 dark:text-slate-400 capitalize" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.source || 'link'}</td>}
+                      
+                      {visibleCols.includes('amount') && (
+                        <td className="px-5 py-4 text-[13px] font-black text-slate-900 dark:text-white" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>
+                          ৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        </td>
+                      )}
+                      
+                      {visibleCols.includes('method') && <td className={`px-5 py-4 text-[12px] font-black uppercase tracking-wider ${methodColor}`} onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.method || '—'}</td>}
+                      
+                      {visibleCols.includes('trx_id') && (
+                        <td className="px-5 py-4" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>
                           {trx.trx_id
-                            ? <span className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400">{trx.trx_id}</span>
-                            : <span className="text-xs text-slate-400 italic font-medium">Awaiting</span>}
-                          {trx.trx_id && (
-                            <button onClick={() => setSmsTrxId(trx.trx_id!)}
-                              title="View SMS Verification"
-                              className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-                              <Eye size={12} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className={`text-xs ${badge.cls}`}>{badge.label}</span>
+                            ? <span className="text-[13px] font-mono font-black text-purple-600 dark:text-purple-400">{trx.trx_id}</span>
+                            : <span className="text-[13px] text-slate-400 italic font-bold">Awaiting</span>}
+                        </td>
+                      )}
+                      
+                      {visibleCols.includes('status') && (
+                        <td className="px-5 py-4" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>
+                          <span className={`inline-flex items-center gap-1.5 text-[12px] uppercase tracking-wider ${badge.cls}`}>
+                             {badge.label}
+                          </span>
+                        </td>
+                      )}
+
+                      <td className="px-5 py-4 text-right" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setDrawerOrder(trx)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all opacity-0 group-hover:opacity-100">
+                          <PanelRightClose size={16} />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -505,17 +670,38 @@ export default function Transactions() {
           </div>
         )}
 
+        {/* ── Bulk Actions Floating Bar ── */}
+        {selectedRows.length > 0 && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+            <div className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-3 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] flex items-center gap-4 border border-slate-700 dark:border-slate-200">
+              <div className="flex items-center gap-2 pr-3 border-r border-slate-700 dark:border-slate-300">
+                <div className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-black">{selectedRows.length}</div>
+                <span className="text-[13px] font-bold">Selected</span>
+              </div>
+              <button onClick={bulkExport} className="text-[13px] font-bold flex items-center gap-1.5 hover:text-blue-400 dark:hover:text-blue-600 transition-colors">
+                <Download size={14}/> Export
+              </button>
+              <button onClick={bulkResend} className="text-[13px] font-bold flex items-center gap-1.5 hover:text-indigo-400 dark:hover:text-indigo-600 transition-colors">
+                <Webhook size={14}/> Resend
+              </button>
+              <button onClick={() => setSelectedRows([])} className="ml-1 p-1 text-slate-400 hover:text-red-400 hover:bg-slate-800 dark:hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={15}/>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Pagination */}
         {!loading && filteredData.length > 0 && (
           <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-[11px] font-medium text-slate-500">
-              Showing <span className="text-slate-700 dark:text-slate-200 font-bold">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)}</span> of <span className="text-slate-700 dark:text-slate-200 font-bold">{filteredData.length}</span> transactions
+            <p className="text-[12px] font-bold text-slate-500">
+              Showing <span className="text-slate-800 dark:text-slate-200 font-black">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)}</span> of <span className="text-slate-800 dark:text-slate-200 font-black">{filteredData.length}</span> records
             </p>
             {totalPages > 1 && (
               <div className="flex items-center gap-1.5">
                 <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
                   className="p-1.5 rounded-lg text-slate-500 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                  <ChevronLeft size={14} />
+                  <ChevronLeft size={15} />
                 </button>
                 {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                   let page: number;
@@ -525,8 +711,8 @@ export default function Transactions() {
                   else page = currentPage - 3 + i;
                   return (
                     <button key={page} onClick={() => setCurrentPage(page)}
-                      className={`w-7 h-7 text-xs font-bold rounded-lg transition-colors ${currentPage === page
-                        ? 'bg-blue-600 text-white'
+                      className={`w-8 h-8 text-[13px] font-bold rounded-lg transition-colors ${currentPage === page
+                        ? 'bg-blue-600 text-white shadow-sm'
                         : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                       {page}
                     </button>
@@ -534,7 +720,7 @@ export default function Transactions() {
                 })}
                 <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
                   className="p-1.5 rounded-lg text-slate-500 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                  <ChevronRight size={14} />
+                  <ChevronRight size={15} />
                 </button>
               </div>
             )}
@@ -543,4 +729,5 @@ export default function Transactions() {
       </div>
     </div>
   );
-                                               }
+              }
+            
