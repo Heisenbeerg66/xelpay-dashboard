@@ -7,13 +7,12 @@ import { toast } from 'sonner';
 import {
   DollarSign, TrendingUp, ArrowRight, FileText, Loader2,
   CheckCircle, Clock, XCircle, AlertCircle, Eye, Receipt,
-  LinkIcon, Building2, RefreshCw, User, Phone
+  LinkIcon, Building2, RefreshCw, User, Phone, Search
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { Search } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Order {
@@ -40,12 +39,21 @@ const statusConfig = (status: string) => {
   switch (status?.toLowerCase()) {
     case 'paid':
     case 'success':
-    case 'completed': return { label: 'Paid', icon: CheckCircle, cls: 'text-emerald-600 dark:text-emerald-400 font-semibold' };
-    case 'pending': return { label: 'Pending', icon: Clock, cls: 'text-amber-500 dark:text-amber-400 font-semibold' };
+    case 'completed': return { label: 'Paid', icon: CheckCircle, cls: 'text-emerald-600 dark:text-emerald-400 font-bold' };
+    case 'pending': return { label: 'Pending', icon: Clock, cls: 'text-amber-500 dark:text-amber-400 font-bold' };
     case 'failed':
-    case 'cancelled': return { label: 'Failed', icon: XCircle, cls: 'text-red-500 dark:text-red-400 font-semibold' };
-    default: return { label: status || 'Unknown', icon: AlertCircle, cls: 'text-slate-400 font-semibold' };
+    case 'cancelled': return { label: 'Failed', icon: XCircle, cls: 'text-red-500 dark:text-red-400 font-bold' };
+    default: return { label: status || 'Unknown', icon: AlertCircle, cls: 'text-slate-400 font-bold' };
   }
+};
+
+const getMethodTextColor = (method: string) => {
+  const m = (method || '').toLowerCase();
+  if (m.includes('bkash')) return 'text-pink-600 dark:text-pink-400';
+  if (m.includes('nagad')) return 'text-orange-600 dark:text-orange-400';
+  if (m.includes('rocket')) return 'text-purple-600 dark:text-purple-400';
+  if (m.includes('upay')) return 'text-blue-600 dark:text-blue-400';
+  return 'text-slate-600 dark:text-slate-400';
 };
 
 const formatDate = (d: string) => {
@@ -124,7 +132,6 @@ function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
     </div>
   );
 }
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function DashboardHome() {
   const [loading, setLoading] = useState(true);
@@ -137,7 +144,6 @@ export default function DashboardHome() {
     totalOrders: 0,
     pendingOrders: 0,
   });
-
   const [trxModal, setTrxModal] = useState<Order | null>(null);
   const [customerModal, setCustomerModal] = useState<Order | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -151,7 +157,6 @@ export default function DashboardHome() {
         .select('id, order_no, customer_name, customer_number, customer_email, amount, currency, method, trx_id, status, product_name, source, created_at')
         .eq('business_id', bizId)
         .order('created_at', { ascending: false });
-
       if (ordersError) throw ordersError;
 
       const { count: linksCount } = await supabase
@@ -159,7 +164,7 @@ export default function DashboardHome() {
         .select('*', { count: 'exact', head: true })
         .eq('business_id', bizId)
         .eq('status', 'active');
-
+      
       if (orders) {
         const paidOrders = orders.filter((o: any) => ['paid', 'success', 'completed'].includes(o.status));
         const pendingOrders = orders.filter((o: any) => o.status === 'pending');
@@ -225,6 +230,7 @@ export default function DashboardHome() {
 
   const totalPages = Math.ceil(filteredOrders.length / PAGE_SIZE);
   const paginatedOrders = filteredOrders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   useEffect(() => { setCurrentPage(1); }, [searchTerm]);
 
   if (!businessId) {
@@ -274,7 +280,8 @@ export default function DashboardHome() {
             {/* Revenue Line */}
             <div className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
               <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-4">Revenue — Last 7 Days</h2>
-              {chartData.last7.every(d => d.revenue === 0) ? (
+              {chartData.last7.every(d => d.revenue === 0) ?
+              (
                 <div className="h-48 flex items-center justify-center text-sm text-slate-400">No revenue data yet.</div>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
@@ -292,13 +299,21 @@ export default function DashboardHome() {
             {/* Pie */}
             <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
               <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-4">Order Status</h2>
-              {allOrders.length === 0 ? (
+              {allOrders.length === 0 ?
+              (
                 <div className="h-48 flex items-center justify-center text-sm text-slate-400">No orders yet.</div>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
-                    <Pie data={chartData.pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80}
-                      dataKey="value" paddingAngle={3}>
+                    <Pie 
+                      data={chartData.pieData} 
+                      cx="50%" cy="50%" 
+                      innerRadius={50} outerRadius={80}
+                      dataKey="value" 
+                      paddingAngle={3}
+                      labelLine={false}
+                      label={({ name, value, percent }) => `${name} ${value} (${(percent * 100).toFixed(0)}%)`}
+                    >
                       {chartData.pieData.map((_, i) => (
                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                       ))}
@@ -313,7 +328,6 @@ export default function DashboardHome() {
 
           {/* ── Recent Transactions Table ── */}
           <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-
             {/* Table header */}
             <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
@@ -337,7 +351,8 @@ export default function DashboardHome() {
               </div>
             </div>
 
-            {paginatedOrders.length === 0 ? (
+            {paginatedOrders.length === 0 ?
+            (
               <div className="p-10 text-center text-slate-400 text-sm font-medium">
                 {searchTerm ? 'No transactions match your search.' : 'No recent transactions to display.'}
               </div>
@@ -346,7 +361,6 @@ export default function DashboardHome() {
                 <table className="w-full text-left border-collapse whitespace-nowrap min-w-[900px]">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-[#0B1120]/60 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      {/* Column order matches Transactions page exactly */}
                       <th className="px-5 py-3">Order No</th>
                       <th className="px-5 py-3">Date</th>
                       <th className="px-5 py-3">Customer</th>
@@ -361,16 +375,16 @@ export default function DashboardHome() {
                   <tbody className="divide-y divide-slate-50 dark:divide-slate-800/40">
                     {paginatedOrders.map(trx => {
                       const badge = statusConfig(trx.status);
+                      const methodColor = getMethodTextColor(trx.method);
                       return (
                         <tr key={trx.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
-
                           {/* Order No */}
-                          <td className="px-5 py-3.5 text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
+                          <td className="px-5 py-3.5 text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
                             {trx.order_no || '—'}
                           </td>
 
                           {/* Date */}
-                          <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                          <td className="px-5 py-3.5 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                             {formatDate(trx.created_at)}
                           </td>
 
@@ -378,15 +392,14 @@ export default function DashboardHome() {
                           <td className="px-5 py-3.5">
                             <button
                               onClick={() => setCustomerModal(trx)}
-                              className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300 font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                              className="text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline transition-colors"
                             >
-                              <Phone size={11} className="text-slate-400" />
                               {trx.customer_name || trx.customer_number || '—'}
                             </button>
                           </td>
 
                           {/* Product */}
-                          <td className="px-5 py-3.5 text-xs text-slate-600 dark:text-slate-400 max-w-[140px] truncate">
+                          <td className="px-5 py-3.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 max-w-[140px] truncate">
                             {trx.product_name || '—'}
                           </td>
 
@@ -401,7 +414,7 @@ export default function DashboardHome() {
                           </td>
 
                           {/* Method */}
-                          <td className="px-5 py-3.5 text-xs text-slate-500 dark:text-slate-400">
+                          <td className={`px-5 py-3.5 text-xs font-bold uppercase ${methodColor}`}>
                             {trx.method || '—'}
                           </td>
 
@@ -412,7 +425,7 @@ export default function DashboardHome() {
                               className="flex items-center gap-1 group"
                             >
                               {trx.trx_id
-                                ? <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400 group-hover:underline">{trx.trx_id}</span>
+                                ? <span className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400 group-hover:underline">{trx.trx_id}</span>
                                 : <span className="text-xs text-slate-400 italic">Awaiting</span>}
                               <Eye size={11} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
                             </button>
@@ -433,13 +446,13 @@ export default function DashboardHome() {
             {/* Pagination */}
             {!loading && filteredOrders.length > 0 && (
               <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <p className="text-xs text-slate-400">
-                  Showing <span className="font-medium text-slate-700 dark:text-slate-200">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)}</span> of <span className="font-medium text-slate-700 dark:text-slate-200">{filteredOrders.length}</span>
+                <p className="text-[11px] font-medium text-slate-500">
+                  Showing <span className="font-bold text-slate-700 dark:text-slate-200">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)}</span> of <span className="font-bold text-slate-700 dark:text-slate-200">{filteredOrders.length}</span>
                 </p>
                 {totalPages > 1 && (
                   <div className="flex items-center gap-1.5">
                     <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                       ← Prev
                     </button>
                     {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
@@ -450,7 +463,7 @@ export default function DashboardHome() {
                       else page = currentPage - 3 + i;
                       return (
                         <button key={page} onClick={() => setCurrentPage(page)}
-                          className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${currentPage === page
+                          className={`w-8 h-8 text-xs font-bold rounded-lg transition-colors ${currentPage === page
                             ? 'bg-blue-600 text-white'
                             : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                           {page}
@@ -458,7 +471,7 @@ export default function DashboardHome() {
                       );
                     })}
                     <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                       Next →
                     </button>
                   </div>
@@ -470,4 +483,5 @@ export default function DashboardHome() {
       )}
     </div>
   );
-}
+              }
+                          
