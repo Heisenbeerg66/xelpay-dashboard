@@ -8,7 +8,7 @@ import {
   DollarSign, TrendingUp, ArrowRight, FileText, Loader2,
   CheckCircle, Clock, XCircle, AlertCircle, Eye, Receipt,
   LinkIcon, Building2, RefreshCw, User, Phone, Search,
-  PanelRightClose, Webhook, X
+  PanelRightClose, Webhook, X, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
