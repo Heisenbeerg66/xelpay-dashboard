@@ -116,7 +116,8 @@ function SmsDataContent() {
             table: 'sms_transactions',
             filter: `merchant_id=eq.${user.id}`,
           },
-          (payload) => {
+          // এখানে payload এর সাথে : any যুক্ত করা হয়েছে টাইপস্ক্রিপ্ট এরর ফিক্স করতে
+          (payload: any) => {
             const newSms = payload.new as SmsTransaction;
             // Add new SMS to the top of the list in real-time
             setSmsList((prev) => [newSms, ...prev]);
@@ -237,7 +238,7 @@ function SmsDataContent() {
           </div>
         </div>
       )}
-           {/* ── SMS DATA Top Card (With Live Sync Indicator) ── */}
+            {/* ── SMS DATA Top Card (With Live Sync Indicator) ── */}
       <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-900/30 rounded-2xl p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm relative overflow-hidden">
         <div className="flex items-start gap-4">
           <div className="bg-indigo-600 text-white p-2.5 rounded-xl shrink-0 mt-0.5">
@@ -518,4 +519,3 @@ export default function SmsData() {
     </Suspense>
   );
 }
-
