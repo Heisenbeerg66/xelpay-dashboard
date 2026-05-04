@@ -11,7 +11,7 @@ import {
   PanelRightClose, Webhook, X, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
 
@@ -36,7 +36,14 @@ interface Order {
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10;
-const PIE_COLORS = ['#10b981', '#f59e0b', '#ef4444', '#6366f1'];
+
+// Specific Colors for Status
+const getPieColor = (name: string) => {
+  if (name === 'Paid') return '#10b981'; // Emerald 500 (Green)
+  if (name === 'Pending') return '#f59e0b'; // Amber 500 (Yellow/Orange)
+  if (name === 'Failed') return '#ef4444'; // Red 500
+  return '#6366f1'; // Indigo 500 (Default)
+};
 
 const statusConfig = (status: string) => {
   const s = status?.toLowerCase();
@@ -58,7 +65,7 @@ const getMethodTextColor = (method: string | null) => {
 const formatDate = (d: string) => new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 const formatTime = (d: string) => new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
+// ─── Component Helpers ────────────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
   return (
     <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
@@ -71,7 +78,6 @@ function StatCard({ icon: Icon, label, value, color }: { icon: any; label: strin
   );
 }
 
-// ─── Skeleton Component ───────────────────────────────────────────────────────
 function DashboardSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
@@ -87,7 +93,7 @@ function DashboardSkeleton() {
   );
 }
 
-// ─── Transaction Details Drawer ───────────────────────────────────────────────
+// ─── Transaction Drawer ───────────────────────────────────────────────────────
 function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose: () => void, onResend: (id: string) => void }) {
   const badge = statusConfig(order.status);
   return (
@@ -133,8 +139,8 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
 // ─── Customer Modal ───────────────────────────────────────────────────────────
 function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 w-full max-w-xs" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 w-full max-w-xs animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
         <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
           <User size={16} className="text-blue-600" /> Customer Info
         </h3>
@@ -146,11 +152,11 @@ function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
           ].map(([k, v]) => (
             <div key={k} className="flex justify-between gap-4 py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
               <span className="text-slate-400 font-medium">{k}</span>
-              <span className="font-semibold text-slate-900 dark:text-white text-right truncate max-w-[160px]">{v}</span>
+              <span className="font-bold text-slate-900 dark:text-white text-right truncate max-w-[160px]">{v}</span>
             </div>
           ))}
         </div>
-        <button onClick={onClose} className="mt-4 w-full py-2.5 bg-slate-900 dark:bg-slate-700 text-white rounded-xl text-xs font-bold hover:bg-slate-700 dark:hover:bg-slate-600 transition-colors">Close</button>
+        <button onClick={onClose} className="mt-4 w-full py-2.5 bg-slate-900 dark:bg-slate-700 text-white rounded-xl text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-600 transition-colors">Close</button>
       </div>
     </div>
   );
@@ -163,14 +169,13 @@ export default function DashboardHome() {
   const [activeLinksCount, setActiveLinksCount] = useState(0);
   const [userName, setUserName] = useState('Merchant');
   
-  // States for new features
   const [drawerOrder, setDrawerOrder] = useState<Order | null>(null);
   const [customerModal, setCustomerModal] = useState<Order | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [dateFilter, setDateFilter] = useState<'today' | '7d' | '30d' | 'all'>('7d');
 
-  // Load User Name
+  // Fetch Username
   useEffect(() => {
     const loadUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -237,7 +242,7 @@ export default function DashboardHome() {
     return () => window.removeEventListener('businessChanged', load);
   }, []);
 
-  // Dynamic Date Filtering for Stats & Charts
+  // Filtering by Date for Stat Cards & Pie Chart
   const displayOrders = useMemo(() => {
     const now = new Date();
     return allOrders.filter(o => {
@@ -270,12 +275,12 @@ export default function DashboardHome() {
       d.setDate(d.getDate() - (6 - i));
       return { day: d.toLocaleDateString('en-US', { weekday: 'short' }), fullDate: d.toDateString(), revenue: 0, orders: 0 };
     });
-    // Chart always shows 7 days strictly to keep visual integrity, regardless of filter
+    // Line Chart always shows last 7 days for consistency
     allOrders.forEach(o => {
       const isPaid = ['paid', 'success', 'completed'].includes(o.status?.toLowerCase());
       const d = new Date(o.created_at).toDateString();
       const slot = last7.find(x => x.fullDate === d);
-      if (slot) { slot.orders++; if (isPaid) slot.revenue += parseFloat(String(o.amount || 0)); }
+      if (slot && isPaid) { slot.orders++; slot.revenue += parseFloat(String(o.amount || 0)); }
     });
 
     const statusMap: Record<string, number> = {};
@@ -318,8 +323,7 @@ export default function DashboardHome() {
       </div>
     );
   }
-
-  return (
+    return (
     <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {drawerOrder && <TransactionDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} onResend={resendWebhook} />}
       {customerModal && <CustomerModal trx={customerModal} onClose={() => setCustomerModal(null)} />}
@@ -332,12 +336,7 @@ export default function DashboardHome() {
         </div>
         
         <div className="flex bg-white dark:bg-[#111827] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm w-full xl:w-auto overflow-x-auto scrollbar-hide">
-          {[
-            { id: 'today', label: 'Today' },
-            { id: '7d', label: '7 Days' },
-            { id: '30d', label: '30 Days' },
-            { id: 'all', label: 'All Time' }
-          ].map(f => (
+          {[ { id: 'today', label: 'Today' }, { id: '7d', label: '7 Days' }, { id: '30d', label: '30 Days' }, { id: 'all', label: 'All Time' } ].map(f => (
             <button key={f.id} onClick={() => setDateFilter(f.id as any)}
               className={`flex-1 xl:flex-none whitespace-nowrap px-5 py-2.5 text-[13px] font-black rounded-lg transition-all ${dateFilter === f.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
               {f.label}
@@ -362,39 +361,58 @@ export default function DashboardHome() {
               value={String(stats.pendingOrders)} />
           </div>
 
-          {/* ── Charts ── */}
+          {/* ── Charts (Area & Pie) ── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            {/* Revenue Line */}
+            {/* Revenue Area Chart */}
             <div className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
               <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-4">Revenue — Last 7 Days</h2>
               {chartData.last7.every(d => d.revenue === 0) ? (
                 <div className="h-48 flex items-center justify-center text-sm font-bold text-slate-400">No revenue data yet.</div>
               ) : (
-                <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={chartData.last7} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
-                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 10, fontSize: 12, color: '#f1f5f9' }} />
-                    <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2.5} dot={{ fill: '#3b82f6', r: 4 }} activeDot={{ r: 6 }} />
-                  </LineChart>
+                <ResponsiveContainer width="100%" height={240}>
+                  <AreaChart data={chartData.last7} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.15)" />
+                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} dy={10} />
+                    <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(val) => `৳${val >= 1000 ? (val/1000).toFixed(1)+'k' : val}`} />
+                    <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelStyle={{ color: '#94a3b8', marginBottom: 4 }} itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }} />
+                    <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} style={{ outline: 'none' }}/>
+                  </AreaChart>
                 </ResponsiveContainer>
               )}
             </div>
 
-            {/* Pie Chart */}
+            {/* Perfect Pie Chart */}
             <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
               <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-4">Order Status</h2>
               {displayOrders.length === 0 ? (
                 <div className="h-48 flex items-center justify-center text-sm font-bold text-slate-400">No orders yet.</div>
               ) : (
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
-                    <Pie data={chartData.pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" paddingAngle={3} labelLine={false} label={({ name, value, percent }) => `${name} ${value} (${((percent || 0) * 100).toFixed(0)}%)`}>
-                      {chartData.pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                    <Pie 
+                      data={chartData.pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} dataKey="value" paddingAngle={5} stroke="none" style={{ outline: 'none' }} labelLine={false}
+                      label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                        const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                        const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
+                        const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
+                        if (percent < 0.05) return null;
+                        return (
+                          <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold">
+                            {`${(percent * 100).toFixed(0)}%`}
+                          </text>
+                        );
+                      }}
+                    >
+                      {chartData.pieData.map((entry, i) => <Cell key={i} fill={getPieColor(entry.name)} style={{ outline: 'none' }} />)}
                     </Pie>
-                    <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 10, fontSize: 12, color: '#f1f5f9' }} />
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, fontWeight: 'bold' }} />
+                    <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} itemStyle={{ color: '#fff', fontWeight: 'bold' }} cursor={{ fill: 'transparent' }} />
+                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, fontWeight: '600', paddingTop: '10px' }} />
                   </PieChart>
                 </ResponsiveContainer>
               )}
