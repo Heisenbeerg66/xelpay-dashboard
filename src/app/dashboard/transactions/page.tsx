@@ -62,14 +62,10 @@ const STATUS_OPTIONS = [
 const PAGE_SIZE = 25;
 
 const formatDateShort = (d: string) =>
-  new Date(d).toLocaleDateString('en-US', {
-    year: 'numeric', month: 'short', day: 'numeric',
-  });
+  new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
 const formatTime = (d: string) =>
-  new Date(d).toLocaleTimeString('en-US', {
-    hour: '2-digit', minute: '2-digit',
-  });
+  new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
 const formatDate = (d: string) =>
   new Date(d).toLocaleString('en-US', {
@@ -82,7 +78,7 @@ const statusConfig = (s: string) => {
     case 'paid': case 'success': case 'completed':
       return { cls: 'text-emerald-500 dark:text-emerald-400 font-semibold', label: 'Success' };
     case 'pending':
-      return { cls: 'text-yellow-500 dark:text-yellow-400 font-semibold', label: 'Pending' };
+      return { cls: 'text-amber-500 dark:text-amber-400 font-semibold', label: 'Pending' };
     case 'rejected': case 'failed':
       return { cls: 'text-red-500 dark:text-red-400 font-semibold', label: 'Rejected' };
     case 'cancel': case 'cancelled':
@@ -133,11 +129,8 @@ function SmsDetailsModal({ trxId, onClose }: { trxId: string; onClose: () => voi
         .select('*')
         .eq('trx_id', trxId)
         .single();
-      if (error || !data) {
-        setError('No SMS record found for this transaction.');
-      } else {
-        setSmsData(data);
-      }
+      if (error || !data) setError('No SMS record found for this transaction.');
+      else setSmsData(data);
       setLoading(false);
     };
     fetch();
@@ -152,30 +145,24 @@ function SmsDetailsModal({ trxId, onClose }: { trxId: string; onClose: () => voi
         className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-              <Eye size={14} className="text-blue-600" />
+            <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center">
+              <Eye size={14} className="text-slate-600 dark:text-slate-300" />
             </div>
             <div>
               <p className="text-sm font-semibold text-slate-900 dark:text-white">SMS Verification</p>
               <p className="text-[10px] text-slate-400 font-mono mt-0.5">#{trxId}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
-          >
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
             <X size={14} className="text-slate-400" />
           </button>
         </div>
-
-        {/* Body */}
         <div className="p-5">
           {loading ? (
             <div className="flex justify-center items-center py-10">
-              <Loader2 className="animate-spin text-blue-600" size={22} />
+              <Loader2 className="animate-spin text-slate-400" size={22} />
             </div>
           ) : error ? (
             <div className="text-center py-8">
@@ -187,54 +174,33 @@ function SmsDetailsModal({ trxId, onClose }: { trxId: string; onClose: () => voi
             </div>
           ) : smsData ? (
             <div className="space-y-3">
-              {/* Sender */}
-              <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
-                    <Smartphone size={12} className="text-blue-600" />
+              {[
+                { icon: Smartphone, label: 'Sender', value: smsData.sender },
+                { icon: CreditCard, label: 'Method', value: smsData.method },
+                {
+                  icon: TrendingUp, label: 'Amount',
+                  value: `৳${Number(smsData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+                  valueClass: 'text-emerald-600 dark:text-emerald-400',
+                },
+                {
+                  icon: Clock, label: 'Received',
+                  value: formatDateShort(smsData.received_at),
+                  sub: formatTime(smsData.received_at),
+                },
+              ].map(({ icon: Icon, label, value, valueClass, sub }) => (
+                <div key={label} className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center">
+                      <Icon size={12} className="text-slate-500 dark:text-slate-400" />
+                    </div>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{label}</p>
                   </div>
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Sender</p>
-                </div>
-                <p className="text-sm font-semibold font-mono text-slate-900 dark:text-white">{smsData.sender}</p>
-              </div>
-
-              {/* Method */}
-              <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 bg-emerald-100 dark:bg-emerald-900/40 rounded-lg flex items-center justify-center">
-                    <CreditCard size={12} className="text-emerald-600" />
+                  <div className="text-right">
+                    <p className={`text-sm font-semibold font-mono text-slate-900 dark:text-white ${valueClass || ''}`}>{value}</p>
+                    {sub && <p className="text-[10px] text-slate-400">{sub}</p>}
                   </div>
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Method</p>
                 </div>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white">{smsData.method}</p>
-              </div>
-
-              {/* Amount */}
-              <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 bg-amber-100 dark:bg-amber-900/40 rounded-lg flex items-center justify-center">
-                    <TrendingUp size={12} className="text-amber-600" />
-                  </div>
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Amount</p>
-                </div>
-                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">৳{Number(smsData.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-              </div>
-
-              {/* Received At */}
-              <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center">
-                    <Clock size={12} className="text-slate-500 dark:text-slate-400" />
-                  </div>
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Received</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-semibold text-slate-900 dark:text-white">{formatDateShort(smsData.received_at)}</p>
-                  <p className="text-[10px] text-slate-400">{formatTime(smsData.received_at)}</p>
-                </div>
-              </div>
-
-              {/* Status Badge */}
+              ))}
               <div className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[10px] font-semibold uppercase tracking-widest ${smsData.is_used ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>
                 {smsData.is_used ? <><Check size={10} /> Verified & Used</> : <><Clock size={10} /> Not Yet Used</>}
               </div>
@@ -271,7 +237,6 @@ function FilterPanel({ filters, setFilters, onClose, onApply }: {
         </div>
       </div>
       <div className="p-5 space-y-5">
-        {/* Status */}
         <div>
           <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2.5">Status</p>
           <div className="flex flex-wrap gap-2">
@@ -288,7 +253,6 @@ function FilterPanel({ filters, setFilters, onClose, onApply }: {
             })}
           </div>
         </div>
-        {/* Payment Method */}
         <div>
           <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2.5">Payment Method</p>
           <div className="flex flex-wrap gap-2">
@@ -298,41 +262,39 @@ function FilterPanel({ filters, setFilters, onClose, onApply }: {
               return (
                 <button key={cat.value} onClick={() => toggle('method_category', cat.value)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${active
-                    ? 'bg-blue-600 text-white border-transparent'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-blue-300'}`}>
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400'}`}>
                   <Icon size={11} />{cat.label}
                 </button>
               );
             })}
           </div>
         </div>
-        {/* TRX ID */}
         <div>
           <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2.5">TRX ID</p>
           <input type="text" placeholder="Enter transaction ID..." value={filters.trx_id}
             onChange={e => setFilters({ ...filters, trx_id: e.target.value })}
-            className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-xs font-mono text-slate-900 dark:text-white transition-colors placeholder:text-slate-400" />
+            className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-slate-400 text-xs font-mono text-slate-900 dark:text-white transition-colors placeholder:text-slate-400" />
         </div>
-        {/* Date Range */}
         <div>
           <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2.5">Date Range</p>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="text-[9px] font-medium text-slate-500 dark:text-slate-400 mb-1">FROM</p>
               <input type="date" value={filters.date_from} onChange={e => setFilters({ ...filters, date_from: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-xs text-slate-900 dark:text-white" />
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-slate-400 text-xs text-slate-900 dark:text-white" />
             </div>
             <div>
               <p className="text-[9px] font-medium text-slate-500 dark:text-slate-400 mb-1">TO</p>
               <input type="date" value={filters.date_to} onChange={e => setFilters({ ...filters, date_to: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-xs text-slate-900 dark:text-white" />
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-slate-400 text-xs text-slate-900 dark:text-white" />
             </div>
           </div>
         </div>
       </div>
       <div className="px-5 pb-5">
         <button onClick={() => { onApply(); onClose(); }}
-          className="w-full py-3 bg-blue-600 text-white text-xs font-semibold uppercase tracking-widest rounded-xl hover:bg-blue-700 transition-colors">
+          className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold uppercase tracking-widest rounded-xl hover:opacity-90 transition-opacity">
           Apply Filters
         </button>
       </div>
@@ -440,37 +402,35 @@ export default function Transactions() {
     );
   }
 
+  const cellBase = 'text-sm font-medium text-slate-800 dark:text-slate-200';
+
   return (
     <div className="max-w-[1600px] mx-auto space-y-5 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
       {/* SMS Details Modal */}
-      {smsTrxId && (
-        <SmsDetailsModal trxId={smsTrxId} onClose={() => setSmsTrxId(null)} />
-      )}
+      {smsTrxId && <SmsDetailsModal trxId={smsTrxId} onClose={() => setSmsTrxId(null)} />}
 
-      {/* ── Header ── */}
+      {/* ── Page Header ── */}
+      <div className="pb-4 border-b border-slate-100 dark:border-slate-800">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Transactions</p>
+        <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">All Transactions</h1>
+      </div>
+
+      {/* ── Controls ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <Receipt size={22} className="text-blue-600" /> Transactions
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Monitor and manage all payments across your workspaces.</p>
-        </div>
-
-        {/* Controls */}
+        <p className="text-sm text-slate-500 dark:text-slate-400">Monitor and manage all payments across your workspaces.</p>
         <div className="flex items-center gap-3">
           <button
             onClick={() => exportToCSV(filteredData)}
-            className="flex items-center gap-2 h-9 px-4 bg-blue-600 rounded-xl text-sm font-medium text-white hover:bg-blue-700 transition-all shadow-sm shadow-blue-600/20"
+            className="flex items-center gap-2 h-9 px-4 bg-slate-900 dark:bg-white rounded-xl text-xs font-semibold text-white dark:text-slate-900 hover:opacity-90 transition-all shadow-sm"
           >
-            <Download size={14} /> Export
+            <Download size={13} /> Export
           </button>
-
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 h-9 px-1 rounded-xl">
             {(['business', 'all'] as const).map(m => (
               <button key={m} onClick={() => setViewMode(m)}
                 className={`h-7 px-4 rounded-lg text-xs font-medium transition-all ${viewMode === m
-                  ? 'bg-blue-600 text-white shadow-sm'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
                   : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
                 {m === 'business' ? 'This Business' : 'All'}
               </button>
@@ -482,16 +442,13 @@ export default function Transactions() {
       {/* ── Search & Filter ── */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 group">
-          <Search
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors"
-            size={15}
-          />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-600 dark:group-focus-within:text-slate-300 transition-colors" size={15} />
           <input
             type="text"
             placeholder="Search by TRX ID, Order No, Name, Email, Phone..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full h-9 pl-11 pr-10 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 text-sm text-slate-900 dark:text-white transition-all placeholder:text-slate-400"
+            className="w-full h-9 pl-11 pr-10 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl outline-none focus:border-slate-400 dark:focus:border-slate-600 text-sm text-slate-900 dark:text-white transition-all placeholder:text-slate-400"
           />
           {searchTerm && (
             <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors">
@@ -503,13 +460,13 @@ export default function Transactions() {
         <div className="relative" ref={filterRef}>
           <button
             onClick={() => setShowFilter(!showFilter)}
-            className={`flex items-center gap-2 h-9 px-4 border rounded-xl text-sm font-medium transition-all ${activeFilterCount > 0
-              ? 'bg-emerald-600 border-emerald-600 text-white'
-              : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-blue-400'}`}>
-            <Filter size={14} className={activeFilterCount > 0 ? 'text-white' : 'text-blue-500'} />
+            className={`flex items-center gap-2 h-9 px-4 border rounded-xl text-xs font-medium transition-all ${activeFilterCount > 0
+              ? 'bg-slate-900 dark:bg-white border-transparent text-white dark:text-slate-900'
+              : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400'}`}>
+            <Filter size={13} />
             <span className="hidden sm:inline">Filter</span>
             {activeFilterCount > 0 && (
-              <span className="bg-white/30 text-white text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center">
+              <span className="bg-white/20 dark:bg-slate-900/20 text-[10px] font-semibold rounded-full w-4 h-4 flex items-center justify-center">
                 {activeFilterCount}
               </span>
             )}
@@ -521,7 +478,7 @@ export default function Transactions() {
 
         <button
           onClick={() => fetchTransactions(businessId, merchantId, viewMode)}
-          className="h-9 w-9 flex items-center justify-center bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 hover:text-emerald-600 hover:border-emerald-400 transition-colors"
+          className="h-9 w-9 flex items-center justify-center bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl text-slate-500 hover:text-slate-900 dark:hover:text-white hover:border-slate-400 transition-colors"
           title="Refresh"
         >
           <RefreshCw size={14} />
@@ -540,7 +497,7 @@ export default function Transactions() {
             </span>
           ))}
           {appliedFilters.method_category.map(c => (
-            <span key={c} className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-medium uppercase tracking-wider">
+            <span key={c} className="flex items-center gap-1.5 px-3 py-1 bg-slate-700 dark:bg-slate-300 text-white dark:text-slate-900 rounded-lg text-[10px] font-medium uppercase tracking-wider">
               {c}
               <button onClick={() => { const f = { ...appliedFilters, method_category: appliedFilters.method_category.filter(x => x !== c) }; setAppliedFilters(f); setFilters(f); }}>
                 <X size={10} />
@@ -567,7 +524,7 @@ export default function Transactions() {
       <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         {loading ? (
           <div className="flex justify-center items-center py-32">
-            <Loader2 className="animate-spin text-blue-600" size={26} />
+            <Loader2 className="animate-spin text-slate-400" size={26} />
           </div>
         ) : filteredData.length === 0 ? (
           <div className="py-24 text-center">
@@ -583,9 +540,9 @@ export default function Transactions() {
           <div className="overflow-x-auto">
             <table className="w-full text-left whitespace-nowrap">
               <thead>
-                <tr>
+                <tr className="bg-slate-50 dark:bg-[#0B1120] border-b border-slate-200 dark:border-slate-800">
                   {['Order No', 'Date', 'Customer Name', 'Email', 'Phone', 'Product', 'Source', 'Amount', 'Method', 'TRX ID', 'Status'].map(h => (
-                    <th key={h} className="px-5 py-3.5 text-[10px] font-bold text-white uppercase tracking-widest bg-blue-600 dark:bg-blue-700">
+                    <th key={h} className="px-5 py-3.5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                       {h}
                     </th>
                   ))}
@@ -594,51 +551,50 @@ export default function Transactions() {
               <tbody>
                 {paginatedData.map((trx, idx) => {
                   const badge = statusConfig(trx.status);
-                  const cellBase = "text-sm font-semibold text-slate-900 dark:text-white";
                   return (
                     <tr key={trx.id}
-                      className={`border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors ${idx === paginatedData.length - 1 ? 'border-b-0' : ''}`}>
+                      className={`border-b border-slate-100 dark:border-slate-800/60 hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors ${idx === paginatedData.length - 1 ? 'border-b-0' : ''}`}>
 
                       <td className="px-5 py-4">
-                        <span className={cellBase}>{trx.order_no || '—'}</span>
+                        <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">{trx.order_no || '—'}</span>
                       </td>
 
                       <td className="px-5 py-4">
-                        <p className={cellBase}>{formatDateShort(trx.created_at)}</p>
+                        <p className={`${cellBase} text-xs`}>{formatDateShort(trx.created_at)}</p>
                         <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{formatTime(trx.created_at)}</p>
                       </td>
 
                       <td className="px-5 py-4">
-                        <span className={cellBase}>{trx.customer_name || '—'}</span>
+                        <span className={`${cellBase} text-xs`}>{trx.customer_name || '—'}</span>
                       </td>
 
                       <td className="px-5 py-4">
-                        <span className={cellBase}>{trx.customer_email || '—'}</span>
+                        <span className="text-xs text-slate-600 dark:text-slate-400">{trx.customer_email || '—'}</span>
                       </td>
 
                       <td className="px-5 py-4">
-                        <span className={`${cellBase} font-mono`}>{trx.customer_number || '—'}</span>
+                        <span className="text-xs font-mono text-slate-600 dark:text-slate-400">{trx.customer_number || '—'}</span>
                       </td>
 
                       <td className="px-5 py-4">
-                        <span className={cellBase}>{trx.product_name || '—'}</span>
+                        <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{trx.product_name || '—'}</span>
                       </td>
 
                       <td className="px-5 py-4">
-                        <span className="text-xs font-semibold text-white uppercase tracking-wider bg-slate-500 dark:bg-slate-600 px-2.5 py-1 rounded-lg">
+                        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg">
                           {trx.source || 'api'}
                         </span>
                       </td>
 
                       <td className="px-5 py-4">
-                        <p className={cellBase}>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">
                           {trx.currency === 'USD' ? '$' : '৳'}{Number(trx.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </p>
                         <p className="text-[10px] text-slate-400 dark:text-slate-500">{trx.currency || 'BDT'}</p>
                       </td>
 
                       <td className="px-5 py-4">
-                        <p className={cellBase}>{trx.method || '—'}</p>
+                        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">{trx.method || '—'}</p>
                         {getMethodCategory(trx.method) && (
                           <p className="text-[10px] text-slate-400 dark:text-slate-500 capitalize">{getMethodCategory(trx.method)}</p>
                         )}
@@ -647,13 +603,13 @@ export default function Transactions() {
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
                           {trx.trx_id
-                            ? <span className={`${cellBase} font-mono`}>#{trx.trx_id}</span>
-                            : <span className="text-sm text-slate-400 dark:text-slate-500 italic">Awaiting</span>}
+                            ? <span className="text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">#{trx.trx_id}</span>
+                            : <span className="text-xs text-slate-400 dark:text-slate-500 italic">Awaiting</span>}
                           {trx.trx_id && (
                             <button
                               onClick={() => setSmsTrxId(trx.trx_id)}
                               title="View SMS Verification"
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors shrink-0"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
                             >
                               <Eye size={13} />
                             </button>
@@ -662,7 +618,7 @@ export default function Transactions() {
                       </td>
 
                       <td className="px-5 py-4">
-                        <span className={`text-sm ${badge.cls}`}>{badge.label}</span>
+                        <span className={`text-xs ${badge.cls}`}>{badge.label}</span>
                       </td>
                     </tr>
                   );
@@ -701,7 +657,7 @@ export default function Transactions() {
                   return (
                     <button key={page} onClick={() => setCurrentPage(page)}
                       className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${currentPage === page
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}>
                       {page}
                     </button>
