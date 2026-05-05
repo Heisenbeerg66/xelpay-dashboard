@@ -49,7 +49,10 @@ type EditForm = {
   discount: string;
   discount_type: string;
   description: string;
-  expires_at: string; 
+  expires_type: 'none' | 'hours' | 'days';
+  expires_date_from: string;
+  expires_date_to: string;
+  expires_hours: string;
 };
 
 type BusinessStatus = 'active' | 'inactive' | 'suspended' | 'pending';
@@ -175,31 +178,64 @@ function BusinessPendingNotice({ supportTelegram }: { supportTelegram: string | 
   );
 }
 
+// ─── Unsaved Changes Confirmation Modal ───────────────────────────────────────
+function ConfirmCloseModal({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-3xl p-6 shadow-2xl relative animate-in zoom-in-95 duration-200 text-center">
+        <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <AlertCircle size={32} />
+        </div>
+        <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider mb-2">Unsaved Changes</h3>
+        <p className="text-[13px] font-bold text-slate-500 mb-6">You have unsaved changes. Are you sure you want to discard them?</p>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 py-3.5 rounded-xl font-black text-sm text-slate-600 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Keep Editing</button>
+          <button onClick={onConfirm} className="flex-1 py-3.5 rounded-xl font-black text-sm text-white bg-red-600 hover:bg-red-700 transition-colors shadow-sm">Discard</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Edit Link Modal (Mobile Full-Screen) ─────────────────────────────────────
 function EditLinkModal({ link, slug, onClose, onUpdated }: {
   link: PaymentLink; slug: string; onClose: () => void; onUpdated: () => void;
 }) {
   const isDefault = isDefaultLink(link.link_id);
-  const existingExpiry = link.expires_at ? new Date(link.expires_at).toISOString().slice(0, 16) : '';
-
-  const [form, setForm] = useState<EditForm>({
+  
+  const [initialForm] = useState<EditForm>({
     title: link.title,
     amount: link.amount ? String(link.amount) : '',
     discount: link.discount ? String(link.discount) : '',
     discount_type: link.discount_type || 'flat',
     description: link.description || '',
-    expires_at: existingExpiry,
+    expires_type: link.expires_at ? 'days' : 'none',
+    expires_date_from: '',
+    expires_date_to: link.expires_at ? new Date(link.expires_at).toISOString().split('T')[0] : '',
+    expires_hours: '',
   });
+
+  const [form, setForm] = useState<EditForm>(initialForm);
   const [saving, setSaving] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string>(link.product_logo || '');
   const [logoUrl, setLogoUrl] = useState<string>(link.product_logo || '');
+  const [showConfirmClose, setShowConfirmClose] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const set = (k: keyof EditForm, v: string) => setForm(f => ({ ...f, [k]: v }));
   const sym = symbol(link.currency);
   const previewUrl = getDisplayUrl(slug, titleToSlug(form.title) || link.link_id);
+
+  const handleCloseAttempt = () => {
+    const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm) || logoUrl !== (link.product_logo || '');
+    if (isDirty && !isSuccess) {
+      setShowConfirmClose(true);
+    } else {
+      onClose();
+    }
+  };
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -226,10 +262,18 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
     e.preventDefault();
     setSaving(true);
     const newLinkId = titleToSlug(form.title) || link.link_id;
+
+    let new_expires_at: string | null = null;
+    if (form.expires_type === 'hours' && form.expires_hours) {
+      new_expires_at = new Date(Date.now() + parseInt(form.expires_hours) * 3600000).toISOString();
+    } else if (form.expires_type === 'days' && form.expires_date_to) {
+      new_expires_at = new Date(form.expires_date_to + 'T23:59:59').toISOString();
+    }
+
     const payload: any = {
       title: form.title, link_id: newLinkId, description: form.description,
       discount: form.discount ? parseFloat(form.discount) : 0, discount_type: form.discount_type,
-      product_logo: logoUrl || null, expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
+      product_logo: logoUrl || null, expires_at: new_expires_at,
     };
     if (link.amount !== null) payload.amount = form.amount ? parseFloat(form.amount) : null;
 
@@ -242,166 +286,182 @@ function EditLinkModal({ link, slug, onClose, onUpdated }: {
     ? calcFinal(parseFloat(form.amount), parseFloat(form.discount || '0'), form.discount_type) : null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-[#111827] w-full h-full sm:h-auto sm:max-w-lg sm:rounded-2xl shadow-2xl relative flex flex-col sm:max-h-[92vh]">
-        {isSuccess && <SuccessOverlay message="Link Updated!" />}
+    <>
+      {showConfirmClose && <ConfirmCloseModal onConfirm={onClose} onCancel={() => setShowConfirmClose(false)} />}
+      <div className="fixed inset-0 z-[200] flex items-center justify-center sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="bg-white dark:bg-[#111827] w-full h-full sm:h-auto sm:max-w-lg sm:rounded-2xl shadow-2xl relative flex flex-col sm:max-h-[92vh]">
+          {isSuccess && <SuccessOverlay message="Link Updated!" />}
 
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-[#111827] z-10 sm:rounded-t-2xl">
-          <div>
-            <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-wider">Edit Link</h3>
-            <p className="text-[11px] font-bold text-slate-400 mt-0.5 font-mono">{link.link_id}</p>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-[#111827] z-10 sm:rounded-t-2xl">
+            <div>
+              <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-wider">Edit Link</h3>
+              <p className="text-[11px] font-bold text-slate-400 mt-0.5 font-mono">{link.link_id}</p>
+            </div>
+            <button onClick={handleCloseAttempt} className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors">
+              <X size={16} className="text-slate-500" />
+            </button>
           </div>
-          <button onClick={onClose} className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors">
-            <X size={16} className="text-slate-500" />
-          </button>
-        </div>
 
-        {isDefault ? (
-          <>
-            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-              <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <LinkIcon size={24} className="text-slate-400" />
+          {isDefault ? (
+            <>
+              <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+                <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <LinkIcon size={24} className="text-slate-400" />
+                </div>
+                <p className="text-base font-black text-slate-900 dark:text-white uppercase">Cannot Edit Default</p>
+                <p className="text-sm font-bold text-slate-500 mt-2 max-w-[200px]">Default payment links are managed automatically.</p>
               </div>
-              <p className="text-base font-black text-slate-900 dark:text-white uppercase">Cannot Edit Default</p>
-              <p className="text-sm font-bold text-slate-500 mt-2 max-w-[200px]">Default payment links are managed automatically.</p>
-            </div>
-            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
-              <button type="button" onClick={onClose} className="w-full py-3.5 rounded-xl font-black text-sm text-slate-600 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                Close
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="overflow-y-auto flex-1 px-6 py-6 custom-scrollbar">
-              <form id="edit-form" onSubmit={handleSubmit} className="space-y-5">
-                {/* Title */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Title</label>
-                  <input required type="text" value={form.title} onChange={e => set('title', e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white transition-all shadow-sm" />
-                </div>
-
-                {/* Link Preview */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Link Preview</label>
-                  <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl">
-                    <Globe size={14} className="text-blue-500 shrink-0" />
-                    <span className="text-[13px] font-mono font-bold text-blue-600 dark:text-blue-400 truncate">{previewUrl}</span>
-                  </div>
-                </div>
-
-                {/* Product Image */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                    <ImageIcon size={12} /> Product Image <span className="text-[9px] font-bold text-slate-400 normal-case tracking-normal ml-1">(Max 2MB)</span>
-                  </label>
-                  {logoPreview ? (
-                    <div className="relative w-full h-36 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm group">
-                      <img src={logoPreview} alt="preview" className="w-full h-full object-contain" />
-                      {uploading && (
-                        <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 flex items-center justify-center backdrop-blur-sm">
-                          <Loader2 size={24} className="animate-spin text-blue-600" />
-                        </div>
-                      )}
-                      <div className="absolute top-3 right-3 flex gap-2">
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-md text-slate-600 hover:text-blue-600 transition-all"><Edit size={14} /></button>
-                        <button type="button" onClick={handleRemoveImage} className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-md text-slate-600 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
-                      </div>
-                      {logoUrl && !uploading && (
-                        <div className="absolute bottom-3 left-3">
-                          <span className="text-[10px] bg-emerald-500 text-white px-2.5 py-1 rounded-lg font-black flex items-center gap-1.5 shadow-sm"><Check size={12} /> Uploaded</span>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <button type="button" onClick={() => fileInputRef.current?.click()}
-                      className="w-full h-28 bg-slate-50 dark:bg-[#0B1120] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-blue-500 rounded-xl flex flex-col items-center justify-center gap-2 transition-all group">
-                      <div className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm group-hover:scale-110 transition-transform"><Upload size={16} className="text-slate-400 group-hover:text-blue-600" /></div>
-                      <p className="text-[11px] font-bold text-slate-500 group-hover:text-blue-600">Click to upload product image</p>
-                    </button>
-                  )}
-                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageSelect} />
-                </div>
-
-                {/* Amount */}
-                {link.amount !== null && (
+              <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
+                <button type="button" onClick={onClose} className="w-full py-3.5 rounded-xl font-black text-sm text-slate-600 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                  Close
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="overflow-y-auto flex-1 px-6 py-6 custom-scrollbar">
+                <form id="edit-form" onSubmit={handleSubmit} className="space-y-5">
+                  {/* Title */}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Price ({link.currency})</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">{sym}</span>
-                      <input required type="number" step="any" min="1" value={form.amount} onChange={e => set('amount', e.target.value)}
-                        className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-black text-slate-900 dark:text-white transition-all shadow-sm" />
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Title</label>
+                    <input required type="text" value={form.title} onChange={e => set('title', e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white transition-all shadow-sm" />
+                  </div>
+
+                  {/* Link Preview */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Link Preview</label>
+                    <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl">
+                      <Globe size={14} className="text-blue-500 shrink-0" />
+                      <span className="text-[13px] font-mono font-bold text-blue-600 dark:text-blue-400 truncate">{previewUrl}</span>
                     </div>
                   </div>
-                )}
 
-                {/* Discount */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Tag size={12} /> Discount</label>
-                  <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-all bg-slate-50 dark:bg-[#0B1120] shadow-sm">
-                    <select value={form.discount_type} onChange={e => set('discount_type', e.target.value)}
-                      className="bg-slate-100 dark:bg-[#111827] px-4 py-3 text-xs font-black text-slate-700 dark:text-slate-300 outline-none border-r border-slate-200 dark:border-slate-700 cursor-pointer">
-                      <option value="flat">Flat ({sym})</option>
-                      <option value="percentage">Percent (%)</option>
-                    </select>
-                    <input type="number" step="any" min="0" placeholder="0" value={form.discount} onChange={e => set('discount', e.target.value)}
-                      className="w-full px-4 py-3 bg-transparent outline-none text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400" />
+                  {/* Product Image */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                      <ImageIcon size={12} /> Product Image <span className="text-[9px] font-bold text-slate-400 normal-case tracking-normal ml-1">(Max 2MB)</span>
+                    </label>
+                    {logoPreview ? (
+                      <div className="relative w-full h-36 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm group">
+                        <img src={logoPreview} alt="preview" className="w-full h-full object-contain" />
+                        {uploading && (
+                          <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 flex items-center justify-center backdrop-blur-sm">
+                            <Loader2 size={24} className="animate-spin text-blue-600" />
+                          </div>
+                        )}
+                        <div className="absolute top-3 right-3 flex gap-2">
+                          <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl shadow-lg transition-all active:scale-95"><Edit size={14} strokeWidth={2.5} /></button>
+                          <button type="button" onClick={handleRemoveImage} className="p-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-lg transition-all active:scale-95"><Trash2 size={14} strokeWidth={2.5} /></button>
+                        </div>
+                        {logoUrl && !uploading && (
+                          <div className="absolute bottom-3 left-3">
+                            <span className="text-[10px] bg-emerald-500 text-white px-2.5 py-1 rounded-lg font-black flex items-center gap-1.5 shadow-sm"><Check size={12} /> Uploaded</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => fileInputRef.current?.click()}
+                        className="w-full h-28 bg-slate-50 dark:bg-[#0B1120] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-blue-500 rounded-xl flex flex-col items-center justify-center gap-2 transition-all group">
+                        <div className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm group-hover:scale-110 transition-transform"><Upload size={16} className="text-slate-400 group-hover:text-blue-600" /></div>
+                        <p className="text-[11px] font-bold text-slate-500 group-hover:text-blue-600">Click to upload product image</p>
+                      </button>
+                    )}
+                    <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageSelect} />
                   </div>
-                </div>
 
-                {/* Price Preview */}
-                {finalPrice !== null && (
-                  <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-xl px-5 py-4">
-                    <div>
-                      <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Customer pays</p>
-                      {parseFloat(form.discount || '0') > 0 && (
-                        <p className="text-xs font-bold text-slate-400 line-through mt-0.5">{sym}{parseFloat(form.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                      )}
+                  {/* Amount */}
+                  {link.amount !== null && (
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Price ({link.currency})</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-bold">{sym}</span>
+                        <input required type="number" step="any" min="1" value={form.amount} onChange={e => set('amount', e.target.value)}
+                          className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-black text-slate-900 dark:text-white transition-all shadow-sm" />
+                      </div>
                     </div>
-                    <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{sym}{finalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                )}
-
-                {/* Description */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Description</label>
-                  <textarea rows={3} value={form.description} onChange={e => set('description', e.target.value)}
-                    placeholder="Brief product description..."
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white transition-all shadow-sm resize-none placeholder:text-slate-400" />
-                </div>
-
-                {/* Expiration Date */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                    <Clock size={12} /> Link Expiration Date <span className="text-[9px] font-bold text-slate-400 normal-case tracking-normal ml-1">(Optional)</span>
-                  </label>
-                  <input type="datetime-local" value={form.expires_at} onChange={e => set('expires_at', e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white transition-all shadow-sm"
-                  />
-                  {form.expires_at && (
-                    <button type="button" onClick={() => set('expires_at', '')} className="text-[11px] text-red-500 hover:text-red-700 font-bold mt-1 inline-block">
-                      Clear Expiry
-                    </button>
                   )}
-                </div>
-              </form>
-            </div>
 
-            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex gap-3 shrink-0 bg-white dark:bg-[#111827] sm:rounded-b-2xl">
-              <button type="button" onClick={onClose}
-                className="flex-1 py-3.5 rounded-xl font-black text-sm text-slate-600 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                Cancel
-              </button>
-              <button type="submit" form="edit-form" disabled={saving || isSuccess || uploading}
-                className="flex-1 py-3.5 rounded-xl font-black text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 transition-all flex justify-center items-center gap-2 shadow-sm">
-                {saving || isSuccess ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
-              </button>
-            </div>
-          </>
-        )}
+                  {/* Discount */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Tag size={12} /> Discount</label>
+                    <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-all bg-slate-50 dark:bg-[#0B1120] shadow-sm">
+                      <select value={form.discount_type} onChange={e => set('discount_type', e.target.value)}
+                        className="bg-slate-100 dark:bg-[#111827] px-4 py-3 text-xs font-black text-slate-700 dark:text-slate-300 outline-none border-r border-slate-200 dark:border-slate-700 cursor-pointer">
+                        <option value="flat">Flat ({sym})</option>
+                        <option value="percentage">Percent (%)</option>
+                      </select>
+                      <input type="number" step="any" min="0" placeholder="0" value={form.discount} onChange={e => set('discount', e.target.value)}
+                        className="w-full px-4 py-3 bg-transparent outline-none text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400" />
+                    </div>
+                  </div>
+
+                  {/* Price Preview */}
+                  {finalPrice !== null && (
+                    <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-xl px-5 py-4">
+                      <div>
+                        <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Customer pays</p>
+                        {parseFloat(form.discount || '0') > 0 && (
+                          <p className="text-xs font-bold text-slate-400 line-through mt-0.5">{sym}{parseFloat(form.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        )}
+                      </div>
+                      <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{sym}{finalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Description</label>
+                    <textarea rows={3} value={form.description} onChange={e => set('description', e.target.value)}
+                      placeholder="Brief product description..."
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white transition-all shadow-sm resize-none placeholder:text-slate-400" />
+                  </div>
+
+                  {/* Expiration Options (Same as Create) */}
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Clock size={12} /> Link Expiry</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {[{ val: 'none', label: 'No Expiry' }, { val: 'hours', label: 'Hours' }, { val: 'days', label: 'Date Range' }].map(t => (
+                        <button key={t.val} type="button" onClick={() => set('expires_type', t.val as any)}
+                          className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest border transition-all shadow-sm ${form.expires_type === t.val ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent' : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-400'}`}>
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                    {form.expires_type === 'hours' && (
+                      <input type="number" min="1" placeholder="e.g. 24 hours" value={form.expires_hours} onChange={e => set('expires_hours', e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white shadow-sm" />
+                    )}
+                    {form.expires_type === 'days' && (
+                      <div className="grid grid-cols-2 gap-4">
+                        {['expires_date_from', 'expires_date_to'].map((k, i) => (
+                          <div key={k} className="space-y-1.5">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{i === 0 ? 'From' : 'To'}</p>
+                            <input type="date" value={(form as any)[k]} onChange={e => set(k as keyof EditForm, e.target.value)}
+                              className="w-full px-4 py-3 min-h-[48px] bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white shadow-sm appearance-none block" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex gap-3 shrink-0 bg-white dark:bg-[#111827] sm:rounded-b-2xl">
+                <button type="button" onClick={handleCloseAttempt}
+                  className="flex-1 py-3.5 rounded-xl font-black text-sm text-slate-600 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" form="edit-form" disabled={saving || isSuccess || uploading}
+                  className="flex-1 py-3.5 rounded-xl font-black text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 shadow-sm transition-all flex justify-center items-center gap-2">
+                  {saving || isSuccess ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -417,16 +477,16 @@ function LinkTypeChooser({ onSelect, onClose }: { onSelect: (type: 'default' | '
         <p className="text-[13px] font-bold text-slate-500 mb-8">Choose the type of payment link.</p>
         <div className="space-y-4">
           {[
-            { type: 'default' as const, icon: Zap, label: 'Default Link', desc: 'Quick link with no fixed amount. Customers enter their own amount.' },
-            { type: 'custom' as const, icon: LinkIcon, label: 'Custom Link', desc: 'Full control — set product title, image, price, discounts, expiry, and custom URL.' },
+            { type: 'default' as const, icon: Zap, label: 'Default Link', desc: 'Quick link with no fixed amount. Customers enter their own amount.', color: 'text-blue-500' },
+            { type: 'custom' as const, icon: LinkIcon, label: 'Custom Link', desc: 'Full control — set product title, image, price, discounts, expiry, and custom URL.', color: 'text-purple-500' },
           ].map(opt => (
             <button key={opt.type} onClick={() => onSelect(opt.type)}
               className="w-full flex items-start gap-5 p-5 bg-slate-50 dark:bg-[#0B1120] border-2 border-slate-100 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-600 rounded-2xl transition-all group text-left">
-              <div className="w-12 h-12 bg-white dark:bg-slate-800 shadow-sm group-hover:bg-blue-600 rounded-xl flex items-center justify-center shrink-0 transition-colors">
-                <opt.icon size={20} className="text-slate-400 group-hover:text-white transition-colors" />
+              <div className="shrink-0 mt-0.5">
+                <opt.icon size={28} className={`${opt.color} group-hover:scale-110 transition-transform`} strokeWidth={2.5} />
               </div>
-              <div className="mt-0.5">
-                <p className="font-black text-slate-900 dark:text-white text-[15px]">{opt.label}</p>
+              <div>
+                <p className={`font-black text-[15px] ${opt.color}`}>{opt.label}</p>
                 <p className="text-[12px] font-bold text-slate-400 mt-1 leading-relaxed">{opt.desc}</p>
               </div>
             </button>
@@ -450,12 +510,22 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, existin
   const [isSuccess, setIsSuccess] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [logoPreview, setLogoPreview] = useState('');
+  const [showConfirmClose, setShowConfirmClose] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const set = (k: keyof LinkForm, v: string) => setForm(f => ({ ...f, [k]: v }));
 
   const handleTitleChange = (v: string) => {
     const link_id = titleToSlug(v);
     setForm(f => ({ ...f, title: v, link_id }));
+  };
+
+  const handleCloseAttempt = () => {
+    const isDirty = form.title || form.amount || logoPreview;
+    if (isDirty && !isSuccess) {
+      setShowConfirmClose(true);
+    } else {
+      onClose();
+    }
   };
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -517,190 +587,193 @@ function CreateLinkModal({ type, businessId, businessSlug, businessName, existin
   const customLinkPreview = getDisplayUrl(businessSlug, form.link_id || 'your-product');
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-[#111827] w-full h-full sm:h-auto sm:max-w-2xl sm:rounded-2xl shadow-2xl relative flex flex-col sm:max-h-[92vh]">
-        {isSuccess && <SuccessOverlay message="Link Created!" />}
+    <>
+      {showConfirmClose && <ConfirmCloseModal onConfirm={onClose} onCancel={() => setShowConfirmClose(false)} />}
+      <div className="fixed inset-0 z-[200] flex items-center justify-center sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="bg-white dark:bg-[#111827] w-full h-full sm:h-auto sm:max-w-2xl sm:rounded-2xl shadow-2xl relative flex flex-col sm:max-h-[92vh]">
+          {isSuccess && <SuccessOverlay message="Link Created!" />}
 
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-[#111827] z-10 sm:rounded-t-2xl">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-              <LinkIcon size={18} className="text-blue-600" />
-            </div>
-            <div>
-              <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-wider">{type === 'default' ? 'Default Link' : 'Custom Link'}</h3>
-              <p className="text-[11px] font-bold text-slate-400 mt-0.5">{type === 'default' ? 'Quick open-amount payment link' : 'Fully customized payment link'}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors">
-            <X size={16} className="text-slate-500" />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 px-6 py-6 custom-scrollbar">
-          <form id="link-form" onSubmit={handleSubmit} className="space-y-5">
-            {!isCustom && (
-              <div className="flex items-center gap-2 px-5 py-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-xl shadow-sm">
-                <Globe size={16} className="text-blue-500 shrink-0" />
-                <span className="text-[13px] font-mono font-black text-blue-600 dark:text-blue-400 truncate">{defaultLinkPreview}</span>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0 bg-white dark:bg-[#111827] z-10 sm:rounded-t-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                <LinkIcon size={18} className="text-blue-600" />
               </div>
-            )}
-            {isCustom && (
-              <>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Product / Title <span className="text-red-500">*</span></label>
-                  <input required type="text" placeholder="e.g. Premium Smartwatch" value={form.title} onChange={e => handleTitleChange(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white transition-all shadow-sm placeholder:text-slate-400" />
+              <div>
+                <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-wider">{type === 'default' ? 'Default Link' : 'Custom Link'}</h3>
+                <p className="text-[11px] font-bold text-slate-400 mt-0.5">{type === 'default' ? 'Quick open-amount payment link' : 'Fully customized payment link'}</p>
+              </div>
+            </div>
+            <button onClick={handleCloseAttempt} className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors">
+              <X size={16} className="text-slate-500" />
+            </button>
+          </div>
+
+          <div className="overflow-y-auto flex-1 px-6 py-6 custom-scrollbar">
+            <form id="link-form" onSubmit={handleSubmit} className="space-y-5">
+              {!isCustom && (
+                <div className="flex items-center gap-2 px-5 py-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-xl shadow-sm">
+                  <Globe size={16} className="text-blue-500 shrink-0" />
+                  <span className="text-[13px] font-mono font-black text-blue-600 dark:text-blue-400 truncate">{defaultLinkPreview}</span>
                 </div>
-                
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Edit3 size={12} /> Customize URL <span className="text-red-500">*</span></label>
-                  <div className="flex bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-all shadow-sm">
-                    <span className="pl-4 py-3 text-xs font-mono font-bold text-slate-400 items-center hidden sm:flex shrink-0">{getDisplayUrl(businessSlug, '')}</span>
-                    <input required type="text" value={form.link_id} onChange={e => set('link_id', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-                      className="w-full px-3 py-3 bg-transparent outline-none text-sm font-mono font-black text-blue-600 dark:text-blue-400" placeholder="my-product" />
+              )}
+              {isCustom && (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Product / Title <span className="text-red-500">*</span></label>
+                    <input required type="text" placeholder="e.g. Premium Smartwatch" value={form.title} onChange={e => handleTitleChange(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white transition-all shadow-sm placeholder:text-slate-400" />
                   </div>
-                  <p className="text-[11px] font-bold text-slate-400 mt-1">Preview: <span className="text-blue-500 font-mono bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">{customLinkPreview}</span></p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                    <ImageIcon size={12} /> Product Image <span className="text-[9px] font-bold text-slate-400 normal-case tracking-normal ml-1">(Max 2MB) <span className="text-red-500">*</span></span>
-                  </label>
-                  {logoPreview ? (
-                    <div className="relative w-full h-36 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm group">
-                      <img src={logoPreview} alt="preview" className="w-full h-full object-contain" />
-                      {uploading && (
-                        <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 flex items-center justify-center backdrop-blur-sm">
-                          <Loader2 size={24} className="animate-spin text-blue-600" />
-                        </div>
-                      )}
-                      <div className="absolute top-3 right-3 flex gap-2">
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-md text-slate-600 hover:text-blue-600 transition-all"><Edit size={14} /></button>
-                        <button type="button" onClick={removeImage} className="p-2 bg-white dark:bg-slate-800 rounded-xl shadow-md text-slate-600 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
-                      </div>
-                      {form.product_logo && !uploading && (
-                        <div className="absolute bottom-3 left-3">
-                          <span className="text-[10px] bg-emerald-500 text-white px-2.5 py-1 rounded-lg font-black flex items-center gap-1.5 shadow-sm"><Check size={12} /> Uploaded</span>
-                        </div>
-                      )}
+                  
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Edit3 size={12} /> Customize URL <span className="text-red-500">*</span></label>
+                    <div className="flex bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-all shadow-sm">
+                      <span className="pl-4 py-3 text-xs font-mono font-bold text-slate-400 items-center hidden sm:flex shrink-0">{getDisplayUrl(businessSlug, '')}</span>
+                      <input required type="text" value={form.link_id} onChange={e => set('link_id', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                        className="w-full px-3 py-3 bg-transparent outline-none text-sm font-mono font-black text-blue-600 dark:text-blue-400" placeholder="my-product" />
                     </div>
-                  ) : (
-                    <button type="button" onClick={() => fileInputRef.current?.click()}
-                      className="w-full h-28 bg-slate-50 dark:bg-[#0B1120] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-blue-500 rounded-xl flex flex-col items-center justify-center gap-2 transition-all group">
-                      <div className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm group-hover:scale-110 transition-transform"><Upload size={16} className="text-slate-400 group-hover:text-blue-600" /></div>
-                      <p className="text-[11px] font-bold text-slate-500 group-hover:text-blue-600">Click to upload product image</p>
-                    </button>
-                  )}
-                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageSelect} />
-                </div>
-
-                <div className="p-5 bg-slate-50 dark:bg-[#0B1120]/60 border border-slate-100 dark:border-slate-800 rounded-xl space-y-5 shadow-sm">
-                  <div className="grid grid-cols-2 gap-5">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Currency</label>
-                      <div className="flex bg-white dark:bg-[#111827] p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                        {['BDT', 'USD'].map(c => (
-                          <button key={c} type="button" onClick={() => set('currency', c)}
-                            className={`flex-1 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${form.currency === c ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}>
-                            {c}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Price <span className="text-red-500">*</span></label>
-                      <div className="relative">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-black">{sym}</span>
-                        <input required type="number" step="any" min="1" placeholder="0.00" value={form.amount} onChange={e => set('amount', e.target.value)}
-                          className="w-full pl-9 pr-3 py-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-black text-slate-900 dark:text-white transition-all shadow-sm" />
-                      </div>
-                    </div>
+                    <p className="text-[11px] font-bold text-slate-400 mt-1">Preview: <span className="text-blue-500 font-mono bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">{customLinkPreview}</span></p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Tag size={12} /> Discount</label>
-                    <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-all bg-white dark:bg-[#111827] shadow-sm">
-                      <select value={form.discount_type} onChange={e => set('discount_type', e.target.value)}
-                        className="bg-slate-50 dark:bg-[#0B1120] px-4 py-3 text-xs font-black text-slate-700 dark:text-slate-300 outline-none border-r border-slate-200 dark:border-slate-700 cursor-pointer">
-                        <option value="flat">Flat ({sym})</option>
-                        <option value="percentage">Percent (%)</option>
-                      </select>
-                      <input type="number" step="any" min="0" placeholder="0" value={form.discount} onChange={e => set('discount', e.target.value)}
-                        className="w-full px-4 py-3 bg-transparent outline-none text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400" />
-                    </div>
-                  </div>
-
-                  {form.amount && parseFloat(form.amount) > 0 && (
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="text-center p-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Original</p>
-                        <p className="text-[13px] font-black text-slate-800 dark:text-slate-200">{sym}{parseFloat(form.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
-                      </div>
-                      <div className="text-center p-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Discount</p>
-                        <p className="text-[13px] font-black text-orange-500">
-                          {parseFloat(form.discount || '0') > 0 ? form.discount_type === 'percentage' ? `-${form.discount}%` : `-${sym}${parseFloat(form.discount).toLocaleString('en-IN')}` : '—'}
-                        </p>
-                      </div>
-                      <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-xl shadow-sm">
-                        <p className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1">Final</p>
-                        <p className="text-[13px] font-black text-blue-600 dark:text-blue-400">
-                          {sym}{(finalPrice ?? parseFloat(form.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Description <span className="text-red-500">*</span></label>
-                  <textarea required rows={3} placeholder="Brief product description..." value={form.description} onChange={e => set('description', e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white transition-all shadow-sm resize-none placeholder:text-slate-400" />
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Clock size={12} /> Link Expiry</label>
-                  <div className="flex gap-2 flex-wrap">
-                    {[{ val: 'none', label: 'No Expiry' }, { val: 'hours', label: 'Hours' }, { val: 'days', label: 'Date Range' }].map(t => (
-                      <button key={t.val} type="button" onClick={() => set('expires_type', t.val as any)}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest border transition-all shadow-sm ${form.expires_type === t.val ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent' : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-400'}`}>
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                  {form.expires_type === 'hours' && (
-                    <input type="number" min="1" placeholder="e.g. 24 hours" value={form.expires_hours} onChange={e => set('expires_hours', e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white shadow-sm" />
-                  )}
-                  {form.expires_type === 'days' && (
-                    <div className="grid grid-cols-2 gap-4">
-                      {['expires_date_from', 'expires_date_to'].map((k, i) => (
-                        <div key={k} className="space-y-1.5">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{i === 0 ? 'From' : 'To'}</p>
-                          <input type="date" value={(form as any)[k]} onChange={e => set(k as keyof LinkForm, e.target.value)}
-                            className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white shadow-sm" />
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                      <ImageIcon size={12} /> Product Image <span className="text-[9px] font-bold text-slate-400 normal-case tracking-normal ml-1">(Max 2MB) <span className="text-red-500">*</span></span>
+                    </label>
+                    {logoPreview ? (
+                      <div className="relative w-full h-36 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm group">
+                        <img src={logoPreview} alt="preview" className="w-full h-full object-contain" />
+                        {uploading && (
+                          <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 flex items-center justify-center backdrop-blur-sm">
+                            <Loader2 size={24} className="animate-spin text-blue-600" />
+                          </div>
+                        )}
+                        <div className="absolute top-3 right-3 flex gap-2">
+                          <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl shadow-lg transition-all active:scale-95"><Edit size={14} strokeWidth={2.5} /></button>
+                          <button type="button" onClick={removeImage} className="p-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-lg transition-all active:scale-95"><Trash2 size={14} strokeWidth={2.5} /></button>
                         </div>
+                        {form.product_logo && !uploading && (
+                          <div className="absolute bottom-3 left-3">
+                            <span className="text-[10px] bg-emerald-500 text-white px-2.5 py-1 rounded-lg font-black flex items-center gap-1.5 shadow-sm"><Check size={12} /> Uploaded</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => fileInputRef.current?.click()}
+                        className="w-full h-28 bg-slate-50 dark:bg-[#0B1120] border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-blue-500 rounded-xl flex flex-col items-center justify-center gap-2 transition-all group">
+                        <div className="bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm group-hover:scale-110 transition-transform"><Upload size={16} className="text-slate-400 group-hover:text-blue-600" /></div>
+                        <p className="text-[11px] font-bold text-slate-500 group-hover:text-blue-600">Click to upload product image</p>
+                      </button>
+                    )}
+                    <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageSelect} />
+                  </div>
+
+                  <div className="p-5 bg-slate-50 dark:bg-[#0B1120]/60 border border-slate-100 dark:border-slate-800 rounded-xl space-y-5 shadow-sm">
+                    <div className="grid grid-cols-2 gap-5">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Currency</label>
+                        <div className="flex bg-white dark:bg-[#111827] p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                          {['BDT', 'USD'].map(c => (
+                            <button key={c} type="button" onClick={() => set('currency', c)}
+                              className={`flex-1 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${form.currency === c ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}>
+                              {c}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Price <span className="text-red-500">*</span></label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-black">{sym}</span>
+                          <input required type="number" step="any" min="1" placeholder="0.00" value={form.amount} onChange={e => set('amount', e.target.value)}
+                            className="w-full pl-9 pr-3 py-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-black text-slate-900 dark:text-white transition-all shadow-sm" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Tag size={12} /> Discount</label>
+                      <div className="flex border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden focus-within:border-blue-500 transition-all bg-white dark:bg-[#111827] shadow-sm">
+                        <select value={form.discount_type} onChange={e => set('discount_type', e.target.value)}
+                          className="bg-slate-50 dark:bg-[#0B1120] px-4 py-3 text-xs font-black text-slate-700 dark:text-slate-300 outline-none border-r border-slate-200 dark:border-slate-700 cursor-pointer">
+                          <option value="flat">Flat ({sym})</option>
+                          <option value="percentage">Percent (%)</option>
+                        </select>
+                        <input type="number" step="any" min="0" placeholder="0" value={form.discount} onChange={e => set('discount', e.target.value)}
+                          className="w-full px-4 py-3 bg-transparent outline-none text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400" />
+                      </div>
+                    </div>
+
+                    {form.amount && parseFloat(form.amount) > 0 && (
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="text-center p-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Original</p>
+                          <p className="text-[13px] font-black text-slate-800 dark:text-slate-200">{sym}{parseFloat(form.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                        <div className="text-center p-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Discount</p>
+                          <p className="text-[13px] font-black text-orange-500">
+                            {parseFloat(form.discount || '0') > 0 ? form.discount_type === 'percentage' ? `-${form.discount}%` : `-${sym}${parseFloat(form.discount).toLocaleString('en-IN')}` : '—'}
+                          </p>
+                        </div>
+                        <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-xl shadow-sm">
+                          <p className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1">Final</p>
+                          <p className="text-[13px] font-black text-blue-600 dark:text-blue-400">
+                            {sym}{(finalPrice ?? parseFloat(form.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Description <span className="text-red-500">*</span></label>
+                    <textarea required rows={3} placeholder="Brief product description..." value={form.description} onChange={e => set('description', e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white transition-all shadow-sm resize-none placeholder:text-slate-400" />
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Clock size={12} /> Link Expiry</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {[{ val: 'none', label: 'No Expiry' }, { val: 'hours', label: 'Hours' }, { val: 'days', label: 'Date Range' }].map(t => (
+                        <button key={t.val} type="button" onClick={() => set('expires_type', t.val as any)}
+                          className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest border transition-all shadow-sm ${form.expires_type === t.val ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent' : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-400'}`}>
+                          {t.label}
+                        </button>
                       ))}
                     </div>
-                  )}
-                </div>
-              </>
-            )}
-          </form>
-        </div>
+                    {form.expires_type === 'hours' && (
+                      <input type="number" min="1" placeholder="e.g. 24 hours" value={form.expires_hours} onChange={e => set('expires_hours', e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white shadow-sm" />
+                    )}
+                    {form.expires_type === 'days' && (
+                      <div className="grid grid-cols-2 gap-4">
+                        {['expires_date_from', 'expires_date_to'].map((k, i) => (
+                          <div key={k} className="space-y-1.5">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{i === 0 ? 'From' : 'To'}</p>
+                            <input type="date" value={(form as any)[k]} onChange={e => set(k as keyof LinkForm, e.target.value)}
+                              className="w-full px-4 py-3 min-h-[48px] bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-bold text-slate-900 dark:text-white shadow-sm appearance-none block" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </form>
+          </div>
 
-        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex gap-3 shrink-0 bg-white dark:bg-[#111827] sm:rounded-b-2xl">
-          <button type="button" onClick={onClose}
-            className="flex-1 py-3.5 rounded-xl font-black text-sm text-slate-600 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-            Cancel
-          </button>
-          <button type="submit" form="link-form" disabled={saving || isSuccess || uploading}
-            className="flex-1 py-3.5 rounded-xl font-black text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 shadow-sm transition-all flex justify-center items-center gap-2">
-            {saving || isSuccess ? <Loader2 size={16} className="animate-spin" /> : uploading ? 'Uploading...' : 'Create Link'}
-          </button>
+          <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex gap-3 shrink-0 bg-white dark:bg-[#111827] sm:rounded-b-2xl">
+            <button type="button" onClick={handleCloseAttempt}
+              className="flex-1 py-3.5 rounded-xl font-black text-sm text-slate-600 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" form="link-form" disabled={saving || isSuccess || uploading}
+              className="flex-1 py-3.5 rounded-xl font-black text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 shadow-sm transition-all flex justify-center items-center gap-2">
+              {saving || isSuccess ? <Loader2 size={16} className="animate-spin" /> : uploading ? 'Uploading...' : 'Create Link'}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
