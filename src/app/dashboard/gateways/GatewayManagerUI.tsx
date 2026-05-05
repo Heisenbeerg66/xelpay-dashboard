@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     Plus, X, Search, Smartphone, Building2, Globe, ShieldCheck,
-    Trash2, Loader2, Edit, Tag, DollarSign, Archive, ArrowRight, Check,
+    Trash2, Loader2, Edit, Tag, DollarSign, Archive, ArrowRight, Check, ChevronDown,
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import {
@@ -54,8 +54,6 @@ const IMAP_BANKS     = ['ebl', 'scb', 'mtb', 'ific', 'midland', 'dhaka', 'prime'
 const SMS_BANKS      = ['ibbl', 'dbbl', 'ab', 'mercantile', 'national', 'ncc', 'sonali', 'agrani', 'tb'];
 
 // ─── Device Detection ─────────────────────────────────────────────────────────
-// viewport width দেখে decide করে — desktop mode on করলে viewport বড় হয়
-// তাই desktop mode এ desktop style, real mobile view এ mobile style
 function useIsMobileDevice() {
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
@@ -66,6 +64,64 @@ function useIsMobileDevice() {
     }, []);
     return isMobile;
 }
+
+// ─── Custom Premium Dropdown Component ─────────────────────────────────────────
+const CustomDropdown = ({ value, onChange, options, placeholder, required = false }: { value: string, onChange: (val: string) => void, options: {label: string, value: string}[], placeholder: string, required?: boolean }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    return (
+        <div className="relative" ref={dropdownRef}>
+            <div
+                onClick={() => setIsOpen(!isOpen)}
+                className={`w-full mt-1.5 p-3.5 bg-slate-50 dark:bg-[#0B1120] border rounded-xl flex justify-between items-center cursor-pointer shadow-sm transition-all ${
+                    isOpen ? 'border-blue-600 ring-4 ring-blue-600/10' : 'border-slate-200 dark:border-slate-800'
+                }`}
+            >
+                <span className={value && value !== 'custom' ? 'text-slate-900 dark:text-white font-semibold text-base truncate' : 'text-slate-400 font-normal text-base truncate'}>
+                    {value ? options.find(opt => opt.value === value)?.label || placeholder : placeholder}
+                </span>
+                <ChevronDown size={18} className={`text-slate-400 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+            
+            {/* Hidden Input for Form Validation */}
+            {required && !value && (
+                <input type="text" required className="absolute opacity-0 w-0 h-0 pointer-events-none" value="" onChange={() => {}} tabIndex={-1} />
+            )}
+
+            {isOpen && (
+                <div className="absolute z-50 w-full mt-2 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 shadow-2xl rounded-xl py-1.5 animate-in fade-in zoom-in-95 max-h-60 overflow-y-auto custom-scrollbar">
+                    {options.map((opt) => (
+                        <div
+                            key={opt.value}
+                            onClick={() => {
+                                onChange(opt.value);
+                                setIsOpen(false);
+                            }}
+                            className={`mx-1.5 px-4 py-2.5 text-sm rounded-lg cursor-pointer transition-colors ${
+                                value === opt.value
+                                    ? 'bg-[#F27453] text-white font-bold shadow-sm'
+                                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50'
+                            }`}
+                        >
+                            {opt.label}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -324,9 +380,8 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
     const handleInputChange = (e: any) =>
         setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    const handleChargeTypeChange = (e: any) => {
-        const type = e.target.value;
-        setChargeType(type);
+    const handleChargeTypeChange = (type: string) => {
+        setChargeType(type as any);
         if (type === 'none')         setFormData({ ...formData, fixed_charge: '',  percent_charge: '' });
         else if (type === 'fixed')   setFormData({ ...formData, percent_charge: '' });
         else if (type === 'percent') setFormData({ ...formData, fixed_charge: '' });
@@ -503,46 +558,46 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
 
     // ── Sub-Renderers ──────────────────────────────────────────────────────────
 
-    const renderDisplayNamePicker = (suggestions: string[]) => (
-        <div className="space-y-3">
-            <div>
-                <label className={labelClass}>Display Name {reqStar}</label>
-                <select
-                    required
-                    value={isCustomName ? 'custom' : formData.display_name}
-                    onChange={(e) => {
-                        if (e.target.value === 'custom') {
-                            setIsCustomName(true);
-                            setFormData({ ...formData, display_name: '' });
-                        } else {
-                            setIsCustomName(false);
-                            setFormData({ ...formData, display_name: e.target.value });
-                        }
-                    }}
-                    className={inputClass}
-                >
-                    <option value="" disabled>-- Select Display Name --</option>
-                    {suggestions.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                    ))}
-                    <option value="custom">✨ Custom Name (Write your own)</option>
-                </select>
-            </div>
-            {isCustomName && (
-                <div className="animate-in fade-in zoom-in-95">
-                    <input
+    const renderDisplayNamePicker = (suggestions: string[]) => {
+        const dnOptions = suggestions.map(s => ({ label: s, value: s }));
+        dnOptions.push({ label: '✨ Custom Name (Write your own)', value: 'custom' });
+
+        return (
+            <div className="space-y-3">
+                <div>
+                    <label className={labelClass}>Display Name {reqStar}</label>
+                    <CustomDropdown
+                        value={isCustomName ? 'custom' : formData.display_name}
+                        onChange={(val) => {
+                            if (val === 'custom') {
+                                setIsCustomName(true);
+                                setFormData({ ...formData, display_name: '' });
+                            } else {
+                                setIsCustomName(false);
+                                setFormData({ ...formData, display_name: val });
+                            }
+                        }}
+                        placeholder="-- Select Display Name --"
+                        options={dnOptions}
                         required
-                        type="text"
-                        name="display_name"
-                        onChange={handleInputChange}
-                        value={formData.display_name}
-                        placeholder="e.g. Pay via Personal Bkash"
-                        className={inputClass}
                     />
                 </div>
-            )}
-        </div>
-    );
+                {isCustomName && (
+                    <div className="animate-in fade-in zoom-in-95">
+                        <input
+                            required
+                            type="text"
+                            name="display_name"
+                            onChange={handleInputChange}
+                            value={formData.display_name}
+                            placeholder="e.g. Pay via Personal Bkash"
+                            className={inputClass}
+                        />
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     const renderChargeSection = () => {
         const currency = activeTab === 'international' ? 'USD' : 'BDT';
@@ -560,11 +615,16 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                 </div>
                 <div className="p-5 bg-orange-50/30 dark:bg-orange-900/10 rounded-2xl border border-orange-100 dark:border-orange-900/30">
                     <label className={labelClass}>Select Charge Type</label>
-                    <select value={chargeType} onChange={handleChargeTypeChange} className={inputClass}>
-                        <option value="none">No Charge</option>
-                        <option value="fixed">Fixed Amount</option>
-                        <option value="percent">Percentage (%)</option>
-                    </select>
+                    <CustomDropdown
+                        value={chargeType}
+                        onChange={handleChargeTypeChange}
+                        placeholder="No Charge"
+                        options={[
+                            { label: 'No Charge', value: 'none' },
+                            { label: 'Fixed Amount', value: 'fixed' },
+                            { label: 'Percentage (%)', value: 'percent' },
+                        ]}
+                    />
                     {chargeType === 'fixed' && (
                         <div className="mt-4 animate-in fade-in">
                             <label className={labelClass}>Fixed Charge ({currency}) {reqStar}</label>
@@ -689,17 +749,13 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
             <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2">
                 <div>
                     <label className={labelClass}>Select Provider {reqStar}</label>
-                    <select
+                    <CustomDropdown
                         value={provider}
-                        onChange={(e) => handleProviderChange(e.target.value)}
+                        onChange={handleProviderChange}
+                        placeholder="-- Choose Provider --"
+                        options={MOBILE_PROVIDERS.map(p => ({ label: p, value: p }))}
                         required
-                        className={inputClass}
-                    >
-                        <option value="">-- Choose Provider --</option>
-                        {MOBILE_PROVIDERS.map((p) => (
-                            <option key={p} value={p}>{p}</option>
-                        ))}
-                    </select>
+                    />
                 </div>
 
                 {provider && provider !== 'Cellfin' && provider !== 'Pathao Pay' && (
@@ -991,17 +1047,13 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
             <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2">
                 <div>
                     <label className={labelClass}>Select Gateway {reqStar}</label>
-                    <select
+                    <CustomDropdown
                         value={provider}
-                        onChange={(e) => handleProviderChange(e.target.value)}
+                        onChange={handleProviderChange}
+                        placeholder="-- Choose Crypto/Intl --"
+                        options={Object.entries(INTL_MAPPING).map(([slug, name]) => ({ label: name, value: slug }))}
                         required
-                        className={inputClass}
-                    >
-                        <option value="">-- Choose Crypto/Intl --</option>
-                        {Object.entries(INTL_MAPPING).map(([slug, name]) => (
-                            <option key={slug} value={slug}>{name}</option>
-                        ))}
-                    </select>
+                    />
                 </div>
 
                 {provider && provider !== 'usdt' && (
@@ -1318,7 +1370,6 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                                     {maskedNumber}
                                 </p>
                                 {gw.account_name && (
-                                    // ── Account Name: visible in both light & dark mode ───────
                                     <p className="text-xs font-black text-slate-700 dark:text-white mt-1 uppercase tracking-widest">
                                         {gw.account_name.toUpperCase()}
                                     </p>
