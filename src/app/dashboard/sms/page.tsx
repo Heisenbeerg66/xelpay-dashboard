@@ -44,12 +44,29 @@ const formatTime = (d: string) =>
 
 const PAGE_SIZE = 20;
 
+// ─── Reusable Stat Card Component (Dashboard Style) ───────────────────────────
+function StatCard({ icon: Icon, label, value, textClass, borderClass }: { icon: any; label: string; value: string | number; textClass: string; borderClass: string; }) {
+  return (
+    <div className={`bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-100 dark:border-slate-800 border-b-[3px] ${borderClass} shadow-sm hover:shadow-md transition-all group flex flex-col h-full justify-between`}>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-2.5 mb-1.5">
+          <div className={`${textClass} group-hover:scale-110 transition-transform origin-left`}>
+            <Icon size={20} strokeWidth={2.5} />
+          </div>
+          <p className="text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest leading-tight">{label}</p>
+        </div>
+        <p className={`text-2xl sm:text-[26px] font-black ${textClass} tracking-tight truncate`}>{value}</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Skeleton Components ──────────────────────────────────────────────────────
 function StatSkeleton() {
   return (
-    <div className="grid grid-cols-3 gap-2.5 sm:gap-4 animate-pulse">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-pulse">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="bg-slate-100 dark:bg-slate-800/50 h-24 sm:h-32 rounded-2xl border border-slate-200 dark:border-slate-800" />
+        <div key={i} className="bg-slate-100 dark:bg-slate-800/50 h-[104px] rounded-2xl border border-slate-200 dark:border-slate-800" />
       ))}
     </div>
   );
@@ -116,7 +133,6 @@ function SmsDataContent() {
             table: 'sms_transactions',
             filter: `merchant_id=eq.${user.id}`,
           },
-          // এখানে payload এর সাথে : any যুক্ত করা হয়েছে টাইপস্ক্রিপ্ট এরর ফিক্স করতে
           (payload: any) => {
             const newSms = payload.new as SmsTransaction;
             // Add new SMS to the top of the list in real-time
@@ -230,7 +246,6 @@ function SmsDataContent() {
               </div>
             </div>
             <div className="p-6">
-              {/* No masking applied, exact database string */}
               <p className="text-sm font-bold text-slate-800 dark:text-slate-200 font-mono leading-relaxed whitespace-pre-wrap bg-slate-50 dark:bg-[#111827] p-4 rounded-xl border border-slate-200 dark:border-slate-800">
                 {selectedMessage}
               </p>
@@ -238,44 +253,45 @@ function SmsDataContent() {
           </div>
         </div>
       )}
-            {/* ── SMS DATA Top Card (With Live Sync Indicator) ── */}
-      <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-900/30 rounded-2xl p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm relative overflow-hidden">
-        <div className="flex items-start gap-4">
-          <div className="bg-indigo-600 text-white p-2.5 rounded-xl shrink-0 mt-0.5">
-            <MessageSquare size={20} />
-          </div>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-base md:text-lg font-black text-indigo-900 dark:text-indigo-400 uppercase tracking-widest">
-                SMS DATA
-              </h1>
-              <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-500/20">
-                <Activity size={10} className="animate-pulse" />
-                <span className="text-[9px] font-black tracking-widest uppercase">Live Syncing</span>
-              </div>
+
+      {/* ── Clean Header replacing the bulky top card ── */}
+      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">SMS Data</h1>
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-500/20 shadow-sm">
+              <Activity size={10} className="animate-pulse" />
+              <span className="text-[9px] font-black tracking-widest uppercase">Live Syncing</span>
             </div>
-            <p className="text-[11px] md:text-[13px] font-bold text-indigo-700/80 dark:text-indigo-300/80 mt-1 leading-relaxed">
-              Real-time feed of all SMS received by your Android automated reader app.
-            </p>
           </div>
+          <p className="text-slate-500 font-bold text-sm mt-1">Real-time feed of all SMS received by your device.</p>
         </div>
       </div>
 
-      {/* ── Stats Cards (Skeleton or Content) ── */}
+      {/* ── Stats Cards (Dashboard Style, Stacked on Mobile) ── */}
       {loading ? <StatSkeleton /> : (
-        <div className="grid grid-cols-3 gap-2.5 sm:gap-4">
-          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm flex flex-col justify-center">
-            <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Total SMS</p>
-            <p className="text-lg sm:text-3xl font-black text-slate-900 dark:text-white">{totalCount}</p>
-          </div>
-          <div className="bg-white dark:bg-[#111827] border border-emerald-100 dark:border-emerald-900/30 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm flex flex-col justify-center">
-            <p className="text-[10px] sm:text-[11px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5">Used</p>
-            <p className="text-lg sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">{usedCount}</p>
-          </div>
-          <div className="bg-white dark:bg-[#111827] border border-amber-100 dark:border-amber-900/30 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-sm flex flex-col justify-center">
-            <p className="text-[10px] sm:text-[11px] font-bold text-amber-600 uppercase tracking-widest mb-1.5">Unused</p>
-            <p className="text-lg sm:text-3xl font-black text-amber-600 dark:text-amber-400">{pendingCount}</p>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatCard 
+            icon={MessageSquare} 
+            label="Total SMS" 
+            value={totalCount} 
+            textClass="text-blue-600 dark:text-blue-500" 
+            borderClass="border-b-blue-600 dark:border-b-blue-500" 
+          />
+          <StatCard 
+            icon={CheckCircle2} 
+            label="Used" 
+            value={usedCount} 
+            textClass="text-emerald-600 dark:text-emerald-500" 
+            borderClass="border-b-emerald-600 dark:border-b-emerald-500" 
+          />
+          <StatCard 
+            icon={Clock} 
+            label="Unused" 
+            value={pendingCount} 
+            textClass="text-amber-500 dark:text-amber-400" 
+            borderClass="border-b-amber-500 dark:border-b-amber-400" 
+          />
         </div>
       )}
 
