@@ -123,9 +123,14 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
   return (
     <div className="fixed inset-0 z-[300] bg-slate-900/50 backdrop-blur-sm flex justify-end" onClick={onClose}>
       <div className="w-full max-w-md bg-white dark:bg-[#0B1120] h-full shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col border-l border-slate-200 dark:border-slate-800" onClick={e => e.stopPropagation()}>
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-          <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2"><Receipt size={18} className="text-blue-600"/> Order Details</h2>
-          <button onClick={onClose} className="p-2 bg-slate-200 dark:bg-slate-800 rounded-xl hover:bg-slate-300 dark:hover:bg-slate-700 transition"><X size={16}/></button>
+        {/* Header with Explicit Close Button */}
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 shrink-0">
+          <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <Receipt size={18} className="text-blue-600"/> Order Details
+          </h2>
+          <button onClick={onClose} className="p-2 bg-slate-200 dark:bg-slate-800 rounded-xl hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors shrink-0">
+            <X size={16}/>
+          </button>
         </div>
         <div className="p-6 flex-1 overflow-y-auto space-y-6">
           <div className="flex items-center justify-between p-5 bg-slate-50 dark:bg-[#111827] rounded-2xl border border-slate-100 dark:border-slate-800">
@@ -152,7 +157,7 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
             ))}
           </div>
         </div>
-        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 shrink-0">
           <button onClick={() => onResend(order.id)} className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-black text-[13px] transition-all shadow-md"><Webhook size={16} /> Resend Webhook</button>
         </div>
       </div>
@@ -164,9 +169,16 @@ function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 w-full max-w-xs animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-        <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
-          <User size={16} className="text-blue-600" /> Customer Info
-        </h3>
+        {/* Header with Explicit Close Button */}
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest flex items-center gap-2">
+            <User size={16} className="text-blue-600" /> Customer Info
+          </h3>
+          <button onClick={onClose} className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 rounded-lg transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+        
         <div className="space-y-3 text-xs">
           {[
             ['Name', trx.customer_name || '—'],

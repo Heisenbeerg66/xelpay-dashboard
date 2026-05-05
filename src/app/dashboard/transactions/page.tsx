@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Receipt, Search, Filter, Loader2, Building2,
   X, Smartphone, Globe, Landmark, Columns, Webhook,
-  RefreshCw, Download, Eye, ChevronLeft, ChevronRight, Activity, PanelRightClose
+  RefreshCw, Download, Eye, ChevronLeft, ChevronRight, Activity, PanelRightClose, User
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -126,13 +126,13 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
   return (
     <div className="fixed inset-0 z-[300] bg-slate-900/50 backdrop-blur-sm flex justify-end" onClick={onClose}>
       <div className="w-full max-w-md bg-white dark:bg-[#0B1120] h-full shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col border-l border-slate-200 dark:border-slate-800" onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+        {/* Header with Explicit Close Button */}
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 shrink-0">
           <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
             <Receipt size={18} className="text-blue-600"/> Order Details
           </h2>
-          <button onClick={onClose} className="p-2 bg-slate-200 dark:bg-slate-800 rounded-xl hover:bg-slate-300 dark:hover:bg-slate-700 transition">
-            <X size={16} className="text-slate-600 dark:text-slate-400"/>
+          <button onClick={onClose} className="p-2 bg-slate-200 dark:bg-slate-800 rounded-xl hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors shrink-0">
+            <X size={16} />
           </button>
         </div>
         
@@ -175,7 +175,7 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
         </div>
 
         {/* Footer (Resend Webhook) */}
-        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 shrink-0">
           <button onClick={() => onResend(order.id)} className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-black text-[13px] transition-all shadow-md">
             <Webhook size={16} /> Resend Webhook
           </button>
@@ -208,10 +208,10 @@ function SmsDetailsModal({ trxId, onClose }: { trxId: string; onClose: () => voi
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white dark:bg-[#0B1120] w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <h3 className="font-bold text-slate-900 dark:text-white text-sm">SMS Verification Record</h3>
-          <button onClick={onClose} className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors">
-            <X size={16} className="text-slate-500 dark:text-slate-400" />
+          <button onClick={onClose} className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 rounded-xl transition-colors shrink-0">
+            <X size={16} />
           </button>
         </div>
         <div className="px-6 py-5">
@@ -241,6 +241,38 @@ function SmsDetailsModal({ trxId, onClose }: { trxId: string; onClose: () => voi
             </div>
           ) : null}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 w-full max-w-xs animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+        {/* Header with Explicit Close Button */}
+        <div className="flex justify-between items-center mb-4 shrink-0">
+          <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest flex items-center gap-2">
+            <User size={16} className="text-blue-600" /> Customer Info
+          </h3>
+          <button onClick={onClose} className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 rounded-lg transition-colors shrink-0">
+            <X size={16} />
+          </button>
+        </div>
+        
+        <div className="space-y-3 text-xs">
+          {[
+            ['Name', trx.customer_name || '—'],
+            ['Phone', trx.customer_number || '—'],
+            ['Email', trx.customer_email || '—'],
+          ].map(([k, v]) => (
+            <div key={k} className="flex justify-between gap-4 py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+              <span className="text-slate-400 font-medium">{k}</span>
+              <span className="font-bold text-slate-900 dark:text-white text-right truncate max-w-[160px]">{v}</span>
+            </div>
+          ))}
+        </div>
+        <button onClick={onClose} className="mt-4 w-full py-2.5 bg-slate-900 dark:bg-slate-700 text-white rounded-xl text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-600 transition-colors">Close</button>
       </div>
     </div>
   );
@@ -322,6 +354,7 @@ function FilterPanel({ filters, setFilters, onApply, onClose }: {
     </>
   );
 }
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Transactions() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -334,6 +367,7 @@ export default function Transactions() {
   const [showFilter, setShowFilter] = useState(false);
   const [showCols, setShowCols] = useState(false);
   const [drawerOrder, setDrawerOrder] = useState<Order | null>(null);
+  const [customerModal, setCustomerModal] = useState<Order | null>(null); // State for Customer Modal
   const [currentPage, setCurrentPage] = useState(1);
   
   // Advanced Features States
@@ -506,6 +540,7 @@ return () => { supabase.removeChannel(channel); };
     <div className="max-w-[1600px] mx-auto space-y-5 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
       {drawerOrder && <TransactionDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} onResend={resendWebhook} />}
+      {customerModal && <CustomerModal trx={customerModal} onClose={() => setCustomerModal(null)} />}
 
       {/* ── Page Title + Controls Row ── */}
       <div className="flex flex-col md:flex-row justify-between gap-4">
@@ -659,7 +694,7 @@ return () => { supabase.removeChannel(channel); };
                           <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-1">{formatTime(trx.created_at)}</p>
                         </td>
                       )}
-                      {visibleCols.includes('customer') && <td className="px-5 py-4 text-[13px] text-blue-600 dark:text-blue-400 font-black max-w-[150px] truncate" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.customer_name || '—'}</td>}
+                      {visibleCols.includes('customer') && <td className="px-5 py-4 text-[13px] text-blue-600 dark:text-blue-400 font-black max-w-[150px] truncate" onClick={e => {e.stopPropagation(); setCustomerModal(trx);}}>{trx.customer_name || '—'}</td>}
                       {visibleCols.includes('email') && <td className="px-5 py-4 text-[13px] text-slate-700 dark:text-slate-300 font-bold max-w-[160px] truncate" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.customer_email || '—'}</td>}
                       {visibleCols.includes('phone') && <td className="px-5 py-4 text-[13px] font-bold text-slate-700 dark:text-slate-300" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.customer_number || '—'}</td>}
                       {visibleCols.includes('product') && <td className="px-5 py-4 text-[13px] font-black text-emerald-600 dark:text-emerald-400 max-w-[140px] truncate" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.product_name || '—'}</td>}
