@@ -79,17 +79,17 @@ function StatCard({ icon: Icon, label, value, color, trend, trendSuffix = '%' }:
   const TrendIcon = isPositive ? TrendingUp : isNegative ? TrendingDown : Minus;
   
   return (
-    <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between">
-      <div>
-        <div className={`w-9 h-9 rounded-xl ${color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+    <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between h-full">
+      <div className="flex items-center gap-3 mb-4">
+        <div className={`w-9 h-9 rounded-xl ${color} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
           <Icon size={18} />
         </div>
-        <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">{label}</p>
+        <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest leading-tight">{label}</p>
       </div>
-      <div className="flex items-end justify-between mt-1 gap-2">
-        <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">{value}</p>
+      <div className="flex flex-col gap-2 mt-auto">
+        <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight truncate" title={value}>{value}</p>
         {trend !== undefined && (
-          <div className={`flex items-center gap-1 text-[10px] font-black ${trendColor} bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded-lg shrink-0`}>
+          <div className={`inline-flex items-center gap-1 text-[10px] font-black ${trendColor} bg-slate-50 dark:bg-slate-800/50 px-2 py-1.5 rounded-lg w-fit`}>
             <TrendIcon size={12} strokeWidth={3} />
             <span>{Math.abs(trend).toFixed(1)}{trendSuffix}</span>
           </div>
@@ -504,9 +504,9 @@ export default function DashboardHome() {
                           itemStyle={{ color: '#fff', fontWeight: 'bold' }} 
                           cursor={{ fill: 'transparent' }} 
                           formatter={(value: any, name: any, props: any) => {
-  const data = props?.payload?.payload;
-  return [`${value} Orders (৳${data?.amount?.toLocaleString('en-IN')})`, name];
-}}
+                             const data = props?.payload?.payload;
+                             return [`${value} Orders (৳${data?.amount?.toLocaleString('en-IN')})`, name];
+                          }}
                         />
                       </PieChart>
                     </ResponsiveContainer>

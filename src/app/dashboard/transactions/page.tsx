@@ -662,16 +662,6 @@ return () => { supabase.removeChannel(channel); };
                           ৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
                       )}
-                      {visibleCols.includes('customer') && <td className="px-5 py-4 text-[13px] text-blue-600 dark:text-blue-400 font-black max-w-[150px] truncate" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.customer_name || '—'}</td>}
-                      {visibleCols.includes('email') && <td className="px-5 py-4 text-[13px] text-slate-700 dark:text-slate-300 font-bold max-w-[160px] truncate" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.customer_email || '—'}</td>}
-                      {visibleCols.includes('phone') && <td className="px-5 py-4 text-[13px] font-bold text-slate-700 dark:text-slate-300" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.customer_number || '—'}</td>}
-                      {visibleCols.includes('product') && <td className="px-5 py-4 text-[13px] font-black text-emerald-600 dark:text-emerald-400 max-w-[140px] truncate" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.product_name || '—'}</td>}
-                      {visibleCols.includes('source') && <td className="px-5 py-4 text-[13px] font-bold text-slate-500 dark:text-slate-400 capitalize" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.source || 'link'}</td>}
-                      {visibleCols.includes('amount') && (
-                        <td className="px-5 py-4 text-[13px] font-black text-slate-900 dark:text-white" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>
-                          ৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </td>
-                      )}
                       {visibleCols.includes('method') && <td className={`px-5 py-4 text-[12px] font-black uppercase tracking-wider ${methodColor}`} onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.method || '—'}</td>}
                       {visibleCols.includes('trx_id') && (
                         <td className="px-5 py-4" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>
