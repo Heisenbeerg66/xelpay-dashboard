@@ -53,9 +53,6 @@ const EXCLUDED_BANKS = ['brac', 'pubali'];
 const IMAP_BANKS     = ['ebl', 'scb', 'mtb', 'ific', 'midland', 'dhaka', 'prime', 'asia', 'ucb', 'jamuna', 'city'];
 const SMS_BANKS      = ['ibbl', 'dbbl', 'ab', 'mercantile', 'national', 'ncc', 'sonali', 'agrani', 'tb'];
 
-// ─── Device Detection ─────────────────────────────────────────────────────────
-// viewport width দেখে decide করে — desktop mode on করলে viewport বড় হয়
-// তাই desktop mode এ desktop style, real mobile view এ mobile style
 function useIsMobileDevice() {
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
@@ -73,7 +70,6 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
 
     const isMobile = useIsMobileDevice();
 
-    // ── State ──────────────────────────────────────────────────────────────────
     const [loading,    setLoading]    = useState(true);
     const [businessId, setBusinessId] = useState<string | null>(null);
     const [gateways,   setGateways]   = useState<any[]>([]);
@@ -121,7 +117,7 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
     const [highlightIndex, setHighlightIndex] = useState(0);
     const bankDropdownRef = useRef<HTMLDivElement>(null);
 
-    // ── Helpers ────────────────────────────────────────────────────────────────
+    // ── Helpers ──────────────────────────────────────────────────────────────────
 
     const getDisplayName = (slug: string) =>
         BANK_MAPPING[slug] || INTL_MAPPING[slug] || slug;
@@ -232,8 +228,6 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
         return () => window.removeEventListener('businessChanged', loadActiveBusiness);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-
-    // ── Click-Outside for Bank Dropdown ───────────────────────────────────────
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -629,42 +623,15 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5 p-5 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/30 animate-in slide-in-from-top-2">
                         <div>
                             <label className={labelClass}>Discount % {reqStar}</label>
-                            <input
-                                required
-                                type="number"
-                                step="0.01"
-                                name="discount_percent"
-                                onChange={handleInputChange}
-                                value={formData.discount_percent}
-                                placeholder="e.g. 5"
-                                className={inputClass}
-                            />
+                            <input required type="number" step="0.01" name="discount_percent" onChange={handleInputChange} value={formData.discount_percent} placeholder="e.g. 5" className={inputClass} />
                         </div>
                         <div>
                             <label className={labelClass}>Max ({currency}) {reqStar}</label>
-                            <input
-                                required
-                                type="number"
-                                step="0.01"
-                                name="max_discount_amount"
-                                onChange={handleInputChange}
-                                value={formData.max_discount_amount}
-                                placeholder="e.g. 100"
-                                className={inputClass}
-                            />
+                            <input required type="number" step="0.01" name="max_discount_amount" onChange={handleInputChange} value={formData.max_discount_amount} placeholder="e.g. 100" className={inputClass} />
                         </div>
                         <div>
                             <label className={labelClass}>Min Pay ({currency}) {reqStar}</label>
-                            <input
-                                required
-                                type="number"
-                                step="0.01"
-                                name="min_payment_for_discount"
-                                onChange={handleInputChange}
-                                value={formData.min_payment_for_discount}
-                                placeholder="e.g. 500"
-                                className={inputClass}
-                            />
+                            <input required type="number" step="0.01" name="min_payment_for_discount" onChange={handleInputChange} value={formData.min_payment_for_discount} placeholder="e.g. 500" className={inputClass} />
                         </div>
                     </div>
                 )}
@@ -689,35 +656,17 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
             <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2">
                 <div>
                     <label className={labelClass}>Select Provider {reqStar}</label>
-                    <select
-                        value={provider}
-                        onChange={(e) => handleProviderChange(e.target.value)}
-                        required
-                        className={inputClass}
-                    >
+                    <select value={provider} onChange={(e) => handleProviderChange(e.target.value)} required className={inputClass}>
                         <option value="">-- Choose Provider --</option>
-                        {MOBILE_PROVIDERS.map((p) => (
-                            <option key={p} value={p}>{p}</option>
-                        ))}
+                        {MOBILE_PROVIDERS.map((p) => (<option key={p} value={p}>{p}</option>))}
                     </select>
                 </div>
 
                 {provider && provider !== 'Cellfin' && provider !== 'Pathao Pay' && (
                     <div className="flex bg-slate-100/80 dark:bg-[#0B1120] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
                         {['personal', 'agent', 'merchant'].map((type) => (
-                            <button
-                                key={type}
-                                type="button"
-                                onClick={() => {
-                                    setAccType(type);
-                                    generateDisplayName(provider, type, formData.crypto_network, isCustomName, 'mobile');
-                                }}
-                                className={`flex-1 py-2.5 text-xs font-bold uppercase rounded-lg transition-all ${
-                                    accType === type
-                                        ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                                }`}
-                            >
+                            <button key={type} type="button" onClick={() => { setAccType(type); generateDisplayName(provider, type, formData.crypto_network, isCustomName, 'mobile'); }}
+                                className={`flex-1 py-2.5 text-xs font-bold uppercase rounded-lg transition-all ${accType === type ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'}`}>
                                 {type}
                             </button>
                         ))}
@@ -726,37 +675,13 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
 
                 <div>
                     <label className={labelClass}>Account / Wallet Number {reqStar}</label>
-                    <input
-                        required
-                        name="account_number"
-                        onChange={handleInputChange}
-                        value={formData.account_number}
-                        type="text"
-                        maxLength={11}
-                        placeholder="e.g. 01712345678"
-                        className={inputClass}
-                    />
+                    <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" maxLength={11} placeholder="e.g. 01712345678" className={inputClass} />
                 </div>
 
                 {needsName && (
                     <div>
-                        <label className={labelClass}>
-                            {provider === 'Cellfin'
-                                ? 'Account Name'
-                                : accType === 'agent'
-                                    ? 'Agent Name'
-                                    : 'Merchant Name'
-                            } {reqStar}
-                        </label>
-                        <input
-                            required
-                            name="account_name"
-                            onChange={handleInputChange}
-                            value={formData.account_name}
-                            type="text"
-                            placeholder="Enter Name"
-                            className={inputClass}
-                        />
+                        <label className={labelClass}>{provider === 'Cellfin' ? 'Account Name' : accType === 'agent' ? 'Agent Name' : 'Merchant Name'} {reqStar}</label>
+                        <input required name="account_name" onChange={handleInputChange} value={formData.account_name} type="text" placeholder="Enter Name" className={inputClass} />
                     </div>
                 )}
 
@@ -771,66 +696,35 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
         const isIMAPSupported = IMAP_BANKS.includes(provider);
         const isSMSSupported  = SMS_BANKS.includes(provider);
         const filteredBanks   = Object.entries(BANK_MAPPING).filter(
-            ([slug, name]) =>
-                !EXCLUDED_BANKS.includes(slug) &&
-                name.toLowerCase().includes(searchQuery.toLowerCase())
+            ([slug, name]) => !EXCLUDED_BANKS.includes(slug) && name.toLowerCase().includes(searchQuery.toLowerCase())
         );
 
         const handleKeyDown = (e: React.KeyboardEvent) => {
             if (!showDropdown) return;
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                setHighlightIndex((prev) => Math.min(prev + 1, filteredBanks.length - 1));
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setHighlightIndex((prev) => Math.max(prev - 1, 0));
-            } else if (e.key === 'Enter' && filteredBanks[highlightIndex]) {
-                e.preventDefault();
-                handleProviderChange(filteredBanks[highlightIndex][0]);
-                setShowDropdown(false);
-            }
+            if (e.key === 'ArrowDown') { e.preventDefault(); setHighlightIndex((prev) => Math.min(prev + 1, filteredBanks.length - 1)); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlightIndex((prev) => Math.max(prev - 1, 0)); }
+            else if (e.key === 'Enter' && filteredBanks[highlightIndex]) { e.preventDefault(); handleProviderChange(filteredBanks[highlightIndex][0]); setShowDropdown(false); }
         };
 
         return (
             <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2">
-                {/* Bank Search Dropdown */}
                 <div className="relative" ref={bankDropdownRef}>
                     <label className={labelClass}>Select Bank {reqStar}</label>
                     <div className="relative">
-                        <input
-                            type="text"
-                            required
-                            value={provider && !showDropdown ? BANK_MAPPING[provider] : searchQuery}
+                        <input type="text" required value={provider && !showDropdown ? BANK_MAPPING[provider] : searchQuery}
                             onFocus={() => { setShowDropdown(true); setHighlightIndex(0); }}
-                            onChange={(e) => {
-                                setSearchQuery(e.target.value);
-                                setShowDropdown(true);
-                                setHighlightIndex(0);
-                                setProvider('');
-                            }}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Search Bank..."
-                            className={`${inputClass} pr-10`}
-                        />
+                            onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true); setHighlightIndex(0); setProvider(''); }}
+                            onKeyDown={handleKeyDown} placeholder="Search Bank..." className={`${inputClass} pr-10`} />
                         <Search className="absolute right-4 top-1/2 -translate-y-1/2 mt-0.5 text-slate-400" size={18} />
                     </div>
-
                     {showDropdown && (
                         <div className="absolute z-50 w-full mt-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl max-h-56 overflow-y-auto py-2">
                             {filteredBanks.length === 0 ? (
                                 <div className="p-3 text-sm text-slate-500 text-center">No banks found</div>
                             ) : (
                                 filteredBanks.map(([slug, name], index) => (
-                                    <div
-                                        key={slug}
-                                        onClick={() => { handleProviderChange(slug); setShowDropdown(false); }}
-                                        onMouseEnter={() => setHighlightIndex(index)}
-                                        className={`p-3.5 cursor-pointer text-sm font-semibold border-b border-slate-50 dark:border-slate-800/50 last:border-0 transition-colors ${
-                                            index === highlightIndex
-                                                ? 'bg-blue-50 dark:bg-slate-800 text-slate-900 dark:text-white'
-                                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                                        }`}
-                                    >
+                                    <div key={slug} onClick={() => { handleProviderChange(slug); setShowDropdown(false); }} onMouseEnter={() => setHighlightIndex(index)}
+                                        className={`p-3.5 cursor-pointer text-sm font-semibold border-b border-slate-50 dark:border-slate-800/50 last:border-0 transition-colors ${index === highlightIndex ? 'bg-blue-50 dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
                                         {highlightMatch(name, searchQuery)}
                                     </div>
                                 ))
@@ -839,22 +733,10 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                     )}
                 </div>
 
-                {/* Account Type Toggle */}
                 <div className="flex bg-slate-100/80 dark:bg-[#0B1120] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
                     {['personal', 'business'].map((type) => (
-                        <button
-                            key={type}
-                            type="button"
-                            onClick={() => {
-                                setAccType(type);
-                                generateDisplayName(provider, type, formData.crypto_network, isCustomName, 'bank');
-                            }}
-                            className={`flex-1 py-2.5 text-xs font-bold uppercase rounded-lg transition-all ${
-                                accType === type
-                                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                            }`}
-                        >
+                        <button key={type} type="button" onClick={() => { setAccType(type); generateDisplayName(provider, type, formData.crypto_network, isCustomName, 'bank'); }}
+                            className={`flex-1 py-2.5 text-xs font-bold uppercase rounded-lg transition-all ${accType === type ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'}`}>
                             {type}
                         </button>
                     ))}
@@ -862,55 +744,20 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
 
                 <div>
                     <label className={labelClass}>Account Name {reqStar}</label>
-                    <input
-                        required
-                        name="account_name"
-                        onChange={handleInputChange}
-                        value={formData.account_name}
-                        type="text"
-                        placeholder={accType === 'personal' ? 'e.g. Md. Rahim' : 'e.g. Xenverse IT'}
-                        className={inputClass}
-                    />
+                    <input required name="account_name" onChange={handleInputChange} value={formData.account_name} type="text" placeholder={accType === 'personal' ? 'e.g. Md. Rahim' : 'e.g. Xenverse IT'} className={inputClass} />
                 </div>
-
                 <div>
                     <label className={labelClass}>Account Number {reqStar}</label>
-                    <input
-                        required
-                        name="account_number"
-                        onChange={handleInputChange}
-                        value={formData.account_number}
-                        type="text"
-                        placeholder="e.g. 102XXXXXXXXX"
-                        className={`${inputClass} font-mono`}
-                    />
+                    <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" placeholder="e.g. 102XXXXXXXXX" className={`${inputClass} font-mono`} />
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className={labelClass}>Branch Name {reqStar}</label>
-                        <input
-                            required
-                            name="branch"
-                            onChange={handleInputChange}
-                            value={formData.branch}
-                            type="text"
-                            placeholder="Gulshan Branch"
-                            className={inputClass}
-                        />
+                        <input required name="branch" onChange={handleInputChange} value={formData.branch} type="text" placeholder="Gulshan Branch" className={inputClass} />
                     </div>
                     <div>
                         <label className={labelClass}>Routing No {reqStar}</label>
-                        <input
-                            required
-                            name="routing_number"
-                            onChange={handleInputChange}
-                            value={formData.routing_number}
-                            type="text"
-                            maxLength={9}
-                            placeholder="123456789"
-                            className={`${inputClass} font-mono`}
-                        />
+                        <input required name="routing_number" onChange={handleInputChange} value={formData.routing_number} type="text" maxLength={9} placeholder="123456789" className={`${inputClass} font-mono`} />
                     </div>
                 </div>
 
@@ -920,10 +767,7 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                     <div className="p-5 bg-emerald-50/80 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 rounded-2xl mt-6 relative overflow-hidden">
                         <div className="flex gap-3 text-emerald-800 dark:text-emerald-300 relative z-10">
                             <Smartphone size={24} className="shrink-0 text-emerald-600 dark:text-emerald-500 mt-0.5" />
-                            <p className="text-[13px] font-medium leading-relaxed">
-                                <b>SMS অটোমেশন রিকোয়ার্ড:</b> {BANK_MAPPING[provider]} এর পেমেন্ট ভেরিফাই করার জন্য{' '}
-                                <b>Master Device</b> থেকে SMS Automation চালু থাকতে হবে।
-                            </p>
+                            <p className="text-[13px] font-medium leading-relaxed"><b>SMS অটোমেশন রিকোয়ার্ড:</b> {BANK_MAPPING[provider]} এর পেমেন্ট ভেরিফাই করার জন্য <b>Master Device</b> থেকে SMS Automation চালু থাকতে হবে।</p>
                         </div>
                     </div>
                 )}
@@ -932,46 +776,19 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                     <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50/30 dark:from-slate-800 dark:to-slate-800/50 border border-blue-100 dark:border-slate-700 rounded-2xl mt-6 space-y-4">
                         <div className="flex gap-3 text-blue-900 dark:text-blue-200">
                             <ShieldCheck size={24} className="shrink-0 text-blue-600 dark:text-blue-400" />
-                            <p className="text-xs font-medium leading-relaxed">
-                                <b>IMAP Automation:</b> Enter App Password and alert email.<br />
-                                <span className="opacity-70 text-[10px]">(Leave blank when editing if unchanged)</span>
-                            </p>
+                            <p className="text-xs font-medium leading-relaxed"><b>IMAP Automation:</b> Enter App Password and alert email.<br /><span className="opacity-70 text-[10px]">(Leave blank when editing if unchanged)</span></p>
                         </div>
                         <div>
                             <label className={labelClass}>Your Email {reqStar}</label>
-                            <input
-                                required={!editingId}
-                                name="imap_email"
-                                onChange={handleInputChange}
-                                value={formData.imap_email}
-                                type="email"
-                                placeholder="you@gmail.com"
-                                className={inputClass}
-                            />
+                            <input required={!editingId} name="imap_email" onChange={handleInputChange} value={formData.imap_email} type="email" placeholder="you@gmail.com" className={inputClass} />
                         </div>
                         <div>
                             <label className={labelClass}>App Password {editingId ? '' : reqStar}</label>
-                            <input
-                                required={!editingId}
-                                name="imap_password"
-                                onChange={handleInputChange}
-                                value={formData.imap_password}
-                                type="password"
-                                placeholder={editingId ? '•••••••• (Unchanged)' : '••••••••'}
-                                className={`${inputClass} font-mono tracking-widest`}
-                            />
+                            <input required={!editingId} name="imap_password" onChange={handleInputChange} value={formData.imap_password} type="password" placeholder={editingId ? '•••••••• (Unchanged)' : '••••••••'} className={`${inputClass} font-mono tracking-widest`} />
                         </div>
                         <div>
                             <label className={labelClass}>Bank's Alert Email {reqStar}</label>
-                            <input
-                                required={!editingId}
-                                name="imap_bank_email"
-                                onChange={handleInputChange}
-                                value={formData.imap_bank_email}
-                                type="email"
-                                placeholder="alerts@bank.com"
-                                className={inputClass}
-                            />
+                            <input required={!editingId} name="imap_bank_email" onChange={handleInputChange} value={formData.imap_bank_email} type="email" placeholder="alerts@bank.com" className={inputClass} />
                         </div>
                     </div>
                 )}
@@ -982,44 +799,24 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
     const renderIntlInputs = () => {
         const dispName  = getDisplayName(provider);
         const suggestions = provider
-            ? provider === 'usdt'
-                ? [`USDT (${formData.crypto_network.toUpperCase()})`, 'USDT']
-                : [dispName]
+            ? provider === 'usdt' ? [`USDT (${formData.crypto_network.toUpperCase()})`, 'USDT'] : [dispName]
             : [];
 
         return (
             <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2">
                 <div>
                     <label className={labelClass}>Select Gateway {reqStar}</label>
-                    <select
-                        value={provider}
-                        onChange={(e) => handleProviderChange(e.target.value)}
-                        required
-                        className={inputClass}
-                    >
+                    <select value={provider} onChange={(e) => handleProviderChange(e.target.value)} required className={inputClass}>
                         <option value="">-- Choose Crypto/Intl --</option>
-                        {Object.entries(INTL_MAPPING).map(([slug, name]) => (
-                            <option key={slug} value={slug}>{name}</option>
-                        ))}
+                        {Object.entries(INTL_MAPPING).map(([slug, name]) => (<option key={slug} value={slug}>{name}</option>))}
                     </select>
                 </div>
 
                 {provider && provider !== 'usdt' && (
                     <div className="flex bg-slate-100/80 dark:bg-[#0B1120] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
                         {['personal', 'business'].map((type) => (
-                            <button
-                                key={type}
-                                type="button"
-                                onClick={() => {
-                                    setAccType(type);
-                                    generateDisplayName(provider, type, formData.crypto_network, isCustomName, 'international');
-                                }}
-                                className={`flex-1 py-2.5 text-xs font-bold uppercase rounded-lg transition-all ${
-                                    accType === type
-                                        ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                                }`}
-                            >
+                            <button key={type} type="button" onClick={() => { setAccType(type); generateDisplayName(provider, type, formData.crypto_network, isCustomName, 'international'); }}
+                                className={`flex-1 py-2.5 text-xs font-bold uppercase rounded-lg transition-all ${accType === type ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'}`}>
                                 {type}
                             </button>
                         ))}
@@ -1032,19 +829,8 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                             <label className={labelClass}>Select Network {reqStar}</label>
                             <div className="flex gap-2 mt-2">
                                 {['trc20', 'bep20', 'erc20'].map((net) => (
-                                    <button
-                                        key={net}
-                                        type="button"
-                                        onClick={() => {
-                                            setFormData({ ...formData, crypto_network: net });
-                                            generateDisplayName('usdt', '', net, isCustomName, 'international');
-                                        }}
-                                        className={`flex-1 py-3 text-xs font-bold uppercase rounded-xl border transition-all ${
-                                            formData.crypto_network === net
-                                                ? 'bg-[#0D47A1] text-white border-[#0D47A1] shadow-md shadow-blue-900/20'
-                                                : 'bg-white dark:bg-[#0B1120] text-slate-500 dark:text-slate-400 hover:bg-slate-50 border-slate-200 dark:border-slate-800'
-                                        }`}
-                                    >
+                                    <button key={net} type="button" onClick={() => { setFormData({ ...formData, crypto_network: net }); generateDisplayName('usdt', '', net, isCustomName, 'international'); }}
+                                        className={`flex-1 py-3 text-xs font-bold uppercase rounded-xl border transition-all ${formData.crypto_network === net ? 'bg-[#0D47A1] text-white border-[#0D47A1] shadow-md shadow-blue-900/20' : 'bg-white dark:bg-[#0B1120] text-slate-500 dark:text-slate-400 hover:bg-slate-50 border-slate-200 dark:border-slate-800'}`}>
                                         {net}
                                     </button>
                                 ))}
@@ -1052,15 +838,7 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                         </div>
                         <div>
                             <label className={labelClass}>Wallet Address {reqStar}</label>
-                            <input
-                                required
-                                name="account_number"
-                                onChange={handleInputChange}
-                                value={formData.account_number}
-                                type="text"
-                                placeholder={`Enter ${formData.crypto_network.toUpperCase()} Address`}
-                                className={`${inputClass} font-mono text-sm`}
-                            />
+                            <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" placeholder={`Enter ${formData.crypto_network.toUpperCase()} Address`} className={`${inputClass} font-mono text-sm`} />
                         </div>
                     </div>
                 )}
@@ -1069,59 +847,21 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                     <div className="space-y-5">
                         <div>
                             <label className={labelClass}>Binance Pay ID / Email {reqStar}</label>
-                            <input
-                                required
-                                name="account_number"
-                                onChange={handleInputChange}
-                                value={formData.account_number}
-                                type="text"
-                                placeholder="Pay ID or Email"
-                                className={inputClass}
-                            />
+                            <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" placeholder="Pay ID or Email" className={inputClass} />
                         </div>
                         <div>
                             <label className={labelClass}>Account Name {reqStar}</label>
-                            <input
-                                required
-                                name="account_name"
-                                onChange={handleInputChange}
-                                value={formData.account_name}
-                                type="text"
-                                placeholder="Name on Binance"
-                                className={inputClass}
-                            />
+                            <input required name="account_name" onChange={handleInputChange} value={formData.account_name} type="text" placeholder="Name on Binance" className={inputClass} />
                         </div>
                         <div className="p-5 bg-gradient-to-br from-yellow-50 to-orange-50/30 dark:from-yellow-900/20 dark:to-orange-900/10 border border-yellow-200/60 dark:border-yellow-700/50 rounded-2xl space-y-4">
-                            <p className="text-xs font-medium text-yellow-900 dark:text-yellow-500 flex gap-2">
-                                <ShieldCheck size={18} className="shrink-0 text-yellow-600" />
-                                <span>
-                                    <b>API Settings:</b> Binance API.<br />
-                                    <span className="opacity-70 text-[10px]">(Leave blank if unchanged)</span>
-                                </span>
-                            </p>
+                            <p className="text-xs font-medium text-yellow-900 dark:text-yellow-500 flex gap-2"><ShieldCheck size={18} className="shrink-0 text-yellow-600" /><span><b>API Settings:</b> Binance API.<br /><span className="opacity-70 text-[10px]">(Leave blank if unchanged)</span></span></p>
                             <div>
                                 <label className={labelClass}>API Key {editingId ? '' : reqStar}</label>
-                                <input
-                                    required={!editingId}
-                                    name="api_key"
-                                    onChange={handleInputChange}
-                                    value={formData.api_key}
-                                    type="text"
-                                    placeholder="API Key"
-                                    className={`${inputClass} font-mono text-xs`}
-                                />
+                                <input required={!editingId} name="api_key" onChange={handleInputChange} value={formData.api_key} type="text" placeholder="API Key" className={`${inputClass} font-mono text-xs`} />
                             </div>
                             <div>
                                 <label className={labelClass}>Secret Key {editingId ? '' : reqStar}</label>
-                                <input
-                                    required={!editingId}
-                                    name="secret_key"
-                                    onChange={handleInputChange}
-                                    value={formData.secret_key}
-                                    type="password"
-                                    placeholder="••••••••"
-                                    className={`${inputClass} font-mono tracking-widest`}
-                                />
+                                <input required={!editingId} name="secret_key" onChange={handleInputChange} value={formData.secret_key} type="password" placeholder="••••••••" className={`${inputClass} font-mono tracking-widest`} />
                             </div>
                         </div>
                     </div>
@@ -1131,71 +871,25 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                     <div className="space-y-5">
                         <div>
                             <label className={labelClass}>Account ID / Email {reqStar}</label>
-                            <input
-                                required
-                                name="account_number"
-                                onChange={handleInputChange}
-                                value={formData.account_number}
-                                type="text"
-                                placeholder="e.g. U1234567"
-                                className={`${inputClass} font-mono`}
-                            />
+                            <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" placeholder="e.g. U1234567" className={`${inputClass} font-mono`} />
                         </div>
                         <div>
                             <label className={labelClass}>Account Name {reqStar}</label>
-                            <input
-                                required
-                                name="account_name"
-                                onChange={handleInputChange}
-                                value={formData.account_name}
-                                type="text"
-                                placeholder="Name"
-                                className={inputClass}
-                            />
+                            <input required name="account_name" onChange={handleInputChange} value={formData.account_name} type="text" placeholder="Name" className={inputClass} />
                         </div>
                         <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50/30 dark:from-slate-800 dark:to-slate-800/50 border border-blue-100 dark:border-slate-700 rounded-2xl space-y-4">
-                            <p className="text-xs font-medium text-blue-900 dark:text-blue-200 flex gap-2">
-                                <ShieldCheck size={18} className="shrink-0 text-blue-600 dark:text-blue-400" />
-                                <span>
-                                    <b>IMAP Settings:</b><br />
-                                    <span className="opacity-70 text-[10px]">(Leave blank if unchanged)</span>
-                                </span>
-                            </p>
+                            <p className="text-xs font-medium text-blue-900 dark:text-blue-200 flex gap-2"><ShieldCheck size={18} className="shrink-0 text-blue-600 dark:text-blue-400" /><span><b>IMAP Settings:</b><br /><span className="opacity-70 text-[10px]">(Leave blank if unchanged)</span></span></p>
                             <div>
                                 <label className={labelClass}>Your Email {reqStar}</label>
-                                <input
-                                    required={!editingId}
-                                    name="imap_email"
-                                    onChange={handleInputChange}
-                                    value={formData.imap_email}
-                                    type="email"
-                                    placeholder="you@gmail.com"
-                                    className={inputClass}
-                                />
+                                <input required={!editingId} name="imap_email" onChange={handleInputChange} value={formData.imap_email} type="email" placeholder="you@gmail.com" className={inputClass} />
                             </div>
                             <div>
                                 <label className={labelClass}>App Password {editingId ? '' : reqStar}</label>
-                                <input
-                                    required={!editingId}
-                                    name="imap_password"
-                                    onChange={handleInputChange}
-                                    value={formData.imap_password}
-                                    type="password"
-                                    placeholder="••••••••"
-                                    className={`${inputClass} font-mono tracking-widest`}
-                                />
+                                <input required={!editingId} name="imap_password" onChange={handleInputChange} value={formData.imap_password} type="password" placeholder="••••••••" className={`${inputClass} font-mono tracking-widest`} />
                             </div>
                             <div>
                                 <label className={labelClass}>Company Sender Email {reqStar}</label>
-                                <input
-                                    required={!editingId}
-                                    name="imap_bank_email"
-                                    onChange={handleInputChange}
-                                    value={formData.imap_bank_email}
-                                    type="email"
-                                    placeholder="noreply@provider.com"
-                                    className={inputClass}
-                                />
+                                <input required={!editingId} name="imap_bank_email" onChange={handleInputChange} value={formData.imap_bank_email} type="email" placeholder="noreply@provider.com" className={inputClass} />
                             </div>
                         </div>
                     </div>
@@ -1219,9 +913,7 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
     if (!businessId) {
         return (
             <div className="min-h-[60vh] flex flex-col items-center justify-center text-center animate-in zoom-in-95">
-                <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-full flex items-center justify-center mb-4">
-                    <Building2 size={32} />
-                </div>
+                <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-full flex items-center justify-center mb-4"><Building2 size={32} /></div>
                 <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase">No Workspace Selected</h2>
                 <p className="text-slate-500 mt-2 font-medium">Please select a business from the sidebar.</p>
             </div>
@@ -1231,22 +923,20 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
     // ── Main Render ────────────────────────────────────────────────────────────
 
     return (
-        <div className="p-4 md:p-8 w-full max-w-6xl mx-auto min-h-screen bg-[#F4F7F9] dark:bg-[#0B1120] font-sans transition-colors duration-300">
+        <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Toaster position="top-center" richColors />
 
             {/* ── Header ── */}
-            <div className="flex flex-row items-center justify-between gap-3 mb-8">
-                <div className="flex-1 min-w-0">
-                    <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight truncate">
+            <div className="flex flex-row items-center justify-between gap-3">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                         Gateway Manager
                     </h1>
-                    <p className="text-[11px] md:text-sm text-slate-500 dark:text-slate-400 mt-0.5 md:mt-1.5 font-medium truncate">
-                        Manage receiving methods.
-                    </p>
+                    <p className="text-slate-500 font-bold text-sm mt-1">Manage receiving methods for your business.</p>
                 </div>
                 <button
                     onClick={() => setIsChoiceModalOpen(true)}
-                    className="shrink-0 bg-[#0D47A1] dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 text-white px-4 md:px-6 py-2.5 md:py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl shadow-blue-900/20 active:scale-95 text-xs md:text-base"
+                    className="shrink-0 bg-[#0D47A1] dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 text-white px-4 md:px-6 py-2.5 md:py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl shadow-blue-900/20 active:scale-95 text-xs md:text-sm"
                 >
                     <Plus size={18} strokeWidth={3} />
                     <span className="hidden sm:inline">Add New Gateway</span>
@@ -1264,103 +954,46 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                         : `Min: ${gw.min_amount} ${currency} (Unlimited)`;
 
                     return (
-                        <div
-                            key={gw.id}
-                            className={`relative bg-white dark:bg-[#111827] rounded-[24px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col overflow-hidden z-0 ${
-                                !gw.is_active ? 'opacity-60 grayscale hover:opacity-80' : ''
-                            }`}
-                        >
-                            {/* Background Accents */}
+                        <div key={gw.id} className={`relative bg-white dark:bg-[#111827] rounded-[24px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col overflow-hidden z-0 ${!gw.is_active ? 'opacity-60 grayscale hover:opacity-80' : ''}`}>
                             <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-blue-50/30 dark:to-blue-900/5 pointer-events-none z-[-1]" />
-                            <div className="absolute -right-6 -bottom-6 opacity-5 dark:opacity-10 text-slate-400 dark:text-slate-600 group-hover:scale-110 transition-transform duration-500 pointer-events-none z-[-1]">
-                                <ShieldCheck size={140} />
-                            </div>
+                            <div className="absolute -right-6 -bottom-6 opacity-5 dark:opacity-10 text-slate-400 dark:text-slate-600 group-hover:scale-110 transition-transform duration-500 pointer-events-none z-[-1]"><ShieldCheck size={140} /></div>
 
-                            {/* Provider Logo, Name & Toggle */}
                             <div className="relative mb-5 w-full min-h-[48px] pr-[60px]">
                                 <div className="flex items-center gap-3 w-full overflow-hidden">
                                     <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center p-2 shrink-0 shadow-sm z-10">
-                                        <img
-                                            src={getLogo(gw.provider)}
-                                            alt="logo"
-                                            className="w-full h-full object-contain"
-                                        />
+                                        <img src={getLogo(gw.provider)} alt="logo" className="w-full h-full object-contain" />
                                     </div>
                                     <div className="flex-1 min-w-0 z-10">
                                         <h3 className="text-base font-black text-slate-900 dark:text-white leading-tight flex flex-wrap items-center gap-1.5">
                                             <span className="truncate capitalize">{getDisplayName(gw.provider)}</span>
-                                            {gw.account_type && (
-                                                <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded-[4px] text-[9px] uppercase font-black shrink-0 border border-slate-200 dark:border-slate-700">
-                                                    {gw.account_type}
-                                                </span>
-                                            )}
+                                            {gw.account_type && (<span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded-[4px] text-[9px] uppercase font-black shrink-0 border border-slate-200 dark:border-slate-700">{gw.account_type}</span>)}
                                         </h3>
                                     </div>
                                 </div>
-                                {/* Active Toggle */}
                                 <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10">
-                                    <button
-                                        onClick={() => handleToggle(gw.id, gw.is_active)}
-                                        className={`relative inline-flex h-[30px] w-[52px] cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none shadow-inner ${
-                                            gw.is_active ? 'bg-[#34C759]' : 'bg-slate-300 dark:bg-slate-600'
-                                        }`}
-                                    >
-                                        <span className={`inline-block h-[26px] w-[26px] transform rounded-full bg-white shadow-lg transition-transform duration-300 ease-in-out ${
-                                            gw.is_active ? 'translate-x-[22px]' : 'translate-x-0'
-                                        }`} />
+                                    <button onClick={() => handleToggle(gw.id, gw.is_active)} className={`relative inline-flex h-[30px] w-[52px] cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none shadow-inner ${gw.is_active ? 'bg-[#34C759]' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                                        <span className={`inline-block h-[26px] w-[26px] transform rounded-full bg-white shadow-lg transition-transform duration-300 ease-in-out ${gw.is_active ? 'translate-x-[22px]' : 'translate-x-0'}`} />
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Account Number & Name */}
                             <div className="mb-3 bg-slate-50/80 dark:bg-[#0B1120]/80 p-3 rounded-xl border border-slate-100/50 dark:border-slate-800 z-10">
-                                <p className="text-sm font-mono font-bold text-slate-800 dark:text-slate-200 tracking-wide">
-                                    {maskedNumber}
-                                </p>
-                                {gw.account_name && (
-                                    // ── Account Name: visible in both light & dark mode ───────
-                                    <p className="text-xs font-black text-slate-700 dark:text-white mt-1 uppercase tracking-widest">
-                                        {gw.account_name.toUpperCase()}
-                                    </p>
-                                )}
+                                <p className="text-sm font-mono font-bold text-slate-800 dark:text-slate-200 tracking-wide">{maskedNumber}</p>
+                                {gw.account_name && (<p className="text-xs font-black text-slate-700 dark:text-white mt-1 uppercase tracking-widest">{gw.account_name.toUpperCase()}</p>)}
                             </div>
 
-                            {/* Footer: Limits, Badges & Actions */}
                             <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between z-10">
                                 <div className="flex flex-col">
                                     <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Limits</span>
                                     <span className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-0.5">{displayLimit}</span>
                                 </div>
-
                                 <div className="flex gap-1.5 flex-wrap justify-end items-center">
-                                    {gw.has_discount && (
-                                        <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
-                                            <Tag size={10} /> {gw.discount_percent}% OFF
-                                        </div>
-                                    )}
-                                    {(gw.fixed_charge || gw.percent_charge) && (
-                                        <div className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
-                                            <DollarSign size={10} /> FEE{' '}
-                                            {gw.percent_charge ? `${gw.percent_charge}%` : ''}
-                                            {gw.percent_charge && gw.fixed_charge ? ' + ' : ''}
-                                            {gw.fixed_charge ? `${gw.fixed_charge}${gw.category === 'international' ? '$' : '৳'}` : ''}
-                                        </div>
-                                    )}
+                                    {gw.has_discount && (<div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider flex items-center gap-1"><Tag size={10} /> {gw.discount_percent}% OFF</div>)}
+                                    {(gw.fixed_charge || gw.percent_charge) && (<div className="bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider flex items-center gap-1"><DollarSign size={10} /> FEE {gw.percent_charge ? `${gw.percent_charge}%` : ''}{gw.percent_charge && gw.fixed_charge ? ' + ' : ''}{gw.fixed_charge ? `${gw.fixed_charge}${gw.category === 'international' ? '$' : '৳'}` : ''}</div>)}
                                 </div>
-
                                 <div className="flex gap-1 shrink-0 ml-2">
-                                    <button
-                                        onClick={() => handleEdit(gw)}
-                                        className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer bg-white/50 dark:bg-transparent"
-                                    >
-                                        <Edit size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(gw.id)}
-                                        className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer bg-white/50 dark:bg-transparent"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                                    <button onClick={() => handleEdit(gw)} className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer bg-white/50 dark:bg-transparent"><Edit size={16} /></button>
+                                    <button onClick={() => handleDelete(gw.id)} className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer bg-white/50 dark:bg-transparent"><Trash2 size={16} /></button>
                                 </div>
                             </div>
                         </div>
@@ -1369,63 +1002,37 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
 
                 {gateways.length === 0 && (
                     <div className="col-span-full py-24 flex flex-col items-center justify-center text-center opacity-60 bg-white dark:bg-[#111827] rounded-[30px] border border-slate-100 dark:border-slate-800 border-dashed">
-                        <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-5">
-                            <ShieldCheck size={36} className="text-slate-400" />
-                        </div>
+                        <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-5"><ShieldCheck size={36} className="text-slate-400" /></div>
                         <h3 className="text-2xl font-black text-slate-800 dark:text-white">No Gateways Found</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-sm font-medium">
-                            You haven't added any payment methods yet. Click the button above to start accepting payments.
-                        </p>
+                        <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-sm font-medium">You haven't added any payment methods yet. Click the button above to start accepting payments.</p>
                     </div>
                 )}
             </div>
 
             {/* ── Choice Modal ── */}
             {isChoiceModalOpen && (
-                <div
-                    className={`fixed inset-0 z-[60] flex ${isMobile ? 'items-end' : 'items-center'} justify-center ${isMobile ? 'p-0' : 'p-4'} bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-300`}
-                    onClick={() => setIsChoiceModalOpen(false)}
-                >
-                    <div
-                        onClick={(e) => e.stopPropagation()}
-                        className={`bg-white dark:bg-[#111827] w-full md:w-[400px] ${isMobile ? 'rounded-t-[36px]' : 'rounded-[36px]'} shadow-2xl animate-in ${isMobile ? 'slide-in-from-bottom-10' : 'zoom-in-95'} border border-white/10 overflow-hidden flex flex-col p-8`}
-                    >
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase italic">Add Gateway</h2>
-                            <button
-                                onClick={() => setIsChoiceModalOpen(false)}
-                                className="p-2 bg-slate-100 dark:bg-[#0B1120] rounded-full text-slate-500 active:scale-90"
-                            >
-                                <X size={20} />
-                            </button>
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsChoiceModalOpen(false)}>
+                    <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 overflow-hidden">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                            <h2 className="text-base font-black text-slate-900 dark:text-white">Add Gateway</h2>
+                            <button onClick={() => setIsChoiceModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><X size={18} /></button>
                         </div>
-                        <div className="space-y-4">
-                            <button
-                                onClick={() => { setIsChoiceModalOpen(false); setIsVaultModalOpen(true); }}
-                                className="w-full bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 transition-all p-5 rounded-[24px] flex items-center gap-4 group"
-                            >
-                                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-[16px] flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
-                                    <Archive size={24} />
+                        <div className="p-4 space-y-3">
+                            <button onClick={() => { setIsChoiceModalOpen(false); setIsVaultModalOpen(true); }} className="w-full bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 transition-all p-4 rounded-xl flex items-center gap-4 group text-left">
+                                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 group-hover:scale-110 transition-transform"><Archive size={20} /></div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="font-bold text-slate-900 dark:text-white text-sm">Import from Vault</h4>
+                                    <p className="text-xs text-slate-500 mt-0.5">Use master credentials</p>
                                 </div>
-                                <div className="text-left flex-1">
-                                    <h4 className="font-black text-slate-900 dark:text-white">Import from Vault</h4>
-                                    <p className="text-xs text-slate-500 font-medium mt-0.5">Use master credentials</p>
-                                </div>
-                                <ArrowRight size={20} className="text-slate-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors" />
+                                <ArrowRight size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors shrink-0" />
                             </button>
-
-                            <button
-                                onClick={() => { setIsChoiceModalOpen(false); handleTabSwitch('mobile'); setIsModalOpen(true); }}
-                                className="w-full bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 transition-all p-5 rounded-[24px] flex items-center gap-4 group"
-                            >
-                                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-[16px] flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
-                                    <Plus size={24} />
+                            <button onClick={() => { setIsChoiceModalOpen(false); handleTabSwitch('mobile'); setIsModalOpen(true); }} className="w-full bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 transition-all p-4 rounded-xl flex items-center gap-4 group text-left">
+                                <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:scale-110 transition-transform"><Plus size={20} /></div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="font-bold text-slate-900 dark:text-white text-sm">Create New</h4>
+                                    <p className="text-xs text-slate-500 mt-0.5">Setup manually</p>
                                 </div>
-                                <div className="text-left flex-1">
-                                    <h4 className="font-black text-slate-900 dark:text-white">Create New</h4>
-                                    <p className="text-xs text-slate-500 font-medium mt-0.5">Setup manually</p>
-                                </div>
-                                <ArrowRight size={20} className="text-slate-300 dark:text-slate-600 group-hover:text-emerald-500 transition-colors" />
+                                <ArrowRight size={16} className="text-slate-300 dark:text-slate-600 group-hover:text-emerald-500 transition-colors shrink-0" />
                             </button>
                         </div>
                     </div>
@@ -1434,129 +1041,62 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
 
             {/* ── Vault Import Modal ── */}
             {isVaultModalOpen && (
-                <div
-                    className={`fixed inset-0 z-[60] flex ${isMobile ? 'items-end' : 'items-center'} justify-center ${isMobile ? 'p-0' : 'p-4'} bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-300`}
-                    onClick={() => setIsVaultModalOpen(false)}
-                >
-                    <div
-                        onClick={(e) => e.stopPropagation()}
-                        className={`bg-[#F8FAFC] dark:bg-[#0B1120] w-full md:w-[500px] ${isMobile ? 'h-[85vh] rounded-t-[36px]' : 'h-auto max-h-[85vh] rounded-[36px]'} shadow-2xl animate-in ${isMobile ? 'slide-in-from-bottom-10' : 'zoom-in-95'} border border-white/10 overflow-hidden flex flex-col`}
-                    >
-                        {/* Vault Modal Header */}
-                        <div className="flex justify-between items-center p-6 md:p-8 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[#111827]">
-                            <div className="flex items-center gap-4">
-                                <div>
-                                    <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase italic">Vault Assets</h2>
-                                    <p className="text-[10px] text-blue-500 font-black uppercase tracking-[2px] mt-1">Select to import</p>
-                                </div>
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsVaultModalOpen(false)}>
+                    <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-[#111827] w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[80vh]">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                            <div>
+                                <h2 className="text-base font-black text-slate-900 dark:text-white">Vault Assets</h2>
+                                <p className="text-[11px] text-blue-500 font-bold uppercase tracking-widest mt-0.5">Select to import</p>
                             </div>
-                            <button
-                                onClick={() => setIsVaultModalOpen(false)}
-                                className="p-2.5 bg-slate-100 dark:bg-[#0B1120] rounded-full text-slate-500 active:scale-90"
-                            >
-                                <X size={20} />
-                            </button>
+                            <button onClick={() => setIsVaultModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><X size={18} /></button>
                         </div>
 
-                        {/* Vault Items List */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-[#F8FAFC] dark:bg-[#0B1120]">
+                        {/* List */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                             {vaultGateways.length === 0 ? (
-                                <div className="text-center py-10 text-slate-500">
-                                    <Archive size={40} className="mx-auto opacity-20 mb-3" />
-                                    <p className="text-sm font-medium">Your vault is empty.</p>
-                                </div>
+                                <div className="text-center py-10 text-slate-500"><Archive size={36} className="mx-auto opacity-20 mb-3" /><p className="text-sm font-medium">Your vault is empty.</p></div>
                             ) : (
                                 vaultGateways.map((gw) => {
                                     const isAdded    = gateways.some((g) => g.vault_gateway_id === gw.id);
                                     const isSelected = selectedVaultItems.includes(gw.id);
-
                                     return (
-                                        <div
-                                            key={gw.id}
-                                            onClick={() => !isAdded && toggleVaultSelection(gw.id)}
-                                            className={`relative flex items-center p-4 bg-white dark:bg-[#111827] border rounded-[20px] transition-all shadow-sm overflow-hidden ${
-                                                isAdded
-                                                    ? 'border-slate-100 dark:border-slate-800 opacity-50 grayscale cursor-not-allowed'
-                                                    : isSelected
-                                                        ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 cursor-pointer'
-                                                        : 'border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 cursor-pointer'
-                                            }`}
-                                        >
-                                            {isAdded && (
-                                                <span className="absolute top-2 right-3 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md">
-                                                    Already Added
-                                                </span>
-                                            )}
-                                            {!isAdded && gw.account_type && (
-                                                <span className="absolute top-0 right-0 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[9px] font-black px-3 py-1 rounded-bl-[16px] rounded-tr-[18px] uppercase">
-                                                    {gw.account_type}
-                                                </span>
-                                            )}
+                                        <div key={gw.id} onClick={() => !isAdded && toggleVaultSelection(gw.id)}
+                                            className={`relative flex items-center p-3.5 border rounded-xl transition-all ${isAdded ? 'border-slate-100 dark:border-slate-800 opacity-50 grayscale cursor-not-allowed' : isSelected ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 cursor-pointer' : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer'}`}>
+                                            {isAdded && (<span className="absolute top-2 right-2 bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md">Added</span>)}
                                             {!isAdded && (
-                                                <div className={`w-5 h-5 shrink-0 rounded-md border-2 mr-4 flex items-center justify-center transition-colors ${
-                                                    isSelected
-                                                        ? 'border-blue-500 bg-blue-500'
-                                                        : 'border-slate-300 dark:border-slate-600'
-                                                }`}>
-                                                    {isSelected && <Check size={14} className="text-white" strokeWidth={3.5} />}
+                                                <div className={`w-5 h-5 shrink-0 rounded-md border-2 mr-3 flex items-center justify-center transition-colors ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-300 dark:border-slate-600'}`}>
+                                                    {isSelected && <Check size={13} className="text-white" strokeWidth={3.5} />}
                                                 </div>
                                             )}
-                                            <div className={`w-12 h-12 shrink-0 bg-slate-50 dark:bg-[#0B1120] border border-slate-100 dark:border-slate-800 rounded-2xl p-2.5 flex items-center justify-center ${!isAdded && 'mr-5'}`}>
-                                                <img
-                                                    src={getLogo(gw.provider)}
-                                                    alt="logo"
-                                                    className="w-full h-full object-contain"
-                                                />
+                                            <div className="w-10 h-10 shrink-0 bg-slate-50 dark:bg-[#0B1120] border border-slate-100 dark:border-slate-800 rounded-xl p-2 flex items-center justify-center mr-3">
+                                                <img src={getLogo(gw.provider)} alt="logo" className="w-full h-full object-contain" />
                                             </div>
-                                            <div className="flex-1 min-w-0 pr-4">
-                                                <h4 className="font-black text-sm text-slate-900 dark:text-white capitalize truncate">
-                                                    {gw.display_name || getDisplayName(gw.provider)}
-                                                </h4>
-                                                <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">
-                                                    {formatMaskedAccount(gw.account_number)}
-                                                </p>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-bold text-sm text-slate-900 dark:text-white capitalize truncate">{gw.display_name || getDisplayName(gw.provider)}</h4>
+                                                <p className="text-xs font-mono text-slate-500 mt-0.5">{formatMaskedAccount(gw.account_number)}</p>
                                             </div>
+                                            {!isAdded && gw.account_type && (<span className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-md shrink-0 ml-2">{gw.account_type}</span>)}
                                         </div>
                                     );
                                 })
                             )}
                         </div>
 
-                        {/* Vault Modal Footer */}
-                        <div className="p-4 bg-white dark:bg-[#111827] border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+                        {/* Footer */}
+                        <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3 shrink-0">
                             {vaultGateways.length > 0 && (
-                                <button
-                                    onClick={() => {
-                                        const availableIds = vaultGateways
-                                            .filter((gw) => !gateways.some((g) => g.vault_gateway_id === gw.id))
-                                            .map((gw) => gw.id);
-                                        if (selectedVaultItems.length === availableIds.length) {
-                                            setSelectedVaultItems([]);
-                                        } else {
-                                            setSelectedVaultItems(availableIds);
-                                        }
-                                    }}
-                                    className="shrink-0 px-4 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-[16px] text-xs font-bold transition-all hover:bg-slate-200 dark:hover:bg-slate-700"
-                                >
-                                    {selectedVaultItems.length === vaultGateways.filter((gw) => !gateways.some((g) => g.vault_gateway_id === gw.id)).length
-                                        ? 'Deselect All'
-                                        : 'Select All'
-                                    }
+                                <button onClick={() => {
+                                    const availableIds = vaultGateways.filter((gw) => !gateways.some((g) => g.vault_gateway_id === gw.id)).map((gw) => gw.id);
+                                    if (selectedVaultItems.length === availableIds.length) setSelectedVaultItems([]);
+                                    else setSelectedVaultItems(availableIds);
+                                }} className="shrink-0 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                                    {selectedVaultItems.length === vaultGateways.filter((gw) => !gateways.some((g) => g.vault_gateway_id === gw.id)).length ? 'Deselect All' : 'Select All'}
                                 </button>
                             )}
-                            <button
-                                onClick={selectedVaultItems.length > 0 ? handleBulkImport : undefined}
-                                disabled={selectedVaultItems.length === 0 || isImporting}
-                                className={`flex-1 py-4 rounded-[16px] font-black tracking-widest text-xs uppercase transition-all flex items-center justify-center gap-2 ${
-                                    selectedVaultItems.length > 0
-                                        ? 'bg-[#0D47A1] dark:bg-blue-600 text-white shadow-xl shadow-blue-500/20 active:scale-95'
-                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                                }`}
-                            >
-                                {isImporting
-                                    ? <Loader2 className="animate-spin" size={18} />
-                                    : `Import Selected (${selectedVaultItems.length})`
-                                }
+                            <button onClick={selectedVaultItems.length > 0 ? handleBulkImport : undefined} disabled={selectedVaultItems.length === 0 || isImporting}
+                                className={`flex-1 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${selectedVaultItems.length > 0 ? 'bg-[#0D47A1] dark:bg-blue-600 text-white shadow-lg shadow-blue-500/20 active:scale-95' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'}`}>
+                                {isImporting ? <Loader2 className="animate-spin" size={16} /> : `Import (${selectedVaultItems.length})`}
                             </button>
                         </div>
                     </div>
@@ -1565,57 +1105,35 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
 
             {/* ── Add / Edit Form Modal ── */}
             {isModalOpen && (
-                <div
-                    className={`fixed inset-0 z-50 flex ${isMobile ? 'items-end' : 'items-center'} justify-center ${isMobile ? 'p-0' : 'p-4'} bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-300`}
-                    onClick={() => { setIsModalOpen(false); resetForm(); }}
-                >
-                    <div
-                        onClick={(e) => e.stopPropagation()}
-                        className={`bg-[#F8FAFC] dark:bg-[#0B1120] w-full md:w-[550px] ${isMobile ? 'h-[92vh] rounded-t-[32px]' : 'h-auto max-h-[90vh] rounded-[32px]'} flex flex-col shadow-2xl animate-in ${isMobile ? 'slide-in-from-bottom-10' : 'zoom-in-95'} border border-white/20 dark:border-slate-800 overflow-hidden relative`}
-                    >
-                        {/* Form Modal Header */}
-                        <div className="shrink-0 flex justify-between items-center px-6 pt-6 pb-4 bg-white dark:bg-[#111827] border-b border-slate-100 dark:border-slate-800 z-10">
-                            <div className="flex-1">
-                                <h2 className="text-2xl font-black text-slate-900 dark:text-white">
-                                    {editingId ? 'Edit Gateway' : 'Add Gateway'}
-                                </h2>
-                            </div>
-                            <button
-                                onClick={() => { setIsModalOpen(false); resetForm(); }}
-                                className="w-10 h-10 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-400 transition-all"
-                            >
-                                <X size={20} strokeWidth={2.5} />
-                            </button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => { setIsModalOpen(false); resetForm(); }}>
+                    <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-[#111827] w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-hidden">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                            <h2 className="text-base font-black text-slate-900 dark:text-white">{editingId ? 'Edit Gateway' : 'Add Gateway'}</h2>
+                            <button onClick={() => { setIsModalOpen(false); resetForm(); }} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><X size={18} /></button>
                         </div>
 
-                        {/* Tab Switcher (hide when editing) */}
+                        {/* Tab Switcher */}
                         {!editingId && (
-                            <div className="px-6 py-4 bg-white dark:bg-[#111827] border-b border-slate-100 dark:border-slate-800 shrink-0 z-10">
-                                <div className="flex bg-slate-100/80 dark:bg-[#0B1120] p-1.5 rounded-2xl border border-slate-200/50 dark:border-slate-800">
+                            <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                                <div className="flex bg-slate-100 dark:bg-[#0B1120] p-1 rounded-xl border border-slate-200 dark:border-slate-800">
                                     {[
-                                        { id: 'mobile',        icon: Smartphone, label: 'Mobile' },
-                                        { id: 'bank',          icon: Building2,  label: 'Bank'   },
-                                        { id: 'international', icon: Globe,       label: 'Intl.'  },
+                                        { id: 'mobile', icon: Smartphone, label: 'Mobile' },
+                                        { id: 'bank', icon: Building2, label: 'Bank' },
+                                        { id: 'international', icon: Globe, label: 'Intl.' },
                                     ].map((tab) => (
-                                        <button
-                                            key={tab.id}
-                                            onClick={() => handleTabSwitch(tab.id)}
-                                            className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-bold uppercase tracking-wide rounded-xl transition-all duration-300 ${
-                                                activeTab === tab.id
-                                                    ? 'bg-white dark:bg-[#111827] text-[#0D47A1] dark:text-blue-400 shadow-sm border border-slate-200/50 dark:border-slate-700 scale-[1.02]'
-                                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
-                                            }`}
-                                        >
-                                            <tab.icon size={16} /> {tab.label}
+                                        <button key={tab.id} onClick={() => handleTabSwitch(tab.id)}
+                                            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold uppercase tracking-wide rounded-lg transition-all ${activeTab === tab.id ? 'bg-white dark:bg-[#111827] text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}>
+                                            <tab.icon size={14} /> {tab.label}
                                         </button>
                                     ))}
                                 </div>
                             </div>
                         )}
 
-                        {/* Form Body */}
-                        <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar bg-white dark:bg-[#111827]">
-                            <form id="gatewayForm" onSubmit={handleSave} className="space-y-6">
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto px-6 py-5 custom-scrollbar">
+                            <form id="gatewayForm" onSubmit={handleSave} className="space-y-5">
                                 {activeTab === 'mobile'        && renderMobileInputs()}
                                 {activeTab === 'bank'          && renderBankInputs()}
                                 {activeTab === 'international' && renderIntlInputs()}
@@ -1624,39 +1142,12 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                                     <div className="space-y-6">
                                         <div className="grid grid-cols-2 gap-4 pt-6 mt-6 border-t border-slate-100 dark:border-slate-800">
                                             <div>
-                                                <label className={labelClass}>
-                                                    Min Amount ({activeTab === 'international' ? 'USD' : 'BDT'}) {reqStar}
-                                                </label>
-                                                <input
-                                                    required
-                                                    name="min_amount"
-                                                    onChange={handleInputChange}
-                                                    value={formData.min_amount}
-                                                    type="number"
-                                                    placeholder={
-                                                        activeTab === 'international' ? '1' :
-                                                        activeTab === 'bank'         ? '1000' : '10'
-                                                    }
-                                                    className={inputClass}
-                                                />
+                                                <label className={labelClass}>Min Amount ({activeTab === 'international' ? 'USD' : 'BDT'}) {reqStar}</label>
+                                                <input required name="min_amount" onChange={handleInputChange} value={formData.min_amount} type="number" placeholder={activeTab === 'international' ? '1' : activeTab === 'bank' ? '1000' : '10'} className={inputClass} />
                                             </div>
                                             <div>
-                                                <label className={labelClass}>
-                                                    Max Amount ({activeTab === 'international' ? 'USD' : 'BDT'}){' '}
-                                                    {activeTab === 'international' ? '' : reqStar}
-                                                </label>
-                                                <input
-                                                    required={activeTab !== 'international'}
-                                                    name="max_amount"
-                                                    onChange={handleInputChange}
-                                                    value={formData.max_amount}
-                                                    type="number"
-                                                    placeholder={
-                                                        activeTab === 'international' ? 'Unlimited' :
-                                                        activeTab === 'bank'         ? '300000' : '50000'
-                                                    }
-                                                    className={inputClass}
-                                                />
+                                                <label className={labelClass}>Max Amount ({activeTab === 'international' ? 'USD' : 'BDT'}) {activeTab === 'international' ? '' : reqStar}</label>
+                                                <input required={activeTab !== 'international'} name="max_amount" onChange={handleInputChange} value={formData.max_amount} type="number" placeholder={activeTab === 'international' ? 'Unlimited' : activeTab === 'bank' ? '300000' : '50000'} className={inputClass} />
                                             </div>
                                         </div>
                                         {renderChargeSection()}
@@ -1666,22 +1157,12 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                             </form>
                         </div>
 
-                        {/* Form Modal Footer / Submit */}
-                        <div className="p-6 bg-white dark:bg-[#111827] shrink-0 border-t border-slate-100 dark:border-slate-800">
-                            <button
-                                form="gatewayForm"
-                                type="submit"
-                                disabled={isSaving || !provider}
-                                className="w-full bg-[#0D47A1] dark:bg-blue-600 text-white font-bold py-4 rounded-xl shadow-xl shadow-blue-900/20 transition-all flex justify-center items-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isSaving ? (
-                                    <Loader2 className="animate-spin" size={22} />
-                                ) : (
-                                    <>
-                                        <ShieldCheck size={22} strokeWidth={2.5} />
-                                        {editingId ? 'Update Gateway' : 'Securely Save Gateway'}
-                                    </>
-                                )}
+                        {/* Footer */}
+                        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3 shrink-0">
+                            <button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">Cancel</button>
+                            <button form="gatewayForm" type="submit" disabled={isSaving || !provider}
+                                className="px-6 py-2.5 bg-[#0D47A1] dark:bg-blue-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-900/20 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isSaving ? <Loader2 className="animate-spin" size={16} /> : <><ShieldCheck size={16} strokeWidth={2.5} />{editingId ? 'Update Gateway' : 'Save Gateway'}</>}
                             </button>
                         </div>
                     </div>
@@ -1689,9 +1170,9 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
             )}
 
             <style jsx global>{`
-                .custom-scrollbar::-webkit-scrollbar         { width: 6px; }
-                .custom-scrollbar::-webkit-scrollbar-track   { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb   { background: #E2E8F0; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
                 .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #CBD5E1; }
             `}</style>
