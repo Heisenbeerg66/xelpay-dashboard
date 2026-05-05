@@ -79,17 +79,21 @@ function StatCard({ icon: Icon, label, value, textClass, borderClass, trend, tre
   const TrendIcon = isPositive ? TrendingUp : isNegative ? TrendingDown : Minus;
   
   return (
-    <div className={`bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-100 dark:border-slate-800 border-b-[3px] ${borderClass} shadow-sm hover:shadow-md transition-all group flex flex-col justify-between h-full`}>
-      <div className="flex items-start justify-between mb-4 gap-4">
-        <p className="text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest leading-tight mt-1">{label}</p>
-        <div className={`${textClass} shrink-0 group-hover:scale-110 transition-transform`}>
-          <Icon size={20} strokeWidth={2.5} />
+    <div className={`bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-100 dark:border-slate-800 border-b-[3px] ${borderClass} shadow-sm hover:shadow-md transition-all group flex flex-col h-full justify-between`}>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-2.5 mb-1.5">
+          <div className={`${textClass} group-hover:scale-110 transition-transform origin-left`}>
+            <Icon size={20} strokeWidth={2.5} />
+          </div>
+          <p className="text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest leading-tight">{label}</p>
         </div>
+        <p className={`text-2xl sm:text-[26px] font-black ${textClass} tracking-tight truncate`} title={value}>{value}</p>
       </div>
-      <div className="flex flex-col gap-2 mt-auto">
-        <p className={`text-2xl font-black ${textClass} tracking-tight truncate`} title={value}>{value}</p>
+      
+      {/* Fixed height container for trend to ensure perfect alignment */}
+      <div className="mt-3 h-[22px] flex items-center">
         {trend !== undefined && (
-          <div className={`inline-flex items-center gap-1 text-[10px] font-black ${trendColor} bg-slate-50 dark:bg-slate-800/50 px-2 py-1.5 rounded-lg w-fit`}>
+          <div className={`inline-flex items-center gap-1 text-[10px] font-black ${trendColor} bg-slate-50 dark:bg-slate-800/50 px-2 py-1.5 rounded-lg`}>
             <TrendIcon size={12} strokeWidth={3} />
             <span>{Math.abs(trend).toFixed(1)}{trendSuffix}</span>
           </div>
@@ -442,17 +446,17 @@ export default function DashboardHome() {
 
       {loading ? <DashboardSkeleton /> : (
         <>
-          {/* ── Stats Cards ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          {/* ── Stats Cards (Left-Aligned Flow) ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <StatCard icon={DollarSign} label="Revenue" textClass="text-blue-600 dark:text-blue-500" borderClass="border-b-blue-600 dark:border-b-blue-500"
               value={`৳ ${stats.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} trend={stats.revTrend} />
-            <StatCard icon={LinkIcon} label="Active Links" textClass="text-purple-600 dark:text-purple-500" borderClass="border-b-purple-600 dark:border-b-purple-500"
+            <StatCard icon={LinkIcon} label="Active Pay with Link" textClass="text-purple-600 dark:text-purple-500" borderClass="border-b-purple-600 dark:border-b-purple-500"
               value={String(stats.activeLinks)} />
             <StatCard icon={TrendingUp} label="Success Rate" textClass="text-emerald-600 dark:text-emerald-500" borderClass="border-b-emerald-600 dark:border-b-emerald-500"
               value={`${stats.successRate.toFixed(1)}%`} trend={stats.rateTrend} trendSuffix="%" />
-            <StatCard icon={Receipt} label="Total Orders" textClass="text-amber-600 dark:text-amber-500" borderClass="border-b-amber-600 dark:border-b-amber-500"
+            <StatCard icon={Receipt} label="Total Orders" textClass="text-indigo-600 dark:text-indigo-500" borderClass="border-b-indigo-600 dark:border-b-indigo-500"
               value={String(stats.totalOrders)} trend={stats.ordersTrend} />
-            <StatCard icon={Clock} label="Pending" textClass="text-rose-600 dark:text-rose-500" borderClass="border-b-rose-600 dark:border-b-rose-500"
+            <StatCard icon={Clock} label="Pending" textClass="text-amber-500 dark:text-amber-400" borderClass="border-b-amber-500 dark:border-b-amber-400"
               value={String(stats.pendingOrders)} trend={stats.pendingTrend} />
           </div>
 

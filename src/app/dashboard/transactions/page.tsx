@@ -163,7 +163,7 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
               ['Email', order.customer_email || '—'],
               ['Product', order.product_name || '—', 'text-emerald-600 dark:text-emerald-400'],
               ['Payment Method', order.method || '—', `uppercase ${getMethodTextColor(order.method)}`],
-              ['TRX ID', order.trx_id || '—', 'font-mono font-bold text-purple-600 dark:text-purple-400'],
+              ['TRX ID', order.trx_id || '—', 'font-mono font-black text-[15px] text-purple-600 dark:text-purple-400'],
               ['Source', order.source || 'link', 'capitalize'],
             ].map(([label, value, cls]) => (
               <div key={label} className="flex justify-between items-start gap-4">
@@ -224,7 +224,7 @@ function SmsDetailsModal({ trxId, onClose }: { trxId: string; onClose: () => voi
               {[
                 { label: 'Sender', value: smsData.sender },
                 { label: 'Method', value: smsData.method, color: getMethodTextColor(smsData.method) + ' uppercase font-black' },
-                { label: 'Trx ID', value: smsData.trx_id, color: 'text-purple-600 dark:text-purple-400 font-mono font-bold' },
+                { label: 'Trx ID', value: smsData.trx_id, color: 'text-purple-600 dark:text-purple-400 font-mono font-black text-[15px]' },
                 { label: 'Amount', value: `৳ ${parseFloat(String(smsData.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: 'text-emerald-600 dark:text-emerald-400 font-black' },
                 { label: 'Status', value: smsData.is_used ? 'Used / Paid' : 'Unused / Pending', color: smsData.is_used ? 'text-emerald-600 dark:text-emerald-400 font-black' : 'text-amber-600 dark:text-amber-400 font-black' },
                 { label: 'Received At', value: `${formatDate(smsData.received_at)} - ${formatTime(smsData.received_at)}` },
@@ -295,9 +295,16 @@ function FilterPanel({ filters, setFilters, onApply, onClose }: {
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Date Range</p>
           <div className="grid grid-cols-2 gap-2">
             {(['date_from', 'date_to'] as const).map(key => (
-              <input key={key} type="date" value={filters[key]}
+              <input 
+                key={key} 
+                type={filters[key] ? "date" : "text"} 
+                placeholder="mm/dd/yyyy"
+                value={filters[key]}
+                onFocus={(e) => (e.target.type = 'date')}
+                onBlur={(e) => { if (!e.target.value) e.target.type = 'text'; }}
                 onChange={e => setFilters({ ...filters, [key]: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 dark:[color-scheme:dark] outline-none focus:border-blue-500 transition-colors" />
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 dark:[color-scheme:dark] outline-none focus:border-blue-500 transition-colors" 
+              />
             ))}
           </div>
         </div>
@@ -665,7 +672,7 @@ return () => { supabase.removeChannel(channel); };
                       {visibleCols.includes('method') && <td className={`px-5 py-4 text-[12px] font-black uppercase tracking-wider ${methodColor}`} onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.method || '—'}</td>}
                       {visibleCols.includes('trx_id') && (
                         <td className="px-5 py-4" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>
-                          {trx.trx_id ? <span className="text-[13px] font-mono font-bold text-purple-600 dark:text-purple-400">{trx.trx_id}</span> : <span className="text-[13px] text-slate-400 italic font-bold">Awaiting</span>}
+                          {trx.trx_id ? <span className="text-[15px] font-mono font-black text-purple-600 dark:text-purple-400">{trx.trx_id}</span> : <span className="text-[13px] text-slate-400 italic font-bold">Awaiting</span>}
                         </td>
                       )}
                       {visibleCols.includes('status') && (
