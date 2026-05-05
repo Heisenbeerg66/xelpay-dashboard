@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+// Retained existing icons, added router back
 import { Send, Bot, RefreshCw, CheckCircle2, ShieldCheck, Loader2, ExternalLink, DownloadCloud, X, Unlink, ArrowLeft } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { getBusinessSettings, generateBusinessTelegramCode, importVaultTelegramToBusiness, getVaultDataForImport, getTelegramBotUsername } from '@/lib/business_actions';
@@ -12,17 +13,22 @@ export default function BusinessTelegramPage() {
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
     const [importing, setImporting] = useState(false);
-    const [unlinking, setUnlinking] = useState(false);
+    const [unlinking, setUnlinking] = useState(false); // New state for unlink
     const [businessId, setBusinessId] = useState<string | null>(null);
     const [businessData, setBusinessData] = useState<any>(null);
     const [botUsername, setBotUsername] = useState<string>('xelpay_alert_bot');
 
+    // Modal States
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [vaultData, setVaultData] = useState<any>(null);
 
     const fetchBusinessData = async (id: string) => {
         setLoading(true);
-        const [res, botRes] = await Promise.all([getBusinessSettings(id), getTelegramBotUsername()]);
+        const [res, botRes] = await Promise.all([
+            getBusinessSettings(id),
+            getTelegramBotUsername()
+        ]);
+        
         if (res.success) setBusinessData(res.data);
         if (botRes.success && botRes.username) setBotUsername(botRes.username.replace('@', ''));
         setLoading(false);
@@ -41,10 +47,10 @@ export default function BusinessTelegramPage() {
     const handleGenerateCode = async () => {
         if (!businessId) return;
         setGenerating(true);
-        // Logical call remains original
+        // Logic retained, actions.ts handles complex 12 digits now
         const res = await generateBusinessTelegramCode(businessId);
         if (res.success) {
-            toast.success("New 12-Digit Code Generated!");
+            toast.success("New 12-digit Secure Link Generated!");
             setBusinessData((prev: any) => ({ ...prev, telegram_link_code: res.code }));
         } else { toast.error("Failed to generate code."); }
         setGenerating(false);
@@ -53,7 +59,12 @@ export default function BusinessTelegramPage() {
     const handleOpenImportModal = async () => {
         setImporting(true);
         const res = await getVaultDataForImport('telegram');
-        if (res.success) { setVaultData(res.data); setIsImportModalOpen(true); } else { toast.error(res.message); }
+        if (res.success) {
+            setVaultData(res.data);
+            setIsImportModalOpen(true);
+        } else {
+            toast.error(res.message);
+        }
         setImporting(false);
     };
 
@@ -61,121 +72,167 @@ export default function BusinessTelegramPage() {
         if (!businessId) return;
         setImporting(true);
         const res = await importVaultTelegramToBusiness(businessId);
-        if (res.success) { toast.success(res.message); fetchBusinessData(businessId); setIsImportModalOpen(false); } 
-        else { toast.error(res.message); }
+        if (res.success) { 
+            toast.success(res.message); 
+            fetchBusinessData(businessId); 
+            setIsImportModalOpen(false);
+        } else { toast.error(res.message); }
         setImporting(false);
     };
 
+    // Unlink Logic - Retained structural similarity
     const handleUnlink = async () => {
-        if (!businessId || !confirm("Unlink this Telegram account?")) return;
+        if (!businessId) return;
+        if (!confirm("Are you sure you want to unlink Telegram? You will stop receiving automated alerts for this workspace.")) return;
+        
         setUnlinking(true);
         try {
-            const { error } = await supabase.from('businesses').update({ telegram_chat_id: null, is_telegram_enabled: false }).eq('id', businessId);
+            const { error } = await supabase
+                .from('businesses')
+                .update({ 
+                    telegram_chat_id: null, 
+                    is_telegram_enabled: false 
+                })
+                .eq('id', businessId);
+
             if (error) throw error;
-            toast.success("Unlinked successfully.");
+
+            toast.success("Telegram unlinked successfully.");
             setBusinessData((prev: any) => ({ ...prev, telegram_chat_id: null, is_telegram_enabled: false }));
-        } catch (error: any) { toast.error(error.message); } 
-        finally { setUnlinking(false); }
+        } catch (error: any) {
+            toast.error(error.message || "Failed to unlink Telegram account.");
+        } finally {
+            setUnlinking(false);
+        }
     };
 
     if (loading) return (
-        <div className="min-h-[60vh] flex flex-col items-center justify-center text-blue-600">
-            <Loader2 className="animate-spin mb-4" size={36} />
-            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Loading Settings</p>
+        <div className="min-h-[60vh] flex flex-col items-center justify-center animate-in zoom-in-95 text-blue-600">
+            <Loader2 className="animate-spin mb-4" size={36} strokeWidth={2.5} />
+            <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Loading Settings</p>
         </div>
     );
-    if (!businessId) return <div className="min-h-[60vh] flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest text-xs">Select Workspace</div>;
+    if (!businessId) return <div className="min-h-[60vh] flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest text-xs">Please select Workspace</div>;
 
     const isConnected = !!businessData?.telegram_chat_id;
     const telegramLink = `https://t.me/${botUsername}?start=${businessData?.telegram_link_code || ''}`;
 
     return (
-        <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
             <Toaster position="top-center" richColors />
             
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
-                <div className="flex items-center gap-3 justify-center md:justify-start text-center md:text-left">
-                    <button onClick={() => router.back()} className="hidden md:flex p-2 -ml-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all text-slate-500 shrink-0">
+            {/* Header - Stacks nicely on premium mobile, row on desktop */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 border-b border-slate-200 dark:border-slate-800 pb-6 relative z-10 text-center md:text-left">
+                <div className="flex items-center gap-3 justify-center md:justify-start">
+                    {/* FIXED: Back button premium desktop, hidden mobile */}
+                    <button onClick={() => router.back()} className="hidden md:flex p-2 -ml-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all text-slate-500 dark:text-slate-400 shrink-0">
                         <ArrowLeft size={18} strokeWidth={2.5} />
                     </button>
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">Business Telegram</h1>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Workspace Alert Node</p>
+                        <h1 className="text-2xl md:text-3xl font-black text-slate-950 dark:text-white tracking-tight flex items-center gap-2">
+                            Business Telegram
+                        </h1>
+                        <p className="text-[10px] md:text-sm font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">Workspace Alert System</p>
                     </div>
                 </div>
-                <button onClick={handleOpenImportModal} disabled={importing} className="w-full md:w-auto bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-white px-5 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 text-xs uppercase tracking-widest transition-all shadow-sm disabled:opacity-50">
+                
+                <button onClick={handleOpenImportModal} disabled={importing} className="w-full md:w-auto bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 text-slate-700 dark:text-white px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all active:scale-95 disabled:opacity-50 shadow-sm text-xs md:text-sm uppercase tracking-widest">
                     {importing && !isImportModalOpen ? <Loader2 size={16} className="animate-spin text-blue-500" /> : <DownloadCloud size={16} className="text-blue-500" />}
-                    Import Vault
+                    <span>Import Vault</span>
                 </button>
             </div>
 
-            <div className="flex justify-center py-6">
-                <div className="w-full max-w-2xl bg-white dark:bg-[#111827] rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
-                    <div className={`p-8 md:p-12 text-center ${isConnected ? 'bg-emerald-500' : 'bg-blue-600'}`}>
-                        <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center mx-auto mb-6 text-white border border-white/30">
-                            {isConnected ? <CheckCircle2 size={36} strokeWidth={2.5} /> : <Bot size={36} strokeWidth={2} />}
+            {/* Content - improved placement and max width for premium view */}
+            <div className="flex justify-center py-4 md:py-8">
+                <div className="w-full max-w-2xl bg-white dark:bg-[#111827] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
+                    
+                    {/* Status Banner */}
+                    <div className={`p-8 md:p-12 border-b flex flex-col items-center text-center ${isConnected ? 'bg-emerald-600 border-emerald-700' : 'bg-blue-600 border-blue-700'}`}>
+                        <div className="w-20 h-20 bg-white/10 backdrop-blur-sm rounded-3xl flex items-center justify-center shrink-0 shadow-lg border border-white/20 mb-6 text-white">
+                            {isConnected ? <CheckCircle2 size={40} strokeWidth={2.5} /> : <Bot size={40} strokeWidth={2} />}
                         </div>
-                        <h2 className="text-2xl font-black text-white uppercase tracking-tight">
-                            {isConnected ? 'Alerts Connected' : 'Bot Setup Pending'}
-                        </h2>
+                        <div>
+                            <h2 className="text-2xl font-black text-white tracking-tight uppercase">{isConnected ? 'System Connected' : 'setup pending'}</h2>
+                            <p className="text-sm text-blue-100 dark:text-emerald-100 font-medium mt-1.5 max-w-md">{isConnected ? 'Real-time notifications are actively being sent to your Telegram.' : 'Link our official secure bot to receive instant transaction alerts.'}</p>
+                        </div>
                     </div>
 
-                    <div className="p-8 md:p-14 text-center">
-                        <p className="text-sm text-slate-600 dark:text-slate-400 font-medium mb-10 leading-relaxed">
-                            {isConnected ? 'Real-time workspace notifications are actively being sent to your Telegram.' : 'Link our bot to receive instant transaction alerts for this specific workspace.'}
-                        </p>
-
+                    <div className="p-8 md:p-12">
                         {isConnected ? (
                             <div className="space-y-6">
-                                <div className="p-6 bg-slate-50 dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                                    <div className="text-left">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Workspace Chat ID</p>
-                                        <p className="font-mono text-xl font-black text-slate-900 dark:text-white tracking-widest">
+                                <div className="p-6 bg-slate-50 dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 flex justify-between items-center shadow-inner">
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">Registered ID</p>
+                                        <p className="font-mono text-xl font-black text-slate-950 dark:text-white tracking-widest leading-tight">
                                             {businessData.telegram_chat_id.replace(/.(?=.{4})/g, '*')}
                                         </p>
                                     </div>
-                                    <ShieldCheck className="text-emerald-500" size={32} />
+                                    <ShieldCheck className="text-emerald-500" size={32} strokeWidth={2} />
                                 </div>
-                                <button onClick={handleUnlink} disabled={unlinking} className="w-full py-4 bg-red-50 text-red-600 dark:bg-red-900/10 dark:text-red-400 border border-red-200 dark:border-red-900/30 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-100 transition-all">
-                                    {unlinking ? <Loader2 className="animate-spin inline mr-2" /> : <Unlink className="inline mr-2" size={16}/>} Unlink Workspace
-                                </button>
+                                
+                                <div className="flex justify-end pt-2">
+                                    <button 
+                                        onClick={handleUnlink} 
+                                        disabled={unlinking}
+                                        className="w-full sm:w-auto px-8 py-3.5 bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400 border border-red-200 dark:border-red-900/30 rounded-2xl text-xs font-black uppercase tracking-widest transition-all hover:bg-red-100 dark:hover:bg-red-950/40 flex items-center justify-center gap-2.5 active:scale-95 disabled:opacity-50"
+                                    >
+                                        {unlinking ? <Loader2 size={16} className="animate-spin" /> : <Unlink size={16} />} 
+                                        Unlink Account
+                                    </button>
+                                </div>
                             </div>
                         ) : (
-                            <div className="space-y-8">
-                                {businessData?.telegram_link_code && (
-                                    <div className="w-full p-6 bg-slate-50 dark:bg-[#0B1120] rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 font-mono text-[13px] text-blue-600 dark:text-blue-400 break-all select-all shadow-inner text-left">
-                                        {telegramLink}
+                            <div className="flex flex-col items-center text-center space-y-8">
+                                <p className="text-slate-600 dark:text-slate-400 font-medium max-w-lg text-sm leading-relaxed">
+                                    Click the button below to generate a unique complexpairing link (containing 12 digits). Opening this link in Telegram will automatically pair your account with our business bot.
+                                </p>
+                                
+                                {!businessData?.telegram_link_code ? (
+                                    <button onClick={handleGenerateCode} disabled={generating} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                                        {generating ? <Loader2 className="animate-spin" size={18}/> : <><RefreshCw size={18} strokeWidth={2.5}/> Generate Secure Link</>}
+                                    </button>
+                                ) : (
+                                    <div className="w-full space-y-6 animate-in fade-in zoom-in-95">
+                                        {/* Premium Link Box */}
+                                        <div className="p-6 bg-slate-50 dark:bg-[#0B1120] rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 font-mono text-[13px] font-medium text-blue-600 dark:text-blue-400 break-all text-left shadow-inner select-all">
+                                            {telegramLink}
+                                        </div>
+                                        
+                                        <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md mx-auto">
+                                            <button onClick={handleGenerateCode} disabled={generating} className="flex-1 px-6 py-4 bg-slate-100 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2">
+                                                {generating ? <Loader2 size={16} className="animate-spin"/> : <RefreshCw size={16} />} Regenerate
+                                            </button>
+                                            <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
+                                                <ExternalLink size={16} strokeWidth={2.5}/> Link Telegram
+                                            </a>
+                                        </div>
                                     </div>
                                 )}
-                                <div className="flex flex-col sm:flex-row gap-4">
-                                    <button onClick={handleGenerateCode} disabled={generating} className="flex-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all">
-                                        {generating ? 'Wait...' : 'Regenerate Code'}
-                                    </button>
-                                    <a href={telegramLink} target="_blank" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/30 active:scale-95 transition-all flex items-center justify-center gap-2">
-                                        <ExternalLink size={16} strokeWidth={2.5} /> Open Bot
-                                    </a>
-                                </div>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Import Modal */}
+            {/* IMPORT MODAL - structural logic kept */}
             {isImportModalOpen && vaultData && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in" onClick={() => setIsImportModalOpen(false)}>
-                    <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-[#111827] w-full max-w-md rounded-[2.5rem] shadow-2xl animate-in zoom-in-95 overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col">
-                        <div className="flex justify-between items-center px-6 py-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-                            <h2 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Import Alert Bot</h2>
-                            <button onClick={() => setIsImportModalOpen(false)}><X size={18}/></button>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsImportModalOpen(false)}>
+                    <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-[#111827] w-full max-w-md rounded-2xl shadow-2xl animate-in zoom-in-95 overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800">
+                        <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50 dark:bg-slate-900/50">
+                            <div>
+                                <h2 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Import Bot ID</h2>
+                                <p className="text-[10px] text-blue-500 font-bold uppercase tracking-[2px] mt-0.5">From Master Vault</p>
+                            </div>
+                            <button onClick={() => setIsImportModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-800 transition-all"><X size={18} strokeWidth={2.5}/></button>
                         </div>
-                        <div className="p-8 text-center">
-                            <Bot size={40} className="mx-auto text-blue-500 mb-4" />
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Vault Chat ID</p>
-                            <p className="text-xl font-black text-blue-600 dark:text-blue-400 mb-8">{vaultData.chat_id}</p>
-                            <button onClick={handleConfirmImport} disabled={importing} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
-                                {importing ? <Loader2 className="animate-spin inline" /> : <><CheckCircle2 className="inline mr-2" size={16}/> Confirm Import</>}
+                        <div className="p-8 flex flex-col gap-4 bg-white dark:bg-[#0B1120]">
+                            <div className="bg-slate-50 dark:bg-[#111827] p-6 rounded-2xl border border-slate-100 dark:border-slate-800 text-center">
+                                <Bot size={32} className="mx-auto text-blue-500 mb-3" />
+                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Master Vault Bot ID</p>
+                                <p className="text-lg font-black text-slate-950 dark:text-white">{vaultData.chat_id || 'N/A'}</p>
+                            </div>
+                            <button onClick={handleConfirmImport} disabled={importing} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest py-4 rounded-2xl shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2.5 disabled:opacity-50 mt-2">
+                                {importing ? <Loader2 size={16} className="animate-spin" /> : <><CheckCircle2 size={16}/> Confirm Import</>}
                             </button>
                         </div>
                     </div>

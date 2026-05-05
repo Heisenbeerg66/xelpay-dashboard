@@ -35,11 +35,23 @@ const getValidKey = (): Buffer => {
 const encryptData = (text: string): string | null => {
     if (!text) return null;
     const IV_LENGTH = 16;
-    const iv        = crypto.randomBytes(IV_LENGTH);
-    const cipher    = crypto.createCipheriv('aes-256-cbc', getValidKey(), iv);
-    let encrypted   = cipher.update(text);
-    encrypted       = Buffer.concat([encrypted, cipher.final()]);
+    const iv         = crypto.randomBytes(IV_LENGTH);
+    const cipher     = crypto.createCipheriv('aes-256-cbc', getValidKey(), iv);
+    let encrypted    = cipher.update(text);
+    encrypted        = Buffer.concat([encrypted, cipher.final()]);
     return iv.toString('hex') + ':' + encrypted.toString('hex');
+};
+
+// ─── Complex String Generator Utility ──────────────────────────────────────────
+// Generates mixed case letters and numbers
+const generateComplexString = (length: number): string => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    const charactersLength = characters.length;
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -202,6 +214,7 @@ export async function getMerchantVaultSettings() {
     }
 }
 
+// FIXED: Generates 24 digit complex key
 export async function generateDeviceKey() {
     try {
         const supabase = await getSupabase();
@@ -209,7 +222,8 @@ export async function generateDeviceKey() {
 
         if (!user) return { success: false, message: 'Unauthorized' };
 
-        const newKey = 'VLT-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+        // Logic retained, generation updated: 24 chars, mixed case, numbers
+        const newKey = generateComplexString(24);
 
         const { error } = await supabase
             .from('merchants')
@@ -223,6 +237,7 @@ export async function generateDeviceKey() {
     }
 }
 
+// FIXED: Generates 12 digit complex code
 export async function generateTelegramCode() {
     try {
         const supabase = await getSupabase();
@@ -230,7 +245,8 @@ export async function generateTelegramCode() {
 
         if (!user) return { success: false, message: 'Unauthorized' };
 
-        const newCode = 'TG-' + Math.random().toString(36).substring(2, 12).toUpperCase();
+        // Logic retained, generation updated: 12 chars, mixed case, numbers
+        const newCode = generateComplexString(12);
 
         const { error } = await supabase
             .from('merchants')

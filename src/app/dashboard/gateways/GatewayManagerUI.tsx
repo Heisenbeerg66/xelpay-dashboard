@@ -116,7 +116,7 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
     const [searchQuery,    setSearchQuery]    = useState('');
     const [showDropdown,   setShowDropdown]   = useState(false);
     const [highlightIndex, setHighlightIndex] = useState(0);
-    const dropdownRef = useRef<HTMLDivElement>(null);
+    const bankDropdownRef = useRef<HTMLDivElement>(null);
 
     // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -233,8 +233,8 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (
-                dropdownRef.current &&
-                !dropdownRef.current.contains(event.target as Node)
+                bankDropdownRef.current &&
+                !bankDropdownRef.current.contains(event.target as Node)
             ) {
                 setShowDropdown(false);
                 if (!provider && searchQuery) setSearchQuery('');
@@ -653,40 +653,14 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
                         : [dispName]
             : [];
 
-        const filteredProviders = MOBILE_PROVIDERS.filter((p) => p.toLowerCase().includes(searchQuery.toLowerCase()));
-
-        const handleKeyDown = (e: React.KeyboardEvent) => {
-            if (!showDropdown) return;
-            if (e.key === 'ArrowDown') { e.preventDefault(); setHighlightIndex((prev) => Math.min(prev + 1, filteredProviders.length - 1)); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlightIndex((prev) => Math.max(prev - 1, 0)); }
-            else if (e.key === 'Enter' && filteredProviders[highlightIndex]) { e.preventDefault(); handleProviderChange(filteredProviders[highlightIndex]); setShowDropdown(false); }
-        };
-
         return (
             <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2">
-                <div className="relative" ref={dropdownRef}>
+                <div>
                     <label className={labelClass}>Select Provider {reqStar}</label>
-                    <div className="relative">
-                        <input type="text" required value={provider && !showDropdown ? provider : searchQuery}
-                            onFocus={() => { setShowDropdown(true); setHighlightIndex(0); }}
-                            onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true); setHighlightIndex(0); setProvider(''); }}
-                            onKeyDown={handleKeyDown} placeholder="Search Provider..." className={`${inputClass} pr-10`} />
-                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 mt-0.5 text-slate-400" size={18} />
-                    </div>
-                    {showDropdown && (
-                        <div className="absolute z-50 w-full mt-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl max-h-56 overflow-y-auto py-2">
-                            {filteredProviders.length === 0 ? (
-                                <div className="p-3 text-sm text-slate-500 text-center">No providers found</div>
-                            ) : (
-                                filteredProviders.map((name, index) => (
-                                    <div key={name} onClick={() => { handleProviderChange(name); setShowDropdown(false); }} onMouseEnter={() => setHighlightIndex(index)}
-                                        className={`p-3.5 cursor-pointer text-sm font-semibold border-b border-slate-50 dark:border-slate-800/50 last:border-0 transition-colors ${index === highlightIndex ? 'bg-blue-50 dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
-                                        {highlightMatch(name, searchQuery)}
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    )}
+                    <select value={provider} onChange={(e) => handleProviderChange(e.target.value)} required className={inputClass}>
+                        <option value="">-- Choose Provider --</option>
+                        {MOBILE_PROVIDERS.map((p) => (<option key={p} value={p}>{p}</option>))}
+                    </select>
                 </div>
 
                 {provider && provider !== 'Cellfin' && provider !== 'Pathao Pay' && (
@@ -735,7 +709,7 @@ export default function GatewayManagerUI({ merchantId }: { merchantId: string })
 
         return (
             <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2">
-                <div className="relative" ref={dropdownRef}>
+                <div className="relative" ref={bankDropdownRef}>
                     <label className={labelClass}>Select Bank {reqStar}</label>
                     <div className="relative">
                         <input type="text" required value={provider && !showDropdown ? BANK_MAPPING[provider] : searchQuery}
