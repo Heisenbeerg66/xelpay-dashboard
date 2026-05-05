@@ -72,22 +72,22 @@ const formatDate = (d: string) => new Date(d).toLocaleDateString('en-GB', { day:
 const formatTime = (d: string) => new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
 // ─── Component Helpers ────────────────────────────────────────────────────────
-function StatCard({ icon: Icon, label, value, color, trend, trendSuffix = '%' }: { icon: any; label: string; value: string; color: string; trend?: number; trendSuffix?: string }) {
+function StatCard({ icon: Icon, label, value, textClass, borderClass, trend, trendSuffix = '%' }: { icon: any; label: string; value: string; textClass: string; borderClass: string; trend?: number; trendSuffix?: string }) {
   const isPositive = trend && trend > 0;
   const isNegative = trend && trend < 0;
   const trendColor = isPositive ? 'text-emerald-600 dark:text-emerald-400' : isNegative ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400';
   const TrendIcon = isPositive ? TrendingUp : isNegative ? TrendingDown : Minus;
   
   return (
-    <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between h-full">
-      <div className="flex items-center gap-3 mb-4">
-        <div className={`w-9 h-9 rounded-xl ${color} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
-          <Icon size={18} />
+    <div className={`bg-white dark:bg-[#111827] p-5 rounded-2xl border border-slate-100 dark:border-slate-800 border-b-[3px] ${borderClass} shadow-sm hover:shadow-md transition-all group flex flex-col justify-between h-full`}>
+      <div className="flex items-start justify-between mb-4 gap-4">
+        <p className="text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-widest leading-tight mt-1">{label}</p>
+        <div className={`${textClass} shrink-0 group-hover:scale-110 transition-transform`}>
+          <Icon size={20} strokeWidth={2.5} />
         </div>
-        <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest leading-tight">{label}</p>
       </div>
       <div className="flex flex-col gap-2 mt-auto">
-        <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight truncate" title={value}>{value}</p>
+        <p className={`text-2xl font-black ${textClass} tracking-tight truncate`} title={value}>{value}</p>
         {trend !== undefined && (
           <div className={`inline-flex items-center gap-1 text-[10px] font-black ${trendColor} bg-slate-50 dark:bg-slate-800/50 px-2 py-1.5 rounded-lg w-fit`}>
             <TrendIcon size={12} strokeWidth={3} />
@@ -102,7 +102,7 @@ function StatCard({ icon: Icon, label, value, color, trend, trendSuffix = '%' }:
 function DashboardSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {[...Array(5)].map((_, i) => <div key={i} className="h-32 bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />)}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
@@ -443,16 +443,16 @@ export default function DashboardHome() {
       {loading ? <DashboardSkeleton /> : (
         <>
           {/* ── Stats Cards ── */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            <StatCard icon={DollarSign} label="Revenue" color="bg-blue-50 dark:bg-blue-900/20 text-blue-600"
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+            <StatCard icon={DollarSign} label="Revenue" textClass="text-blue-600 dark:text-blue-500" borderClass="border-b-blue-600 dark:border-b-blue-500"
               value={`৳ ${stats.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} trend={stats.revTrend} />
-            <StatCard icon={LinkIcon} label="Active Links" color="bg-purple-50 dark:bg-purple-900/20 text-purple-600"
+            <StatCard icon={LinkIcon} label="Active Links" textClass="text-purple-600 dark:text-purple-500" borderClass="border-b-purple-600 dark:border-b-purple-500"
               value={String(stats.activeLinks)} />
-            <StatCard icon={TrendingUp} label="Success Rate" color="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600"
+            <StatCard icon={TrendingUp} label="Success Rate" textClass="text-emerald-600 dark:text-emerald-500" borderClass="border-b-emerald-600 dark:border-b-emerald-500"
               value={`${stats.successRate.toFixed(1)}%`} trend={stats.rateTrend} trendSuffix="%" />
-            <StatCard icon={Receipt} label="Total Orders" color="bg-amber-50 dark:bg-amber-900/20 text-amber-600"
+            <StatCard icon={Receipt} label="Total Orders" textClass="text-amber-600 dark:text-amber-500" borderClass="border-b-amber-600 dark:border-b-amber-500"
               value={String(stats.totalOrders)} trend={stats.ordersTrend} />
-            <StatCard icon={Clock} label="Pending" color="bg-rose-50 dark:bg-rose-900/20 text-rose-600"
+            <StatCard icon={Clock} label="Pending" textClass="text-rose-600 dark:text-rose-500" borderClass="border-b-rose-600 dark:border-b-rose-500"
               value={String(stats.pendingOrders)} trend={stats.pendingTrend} />
           </div>
 
