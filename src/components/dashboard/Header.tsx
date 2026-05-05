@@ -1,5 +1,4 @@
 'use client';
-// PATH: components/dashboard/Header.tsx
 
 import { Menu, Search, Sun, Moon, Settings, LogOut, X, LayoutDashboard, Receipt, Link2, MessageSquare, Building2, User, KeyRound, Bell, ChevronRight } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -263,111 +262,117 @@ export default function Header({ merchant, setSidebarOpen }: any) {
     : 'M';
 
   return (
-    <header className="fixed top-0 inset-x-0 h-[72px] z-50 w-full bg-[#0B1120] border-b border-slate-800/80 px-4 md:px-6 flex items-center justify-between">
+    <header className="fixed top-0 inset-x-0 h-[72px] z-50 w-full bg-[#0B1120] border-b border-slate-800/80 flex items-center transition-colors duration-500">
 
-      <div className="flex items-center gap-4 flex-1 min-w-0">
-        
-        {/* Mobile Menu Toggle */}
-        <button
-          onClick={() => setSidebarOpen((prev: boolean) => !prev)}
-          className="md:hidden p-2.5 bg-slate-800/80 hover:bg-slate-700 rounded-full text-slate-300 shrink-0 transition-all"
-        >
-          <Menu size={20} />
-        </button>
-
-        {/* 💥 Branding in Header (Hidden on strictly mobile if tight, but generally visible) */}
-        <Link href="/dashboard" className="hidden md:flex items-center gap-1 group w-max shrink-0 mr-4 lg:mr-8">
+      {/* 💥 BRANDING AREA: Strictly aligned with the 288px (w-72) sidebar 💥 */}
+      <div className="hidden md:flex items-center h-full w-72 shrink-0 px-4 md:px-6 border-r border-slate-800/80">
+        <Link href="/dashboard" className="flex items-center gap-1 group w-max">
           <span className="text-3xl font-black text-blue-500 tracking-tighter group-hover:scale-105 transition-transform">X</span>
           <span className="text-2xl font-bold text-white tracking-tight -ml-0.5">elPay</span>
         </Link>
-
-        {/* Desktop Global Search */}
-        <div className="hidden md:flex flex-1 max-w-xl">
-          <GlobalSearch />
-        </div>
-
-        {/* Mobile Search Overlay */}
-        {mobileSearchOpen && (
-          <div className="absolute inset-x-0 top-0 h-[72px] z-50 bg-[#0B1120] px-4 flex items-center gap-3 border-b border-slate-800">
-            <div className="flex-1">
-              <GlobalSearch />
-            </div>
-            <button onClick={() => setMobileSearchOpen(false)} className="p-2 rounded-full hover:bg-slate-800 transition-colors">
-              <X size={20} className="text-slate-400" />
-            </button>
-          </div>
-        )}
       </div>
 
-      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-
-        {/* Mobile Search Icon */}
-        <button
-          onClick={() => setMobileSearchOpen(true)}
-          className="md:hidden p-2.5 bg-[#111827] border border-slate-800 rounded-full text-slate-400 hover:text-blue-500 transition-all"
-        >
-          <Search size={18} />
-        </button>
-
-        {/* Theme Toggle (Changes Main Content Theme) */}
-        <button
-          onClick={toggleTheme}
-          className={`flex items-center justify-center w-10 h-10 rounded-full transition-all border shadow-sm ${
-            theme === 'dark'
-              ? 'bg-[#111827] border-slate-700 text-amber-400 hover:bg-slate-800'
-              : 'bg-[#111827] border-slate-800 text-slate-400 hover:text-blue-400 hover:border-blue-700'
-          }`}
-          title="Toggle Main Content Theme"
-        >
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-
-        {/* Settings */}
-        <Link
-          href="/dashboard/settings"
-          className="flex items-center justify-center w-10 h-10 rounded-full bg-[#111827] border border-slate-800 text-slate-400 hover:text-blue-400 hover:border-blue-700 transition-all shadow-sm"
-        >
-          <Settings size={18} />
-        </Link>
-
-        {/* Profile Dropdown */}
-        <div className="relative" ref={profileRef}>
+      {/* ─── REST OF THE HEADER (Search + Profile) ─── */}
+      <div className="flex flex-1 items-center justify-between h-full px-4 md:px-6 lg:px-8">
+        
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          {/* Mobile Menu Toggle (Only visible on mobile) */}
           <button
-            onClick={() => setIsProfileOpen(v => !v)}
-            className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-full bg-[#111827] border border-slate-800 hover:border-blue-700 transition-all shadow-sm"
+            onClick={() => setSidebarOpen((prev: boolean) => !prev)}
+            className="md:hidden p-2.5 bg-slate-800/80 hover:bg-slate-700 rounded-full text-slate-300 shrink-0 transition-all"
           >
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[11px] font-black shrink-0">
-              {initials}
-            </div>
-            <span className="hidden sm:block text-xs font-semibold text-slate-300 max-w-[100px] truncate">
-              {merchant?.full_name || 'Merchant'}
-            </span>
+            <Menu size={20} />
           </button>
 
-          {isProfileOpen && (
-            <div className="absolute right-0 top-full mt-3 w-56 bg-[#111827] border border-slate-800 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="px-4 py-3 border-b border-slate-800">
-                <p className="text-xs font-bold text-white truncate">{merchant?.full_name || 'Merchant'}</p>
-                <p className="text-[11px] text-slate-400 truncate mt-0.5">{merchant?.email || ''}</p>
+          {/* Desktop Global Search - Starts right after the sidebar border perfectly */}
+          <div className="hidden md:flex flex-1 max-w-xl">
+            <GlobalSearch />
+          </div>
+
+          {/* Mobile Search Overlay */}
+          {mobileSearchOpen && (
+            <div className="absolute inset-x-0 top-0 h-[72px] z-50 bg-[#0B1120] px-4 flex items-center gap-3 border-b border-slate-800">
+              <div className="flex-1">
+                <GlobalSearch />
               </div>
-              <div className="p-1.5">
-                <Link
-                  href="/dashboard/settings"
-                  onClick={() => setIsProfileOpen(false)}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl transition-colors"
-                >
-                  <Settings size={14} className="text-slate-400" /> Settings
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-900/20 rounded-xl transition-colors"
-                >
-                  <LogOut size={14} /> Sign Out
-                </button>
-              </div>
+              <button onClick={() => setMobileSearchOpen(false)} className="p-2 rounded-full hover:bg-slate-800 transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
             </div>
           )}
         </div>
+
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+
+          {/* Mobile Search Icon */}
+          <button
+            onClick={() => setMobileSearchOpen(true)}
+            className="md:hidden p-2.5 bg-[#111827] border border-slate-800 rounded-full text-slate-400 hover:text-blue-500 transition-all"
+          >
+            <Search size={18} />
+          </button>
+
+          {/* Theme Toggle (Changes Main Content Theme) */}
+          <button
+            onClick={toggleTheme}
+            className={`flex items-center justify-center w-10 h-10 rounded-full transition-all border shadow-sm ${
+              theme === 'dark'
+                ? 'bg-[#111827] border-slate-700 text-amber-400 hover:bg-slate-800'
+                : 'bg-[#111827] border-slate-800 text-slate-400 hover:text-blue-400 hover:border-blue-700'
+            }`}
+            title="Toggle Main Content Theme"
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          {/* Settings */}
+          <Link
+            href="/dashboard/settings"
+            className="flex items-center justify-center w-10 h-10 rounded-full bg-[#111827] border border-slate-800 text-slate-400 hover:text-blue-400 hover:border-blue-700 transition-all shadow-sm"
+          >
+            <Settings size={18} />
+          </Link>
+
+          {/* Profile Dropdown */}
+          <div className="relative" ref={profileRef}>
+            <button
+              onClick={() => setIsProfileOpen(v => !v)}
+              className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-full bg-[#111827] border border-slate-800 hover:border-blue-700 transition-all shadow-sm"
+            >
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[11px] font-black shrink-0">
+                {initials}
+              </div>
+              <span className="hidden sm:block text-xs font-semibold text-slate-300 max-w-[100px] truncate">
+                {merchant?.full_name || 'Merchant'}
+              </span>
+            </button>
+
+            {isProfileOpen && (
+              <div className="absolute right-0 top-full mt-3 w-56 bg-[#111827] border border-slate-800 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="px-4 py-3 border-b border-slate-800">
+                  <p className="text-xs font-bold text-white truncate">{merchant?.full_name || 'Merchant'}</p>
+                  <p className="text-[11px] text-slate-400 truncate mt-0.5">{merchant?.email || ''}</p>
+                </div>
+                <div className="p-1.5">
+                  <Link
+                    href="/dashboard/settings"
+                    onClick={() => setIsProfileOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl transition-colors"
+                  >
+                    <Settings size={14} className="text-slate-400" /> Settings
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-900/20 rounded-xl transition-colors"
+                  >
+                    <LogOut size={14} /> Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </header>
   );
