@@ -91,8 +91,9 @@ export default function MasterDevicesPage() {
     };
 
     if (loading) return (
-        <div className="min-h-[60vh] flex items-center justify-center">
-            <Loader2 className="animate-spin text-emerald-500" size={32} />
+        <div className="min-h-[60vh] flex flex-col items-center justify-center animate-in zoom-in-95">
+            <Loader2 className="animate-spin text-emerald-500 mb-4" size={36} strokeWidth={2.5} />
+            <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Loading Vault</p>
         </div>
     );
 
@@ -101,111 +102,110 @@ export default function MasterDevicesPage() {
             <Toaster position="top-center" richColors />
 
             {/* Header */}
-            <div className="flex flex-row items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
                 <div className="flex items-center gap-3">
-                    <button onClick={() => router.push('/dashboard/vault')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl transition-all text-slate-500">
-                        <ArrowLeft size={20} />
+                    <button onClick={() => router.push('/dashboard/vault')} className="p-2 -ml-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all text-slate-500 dark:text-slate-400 shrink-0">
+                        <ArrowLeft size={18} strokeWidth={2.5} />
                     </button>
                     <div>
                         <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                            <Smartphone className="text-emerald-500 hidden sm:block" size={24} /> Master Devices
+                            Master Devices
                         </h1>
-                        <p className="text-slate-500 font-bold text-sm mt-1">SMS automation node management.</p>
+                        <p className="text-slate-500 font-bold text-sm mt-1">Manage SMS automation node configuration.</p>
                     </div>
                 </div>
-                <button onClick={() => setIsDownloadModalOpen(true)} className="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white px-4 md:px-6 py-2.5 md:py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl shadow-emerald-500/20 active:scale-95 text-xs md:text-sm">
-                    <Download size={18} strokeWidth={2.5} />
-                    <span className="hidden sm:inline">Download App</span>
-                    <span className="sm:hidden">Get App</span>
+                
+                <button onClick={() => setIsDownloadModalOpen(true)} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 text-sm">
+                    <Download size={16} strokeWidth={2.5} /> Download App
                 </button>
             </div>
 
             {/* Content */}
-            <div className="max-w-2xl">
+            <div className="max-w-3xl">
                 {!activeDevice ? (
-                    <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-8 flex flex-col items-center text-center">
-                        <div className="w-20 h-20 bg-emerald-50 dark:bg-[#0B1120] rounded-2xl border border-emerald-100 dark:border-slate-800 flex items-center justify-center mb-5">
-                            <Key className="text-emerald-500" size={36} />
+                    <div className="bg-white dark:bg-[#111827] rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 p-10 flex flex-col items-center text-center">
+                        <div className="w-20 h-20 bg-emerald-50 dark:bg-[#0B1120] rounded-2xl border border-emerald-100 dark:border-emerald-900/30 flex items-center justify-center mb-6 shadow-sm">
+                            <Key className="text-emerald-500" size={32} strokeWidth={2.5} />
                         </div>
-                        <span className="inline-block px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase tracking-[2px] rounded-full mb-3 border border-emerald-500/20">Setup Required</span>
-                        <h2 className="text-xl font-black text-slate-900 dark:text-white mb-2">Connect Automation App</h2>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-7 leading-relaxed max-w-sm">Install the app and connect it to your merchant account to automate SMS parsing. Only one master device can be linked.</p>
-                        <div className="flex flex-col gap-3 w-full max-w-xs">
-                            <button onClick={handleAutoConnect} className="w-full bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
-                                <Smartphone size={15} /> Connect Device
+                        <span className="inline-block px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-black uppercase tracking-[2px] rounded-lg mb-4">Setup Required</span>
+                        <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">Connect Automation App</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-8 leading-relaxed max-w-md">Install the app and connect it to your merchant account to automate SMS parsing. Only one master device can be linked at a time.</p>
+                        
+                        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+                            <button onClick={handleAutoConnect} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-xl font-bold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
+                                <Smartphone size={16} /> Auto Connect
                             </button>
-                            <button onClick={handleOpenManualModal} className="w-full bg-slate-100 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-white px-6 py-3 rounded-xl font-bold uppercase tracking-wider text-xs active:scale-95 transition-all flex items-center justify-center gap-2">
-                                <QrCode size={15} /> Manually Connect
+                            <button onClick={handleOpenManualModal} className="flex-1 bg-slate-100 dark:bg-[#0B1120] hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-white px-6 py-3.5 rounded-xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2">
+                                <QrCode size={16} /> Manual Pair
                             </button>
                         </div>
                     </div>
                 ) : (
-                    <div>
-                        <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3 ml-1">Active Node</p>
-                        <div className="bg-white dark:bg-[#111827] rounded-2xl border border-emerald-100 dark:border-emerald-900/30 shadow-sm p-6">
-                            <div className="flex items-start justify-between mb-5">
-                                <div className="w-14 h-14 bg-emerald-50 dark:bg-[#0B1120] rounded-xl flex items-center justify-center text-emerald-500 border border-emerald-100 dark:border-slate-800">
-                                    <Cpu size={28} />
+                    <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-100 dark:border-slate-800 border-b-[4px] border-b-emerald-500 shadow-sm p-6 sm:p-8 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 blur-[40px] rounded-full -mr-10 -mt-10 pointer-events-none" />
+                        
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 mb-8 relative z-10">
+                            <div className="flex items-center gap-4">
+                                <div className="w-16 h-16 bg-slate-50 dark:bg-[#0B1120] rounded-2xl flex items-center justify-center text-emerald-500 border border-slate-200 dark:border-slate-700 shadow-inner">
+                                    <Cpu size={32} strokeWidth={2} />
                                 </div>
-                                <span className={`flex items-center gap-2 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full border ${activeDevice.is_active ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${activeDevice.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
-                                    {activeDevice.is_active ? 'Online' : 'Offline'}
-                                </span>
+                                <div>
+                                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">{activeDevice.device_name || 'Master Gateway'}</h3>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">{activeDevice.device_model || 'Android Node'}</p>
+                                </div>
                             </div>
+                            
+                            <span className={`inline-flex items-center gap-2 px-4 py-2 text-[11px] font-black uppercase tracking-widest rounded-xl border shadow-sm ${activeDevice.is_active ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50'}`}>
+                                <div className={`w-2 h-2 rounded-full ${activeDevice.is_active ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+                                {activeDevice.is_active ? 'System Online' : 'Node Offline'}
+                            </span>
+                        </div>
 
-                            <div className="mb-5">
-                                <h3 className="text-xl font-black text-slate-900 dark:text-white">{activeDevice.device_name || 'Master Gateway Phone'}</h3>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">{activeDevice.device_model || 'Android Device'}</p>
-                            </div>
-
-                            <div className="space-y-3 pt-5 border-t border-slate-100 dark:border-slate-800 mb-5">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Battery size={13} /> Battery Level</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                            <div className="bg-slate-50 dark:bg-[#0B1120] p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Battery size={14} className="text-slate-400" /> Battery Health</span>
                                     <span className="text-sm font-black text-slate-900 dark:text-white">{activeDevice.battery_level || 0}%</span>
                                 </div>
-                                <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                                    <div className={`h-full rounded-full ${activeDevice.battery_level > 20 ? 'bg-emerald-500' : 'bg-red-500'}`} style={{ width: `${activeDevice.battery_level || 0}%` }} />
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><RefreshCw size={13} /> Last Sync</span>
-                                    <span className="text-xs font-bold text-slate-900 dark:text-white">{activeDevice.last_sync ? new Date(activeDevice.last_sync).toLocaleString() : 'Never'}</span>
+                                <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                                    <div className={`h-full rounded-full transition-all duration-1000 ${activeDevice.battery_level > 20 ? 'bg-emerald-500' : 'bg-red-500'}`} style={{ width: `${activeDevice.battery_level || 0}%` }} />
                                 </div>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                <button onClick={handleOpenManualModal} className="flex-1 bg-slate-100 dark:bg-[#0B1120] text-slate-700 dark:text-slate-300 px-5 py-3 rounded-xl font-bold uppercase tracking-wider text-[10px] active:scale-95 transition-all flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-800">
-                                    <Replace size={14} /> Change Device
-                                </button>
-                                <button onClick={handleDeleteDevice} className="flex-1 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 px-5 py-3 rounded-xl font-bold uppercase tracking-wider text-[10px] active:scale-95 transition-all flex items-center justify-center gap-2 border border-red-100 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/20">
-                                    <Trash2 size={14} /> Delete Node
-                                </button>
+                            <div className="bg-slate-50 dark:bg-[#0B1120] p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col justify-center">
+                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 mb-1"><RefreshCw size={14} className="text-slate-400" /> Last Server Sync</span>
+                                <span className="text-sm font-black text-slate-900 dark:text-white">{activeDevice.last_sync ? new Date(activeDevice.last_sync).toLocaleString() : 'Never'}</span>
                             </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
+                            <button onClick={handleOpenManualModal} className="flex-1 bg-white dark:bg-[#111827] text-slate-700 dark:text-slate-300 px-5 py-3 rounded-xl font-bold text-[13px] active:scale-95 transition-all flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm">
+                                <Replace size={16} /> Reconfigure Node
+                            </button>
+                            <button onClick={handleDeleteDevice} className="flex-1 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 px-5 py-3 rounded-xl font-bold text-[13px] active:scale-95 transition-all flex items-center justify-center gap-2 border border-red-200 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 shadow-sm">
+                                <Trash2 size={16} /> Disconnect & Delete
+                            </button>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* Download Modal */}
+            {/* Modals - Kept structurally similar, updated styles */}
             {isDownloadModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsDownloadModalOpen(false)}>
-                    <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 overflow-hidden">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsDownloadModalOpen(false)}>
+                    <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
                             <div>
                                 <h2 className="text-base font-black text-slate-900 dark:text-white">Get App</h2>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Choose your platform</p>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Choose your platform</p>
                             </div>
-                            <button onClick={() => setIsDownloadModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><X size={18} /></button>
+                            <button onClick={() => setIsDownloadModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-800 transition-all"><X size={18} /></button>
                         </div>
-                        <div className="p-4 space-y-3">
+                        <div className="p-6 space-y-3 bg-white dark:bg-[#0B1120]">
                             {downloadLinks.play_store && (
-                                <a href={downloadLinks.play_store} target="_blank" rel="noopener noreferrer" className="w-full bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 hover:border-[#00A273] dark:hover:border-[#00A273] transition-all p-4 rounded-xl flex items-center gap-4 group active:scale-[0.98]">
+                                <a href={downloadLinks.play_store} target="_blank" rel="noopener noreferrer" className="w-full bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 hover:border-[#00A273] dark:hover:border-[#00A273] transition-all p-4 rounded-xl flex items-center gap-4 group active:scale-[0.98] shadow-sm">
                                     <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                                        <svg viewBox="0 0 48 48" className="w-9 h-9 group-hover:scale-110 transition-transform">
-                                            <path fill="#ea4335" d="M10.14 41.52L38 25.43c1.78-1.02 1.78-3.56 0-4.59L10.14 4.75C8.42 3.76 6.25 5 6.25 7.04v33.91c0 2.04 2.17 3.28 3.89 2.29z"/>
-                                            <path fill="#fbbc04" d="M38 25.43L28.18 31.06 6.25 40.95c.57.98 1.83 1.25 2.83.67l28.92-16.19z"/>
-                                            <path fill="#4285f4" d="M38 20.84L10.14 4.75C9.14 4.18 7.88 4.44 7.31 5.43l20.87 21.04L38 20.84z"/>
-                                            <path fill="#34a853" d="M6.25 7.04v33.91L28.18 31.06 10.14 4.75C8.42 3.76 6.25 5 6.25 7.04z"/>
-                                        </svg>
+                                        <svg viewBox="0 0 48 48" className="w-9 h-9 group-hover:scale-110 transition-transform"><path fill="#ea4335" d="M10.14 41.52L38 25.43c1.78-1.02 1.78-3.56 0-4.59L10.14 4.75C8.42 3.76 6.25 5 6.25 7.04v33.91c0 2.04 2.17 3.28 3.89 2.29z"/><path fill="#fbbc04" d="M38 25.43L28.18 31.06 6.25 40.95c.57.98 1.83 1.25 2.83.67l28.92-16.19z"/><path fill="#4285f4" d="M38 20.84L10.14 4.75C9.14 4.18 7.88 4.44 7.31 5.43l20.87 21.04L38 20.84z"/><path fill="#34a853" d="M6.25 7.04v33.91L28.18 31.06 10.14 4.75C8.42 3.76 6.25 5 6.25 7.04z"/></svg>
                                     </div>
                                     <div className="text-left flex-1">
                                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">GET IT ON</p>
@@ -214,7 +214,7 @@ export default function MasterDevicesPage() {
                                 </a>
                             )}
                             {downloadLinks.direct_apk && (
-                                <a href={downloadLinks.direct_apk} target="_blank" rel="noopener noreferrer" className="w-full bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 hover:border-blue-500 transition-all p-4 rounded-xl flex items-center gap-4 group active:scale-[0.98]">
+                                <a href={downloadLinks.direct_apk} target="_blank" rel="noopener noreferrer" className="w-full bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 transition-all p-4 rounded-xl flex items-center gap-4 group active:scale-[0.98] shadow-sm">
                                     <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center shrink-0 border border-blue-200 dark:border-blue-800/50 group-hover:scale-110 transition-transform">
                                         <Download size={18} className="text-blue-600 dark:text-blue-400" strokeWidth={2.5} />
                                     </div>
@@ -224,52 +224,44 @@ export default function MasterDevicesPage() {
                                     </div>
                                 </a>
                             )}
-                            {!downloadLinks.play_store && !downloadLinks.direct_apk && (
-                                <div className="text-center py-6 text-slate-500">
-                                    <Cpu size={28} className="mx-auto opacity-20 mb-3" />
-                                    <p className="text-sm font-medium">Download links are currently unavailable.</p>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Manual Pair Modal */}
             {isManualModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsManualModalOpen(false)}>
-                    <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 overflow-hidden">
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsManualModalOpen(false)}>
+                    <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
                             <div>
                                 <h2 className="text-base font-black text-slate-900 dark:text-white">Pair Device</h2>
-                                <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest mt-0.5">Scan or Enter Key</p>
+                                <p className="text-[10px] text-emerald-600 dark:text-emerald-500 font-bold uppercase tracking-widest mt-0.5">Scan or Enter Key</p>
                             </div>
-                            <button onClick={() => setIsManualModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><X size={18} /></button>
+                            <button onClick={() => setIsManualModalOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-800 transition-all"><X size={18} /></button>
                         </div>
 
-                        <div className="p-6 flex flex-col items-center text-center">
-                            {/* QR */}
-                            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 mb-6 relative">
+                        <div className="p-6 bg-white dark:bg-[#0B1120] flex flex-col items-center text-center">
+                            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 dark:border-slate-800 mb-6 relative">
                                 <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-emerald-500 rounded-tl-[18px] -translate-x-1 -translate-y-1"></div>
                                 <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-emerald-500 rounded-tr-[18px] translate-x-1 -translate-y-1"></div>
                                 <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-emerald-500 rounded-bl-[18px] -translate-x-1 translate-y-1"></div>
                                 <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-emerald-500 rounded-br-[18px] translate-x-1 translate-y-1"></div>
-                                <QRCodeSVG value={merchantData?.device_connection_key || 'generating...'} size={150} level="H" fgColor="#0B1120" bgColor="#ffffff" />
+                                <QRCodeSVG value={merchantData?.device_connection_key || 'generating...'} size={160} level="H" fgColor="#0B1120" bgColor="#ffffff" />
                             </div>
 
-                            <div className="w-full">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[3px] mb-3 block">Secret Key</label>
+                            <div className="w-full text-left">
+                                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Secret Key</label>
                                 <div className="flex items-center gap-2">
-                                    <div className="flex-1 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl py-3 px-4 flex items-center justify-center overflow-hidden">
-                                        <span className="font-mono text-base font-black text-emerald-600 dark:text-emerald-400 tracking-widest truncate">
+                                    <div className="flex-1 bg-slate-50 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl py-3.5 px-4 flex items-center overflow-hidden">
+                                        <span className="font-mono text-sm font-black text-emerald-600 dark:text-emerald-400 tracking-widest truncate">
                                             {merchantData?.device_connection_key || '••••••••'}
                                         </span>
                                     </div>
-                                    <button onClick={copyToClipboard} className="w-11 h-11 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 rounded-xl active:scale-90 transition-all hover:border-emerald-500 flex items-center justify-center shrink-0">
-                                        <Copy size={16} />
+                                    <button onClick={copyToClipboard} className="w-12 h-12 bg-slate-100 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl active:scale-95 transition-all hover:bg-slate-200 dark:hover:border-emerald-500 flex items-center justify-center shrink-0">
+                                        <Copy size={18} />
                                     </button>
-                                    <button onClick={handleGenerateKey} disabled={generating} className="w-11 h-11 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 rounded-xl active:scale-90 transition-all hover:border-emerald-500 flex items-center justify-center shrink-0">
-                                        <RefreshCw size={16} className={generating ? 'animate-spin' : ''} />
+                                    <button onClick={handleGenerateKey} disabled={generating} className="w-12 h-12 bg-slate-100 dark:bg-[#111827] border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl active:scale-95 transition-all hover:bg-slate-200 dark:hover:border-emerald-500 flex items-center justify-center shrink-0 disabled:opacity-50">
+                                        <RefreshCw size={18} className={generating ? 'animate-spin' : ''} />
                                     </button>
                                 </div>
                             </div>
