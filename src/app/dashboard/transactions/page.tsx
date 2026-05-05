@@ -250,15 +250,10 @@ function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 w-full max-w-xs animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-        {/* Header with Explicit Close Button */}
-        <div className="flex justify-between items-center mb-4 shrink-0">
-          <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest flex items-center gap-2">
-            <User size={16} className="text-blue-600" /> Customer Info
-          </h3>
-          <button onClick={onClose} className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 rounded-lg transition-colors shrink-0">
-            <X size={16} />
-          </button>
-        </div>
+        {/* Removed X button header, keeping only the title */}
+        <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+          <User size={16} className="text-blue-600" /> Customer Info
+        </h3>
         
         <div className="space-y-3 text-xs">
           {[

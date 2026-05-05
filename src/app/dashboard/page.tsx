@@ -147,7 +147,7 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
               ['Email', order.customer_email || '—'],
               ['Product', order.product_name || '—', 'text-emerald-600 dark:text-emerald-400'],
               ['Payment Method', order.method || '—', `uppercase ${getMethodTextColor(order.method)}`],
-              ['TRX ID', order.trx_id || '—', 'font-mono text-purple-600 dark:text-purple-400'],
+              ['TRX ID', order.trx_id || '—', 'font-mono font-black text-[15px] text-purple-600 dark:text-purple-400'],
               ['Source', order.source || 'link', 'capitalize'],
             ].map(([label, value, cls]) => (
               <div key={label} className="flex justify-between items-start gap-4">
@@ -169,16 +169,9 @@ function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 w-full max-w-xs animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-        {/* Header with Explicit Close Button */}
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest flex items-center gap-2">
-            <User size={16} className="text-blue-600" /> Customer Info
-          </h3>
-          <button onClick={onClose} className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 rounded-lg transition-colors">
-            <X size={16} />
-          </button>
-        </div>
-        
+        <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+          <User size={16} className="text-blue-600" /> Customer Info
+        </h3>
         <div className="space-y-3 text-xs">
           {[
             ['Name', trx.customer_name || '—'],
@@ -609,7 +602,7 @@ export default function DashboardHome() {
                           <td className="px-5 py-4 text-[13px] font-black text-slate-900 dark:text-white">৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                           <td className={`px-5 py-4 text-[12px] font-black uppercase tracking-wider ${methodColor}`}>{trx.method || '—'}</td>
                           <td className="px-5 py-4">
-                            {trx.trx_id ? <span className="text-[13px] font-mono font-black text-purple-600 dark:text-purple-400">{trx.trx_id}</span> : <span className="text-[13px] text-slate-400 italic font-bold">Awaiting</span>}
+                            {trx.trx_id ? <span className="text-[15px] font-mono font-black text-purple-600 dark:text-purple-400">{trx.trx_id}</span> : <span className="text-[13px] text-slate-400 italic font-bold">Awaiting</span>}
                           </td>
                           <td className="px-5 py-4"><span className={`inline-flex items-center gap-1.5 text-[12px] uppercase tracking-wider ${badge.cls}`}>{badge.label}</span></td>
                           <td className="px-5 py-4 text-right"><button className="p-1.5 rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-all"><PanelRightClose size={16} /></button></td>
