@@ -1,4 +1,5 @@
 'use client';
+// PATH: components/dashboard/Sidebar.tsx
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -126,7 +127,7 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
   const showSidebar = !isMobileDevice || isOpen;
 
   return (
-    <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#0B1120] border-r border-slate-800/80 transform transition-transform duration-300 ease-in-out flex flex-col ${showSidebar ? 'translate-x-0' : '-translate-x-full'} ${isMobileDevice ? 'shadow-2xl' : 'shadow-none'}`}>
+    <aside className={`fixed top-[72px] bottom-0 left-0 z-40 w-72 bg-[#0B1120] border-r border-slate-800/80 transform transition-transform duration-300 ease-in-out flex flex-col ${showSidebar ? 'translate-x-0' : '-translate-x-full'} ${isMobileDevice ? 'shadow-2xl' : 'shadow-none'}`}>
 
       {/* Close button visible ONLY on mobile devices */}
       {isMobileDevice && (
@@ -135,15 +136,8 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
         </button>
       )}
 
-      {/* Brand & Workspace Switcher */}
+      {/* Workspace Switcher - Branding Removed from here since it's now on the Header */}
       <div className="p-4 border-b border-slate-800/80 shrink-0">
-        <div className="px-2 pt-2 pb-6">
-          <Link href="/dashboard" onClick={() => setIsOpen(false)} className="flex items-center gap-1 group w-max">
-            <span className="text-3xl font-black text-blue-500 tracking-tighter group-hover:scale-105 transition-transform">X</span>
-            <span className="text-2xl font-bold text-white tracking-tight -ml-0.5">elPay</span>
-          </Link>
-        </div>
-
         <div className="relative" ref={switcherRef}>
           <button
             onClick={() => setIsSwitcherOpen(!isSwitcherOpen)}

@@ -1,4 +1,5 @@
 'use client';
+// PATH: components/dashboard/Header.tsx
 
 import { Menu, Search, Sun, Moon, Settings, LogOut, X, LayoutDashboard, Receipt, Link2, MessageSquare, Building2, User, KeyRound, Bell, ChevronRight } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -146,7 +147,7 @@ function GlobalSearch() {
   };
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-md">
+    <div ref={containerRef} className="relative w-full max-w-md lg:max-w-lg">
       <div className="relative group">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16} />
         <input
@@ -172,7 +173,7 @@ function GlobalSearch() {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-[#111827] border border-slate-800 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-[#111827] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
           <div className="px-3 pt-2.5 pb-1">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pages & Settings</p>
           </div>
@@ -262,32 +263,37 @@ export default function Header({ merchant, setSidebarOpen }: any) {
     : 'M';
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-[#0B1120]/95 backdrop-blur-xl border-b border-slate-800/80 px-4 md:px-8 py-3.5 flex items-center justify-between transition-colors duration-500">
+    <header className="fixed top-0 inset-x-0 h-[72px] z-50 w-full bg-[#0B1120] border-b border-slate-800/80 px-4 md:px-6 flex items-center justify-between">
 
-      <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-        {/* Menu Button — mobile/tablet only */}
-        {isMobileDevice && (
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2.5 bg-slate-800/80 hover:bg-slate-700 rounded-full text-slate-300 shrink-0 transition-all"
-          >
-            <Menu size={20} />
-          </button>
-        )}
+      <div className="flex items-center gap-4 flex-1 min-w-0">
+        
+        {/* Mobile Menu Toggle */}
+        <button
+          onClick={() => setSidebarOpen((prev: boolean) => !prev)}
+          className="md:hidden p-2.5 bg-slate-800/80 hover:bg-slate-700 rounded-full text-slate-300 shrink-0 transition-all"
+        >
+          <Menu size={20} />
+        </button>
+
+        {/* 💥 Branding in Header (Hidden on strictly mobile if tight, but generally visible) */}
+        <Link href="/dashboard" className="hidden md:flex items-center gap-1 group w-max shrink-0 mr-4 lg:mr-8">
+          <span className="text-3xl font-black text-blue-500 tracking-tighter group-hover:scale-105 transition-transform">X</span>
+          <span className="text-2xl font-bold text-white tracking-tight -ml-0.5">elPay</span>
+        </Link>
 
         {/* Desktop Global Search */}
-        <div className="hidden md:flex flex-1 max-w-md">
+        <div className="hidden md:flex flex-1 max-w-xl">
           <GlobalSearch />
         </div>
 
         {/* Mobile Search Overlay */}
         {mobileSearchOpen && (
-          <div className="absolute inset-x-0 top-0 z-50 bg-[#0B1120] p-3 flex items-center gap-3 border-b border-slate-800">
+          <div className="absolute inset-x-0 top-0 h-[72px] z-50 bg-[#0B1120] px-4 flex items-center gap-3 border-b border-slate-800">
             <div className="flex-1">
               <GlobalSearch />
             </div>
             <button onClick={() => setMobileSearchOpen(false)} className="p-2 rounded-full hover:bg-slate-800 transition-colors">
-              <X size={18} className="text-slate-400" />
+              <X size={20} className="text-slate-400" />
             </button>
           </div>
         )}
@@ -339,7 +345,7 @@ export default function Header({ merchant, setSidebarOpen }: any) {
           </button>
 
           {isProfileOpen && (
-            <div className="absolute right-0 top-full mt-2 w-56 bg-[#111827] border border-slate-800 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="absolute right-0 top-full mt-3 w-56 bg-[#111827] border border-slate-800 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
               <div className="px-4 py-3 border-b border-slate-800">
                 <p className="text-xs font-bold text-white truncate">{merchant?.full_name || 'Merchant'}</p>
                 <p className="text-[11px] text-slate-400 truncate mt-0.5">{merchant?.email || ''}</p>
