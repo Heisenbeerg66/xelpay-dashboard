@@ -5,14 +5,14 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import {
-  DollarSign, TrendingUp, ArrowRight, FileText, Loader2,
+  DollarSign, TrendingUp, TrendingDown, Minus, ArrowRight, FileText, Loader2,
   CheckCircle, Clock, XCircle, AlertCircle, Eye, Receipt,
   LinkIcon, Building2, RefreshCw, User, Phone, Search,
   PanelRightClose, Webhook, X, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell, Legend
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -72,14 +72,29 @@ const formatDate = (d: string) => new Date(d).toLocaleDateString('en-GB', { day:
 const formatTime = (d: string) => new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
 // ─── Component Helpers ────────────────────────────────────────────────────────
-function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
+function StatCard({ icon: Icon, label, value, color, trend, trendSuffix = '%' }: { icon: any; label: string; value: string; color: string; trend?: number; trendSuffix?: string }) {
+  const isPositive = trend && trend > 0;
+  const isNegative = trend && trend < 0;
+  const trendColor = isPositive ? 'text-emerald-600 dark:text-emerald-400' : isNegative ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400';
+  const TrendIcon = isPositive ? TrendingUp : isNegative ? TrendingDown : Minus;
+  
   return (
-    <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group">
-      <div className={`w-9 h-9 rounded-xl ${color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
-        <Icon size={18} />
+    <div className="bg-white dark:bg-[#111827] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between">
+      <div>
+        <div className={`w-9 h-9 rounded-xl ${color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+          <Icon size={18} />
+        </div>
+        <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">{label}</p>
       </div>
-      <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-1">{label}</p>
-      <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">{value}</p>
+      <div className="flex items-end justify-between mt-1 gap-2">
+        <p className="text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">{value}</p>
+        {trend !== undefined && (
+          <div className={`flex items-center gap-1 text-[10px] font-black ${trendColor} bg-slate-50 dark:bg-slate-800/50 px-2 py-1 rounded-lg shrink-0`}>
+            <TrendIcon size={12} strokeWidth={3} />
+            <span>{Math.abs(trend).toFixed(1)}{trendSuffix}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -88,11 +103,11 @@ function DashboardSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {[...Array(5)].map((_, i) => <div key={i} className="h-28 bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />)}
+        {[...Array(5)].map((_, i) => <div key={i} className="h-32 bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />)}
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-        <div className="lg:col-span-3 h-[280px] bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />
-        <div className="h-[280px] bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <div className="lg:col-span-3 h-[340px] bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />
+        <div className="lg:col-span-2 h-[340px] bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />
       </div>
       <div className="h-96 bg-slate-100 dark:bg-slate-800/50 rounded-2xl" />
     </div>
@@ -165,6 +180,7 @@ function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
     </div>
   );
 }
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function DashboardHome() {
   const [loading, setLoading] = useState(true);
@@ -246,7 +262,7 @@ export default function DashboardHome() {
     return () => window.removeEventListener('businessChanged', load);
   }, []);
 
-  // Filtering Orders by Selected Date Tab
+  // Orders filtered by the selected date for the main display
   const displayOrders = useMemo(() => {
     const now = new Date();
     return allOrders.filter(o => {
@@ -259,19 +275,58 @@ export default function DashboardHome() {
     });
   }, [allOrders, dateFilter]);
 
+  // Statistics and Trend Calculation
   const stats = useMemo(() => {
-    const paidOrders = displayOrders.filter((o: any) => ['paid', 'success', 'completed'].includes(o.status?.toLowerCase()));
-    const pendingOrders = displayOrders.filter((o: any) => o.status?.toLowerCase() === 'pending');
-    const totalRev = paidOrders.reduce((sum: number, o: any) => sum + parseFloat(o.amount || '0'), 0);
-    const rate = displayOrders.length > 0 ? (paidOrders.length / displayOrders.length) * 100 : 0;
-    return {
-      totalRevenue: totalRev,
-      activeLinks: activeLinksCount,
-      successRate: rate,
-      totalOrders: displayOrders.length,
-      pendingOrders: pendingOrders.length,
+    const now = new Date();
+    let currentStart = new Date(0);
+    let prevStart = new Date(0);
+    let prevEnd = new Date(0);
+
+    if (dateFilter === 'today') {
+      currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      prevStart = new Date(currentStart); prevStart.setDate(prevStart.getDate() - 1);
+      prevEnd = new Date(currentStart);
+    } else if (dateFilter === '7d') {
+      currentStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      prevStart = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+      prevEnd = currentStart;
+    } else if (dateFilter === '30d') {
+      currentStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      prevStart = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+      prevEnd = currentStart;
+    }
+
+    const prevOrders = allOrders.filter(o => {
+      if (dateFilter === 'all') return false; 
+      const d = new Date(o.created_at);
+      return d >= prevStart && d < prevEnd;
+    });
+
+    const calcValues = (ordersList: Order[]) => {
+      const paid = ordersList.filter(o => ['paid', 'success', 'completed'].includes(o.status?.toLowerCase()));
+      const pending = ordersList.filter(o => o.status?.toLowerCase() === 'pending');
+      const rev = paid.reduce((sum, o) => sum + parseFloat(String(o.amount || 0)), 0);
+      const rate = ordersList.length > 0 ? (paid.length / ordersList.length) * 100 : 0;
+      return { rev, total: ordersList.length, paid: paid.length, pending: pending.length, rate };
     };
-  }, [displayOrders, activeLinksCount]);
+
+    const curr = calcValues(displayOrders);
+    const prev = calcValues(prevOrders);
+
+    const getTrend = (c: number, p: number) => p === 0 ? (c > 0 ? 100 : 0) : ((c - p) / p) * 100;
+
+    return {
+      totalRevenue: curr.rev,
+      revTrend: dateFilter === 'all' ? undefined : getTrend(curr.rev, prev.rev),
+      activeLinks: activeLinksCount,
+      successRate: curr.rate,
+      rateTrend: dateFilter === 'all' ? undefined : (curr.rate - prev.rate),
+      totalOrders: curr.total,
+      ordersTrend: dateFilter === 'all' ? undefined : getTrend(curr.total, prev.total),
+      pendingOrders: curr.pending,
+      pendingTrend: dateFilter === 'all' ? undefined : getTrend(curr.pending, prev.pending),
+    };
+  }, [displayOrders, allOrders, dateFilter, activeLinksCount]);
 
   // Dynamic Chart Generation
   const chartData = useMemo(() => {
@@ -309,13 +364,21 @@ export default function DashboardHome() {
       }
     });
 
-    const statusMap: Record<string, number> = {};
+    const statusMap: Record<string, { name: string, count: number, amount: number }> = {};
     displayOrders.forEach(o => {
       const key = statusConfig(o.status).label;
-      statusMap[key] = (statusMap[key] || 0) + 1;
+      if (!statusMap[key]) statusMap[key] = { name: key, count: 0, amount: 0 };
+      statusMap[key].count += 1;
+      statusMap[key].amount += parseFloat(String(o.amount || 0));
     });
 
-    return { barData: chartArray, pieData: Object.entries(statusMap).map(([name, value]) => ({ name, value })) };
+    const pieArray = Object.values(statusMap).map(d => ({
+      ...d,
+      value: d.count,
+      percent: displayOrders.length > 0 ? (d.count / displayOrders.length) * 100 : 0
+    }));
+
+    return { barData: chartArray, pieData: pieArray };
   }, [displayOrders, dateFilter]);
 
   const filteredOrders = useMemo(() => {
@@ -354,7 +417,8 @@ export default function DashboardHome() {
       </div>
     );
   }
-    return (
+  
+  return (
     <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {drawerOrder && <TransactionDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} onResend={resendWebhook} />}
       {customerModal && <CustomerModal trx={customerModal} onClose={() => setCustomerModal(null)} />}
@@ -381,71 +445,87 @@ export default function DashboardHome() {
           {/* ── Stats Cards ── */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <StatCard icon={DollarSign} label="Revenue" color="bg-blue-50 dark:bg-blue-900/20 text-blue-600"
-              value={`৳ ${stats.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} />
+              value={`৳ ${stats.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} trend={stats.revTrend} />
             <StatCard icon={LinkIcon} label="Active Links" color="bg-purple-50 dark:bg-purple-900/20 text-purple-600"
               value={String(stats.activeLinks)} />
             <StatCard icon={TrendingUp} label="Success Rate" color="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600"
-              value={`${stats.successRate.toFixed(1)}%`} />
+              value={`${stats.successRate.toFixed(1)}%`} trend={stats.rateTrend} trendSuffix="%" />
             <StatCard icon={Receipt} label="Total Orders" color="bg-amber-50 dark:bg-amber-900/20 text-amber-600"
-              value={String(stats.totalOrders)} />
+              value={String(stats.totalOrders)} trend={stats.ordersTrend} />
             <StatCard icon={Clock} label="Pending" color="bg-rose-50 dark:bg-rose-900/20 text-rose-600"
-              value={String(stats.pendingOrders)} />
+              value={String(stats.pendingOrders)} trend={stats.pendingTrend} />
           </div>
 
-          {/* ── Charts (Dynamic Pillar & Pie) ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-            {/* Revenue Bar Chart (3 Columns) */}
+          {/* ── Charts (Dynamic Area & Premium Donut) ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+            {/* Revenue Area Chart (3 Columns) */}
             <div className="lg:col-span-3 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col">
-              <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-4">Revenue — {getFilterLabel()}</h2>
+              <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6">Revenue Growth — {getFilterLabel()}</h2>
               {chartData.barData.every(d => d.revenue === 0) ? (
-                <div className="flex-1 flex items-center justify-center text-sm font-bold text-slate-400 min-h-[200px]">No revenue data found for this period.</div>
+                <div className="flex-1 flex items-center justify-center text-sm font-bold text-slate-400 min-h-[250px]">No revenue data found for this period.</div>
               ) : (
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={chartData.barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.15)" />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} dy={10} />
-                    <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(val) => `৳${val >= 1000 ? (val/1000).toFixed(1)+'k' : val}`} />
-                    <Tooltip cursor={{ fill: 'rgba(148,163,184,0.1)' }} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelStyle={{ color: '#94a3b8', marginBottom: 4 }} itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }} />
-                    <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} style={{ outline: 'none' }} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="flex-1 min-h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData.barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.15)" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} dy={10} />
+                      <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(val) => `৳${val >= 1000 ? (val/1000).toFixed(1)+'k' : val}`} />
+                      <Tooltip cursor={{ stroke: 'rgba(148,163,184,0.3)', strokeWidth: 1, strokeDasharray: '4 4' }} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelStyle={{ color: '#94a3b8', marginBottom: 4 }} itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }} />
+                      <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </div>
 
-            {/* Perfect Pie Chart (1 Column - Better aspect ratio) */}
-            <div className="lg:col-span-1 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col">
-              <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-4">Order Status</h2>
+            {/* Premium Donut Chart with Indicators (2 Columns) */}
+            <div className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col">
+              <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-2">Order Status</h2>
               {displayOrders.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center text-sm font-bold text-slate-400 min-h-[200px]">No orders yet.</div>
+                <div className="flex-1 flex items-center justify-center text-sm font-bold text-slate-400 min-h-[250px]">No orders yet.</div>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center min-h-[200px]">
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie 
-                        data={chartData.pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={4} stroke="none" style={{ outline: 'none' }} labelLine={false}
-                        label={({ cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, percent = 0 }: any) => {
-                          const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                          const x = cx + radius * Math.cos(-midAngle * Math.PI / 180);
-                          const y = cy + radius * Math.sin(-midAngle * Math.PI / 180);
-                          if (percent < 0.05) return null;
-                          return (
-                            <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight="bold">
-                              {`${(percent * 100).toFixed(0)}%`}
-                            </text>
-                          );
-                        }}
-                      >
-                        {chartData.pieData.map((entry, i) => <Cell key={i} fill={getPieColor(entry.name)} style={{ outline: 'none' }} />)}
-                      </Pie>
-                      <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} itemStyle={{ color: '#fff', fontWeight: 'bold' }} cursor={{ fill: 'transparent' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  {/* Legend positioned below nicely */}
-                  <div className="flex flex-wrap justify-center gap-3 mt-2">
+                <div className="flex-1 flex flex-col mt-2">
+                  <div className="h-[180px] flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie 
+                          data={chartData.pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" paddingAngle={5} stroke="none" style={{ outline: 'none' }} labelLine={false}
+                        >
+                          {chartData.pieData.map((entry, i) => <Cell key={i} fill={getPieColor(entry.name)} style={{ outline: 'none' }} />)}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
+                          itemStyle={{ color: '#fff', fontWeight: 'bold' }} 
+                          cursor={{ fill: 'transparent' }} 
+                          formatter={(value: any, name: any, props: any) => {
+  const data = props?.payload?.payload;
+  return [`${value} Orders (৳${data?.amount?.toLocaleString('en-IN')})`, name];
+}}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Premium Indicator List */}
+                  <div className="mt-4 flex flex-col gap-2.5 overflow-y-auto pr-1">
                     {chartData.pieData.map((entry, i) => (
-                      <div key={i} className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: getPieColor(entry.name) }}></div>
-                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">{entry.name}</span>
+                      <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/60">
+                        <div className="flex items-center gap-3">
+                          <div className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: getPieColor(entry.name) }}></div>
+                          <div>
+                            <p className="text-[13px] font-black text-slate-800 dark:text-slate-200 leading-tight">{entry.name}</p>
+                            <p className="text-[11px] font-bold text-slate-400 mt-0.5">{entry.count} Orders ({entry.percent.toFixed(1)}%)</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[13px] font-black text-slate-900 dark:text-white">৳ {entry.amount.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -550,4 +630,4 @@ export default function DashboardHome() {
       )}
     </div>
   );
-                            }
+}
