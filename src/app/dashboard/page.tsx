@@ -90,7 +90,6 @@ function StatCard({ icon: Icon, label, value, textClass, borderClass, trend, tre
         <p className={`text-2xl sm:text-[26px] font-black ${textClass} tracking-tight truncate`} title={value}>{value}</p>
       </div>
       
-      {/* Fixed height container for trend to ensure perfect alignment */}
       <div className="mt-3 h-[22px] flex items-center">
         {trend !== undefined && (
           <div className={`inline-flex items-center gap-1 text-[10px] font-black ${trendColor} bg-slate-50 dark:bg-slate-800/50 px-2 py-1.5 rounded-lg`}>
@@ -123,7 +122,6 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
   return (
     <div className="fixed inset-0 z-[300] bg-slate-900/50 backdrop-blur-sm flex justify-end" onClick={onClose}>
       <div className="w-full max-w-md bg-white dark:bg-[#0B1120] h-full shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col border-l border-slate-200 dark:border-slate-800" onClick={e => e.stopPropagation()}>
-        {/* Header with Explicit Close Button */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 shrink-0">
           <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
             <Receipt size={18} className="text-blue-600"/> Order Details
@@ -147,7 +145,7 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
               ['Email', order.customer_email || '—'],
               ['Product', order.product_name || '—', 'text-emerald-600 dark:text-emerald-400'],
               ['Payment Method', order.method || '—', `uppercase ${getMethodTextColor(order.method)}`],
-              ['TRX ID', order.trx_id || '—', 'font-mono font-black text-[15px] text-purple-600 dark:text-purple-400'],
+              ['TRX ID', order.trx_id || '—', 'font-mono text-purple-600 dark:text-purple-400'],
               ['Source', order.source || 'link', 'capitalize'],
             ].map(([label, value, cls]) => (
               <div key={label} className="flex justify-between items-start gap-4">
@@ -169,9 +167,14 @@ function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 w-full max-w-xs animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-        <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
-          <User size={16} className="text-blue-600" /> Customer Info
-        </h3>
+        <div className="flex justify-between items-center mb-4 shrink-0">
+          <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest flex items-center gap-2">
+            <User size={16} className="text-blue-600" /> Customer Info
+          </h3>
+          <button onClick={onClose} className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 rounded-lg transition-colors shrink-0">
+            <X size={16} />
+          </button>
+        </div>
         <div className="space-y-3 text-xs">
           {[
             ['Name', trx.customer_name || '—'],
@@ -190,7 +193,6 @@ function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 export default function DashboardHome() {
   const [loading, setLoading] = useState(true);
   const [businessId, setBusinessId] = useState<string | null>(null);
@@ -204,7 +206,6 @@ export default function DashboardHome() {
   const [currentPage, setCurrentPage] = useState(1);
   const [dateFilter, setDateFilter] = useState<'today' | '7d' | '30d' | 'all'>('7d');
 
-  // Fetch Username
   useEffect(() => {
     const loadUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -213,7 +214,6 @@ export default function DashboardHome() {
     loadUser();
   }, []);
 
-  // Realtime Setup
   useEffect(() => {
     if (!businessId) return;
     const setupRealtime = async () => {
@@ -271,7 +271,6 @@ export default function DashboardHome() {
     return () => window.removeEventListener('businessChanged', load);
   }, []);
 
-  // Orders filtered by the selected date for the main display
   const displayOrders = useMemo(() => {
     const now = new Date();
     return allOrders.filter(o => {
@@ -284,7 +283,6 @@ export default function DashboardHome() {
     });
   }, [allOrders, dateFilter]);
 
-  // Statistics and Trend Calculation
   const stats = useMemo(() => {
     const now = new Date();
     let currentStart = new Date(0);
@@ -337,7 +335,6 @@ export default function DashboardHome() {
     };
   }, [displayOrders, allOrders, dateFilter, activeLinksCount]);
 
-  // Dynamic Chart Generation
   const chartData = useMemo(() => {
     let chartArray: ChartSlot[] = [];
     const now = new Date();
@@ -428,215 +425,219 @@ export default function DashboardHome() {
   }
   
   return (
-    <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <>
+      {/* 💥 Modals extracted outside of the animated wrapper so they break free 💥 */}
       {drawerOrder && <TransactionDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} onResend={resendWebhook} />}
       {customerModal && <CustomerModal trx={customerModal} onClose={() => setCustomerModal(null)} />}
 
-      {/* ── Header with Welcome & Quick Filters ── */}
-      <div className="flex flex-col xl:flex-row justify-between xl:items-end gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Overview</h1>
-          <p className="text-slate-500 font-bold text-sm mt-1">Welcome back, <span className="text-slate-700 dark:text-slate-300">{userName}</span>! Here's your business summary.</p>
-        </div>
-        
-        <div className="flex bg-white dark:bg-[#111827] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm w-full xl:w-auto overflow-x-auto scrollbar-hide">
-          {[ { id: 'today', label: 'Today' }, { id: '7d', label: '7 Days' }, { id: '30d', label: '30 Days' }, { id: 'all', label: 'All Time' } ].map(f => (
-            <button key={f.id} onClick={() => setDateFilter(f.id as any)}
-              className={`flex-1 xl:flex-none whitespace-nowrap px-5 py-2.5 text-[13px] font-black rounded-lg transition-all ${dateFilter === f.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {loading ? <DashboardSkeleton /> : (
-        <>
-          {/* ── Stats Cards (Left-Aligned Flow) ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            <StatCard icon={DollarSign} label="Revenue" textClass="text-blue-600 dark:text-blue-500" borderClass="border-b-blue-600 dark:border-b-blue-500"
-              value={`৳ ${stats.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} trend={stats.revTrend} />
-            <StatCard icon={LinkIcon} label="Active Pay with Link" textClass="text-purple-600 dark:text-purple-500" borderClass="border-b-purple-600 dark:border-b-purple-500"
-              value={String(stats.activeLinks)} />
-            <StatCard icon={TrendingUp} label="Success Rate" textClass="text-emerald-600 dark:text-emerald-500" borderClass="border-b-emerald-600 dark:border-b-emerald-500"
-              value={`${stats.successRate.toFixed(1)}%`} trend={stats.rateTrend} trendSuffix="%" />
-            <StatCard icon={Receipt} label="Total Orders" textClass="text-indigo-600 dark:text-indigo-500" borderClass="border-b-indigo-600 dark:border-b-indigo-500"
-              value={String(stats.totalOrders)} trend={stats.ordersTrend} />
-            <StatCard icon={Clock} label="Pending" textClass="text-amber-500 dark:text-amber-400" borderClass="border-b-amber-500 dark:border-b-amber-400"
-              value={String(stats.pendingOrders)} trend={stats.pendingTrend} />
+      <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* ── Header with Welcome & Quick Filters ── */}
+        <div className="flex flex-col xl:flex-row justify-between xl:items-end gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Overview</h1>
+            <p className="text-slate-500 font-bold text-sm mt-1">Welcome back, <span className="text-slate-700 dark:text-slate-300">{userName}</span>! Here's your business summary.</p>
           </div>
+          
+          <div className="flex bg-white dark:bg-[#111827] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm w-full xl:w-auto overflow-x-auto scrollbar-hide">
+            {[ { id: 'today', label: 'Today' }, { id: '7d', label: '7 Days' }, { id: '30d', label: '30 Days' }, { id: 'all', label: 'All Time' } ].map(f => (
+              <button key={f.id} onClick={() => setDateFilter(f.id as any)}
+                className={`flex-1 xl:flex-none whitespace-nowrap px-5 py-2.5 text-[13px] font-black rounded-lg transition-all ${dateFilter === f.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {/* ── Charts (Dynamic Area & Premium Donut) ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-            {/* Revenue Area Chart (3 Columns) */}
-            <div className="lg:col-span-3 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col">
-              <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6">Revenue Growth — {getFilterLabel()}</h2>
-              {chartData.barData.every(d => d.revenue === 0) ? (
-                <div className="flex-1 flex items-center justify-center text-sm font-bold text-slate-400 min-h-[250px]">No revenue data found for this period.</div>
-              ) : (
-                <div className="flex-1 min-h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData.barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.15)" />
-                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} dy={10} />
-                      <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(val) => `৳${val >= 1000 ? (val/1000).toFixed(1)+'k' : val}`} />
-                      <Tooltip cursor={{ stroke: 'rgba(148,163,184,0.3)', strokeWidth: 1, strokeDasharray: '4 4' }} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelStyle={{ color: '#94a3b8', marginBottom: 4 }} itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }} />
-                      <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
+        {loading ? <DashboardSkeleton /> : (
+          <>
+            {/* ── Stats Cards (Left-Aligned Flow) ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <StatCard icon={DollarSign} label="Revenue" textClass="text-blue-600 dark:text-blue-500" borderClass="border-b-blue-600 dark:border-b-blue-500"
+                value={`৳ ${stats.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} trend={stats.revTrend} />
+              <StatCard icon={LinkIcon} label="Active Pay with Link" textClass="text-purple-600 dark:text-purple-500" borderClass="border-b-purple-600 dark:border-b-purple-500"
+                value={String(stats.activeLinks)} />
+              <StatCard icon={TrendingUp} label="Success Rate" textClass="text-emerald-600 dark:text-emerald-500" borderClass="border-b-emerald-600 dark:border-b-emerald-500"
+                value={`${stats.successRate.toFixed(1)}%`} trend={stats.rateTrend} trendSuffix="%" />
+              <StatCard icon={Receipt} label="Total Orders" textClass="text-indigo-600 dark:text-indigo-500" borderClass="border-b-indigo-600 dark:border-b-indigo-500"
+                value={String(stats.totalOrders)} trend={stats.ordersTrend} />
+              <StatCard icon={Clock} label="Pending" textClass="text-amber-500 dark:text-amber-400" borderClass="border-b-amber-500 dark:border-b-amber-400"
+                value={String(stats.pendingOrders)} trend={stats.pendingTrend} />
             </div>
 
-            {/* Premium Donut Chart with Indicators (2 Columns) */}
-            <div className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col">
-              <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-2">Order Status</h2>
-              {displayOrders.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center text-sm font-bold text-slate-400 min-h-[250px]">No orders yet.</div>
-              ) : (
-                <div className="flex-1 flex flex-col mt-2">
-                  <div className="h-[180px] flex items-center justify-center">
+            {/* ── Charts (Dynamic Area & Premium Donut) ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+              {/* Revenue Area Chart (3 Columns) */}
+              <div className="lg:col-span-3 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col">
+                <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6">Revenue Growth — {getFilterLabel()}</h2>
+                {chartData.barData.every(d => d.revenue === 0) ? (
+                  <div className="flex-1 flex items-center justify-center text-sm font-bold text-slate-400 min-h-[250px]">No revenue data found for this period.</div>
+                ) : (
+                  <div className="flex-1 min-h-[250px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie 
-                          data={chartData.pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" paddingAngle={5} stroke="none" style={{ outline: 'none' }} labelLine={false}
-                        >
-                          {chartData.pieData.map((entry, i) => <Cell key={i} fill={getPieColor(entry.name)} style={{ outline: 'none' }} />)}
-                        </Pie>
-                        <Tooltip 
-                          contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
-                          itemStyle={{ color: '#fff', fontWeight: 'bold' }} 
-                          cursor={{ fill: 'transparent' }} 
-                          formatter={(value: any, name: any, props: any) => {
-                             const data = props?.payload?.payload;
-                             return [`${value} Orders (৳${data?.amount?.toLocaleString('en-IN')})`, name];
-                          }}
-                        />
-                      </PieChart>
+                      <AreaChart data={chartData.barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.15)" />
+                        <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} dy={10} />
+                        <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(val) => `৳${val >= 1000 ? (val/1000).toFixed(1)+'k' : val}`} />
+                        <Tooltip cursor={{ stroke: 'rgba(148,163,184,0.3)', strokeWidth: 1, strokeDasharray: '4 4' }} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} labelStyle={{ color: '#94a3b8', marginBottom: 4 }} itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }} />
+                        <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                      </AreaChart>
                     </ResponsiveContainer>
-                  </div>
-                  
-                  {/* Premium Indicator List */}
-                  <div className="mt-4 flex flex-col gap-2.5 overflow-y-auto pr-1">
-                    {chartData.pieData.map((entry, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/60">
-                        <div className="flex items-center gap-3">
-                          <div className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: getPieColor(entry.name) }}></div>
-                          <div>
-                            <p className="text-[13px] font-black text-slate-800 dark:text-slate-200 leading-tight">{entry.name}</p>
-                            <p className="text-[11px] font-bold text-slate-400 mt-0.5">{entry.count} Orders ({entry.percent.toFixed(1)}%)</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[13px] font-black text-slate-900 dark:text-white">৳ {entry.amount.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ── Recent Transactions Table ── */}
-          <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                <FileText size={16} className="text-blue-600" /> Recent Transactions
-              </h2>
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
-                  <input type="text" placeholder="Search order, trx, name..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                    className="pl-9 pr-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-[13px] font-bold text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors w-full sm:w-56"
-                  />
-                </div>
-                <Link href="/dashboard/transactions" className="text-[12px] font-black text-blue-600 flex items-center gap-1 hover:gap-2 transition-all whitespace-nowrap">
-                  View All <ArrowRight size={13} />
-                </Link>
-              </div>
-            </div>
-
-            {paginatedOrders.length === 0 ? (
-              <div className="p-10 text-center text-slate-400 text-[13px] font-bold">
-                {searchTerm ? 'No transactions match your search.' : 'No recent transactions to display.'}
-              </div>
-            ) : (
-              <div className="w-full overflow-x-auto">
-                <table className="w-full text-left whitespace-nowrap min-w-[1000px]">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-[#0B1120]/60 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
-                      <th className="px-5 py-4">Order No</th>
-                      <th className="px-5 py-4">Date</th>
-                      <th className="px-5 py-4">Customer</th>
-                      <th className="px-5 py-4">Product</th>
-                      <th className="px-5 py-4">Amount</th>
-                      <th className="px-5 py-4">Method</th>
-                      <th className="px-5 py-4">TRX ID</th>
-                      <th className="px-5 py-4">Status</th>
-                      <th className="px-5 py-4"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-                    {paginatedOrders.map(trx => {
-                      const badge = statusConfig(trx.status);
-                      const methodColor = getMethodTextColor(trx.method);
-                      return (
-                        <tr key={trx.id} onClick={() => setDrawerOrder(trx)} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors cursor-pointer group">
-                          <td className="px-5 py-4 text-[13px] font-mono font-black text-indigo-600 dark:text-indigo-400">{trx.order_no || '—'}</td>
-                          <td className="px-5 py-4">
-                            <p className="text-[13px] font-black text-slate-800 dark:text-slate-200">{formatDate(trx.created_at)}</p>
-                            <p className="text-[10px] font-bold text-slate-500 mt-1">{formatTime(trx.created_at)}</p>
-                          </td>
-                          <td className="px-5 py-4">
-                            <button onClick={(e) => { e.stopPropagation(); setCustomerModal(trx); }} className="text-[13px] text-blue-600 dark:text-blue-400 font-black hover:underline transition-colors max-w-[140px] truncate">
-                              {trx.customer_name || trx.customer_number || '—'}
-                            </button>
-                          </td>
-                          <td className="px-5 py-4 text-[13px] font-black text-emerald-600 dark:text-emerald-400 max-w-[140px] truncate">{trx.product_name || '—'}</td>
-                          <td className="px-5 py-4 text-[13px] font-black text-slate-900 dark:text-white">৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                          <td className={`px-5 py-4 text-[12px] font-black uppercase tracking-wider ${methodColor}`}>{trx.method || '—'}</td>
-                          <td className="px-5 py-4">
-                            {trx.trx_id ? <span className="text-[15px] font-mono font-black text-purple-600 dark:text-purple-400">{trx.trx_id}</span> : <span className="text-[13px] text-slate-400 italic font-bold">Awaiting</span>}
-                          </td>
-                          <td className="px-5 py-4"><span className={`inline-flex items-center gap-1.5 text-[12px] uppercase tracking-wider ${badge.cls}`}>{badge.label}</span></td>
-                          <td className="px-5 py-4 text-right"><button className="p-1.5 rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-all"><PanelRightClose size={16} /></button></td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Pagination */}
-            {!loading && filteredOrders.length > 0 && (
-              <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <p className="text-[12px] font-bold text-slate-500">
-                  Showing <span className="font-black text-slate-800 dark:text-slate-200">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)}</span> of <span className="font-black text-slate-800 dark:text-slate-200">{filteredOrders.length}</span>
-                </p>
-                {totalPages > 1 && (
-                  <div className="flex items-center gap-1.5">
-                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1.5 rounded-lg text-slate-500 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><ChevronLeft size={15} /></button>
-                    {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                      let page = totalPages <= 7 ? i + 1 : currentPage <= 4 ? i + 1 : currentPage >= totalPages - 3 ? totalPages - 6 + i : currentPage - 3 + i;
-                      return (
-                        <button key={page} onClick={() => setCurrentPage(page)} className={`w-8 h-8 text-[13px] font-bold rounded-lg transition-colors ${currentPage === page ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>{page}</button>
-                      );
-                    })}
-                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1.5 rounded-lg text-slate-500 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><ChevronRight size={15} /></button>
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
+
+              {/* Premium Donut Chart with Indicators (2 Columns) */}
+              <div className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col">
+                <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-2">Order Status</h2>
+                {displayOrders.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center text-sm font-bold text-slate-400 min-h-[250px]">No orders yet.</div>
+                ) : (
+                  <div className="flex-1 flex flex-col mt-2">
+                    <div className="h-[180px] flex items-center justify-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie 
+                            data={chartData.pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" paddingAngle={5} stroke="none" style={{ outline: 'none' }} labelLine={false}
+                          >
+                            {chartData.pieData.map((entry, i) => <Cell key={i} fill={getPieColor(entry.name)} style={{ outline: 'none' }} />)}
+                          </Pie>
+                          <Tooltip 
+                            contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
+                            itemStyle={{ color: '#fff', fontWeight: 'bold' }} 
+                            cursor={{ fill: 'transparent' }} 
+                            formatter={(value: any, name: any, props: any) => {
+                               const data = props?.payload?.payload;
+                               return [`${value} Orders (৳${data?.amount?.toLocaleString('en-IN')})`, name];
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    
+                    {/* Premium Indicator List */}
+                    <div className="mt-4 flex flex-col gap-2.5 overflow-y-auto pr-1">
+                      {chartData.pieData.map((entry, i) => (
+                        <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/60">
+                          <div className="flex items-center gap-3">
+                            <div className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: getPieColor(entry.name) }}></div>
+                            <div>
+                              <p className="text-[13px] font-black text-slate-800 dark:text-slate-200 leading-tight">{entry.name}</p>
+                              <p className="text-[11px] font-bold text-slate-400 mt-0.5">{entry.count} Orders ({entry.percent.toFixed(1)}%)</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[13px] font-black text-slate-900 dark:text-white">৳ {entry.amount.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── Recent Transactions Table ── */}
+            <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                  <FileText size={16} className="text-blue-600" /> Recent Transactions
+                </h2>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
+                    <input type="text" placeholder="Search order, trx, name..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                      className="pl-9 pr-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-[13px] font-bold text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors w-full sm:w-56"
+                    />
+                  </div>
+                  <Link href="/dashboard/transactions" className="text-[12px] font-black text-blue-600 flex items-center gap-1 hover:gap-2 transition-all whitespace-nowrap">
+                    View All <ArrowRight size={13} />
+                  </Link>
+                </div>
+              </div>
+
+              {paginatedOrders.length === 0 ? (
+                <div className="p-10 text-center text-slate-400 text-[13px] font-bold">
+                  {searchTerm ? 'No transactions match your search.' : 'No recent transactions to display.'}
+                </div>
+              ) : (
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full text-left whitespace-nowrap min-w-[1000px]">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-[#0B1120]/60 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                        <th className="px-5 py-4">Order No</th>
+                        <th className="px-5 py-4">Date</th>
+                        <th className="px-5 py-4">Customer</th>
+                        <th className="px-5 py-4">Product</th>
+                        <th className="px-5 py-4">Amount</th>
+                        <th className="px-5 py-4">Method</th>
+                        <th className="px-5 py-4">TRX ID</th>
+                        <th className="px-5 py-4">Status</th>
+                        <th className="px-5 py-4"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                      {paginatedOrders.map(trx => {
+                        const badge = statusConfig(trx.status);
+                        const methodColor = getMethodTextColor(trx.method);
+                        return (
+                          <tr key={trx.id} onClick={() => setDrawerOrder(trx)} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors cursor-pointer group">
+                            <td className="px-5 py-4 text-[13px] font-mono font-black text-indigo-600 dark:text-indigo-400">{trx.order_no || '—'}</td>
+                            <td className="px-5 py-4">
+                              <p className="text-[13px] font-black text-slate-800 dark:text-slate-200">{formatDate(trx.created_at)}</p>
+                              <p className="text-[10px] font-bold text-slate-500 mt-1">{formatTime(trx.created_at)}</p>
+                            </td>
+                            <td className="px-5 py-4">
+                              <button onClick={(e) => { e.stopPropagation(); setCustomerModal(trx); }} className="text-[13px] text-blue-600 dark:text-blue-400 font-black hover:underline transition-colors max-w-[140px] truncate">
+                                {trx.customer_name || trx.customer_number || '—'}
+                              </button>
+                            </td>
+                            <td className="px-5 py-4 text-[13px] font-black text-emerald-600 dark:text-emerald-400 max-w-[140px] truncate">{trx.product_name || '—'}</td>
+                            <td className="px-5 py-4 text-[13px] font-black text-slate-900 dark:text-white">৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className={`px-5 py-4 text-[12px] font-black uppercase tracking-wider ${methodColor}`}>{trx.method || '—'}</td>
+                            <td className="px-5 py-4">
+                              {/* 💥 FIX: TRX ID made bolder and larger (text-[15px]) 💥 */}
+                              {trx.trx_id ? <span className="text-[15px] font-mono font-black text-purple-600 dark:text-purple-400">{trx.trx_id}</span> : <span className="text-[13px] text-slate-400 italic font-bold">Awaiting</span>}
+                            </td>
+                            <td className="px-5 py-4"><span className={`inline-flex items-center gap-1.5 text-[12px] uppercase tracking-wider ${badge.cls}`}>{badge.label}</span></td>
+                            <td className="px-5 py-4 text-right"><button className="p-1.5 rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-all"><PanelRightClose size={16} /></button></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Pagination */}
+              {!loading && filteredOrders.length > 0 && (
+                <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <p className="text-[12px] font-bold text-slate-500">
+                    Showing <span className="font-black text-slate-800 dark:text-slate-200">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)}</span> of <span className="font-black text-slate-800 dark:text-slate-200">{filteredOrders.length}</span>
+                  </p>
+                  {totalPages > 1 && (
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1.5 rounded-lg text-slate-500 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><ChevronLeft size={15} /></button>
+                      {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                        let page = totalPages <= 7 ? i + 1 : currentPage <= 4 ? i + 1 : currentPage >= totalPages - 3 ? totalPages - 6 + i : currentPage - 3 + i;
+                        return (
+                          <button key={page} onClick={() => setCurrentPage(page)} className={`w-8 h-8 text-[13px] font-bold rounded-lg transition-colors ${currentPage === page ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>{page}</button>
+                        );
+                      })}
+                      <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1.5 rounded-lg text-slate-500 disabled:opacity-30 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><ChevronRight size={15} /></button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </>
   );
 }

@@ -45,24 +45,22 @@ export default function DashboardClient({ merchant, user, children }: any) {
   return (
     <div className="min-h-screen w-full flex flex-col font-sans">
       
-      {/* 💥 Header — এখন ফুল-উইডথ (Full Width) এবং সবার উপরে Fixed থাকবে */}
+      {/* Header */}
       <Header merchant={merchant} setSidebarOpen={setIsSidebarOpen} />
 
-      {/* Main Content Area - হেডারের নিচ থেকে শুরু হবে (pt-[72px]) */}
+      {/* Main Content Area */}
       <div className="flex flex-1 pt-[72px]">
         
-        {/* Sidebar — হেডারের নিচ থেকে শুরু হবে */}
+        {/* Sidebar */}
         <Sidebar merchant={merchant} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
         {/* 
-          Main Container:
-          Desktop এ সাইডবারের স্পেস (ml-72) নিবে।
-          h-[calc(100vh-72px)] এবং overflow-hidden দিয়ে শুধু ভেতরের main ট্যাগকে স্ক্রল করানো হয়েছে।
+          💥 FIX: 'relative z-10' রিমুভ করা হয়েছে যাতে পেজের ভেতরের মোডালগুলো হেডারের উপরে আসতে পারে।
         */}
-        <div className={`flex flex-col h-[calc(100vh-72px)] w-full overflow-hidden transition-all duration-300 relative z-10 bg-slate-50 dark:bg-[#111827] ${!isMobileDevice ? 'ml-72' : ''}`}>
+        <div className={`flex flex-col h-[calc(100vh-72px)] w-full overflow-hidden transition-all duration-300 bg-slate-50 dark:bg-[#111827] ${!isMobileDevice ? 'ml-72' : ''}`}>
           
-          {/* Main — শুধু এই অংশটুকু scroll করবে */}
-          <main className="flex-1 w-full max-w-full overflow-x-hidden overflow-y-auto p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {/* 💥 FIX: 'animate-in' রিমুভ করা হয়েছে যাতে Stacking Context Trap না হয়। */}
+          <main className="flex-1 w-full max-w-full overflow-x-hidden overflow-y-auto p-4 md:p-8">
             {children}
           </main>
         </div>
