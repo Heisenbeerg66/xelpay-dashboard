@@ -171,9 +171,6 @@ function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
           <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest flex items-center gap-2">
             <User size={16} className="text-blue-600" /> Customer Info
           </h3>
-          <button onClick={onClose} className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 rounded-lg transition-colors shrink-0">
-            <X size={16} />
-          </button>
         </div>
         <div className="space-y-3 text-xs">
           {[
@@ -569,7 +566,7 @@ export default function DashboardHome() {
                 <div className="w-full overflow-x-auto">
                   <table className="w-full text-left whitespace-nowrap min-w-[1000px]">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-[#0B1120]/60 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                      <tr className="bg-slate-50 dark:bg-[#0B1120]/60 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
                         <th className="px-5 py-4">Order No</th>
                         <th className="px-5 py-4">Date</th>
                         <th className="px-5 py-4">Customer</th>
@@ -587,22 +584,21 @@ export default function DashboardHome() {
                         const methodColor = getMethodTextColor(trx.method);
                         return (
                           <tr key={trx.id} onClick={() => setDrawerOrder(trx)} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors cursor-pointer group">
-                            <td className="px-5 py-4 text-[13px] font-mono font-black text-indigo-600 dark:text-indigo-400">{trx.order_no || '—'}</td>
+                            <td className="px-5 py-4 text-[14px] font-mono font-bold text-indigo-600 dark:text-indigo-400">{trx.order_no || '—'}</td>
                             <td className="px-5 py-4">
-                              <p className="text-[13px] font-black text-slate-800 dark:text-slate-200">{formatDate(trx.created_at)}</p>
-                              <p className="text-[10px] font-bold text-slate-500 mt-1">{formatTime(trx.created_at)}</p>
+                              <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-200">{formatDate(trx.created_at)}</p>
+                              <p className="text-[11px] font-medium text-slate-500 mt-1">{formatTime(trx.created_at)}</p>
                             </td>
                             <td className="px-5 py-4">
-                              <button onClick={(e) => { e.stopPropagation(); setCustomerModal(trx); }} className="text-[13px] text-blue-600 dark:text-blue-400 font-black hover:underline transition-colors max-w-[140px] truncate">
+                              <button onClick={(e) => { e.stopPropagation(); setCustomerModal(trx); }} className="text-[13px] text-blue-600 dark:text-blue-400 font-semibold hover:underline transition-colors max-w-[140px] truncate">
                                 {trx.customer_name || trx.customer_number || '—'}
                               </button>
                             </td>
-                            <td className="px-5 py-4 text-[13px] font-black text-emerald-600 dark:text-emerald-400 max-w-[140px] truncate">{trx.product_name || '—'}</td>
-                            <td className="px-5 py-4 text-[13px] font-black text-slate-900 dark:text-white">৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                            <td className={`px-5 py-4 text-[12px] font-black uppercase tracking-wider ${methodColor}`}>{trx.method || '—'}</td>
+                            <td className="px-5 py-4 text-[13px] font-semibold text-emerald-600 dark:text-emerald-400 max-w-[140px] truncate">{trx.product_name || '—'}</td>
+                            <td className="px-5 py-4 text-[13px] font-bold text-slate-900 dark:text-white">৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className={`px-5 py-4 text-[12px] font-bold uppercase tracking-wider ${methodColor}`}>{trx.method || '—'}</td>
                             <td className="px-5 py-4">
-                              {/* 💥 FIX: TRX ID made bolder and larger (text-[15px]) 💥 */}
-                              {trx.trx_id ? <span className="text-[15px] font-mono font-black text-purple-600 dark:text-purple-400">{trx.trx_id}</span> : <span className="text-[13px] text-slate-400 italic font-bold">Awaiting</span>}
+                              {trx.trx_id ? <span className="text-[14px] font-mono font-bold text-purple-600 dark:text-purple-400">{trx.trx_id}</span> : <span className="text-[13px] text-slate-400 italic font-bold">Awaiting</span>}
                             </td>
                             <td className="px-5 py-4"><span className={`inline-flex items-center gap-1.5 text-[12px] uppercase tracking-wider ${badge.cls}`}>{badge.label}</span></td>
                             <td className="px-5 py-4 text-right"><button className="p-1.5 rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-all"><PanelRightClose size={16} /></button></td>

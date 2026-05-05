@@ -84,10 +84,10 @@ const formatTime = (d: string) =>
 
 const statusConfig = (status: string) => {
   const s = status?.toLowerCase();
-  if (['paid', 'success', 'completed'].includes(s)) return { label: 'Paid', cls: 'text-emerald-600 dark:text-emerald-400 font-black', bg: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' };
-  if (s === 'pending') return { label: 'Pending', cls: 'text-amber-500 dark:text-amber-400 font-black', bg: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' };
-  if (['failed', 'rejected', 'cancelled'].includes(s)) return { label: 'Failed', cls: 'text-red-500 dark:text-red-400 font-black', bg: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' };
-  return { label: status || '—', cls: 'text-slate-400 font-black', bg: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' };
+  if (['paid', 'success', 'completed'].includes(s)) return { label: 'Paid', cls: 'text-emerald-600 dark:text-emerald-400 font-bold', bg: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' };
+  if (s === 'pending') return { label: 'Pending', cls: 'text-amber-500 dark:text-amber-400 font-bold', bg: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' };
+  if (['failed', 'rejected', 'cancelled'].includes(s)) return { label: 'Failed', cls: 'text-red-500 dark:text-red-400 font-bold', bg: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' };
+  return { label: status || '—', cls: 'text-slate-400 font-bold', bg: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300' };
 };
 
 const getMethodTextColor = (method: string | null) => {
@@ -661,13 +661,13 @@ return () => { supabase.removeChannel(channel); };
             <div className="overflow-x-auto">
               <table className="w-full text-left whitespace-nowrap min-w-[1000px]">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-[#0B1120]/60 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                  <tr className="bg-slate-50 dark:bg-[#0B1120]/60 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
                     <th className="px-5 py-4 w-10">
                       <input type="checkbox" onChange={handleSelectAll} checked={paginatedData.length > 0 && paginatedData.every(o => selectedRows.includes(o.id))} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer" />
                     </th>
-                    <th className="px-5 py-4 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Order No</th>
+                    <th className="px-5 py-4 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Order No</th>
                     {TOGGLEABLE_COLUMNS.map(col => visibleCols.includes(col.id) && (
-                      <th key={col.id} className="px-5 py-4 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{col.label}</th>
+                      <th key={col.id} className="px-5 py-4 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{col.label}</th>
                     ))}
                     <th className="px-5 py-4 w-10"></th>
                   </tr>
@@ -683,29 +683,28 @@ return () => { supabase.removeChannel(channel); };
                         <td className="px-5 py-4" onClick={e => e.stopPropagation()}>
                           <input type="checkbox" checked={isSelected} onChange={() => toggleRow(trx.id)} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer" />
                         </td>
-                        <td className="px-5 py-4 text-[13px] font-mono font-black text-indigo-600 dark:text-indigo-400" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.order_no || '—'}</td>
+                        <td className="px-5 py-4 text-[14px] font-mono font-bold text-indigo-600 dark:text-indigo-400" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.order_no || '—'}</td>
                         
                         {visibleCols.includes('date') && (
                           <td className="px-5 py-4" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>
-                            <p className="text-[13px] font-black text-slate-800 dark:text-slate-200">{formatDate(trx.created_at)}</p>
-                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-1">{formatTime(trx.created_at)}</p>
+                            <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-200">{formatDate(trx.created_at)}</p>
+                            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">{formatTime(trx.created_at)}</p>
                           </td>
                         )}
-                        {visibleCols.includes('customer') && <td className="px-5 py-4 text-[13px] text-blue-600 dark:text-blue-400 font-black max-w-[150px] truncate" onClick={e => {e.stopPropagation(); setCustomerModal(trx);}}>{trx.customer_name || '—'}</td>}
-                        {visibleCols.includes('email') && <td className="px-5 py-4 text-[13px] text-slate-700 dark:text-slate-300 font-bold max-w-[160px] truncate" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.customer_email || '—'}</td>}
-                        {visibleCols.includes('phone') && <td className="px-5 py-4 text-[13px] font-bold text-slate-700 dark:text-slate-300" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.customer_number || '—'}</td>}
-                        {visibleCols.includes('product') && <td className="px-5 py-4 text-[13px] font-black text-emerald-600 dark:text-emerald-400 max-w-[140px] truncate" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.product_name || '—'}</td>}
-                        {visibleCols.includes('source') && <td className="px-5 py-4 text-[13px] font-bold text-slate-500 dark:text-slate-400 capitalize" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.source || 'link'}</td>}
+                        {visibleCols.includes('customer') && <td className="px-5 py-4 text-[13px] text-blue-600 dark:text-blue-400 font-semibold max-w-[150px] truncate" onClick={e => {e.stopPropagation(); setCustomerModal(trx);}}>{trx.customer_name || '—'}</td>}
+                        {visibleCols.includes('email') && <td className="px-5 py-4 text-[13px] text-slate-700 dark:text-slate-300 font-medium max-w-[160px] truncate" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.customer_email || '—'}</td>}
+                        {visibleCols.includes('phone') && <td className="px-5 py-4 text-[13px] font-medium text-slate-700 dark:text-slate-300" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.customer_number || '—'}</td>}
+                        {visibleCols.includes('product') && <td className="px-5 py-4 text-[13px] font-semibold text-emerald-600 dark:text-emerald-400 max-w-[140px] truncate" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.product_name || '—'}</td>}
+                        {visibleCols.includes('source') && <td className="px-5 py-4 text-[13px] font-medium text-slate-500 dark:text-slate-400 capitalize" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.source || 'link'}</td>}
                         {visibleCols.includes('amount') && (
-                          <td className="px-5 py-4 text-[13px] font-black text-slate-900 dark:text-white" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>
+                          <td className="px-5 py-4 text-[13px] font-bold text-slate-900 dark:text-white" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>
                             ৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                           </td>
                         )}
-                        {visibleCols.includes('method') && <td className={`px-5 py-4 text-[12px] font-black uppercase tracking-wider ${methodColor}`} onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.method || '—'}</td>}
+                        {visibleCols.includes('method') && <td className={`px-5 py-4 text-[12px] font-bold uppercase tracking-wider ${methodColor}`} onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.method || '—'}</td>}
                         {visibleCols.includes('trx_id') && (
                           <td className="px-5 py-4" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>
-                            {/* 💥 FIX: TRX ID made bolder and larger (text-[15px]) 💥 */}
-                            {trx.trx_id ? <span className="text-[15px] font-mono font-black text-purple-600 dark:text-purple-400">{trx.trx_id}</span> : <span className="text-[13px] text-slate-400 italic font-bold">Awaiting</span>}
+                            {trx.trx_id ? <span className="text-[14px] font-mono font-bold text-purple-600 dark:text-purple-400">{trx.trx_id}</span> : <span className="text-[13px] text-slate-400 italic font-bold">Awaiting</span>}
                           </td>
                         )}
                         {visibleCols.includes('status') && (
