@@ -92,7 +92,7 @@ function StatCard({ icon: Icon, label, value, textClass, borderClass, trend, tre
       
       <div className="mt-3 h-[22px] flex items-center">
         {trend !== undefined && (
-          <div className={`inline-flex items-center gap-1 text-[10px] font-black ${trendColor} bg-slate-50 dark:bg-slate-800/50 px-2 py-1.5 rounded-lg`}>
+          <div className={`inline-flex items-center gap-1 text-[10px] font-bold ${trendColor} bg-slate-50 dark:bg-slate-800/50 px-2 py-1.5 rounded-lg`}>
             <TrendIcon size={12} strokeWidth={3} />
             <span>{Math.abs(trend).toFixed(1)}{trendSuffix}</span>
           </div>
@@ -123,7 +123,7 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
     <div className="fixed inset-0 z-[300] bg-slate-900/50 backdrop-blur-sm flex justify-end" onClick={onClose}>
       <div className="w-full max-w-md bg-white dark:bg-[#0B1120] h-full shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col border-l border-slate-200 dark:border-slate-800" onClick={e => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 shrink-0">
-          <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Receipt size={18} className="text-blue-600"/> Order Details
           </h2>
           <button onClick={onClose} className="p-2 bg-slate-200 dark:bg-slate-800 rounded-xl hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors shrink-0">
@@ -132,31 +132,37 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
         </div>
         <div className="p-6 flex-1 overflow-y-auto space-y-6">
           <div className="flex items-center justify-between p-5 bg-slate-50 dark:bg-[#111827] rounded-2xl border border-slate-100 dark:border-slate-800">
-            <div><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Status</p><span className={`px-3 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider ${badge.bg}`}>{badge.label}</span></div>
-            <div className="text-right"><p className="text-[10px] font-black uppercase text-slate-400 mb-1">Amount</p><h3 className="text-xl font-black text-slate-900 dark:text-white">৳ {parseFloat(String(order.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h3></div>
+            <div>
+              <p className="text-[10px] font-bold uppercase text-slate-400 mb-1">Status</p>
+              <span className={`px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider ${badge.bg}`}>{badge.label}</span>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-bold uppercase text-slate-400 mb-1">Amount</p>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">৳ {parseFloat(String(order.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h3>
+            </div>
           </div>
           <div className="space-y-4">
-            <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2">Information</h4>
+            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2">Information</h4>
             {[
-              ['Order No', order.order_no, 'font-mono text-indigo-600 dark:text-indigo-400'],
-              ['Date & Time', `${formatDate(order.created_at)} - ${formatTime(order.created_at)}`],
-              ['Customer', order.customer_name || '—'],
-              ['Phone', order.customer_number || '—'],
-              ['Email', order.customer_email || '—'],
-              ['Product', order.product_name || '—', 'text-emerald-600 dark:text-emerald-400'],
-              ['Payment Method', order.method || '—', `uppercase ${getMethodTextColor(order.method)}`],
-              ['TRX ID', order.trx_id || '—', 'font-mono text-purple-600 dark:text-purple-400'],
-              ['Source', order.source || 'link', 'capitalize'],
+              ['Order No', order.order_no, 'font-mono text-[14px] font-semibold text-indigo-600 dark:text-indigo-400'],
+              ['Date & Time', `${formatDate(order.created_at)} - ${formatTime(order.created_at)}`, 'font-medium'],
+              ['Customer', order.customer_name || '—', 'font-semibold'],
+              ['Phone', order.customer_number || '—', 'font-medium'],
+              ['Email', order.customer_email || '—', 'font-medium'],
+              ['Product', order.product_name || '—', 'text-emerald-600 dark:text-emerald-400 font-semibold'],
+              ['Payment Method', order.method || '—', `uppercase font-bold ${getMethodTextColor(order.method)}`],
+              ['TRX ID', order.trx_id || '—', 'font-mono text-[14px] font-bold text-purple-600 dark:text-purple-400'],
+              ['Source', order.source || 'link', 'capitalize font-medium'],
             ].map(([label, value, cls]) => (
               <div key={label} className="flex justify-between items-start gap-4">
-                <span className="text-[12px] font-bold text-slate-500">{label}</span>
-                <span className={`text-[13px] font-black text-right max-w-[60%] ${cls || 'text-slate-900 dark:text-white'}`}>{value}</span>
+                <span className="text-[12px] font-medium text-slate-500">{label}</span>
+                <span className={`text-[13px] text-right max-w-[60%] ${cls || 'text-slate-800 dark:text-slate-200 font-semibold'}`}>{value}</span>
               </div>
             ))}
           </div>
         </div>
         <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 shrink-0">
-          <button onClick={() => onResend(order.id)} className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-black text-[13px] transition-all shadow-md"><Webhook size={16} /> Resend Webhook</button>
+          <button onClick={() => onResend(order.id)} className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold text-[13px] transition-all shadow-md"><Webhook size={16} /> Resend Webhook</button>
         </div>
       </div>
     </div>
@@ -168,7 +174,7 @@ function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 w-full max-w-xs animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4 shrink-0">
-          <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest flex items-center gap-2">
+          <h3 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-widest flex items-center gap-2">
             <User size={16} className="text-blue-600" /> Customer Info
           </h3>
         </div>
@@ -179,8 +185,8 @@ function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
             ['Email', trx.customer_email || '—'],
           ].map(([k, v]) => (
             <div key={k} className="flex justify-between gap-4 py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
-              <span className="text-slate-400 font-medium">{k}</span>
-              <span className="font-bold text-slate-900 dark:text-white text-right truncate max-w-[160px]">{v}</span>
+              <span className="text-slate-500 font-medium">{k}</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[160px]">{v}</span>
             </div>
           ))}
         </div>
@@ -415,7 +421,7 @@ export default function DashboardHome() {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center animate-in zoom-in-95">
         <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-full flex items-center justify-center mb-4"><Building2 size={32} /></div>
-        <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase">No Workspace Selected</h2>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white uppercase">No Workspace Selected</h2>
         <p className="text-slate-500 mt-2 font-bold text-sm">Select a business from the sidebar to view its performance.</p>
       </div>
     );
@@ -438,7 +444,7 @@ export default function DashboardHome() {
           <div className="flex bg-white dark:bg-[#111827] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm w-full xl:w-auto overflow-x-auto scrollbar-hide">
             {[ { id: 'today', label: 'Today' }, { id: '7d', label: '7 Days' }, { id: '30d', label: '30 Days' }, { id: 'all', label: 'All Time' } ].map(f => (
               <button key={f.id} onClick={() => setDateFilter(f.id as any)}
-                className={`flex-1 xl:flex-none whitespace-nowrap px-5 py-2.5 text-[13px] font-black rounded-lg transition-all ${dateFilter === f.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+                className={`flex-1 xl:flex-none whitespace-nowrap px-5 py-2.5 text-[13px] font-bold rounded-lg transition-all ${dateFilter === f.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
                 {f.label}
               </button>
             ))}
@@ -465,7 +471,7 @@ export default function DashboardHome() {
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
               {/* Revenue Area Chart (3 Columns) */}
               <div className="lg:col-span-3 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col">
-                <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6">Revenue Growth — {getFilterLabel()}</h2>
+                <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-widest mb-6">Revenue Growth — {getFilterLabel()}</h2>
                 {chartData.barData.every(d => d.revenue === 0) ? (
                   <div className="flex-1 flex items-center justify-center text-sm font-bold text-slate-400 min-h-[250px]">No revenue data found for this period.</div>
                 ) : (
@@ -491,7 +497,7 @@ export default function DashboardHome() {
 
               {/* Premium Donut Chart with Indicators (2 Columns) */}
               <div className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col">
-                <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-2">Order Status</h2>
+                <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-widest mb-2">Order Status</h2>
                 {displayOrders.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center text-sm font-bold text-slate-400 min-h-[250px]">No orders yet.</div>
                 ) : (
@@ -524,12 +530,12 @@ export default function DashboardHome() {
                           <div className="flex items-center gap-3">
                             <div className="w-3.5 h-3.5 rounded-full shadow-sm" style={{ backgroundColor: getPieColor(entry.name) }}></div>
                             <div>
-                              <p className="text-[13px] font-black text-slate-800 dark:text-slate-200 leading-tight">{entry.name}</p>
-                              <p className="text-[11px] font-bold text-slate-400 mt-0.5">{entry.count} Orders ({entry.percent.toFixed(1)}%)</p>
+                              <p className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{entry.name}</p>
+                              <p className="text-[11px] font-medium text-slate-500 mt-0.5">{entry.count} Orders ({entry.percent.toFixed(1)}%)</p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-[13px] font-black text-slate-900 dark:text-white">৳ {entry.amount.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
+                            <p className="text-[13px] font-bold text-slate-900 dark:text-white">৳ {entry.amount.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</p>
                           </div>
                         </div>
                       ))}
@@ -542,7 +548,7 @@ export default function DashboardHome() {
             {/* ── Recent Transactions Table ── */}
             <div className="bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
                   <FileText size={16} className="text-blue-600" /> Recent Transactions
                 </h2>
                 <div className="flex items-center gap-3">
@@ -552,7 +558,7 @@ export default function DashboardHome() {
                       className="pl-9 pr-3 py-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-[13px] font-bold text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-colors w-full sm:w-56"
                     />
                   </div>
-                  <Link href="/dashboard/transactions" className="text-[12px] font-black text-blue-600 flex items-center gap-1 hover:gap-2 transition-all whitespace-nowrap">
+                  <Link href="/dashboard/transactions" className="text-[12px] font-bold text-blue-600 flex items-center gap-1 hover:gap-2 transition-all whitespace-nowrap">
                     View All <ArrowRight size={13} />
                   </Link>
                 </div>
@@ -584,7 +590,7 @@ export default function DashboardHome() {
                         const methodColor = getMethodTextColor(trx.method);
                         return (
                           <tr key={trx.id} onClick={() => setDrawerOrder(trx)} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors cursor-pointer group">
-                            <td className="px-5 py-4 text-[14px] font-mono font-bold text-indigo-600 dark:text-indigo-400">{trx.order_no || '—'}</td>
+                            <td className="px-5 py-4 text-[14px] font-mono font-semibold text-indigo-600 dark:text-indigo-400">{trx.order_no || '—'}</td>
                             <td className="px-5 py-4">
                               <p className="text-[13px] font-semibold text-slate-800 dark:text-slate-200">{formatDate(trx.created_at)}</p>
                               <p className="text-[11px] font-medium text-slate-500 mt-1">{formatTime(trx.created_at)}</p>
@@ -598,7 +604,7 @@ export default function DashboardHome() {
                             <td className="px-5 py-4 text-[13px] font-bold text-slate-900 dark:text-white">৳ {parseFloat(String(trx.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                             <td className={`px-5 py-4 text-[12px] font-bold uppercase tracking-wider ${methodColor}`}>{trx.method || '—'}</td>
                             <td className="px-5 py-4">
-                              {trx.trx_id ? <span className="text-[14px] font-mono font-bold text-purple-600 dark:text-purple-400">{trx.trx_id}</span> : <span className="text-[13px] text-slate-400 italic font-bold">Awaiting</span>}
+                              {trx.trx_id ? <span className="text-[14px] font-mono font-bold text-purple-600 dark:text-purple-400">{trx.trx_id}</span> : <span className="text-[13px] text-slate-400 italic font-medium">Awaiting</span>}
                             </td>
                             <td className="px-5 py-4"><span className={`inline-flex items-center gap-1.5 text-[12px] uppercase tracking-wider ${badge.cls}`}>{badge.label}</span></td>
                             <td className="px-5 py-4 text-right"><button className="p-1.5 rounded-lg text-slate-400 opacity-0 group-hover:opacity-100 transition-all"><PanelRightClose size={16} /></button></td>
@@ -613,8 +619,8 @@ export default function DashboardHome() {
               {/* Pagination */}
               {!loading && filteredOrders.length > 0 && (
                 <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <p className="text-[12px] font-bold text-slate-500">
-                    Showing <span className="font-black text-slate-800 dark:text-slate-200">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)}</span> of <span className="font-black text-slate-800 dark:text-slate-200">{filteredOrders.length}</span>
+                  <p className="text-[12px] font-medium text-slate-500">
+                    Showing <span className="font-bold text-slate-800 dark:text-slate-200">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)}</span> of <span className="font-bold text-slate-800 dark:text-slate-200">{filteredOrders.length}</span>
                   </p>
                   {totalPages > 1 && (
                     <div className="flex items-center gap-1.5">

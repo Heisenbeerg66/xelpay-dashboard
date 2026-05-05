@@ -126,9 +126,10 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
   return (
     <div className="fixed inset-0 z-[300] bg-slate-900/50 backdrop-blur-sm flex justify-end" onClick={onClose}>
       <div className="w-full max-w-md bg-white dark:bg-[#0B1120] h-full shadow-2xl animate-in slide-in-from-right duration-300 flex flex-col border-l border-slate-200 dark:border-slate-800" onClick={e => e.stopPropagation()}>
+        
         {/* Header with Explicit Close Button */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 shrink-0">
-          <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Receipt size={18} className="text-blue-600"/> Order Details
           </h2>
           <button onClick={onClose} className="p-2 bg-slate-200 dark:bg-slate-800 rounded-xl hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors shrink-0">
@@ -141,34 +142,34 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
           {/* Status & Amount */}
           <div className="flex items-center justify-between p-5 bg-slate-50 dark:bg-[#111827] rounded-2xl border border-slate-100 dark:border-slate-800">
             <div>
-              <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Status</p>
-              <span className={`px-3 py-1 rounded-lg text-[11px] font-black uppercase tracking-wider ${badge.bg}`}>
+              <p className="text-[10px] font-bold uppercase text-slate-400 mb-1">Status</p>
+              <span className={`px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider ${badge.bg}`}>
                 {badge.label}
               </span>
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Amount</p>
-              <h3 className="text-xl font-black text-slate-900 dark:text-white">৳ {parseFloat(String(order.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h3>
+              <p className="text-[10px] font-bold uppercase text-slate-400 mb-1">Amount</p>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">৳ {parseFloat(String(order.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</h3>
             </div>
           </div>
 
           {/* Details Grid */}
           <div className="space-y-4">
-            <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2">Information</h4>
+            <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2">Information</h4>
             {[
-              ['Order No', order.order_no, 'font-mono text-indigo-600 dark:text-indigo-400'],
-              ['Date & Time', `${formatDate(order.created_at)} - ${formatTime(order.created_at)}`],
-              ['Customer', order.customer_name || '—'],
-              ['Phone', order.customer_number || '—'],
-              ['Email', order.customer_email || '—'],
-              ['Product', order.product_name || '—', 'text-emerald-600 dark:text-emerald-400'],
-              ['Payment Method', order.method || '—', `uppercase ${getMethodTextColor(order.method)}`],
-              ['TRX ID', order.trx_id || '—', 'font-mono font-black text-[15px] text-purple-600 dark:text-purple-400'],
-              ['Source', order.source || 'link', 'capitalize'],
+              ['Order No', order.order_no, 'font-mono text-[14px] font-semibold text-indigo-600 dark:text-indigo-400'],
+              ['Date & Time', `${formatDate(order.created_at)} - ${formatTime(order.created_at)}`, 'font-medium'],
+              ['Customer', order.customer_name || '—', 'font-semibold'],
+              ['Phone', order.customer_number || '—', 'font-medium'],
+              ['Email', order.customer_email || '—', 'font-medium'],
+              ['Product', order.product_name || '—', 'text-emerald-600 dark:text-emerald-400 font-semibold'],
+              ['Payment Method', order.method || '—', `uppercase font-bold ${getMethodTextColor(order.method)}`],
+              ['TRX ID', order.trx_id || '—', 'font-mono text-[14px] font-bold text-purple-600 dark:text-purple-400'],
+              ['Source', order.source || 'link', 'capitalize font-medium'],
             ].map(([label, value, cls]) => (
               <div key={label} className="flex justify-between items-start gap-4">
-                <span className="text-[12px] font-bold text-slate-500">{label}</span>
-                <span className={`text-[13px] font-black text-right max-w-[60%] ${cls || 'text-slate-900 dark:text-white'}`}>{value}</span>
+                <span className="text-[12px] font-medium text-slate-500">{label}</span>
+                <span className={`text-[13px] text-right max-w-[60%] ${cls || 'text-slate-800 dark:text-slate-200 font-semibold'}`}>{value}</span>
               </div>
             ))}
           </div>
@@ -176,7 +177,7 @@ function TransactionDrawer({ order, onClose, onResend }: { order: Order, onClose
 
         {/* Footer (Resend Webhook) */}
         <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 shrink-0">
-          <button onClick={() => onResend(order.id)} className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-black text-[13px] transition-all shadow-md">
+          <button onClick={() => onResend(order.id)} className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold text-[13px] transition-all shadow-md">
             <Webhook size={16} /> Resend Webhook
           </button>
         </div>
@@ -223,20 +224,20 @@ function SmsDetailsModal({ trxId, onClose }: { trxId: string; onClose: () => voi
             <div className="space-y-3">
               {[
                 { label: 'Sender', value: smsData.sender },
-                { label: 'Method', value: smsData.method, color: getMethodTextColor(smsData.method) + ' uppercase font-black' },
-                { label: 'Trx ID', value: smsData.trx_id, color: 'text-purple-600 dark:text-purple-400 font-mono font-black text-[15px]' },
-                { label: 'Amount', value: `৳ ${parseFloat(String(smsData.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: 'text-emerald-600 dark:text-emerald-400 font-black' },
-                { label: 'Status', value: smsData.is_used ? 'Used / Paid' : 'Unused / Pending', color: smsData.is_used ? 'text-emerald-600 dark:text-emerald-400 font-black' : 'text-amber-600 dark:text-amber-400 font-black' },
+                { label: 'Method', value: smsData.method, color: getMethodTextColor(smsData.method) + ' uppercase font-bold' },
+                { label: 'Trx ID', value: smsData.trx_id, color: 'text-purple-600 dark:text-purple-400 font-mono font-bold text-[14px]' },
+                { label: 'Amount', value: `৳ ${parseFloat(String(smsData.amount)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, color: 'text-emerald-600 dark:text-emerald-400 font-bold' },
+                { label: 'Status', value: smsData.is_used ? 'Used / Paid' : 'Unused / Pending', color: smsData.is_used ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-amber-600 dark:text-amber-400 font-bold' },
                 { label: 'Received At', value: `${formatDate(smsData.received_at)} - ${formatTime(smsData.received_at)}` },
               ].map(r => (
                 <div key={r.label} className="flex items-start justify-between py-2 border-b border-slate-50 dark:border-slate-800/60 last:border-0">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{r.label}</span>
-                  <span className={`text-[13px] font-bold text-right max-w-[60%] ${r.color || 'text-slate-800 dark:text-slate-200'}`}>{r.value}</span>
+                  <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">{r.label}</span>
+                  <span className={`text-[13px] font-semibold text-right max-w-[60%] ${r.color || 'text-slate-800 dark:text-slate-200'}`}>{r.value}</span>
                 </div>
               ))}
               <div className="mt-4 p-4 bg-slate-50 dark:bg-[#111827] rounded-xl border border-slate-100 dark:border-slate-800">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Raw SMS</p>
-                <p className="text-[13px] text-slate-800 dark:text-slate-200 font-mono leading-relaxed font-bold">{smsData.message}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Raw SMS</p>
+                <p className="text-[13px] text-slate-800 dark:text-slate-200 font-mono leading-relaxed font-semibold">{smsData.message}</p>
               </div>
             </div>
           ) : null}
@@ -251,7 +252,7 @@ function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 w-full max-w-xs animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
         {/* Removed X button header, keeping only the title */}
-        <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+        <h3 className="font-bold text-slate-900 dark:text-white text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
           <User size={16} className="text-blue-600" /> Customer Info
         </h3>
         
@@ -262,8 +263,8 @@ function CustomerModal({ trx, onClose }: { trx: Order; onClose: () => void }) {
             ['Email', trx.customer_email || '—'],
           ].map(([k, v]) => (
             <div key={k} className="flex justify-between gap-4 py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
-              <span className="text-slate-400 font-medium">{k}</span>
-              <span className="font-bold text-slate-900 dark:text-white text-right truncate max-w-[160px]">{v}</span>
+              <span className="text-slate-500 font-medium">{k}</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[160px]">{v}</span>
             </div>
           ))}
         </div>
@@ -289,7 +290,7 @@ function FilterPanel({ filters, setFilters, onApply, onClose }: {
       <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[90] md:hidden" onClick={onClose} />
       <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 md:absolute md:top-full md:right-0 md:left-auto md:translate-x-0 md:translate-y-0 mt-0 md:mt-2 z-[100] w-[90vw] max-w-sm md:w-72 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-5 md:p-4 space-y-5 md:space-y-4 animate-in zoom-in-95 duration-200">
         <div className="flex justify-between items-center md:hidden mb-2">
-          <h3 className="font-black text-slate-900 dark:text-white">Filters</h3>
+          <h3 className="font-bold text-slate-900 dark:text-white">Filters</h3>
           <button onClick={onClose} className="p-1 text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-lg"><X size={16}/></button>
         </div>
         <div>
@@ -546,7 +547,7 @@ return () => { supabase.removeChannel(channel); };
               <div className="bg-blue-600/10 dark:bg-blue-500/20 p-2 rounded-xl">
                 <Receipt size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
               </div>
-              <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-[0.1em]">
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white uppercase tracking-[0.1em]">
                 Transactions
               </h1>
             </div>
@@ -579,7 +580,7 @@ return () => { supabase.removeChannel(channel); };
                 <button onClick={() => setShowFilter(v => !v)}
                   className={`flex w-full items-center justify-center gap-2 h-[42px] px-4 rounded-xl text-[13px] font-bold border transition-all ${showFilter || activeFilterCount > 0 ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white dark:bg-[#111827] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 shadow-sm hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400'}`}>
                   <Filter size={15} /> Filters
-                  {activeFilterCount > 0 && <span className="w-5 h-5 rounded-full bg-white/20 text-white text-[10px] font-black flex items-center justify-center">{activeFilterCount}</span>}
+                  {activeFilterCount > 0 && <span className="w-5 h-5 rounded-full bg-white/20 text-white text-[10px] font-bold flex items-center justify-center">{activeFilterCount}</span>}
                 </button>
                 {showFilter && <FilterPanel filters={filters} setFilters={setFilters} onApply={() => setAppliedFilters(filters)} onClose={() => setShowFilter(false)} />}
               </div>
@@ -595,7 +596,7 @@ return () => { supabase.removeChannel(channel); };
                     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[90] md:hidden" onClick={() => setShowCols(false)} />
                     <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 md:absolute md:top-full md:right-0 md:left-auto md:translate-x-0 md:translate-y-0 mt-0 md:mt-2 z-[100] w-[80vw] max-w-[280px] md:w-48 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-4 md:p-2 animate-in zoom-in-95 duration-150">
                       <div className="flex justify-between items-center md:hidden mb-3">
-                        <h3 className="font-black text-slate-900 dark:text-white">Columns</h3>
+                        <h3 className="font-bold text-slate-900 dark:text-white">Columns</h3>
                         <button onClick={() => setShowCols(false)} className="p-1 text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-lg"><X size={14}/></button>
                       </div>
                       <div className="max-h-[60vh] overflow-y-auto pr-1">
@@ -625,20 +626,20 @@ return () => { supabase.removeChannel(channel); };
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {activeFilterCount > 0 && appliedFilters.status.map(s => (
-              <span key={s} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-[11px] font-black uppercase tracking-wider border border-blue-200 dark:border-blue-800/50">
+              <span key={s} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-[11px] font-bold uppercase tracking-wider border border-blue-200 dark:border-blue-800/50">
                 {s}
                 <button onClick={() => setAppliedFilters(f => ({ ...f, status: f.status.filter(x => x !== s) }))} className="hover:text-blue-900 dark:hover:text-blue-100"><X size={12} /></button>
               </span>
             ))}
             {activeFilterCount > 0 && (
-              <button onClick={() => setAppliedFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' })} className="px-3 py-1.5 text-red-500 text-[11px] font-black uppercase hover:text-red-700 transition-colors">Clear All</button>
+              <button onClick={() => setAppliedFilters({ status: [], method_category: [], date_from: '', date_to: '', trx_id: '' })} className="px-3 py-1.5 text-red-500 text-[11px] font-bold uppercase hover:text-red-700 transition-colors">Clear All</button>
             )}
           </div>
           
           {!loading && filteredData.length > 0 && (
             <div className="flex items-center gap-3 bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2.5 rounded-xl border border-indigo-100 dark:border-indigo-800/50 ml-auto">
               <Activity size={16} className="text-indigo-600 dark:text-indigo-400" />
-              <p className="text-[13px] font-black text-indigo-900 dark:text-indigo-300">
+              <p className="text-[13px] font-bold text-indigo-900 dark:text-indigo-300">
                 Found: <span className="text-indigo-600 dark:text-indigo-400">{filteredData.length}</span>
                 <span className="opacity-30 mx-3">|</span>
                 Volume: <span className="text-indigo-600 dark:text-indigo-400">৳ {filteredVolume.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
@@ -652,7 +653,7 @@ return () => { supabase.removeChannel(channel); };
           {loading ? <TableSkeleton /> : filteredData.length === 0 ? (
             <div className="py-24 text-center">
               <div className="w-16 h-16 bg-slate-50 dark:bg-[#0B1120] text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4"><Receipt size={24} /></div>
-              <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-widest mb-2">No Transactions Found</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white uppercase tracking-widest mb-2">No Transactions Found</h3>
               <p className="text-slate-500 dark:text-slate-400 text-[13px] font-bold max-w-sm mx-auto">
                 {searchTerm || activeFilterCount > 0 ? 'No results match your criteria.' : 'No payments received yet.'}
               </p>
@@ -683,7 +684,7 @@ return () => { supabase.removeChannel(channel); };
                         <td className="px-5 py-4" onClick={e => e.stopPropagation()}>
                           <input type="checkbox" checked={isSelected} onChange={() => toggleRow(trx.id)} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer" />
                         </td>
-                        <td className="px-5 py-4 text-[14px] font-mono font-bold text-indigo-600 dark:text-indigo-400" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.order_no || '—'}</td>
+                        <td className="px-5 py-4 text-[14px] font-mono font-semibold text-indigo-600 dark:text-indigo-400" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.order_no || '—'}</td>
                         
                         {visibleCols.includes('date') && (
                           <td className="px-5 py-4" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>
@@ -704,7 +705,7 @@ return () => { supabase.removeChannel(channel); };
                         {visibleCols.includes('method') && <td className={`px-5 py-4 text-[12px] font-bold uppercase tracking-wider ${methodColor}`} onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>{trx.method || '—'}</td>}
                         {visibleCols.includes('trx_id') && (
                           <td className="px-5 py-4" onClick={e => {e.stopPropagation(); setDrawerOrder(trx);}}>
-                            {trx.trx_id ? <span className="text-[14px] font-mono font-bold text-purple-600 dark:text-purple-400">{trx.trx_id}</span> : <span className="text-[13px] text-slate-400 italic font-bold">Awaiting</span>}
+                            {trx.trx_id ? <span className="text-[14px] font-mono font-bold text-purple-600 dark:text-purple-400">{trx.trx_id}</span> : <span className="text-[13px] text-slate-400 italic font-medium">Awaiting</span>}
                           </td>
                         )}
                         {visibleCols.includes('status') && (
@@ -731,7 +732,7 @@ return () => { supabase.removeChannel(channel); };
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
               <div className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-3 rounded-2xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] flex items-center gap-4 border border-slate-700 dark:border-slate-200">
                 <div className="flex items-center gap-2 pr-3 border-r border-slate-700 dark:border-slate-300">
-                  <div className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-black">{selectedRows.length}</div>
+                  <div className="bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{selectedRows.length}</div>
                   <span className="text-[13px] font-bold">Selected</span>
                 </div>
                 <button onClick={bulkExport} className="text-[13px] font-bold flex items-center gap-1.5 hover:text-blue-400 dark:hover:text-blue-600 transition-colors"><Download size={14}/> Export</button>
@@ -744,8 +745,8 @@ return () => { supabase.removeChannel(channel); };
           {/* Pagination */}
           {!loading && filteredData.length > 0 && (
             <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <p className="text-[12px] font-bold text-slate-500">
-                Showing <span className="text-slate-800 dark:text-slate-200 font-black">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)}</span> of <span className="text-slate-800 dark:text-slate-200 font-black">{filteredData.length}</span> records
+              <p className="text-[12px] font-medium text-slate-500">
+                Showing <span className="font-bold text-slate-800 dark:text-slate-200">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredData.length)}</span> of <span className="font-bold text-slate-800 dark:text-slate-200">{filteredData.length}</span> records
               </p>
               {totalPages > 1 && (
                 <div className="flex items-center gap-1.5">
