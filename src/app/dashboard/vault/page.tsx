@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-// Retained existing icons
 import { Wallet, Send, Smartphone, ArrowRight, Lock, ShieldCheck } from 'lucide-react';
 
 export default function GlobalVaultPage() {
@@ -13,8 +12,7 @@ export default function GlobalVaultPage() {
             mobileDesc: 'Master payment credentials.',
             icon: Wallet,
             path: '/dashboard/vault/gateways',
-            // FIXED: Solid colorful color (not neon), no BG classes needed here, handled in map
-            color: 'text-[#EC4899]', // Solid Pink/Magenta
+            color: 'text-[#EC4899]', // Original Solid Pink
             status: 'Master Access'
         },
         {
@@ -24,7 +22,7 @@ export default function GlobalVaultPage() {
             mobileDesc: 'SMS automation node.',
             icon: Smartphone,
             path: '/dashboard/vault/devices',
-            color: 'text-[#10B981]', // Solid Emerald Green
+            color: 'text-[#10B981]', // Original Solid Emerald
             status: 'Device Cloud'
         },
         {
@@ -34,14 +32,14 @@ export default function GlobalVaultPage() {
             mobileDesc: 'Global alert bot system.',
             icon: Send,
             path: '/dashboard/vault/telegram',
-            color: 'text-[#3B82F6]', // Solid Blue
+            color: 'text-[#3B82F6]', // Original Solid Blue
             status: 'Bot Matrix'
         }
     ];
 
     return (
         <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Premium Header Card - Retained existing design, minor padding tweak for mobile */}
+            {/* Premium Header Card */}
             <div className="relative p-6 md:p-10 rounded-2xl bg-slate-900 dark:bg-[#111827] border border-slate-800 shadow-xl overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 blur-[80px] rounded-full -mr-20 -mt-20 pointer-events-none" />
                 <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-500/5 blur-[60px] rounded-full -ml-10 -mb-10 pointer-events-none" />
@@ -57,13 +55,12 @@ export default function GlobalVaultPage() {
                         </h1>
                     </div>
                     <p className="text-sm md:text-base text-slate-400 font-medium leading-relaxed max-w-2xl">
-                        <span className="hidden md:inline">Your <strong className="text-slate-200">Merchant-Level Repository</strong>. Store master credentials securely and deploy them across multiple business instances with AES-256 encryption.</span>
-                        <span className="md:hidden">Secure Merchant Level Repository for global credentials.</span>
+                        Your <strong className="text-slate-200">Merchant-Level Repository</strong>. Store master credentials securely and deploy them across multiple business instances with AES-256 encryption.
                     </p>
                 </div>
             </div>
 
-            {/* Module Grid - Improved placement and padding for premium mobile view */}
+            {/* Module Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
                 {vaultModules.map((module) => (
                     <Link href={module.path} key={module.id} className="group relative bg-white dark:bg-[#111827] p-6 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-blue-200 dark:hover:border-slate-700 hover:shadow-2xl transition-all duration-300 flex flex-col h-full active:scale-[0.98]">
@@ -92,7 +89,7 @@ export default function GlobalVaultPage() {
                     </Link>
                 ))}
 
-                {/* Infrastructure Card - Spans full width on mobile, retained design */}
+                {/* Infrastructure Card */}
                 <div className="sm:col-span-2 lg:col-span-3 p-5 md:p-6 bg-slate-50 dark:bg-emerald-950/10 rounded-2xl border border-slate-200 dark:border-emerald-900/20 flex flex-col sm:flex-row items-start sm:items-center gap-4">
                     <div className="p-3 bg-white dark:bg-[#111827] rounded-xl shadow-sm shrink-0 border border-slate-100 dark:border-slate-800 text-emerald-600 dark:text-emerald-400">
                         <ShieldCheck size={24} strokeWidth={2.5} />
