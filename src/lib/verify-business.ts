@@ -11,16 +11,14 @@ const BLACKLISTED_KEYWORDS = [
   'sportsbet', 'bet365', 'betway', 'stake.com', 'rollbit', 'roobet',
   'lottery', 'jackpot', 'poker', 'slots', 'roulette', 'blackjack',
   // Adult
-  'porn', 'xxx', 'escort', 'adult', 'sex.com', 'onlyfans', 'nude',
+  'porn', 'xxx', 'escort', 'adult content', 'sex.com', 'onlyfans', 'nude',
   'nsfw', 'erotic', 'hentai', 'camgirl',
   // Drugs / Illegal
-  'buy weed', 'buy drugs', 'dark web', 'darknet', 'silk road',
-  'cocaine', 'heroin', 'methamphetamine',
-  // Scam signals
+  'buy weed', 'buy drugs', 'dark web', 'darknet', 'cocaine', 'heroin',
+  // Scam
   'mlm scheme', 'pyramid scheme', 'get rich quick',
 ];
 
-// Additional meta tag / title checks
 const BLACKLISTED_META_PATTERNS = [
   /casino/i, /betting/i, /gambling/i, /poker/i, /xxx/i, /porn/i,
   /escort/i, /adult.?entertainment/i,
@@ -41,14 +39,12 @@ export async function autoVerifyBusiness(businessId: string, url: string) {
     const htmlContent = await response.text();
     const lowerCaseHtml = htmlContent.toLowerCase();
 
-    // Keyword check in body
     const foundKeyword = BLACKLISTED_KEYWORDS.find(keyword => lowerCaseHtml.includes(keyword));
     if (foundKeyword) {
       await supabase.from('businesses').update({ status: 'rejected' }).eq('id', businessId);
-      return { status: 'rejected', reason: `Auto-rejected due to policy violation: Found restricted keyword.` };
+      return { status: 'rejected', reason: 'Auto-rejected due to policy violation: Found restricted keyword.' };
     }
 
-    // Meta tag / title pattern check
     const titleMatch = htmlContent.match(/<title[^>]*>(.*?)<\/title>/i);
     const titleText = titleMatch ? titleMatch[1].toLowerCase() : '';
     const descMatch = htmlContent.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["']/i);
@@ -57,12 +53,12 @@ export async function autoVerifyBusiness(businessId: string, url: string) {
     for (const pattern of BLACKLISTED_META_PATTERNS) {
       if (pattern.test(titleText) || pattern.test(descText)) {
         await supabase.from('businesses').update({ status: 'rejected' }).eq('id', businessId);
-        return { status: 'rejected', reason: `Auto-rejected: Policy violation detected in page metadata.` };
+        return { status: 'rejected', reason: 'Auto-rejected: Policy violation in page metadata.' };
       }
     }
 
     return { status: 'pending', reason: 'Passed auto-check, waiting for admin approval.' };
-  } catch (error) {
+  } catch {
     return { status: 'pending', reason: 'Auto-check error (Timeout or Network issue).' };
   }
 }
@@ -78,11 +74,9 @@ export async function checkDuplicateWebsite(url: string): Promise<{
   if (!url) return { isDuplicate: false };
 
   try {
-    // Normalize URL to domain
     const normalized = normalizeDomain(url);
     if (!normalized) return { isDuplicate: false };
 
-    // Fetch all website_urls that aren't Facebook/F-commerce
     const { data, error } = await supabase
       .from('businesses')
       .select('id, business_name, website_url')
@@ -93,7 +87,6 @@ export async function checkDuplicateWebsite(url: string): Promise<{
 
     for (const biz of data) {
       if (!biz.website_url) continue;
-      // Skip Facebook/F-commerce links
       if (isFacebookLink(biz.website_url)) continue;
       const existingNorm = normalizeDomain(biz.website_url);
       if (existingNorm && existingNorm === normalized) {
@@ -116,7 +109,6 @@ function normalizeDomain(url: string): string | null {
     let u = url.trim().toLowerCase();
     if (!u.startsWith('http')) u = 'https://' + u;
     const parsed = new URL(u);
-    // Remove www. prefix
     return parsed.hostname.replace(/^www\./, '');
   } catch {
     return null;
@@ -124,12 +116,8 @@ function normalizeDomain(url: string): string | null {
 }
 
 function isFacebookLink(url: string): boolean {
-  try {
-    const u = url.toLowerCase();
-    return u.includes('facebook.com') || u.includes('fb.com') || u.includes('m.facebook.com');
-  } catch {
-    return false;
-  }
+  const u = url.toLowerCase();
+  return u.includes('facebook.com') || u.includes('fb.com') || u.includes('m.facebook.com');
 }
 
 // ==========================================
@@ -146,18 +134,14 @@ export async function testWebhookUrl(webhookUrl: string, secretKey: string) {
 
     const response = await fetch(webhookUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Signature': secretKey,
-      },
+      headers: { 'Content-Type': 'application/json', 'X-Signature': secretKey },
       body: JSON.stringify(testPayload),
     });
 
     if (response.ok) {
       return { success: true, message: `Webhook received successfully! (Status: ${response.status})` };
-    } else {
-      return { success: false, message: `Webhook rejected by server. Status: ${response.status}` };
     }
+    return { success: false, message: `Webhook rejected. Status: ${response.status}` };
   } catch (error: any) {
     return { success: false, message: `Failed to connect. Is the URL correct and publicly accessible?` };
   }
@@ -182,29 +166,21 @@ export async function verifyDomain(businessId: string, url: string, verifyCode: 
         .from('businesses')
         .update({ is_domain_verified: true, website_verified_at: new Date().toISOString() })
         .eq('id', businessId);
-
       if (error) throw new Error(error.message);
       return { success: true, message: 'Domain verified successfully!' };
-    } else {
-      return {
-        success: false,
-        message: 'Meta tag not found. Please add the tag to your <head>, clear your website cache, and try again.',
-      };
     }
+
+    return {
+      success: false,
+      message: 'Meta tag not found. Add it to your <head>, clear cache, and try again.',
+    };
   } catch (error: any) {
     return { success: false, message: `Verification failed: ${error.message}` };
   }
 }
 
 // ==========================================
-// 5. Generate Verification Code for new businesses
-// ==========================================
-export function generateVerifyCode(): string {
-  return `xp-verify-${Math.random().toString(36).substring(2, 15)}`;
-}
-
-// ==========================================
-// 6. Ownership Verification for duplicate domains
+// 5. Ownership Verification for duplicate domains
 // ==========================================
 export async function verifyDomainOwnership(
   businessId: string,
@@ -216,13 +192,11 @@ export async function verifyDomainOwnership(
     return verifyDomain(businessId, url, verifyCode);
   }
 
-  // DNS TXT record check (for ownership of already-registered domain)
-  // In a server environment we can attempt a DNS lookup via a public API
+  // DNS TXT record check via Cloudflare DoH
   try {
     const domain = normalizeDomain(url);
     if (!domain) throw new Error('Invalid domain');
 
-    // Use Cloudflare DNS-over-HTTPS to check TXT records
     const dnsRes = await fetch(
       `https://cloudflare-dns.com/dns-query?name=${domain}&type=TXT`,
       { headers: { Accept: 'application/dns-json' } }
@@ -244,7 +218,7 @@ export async function verifyDomainOwnership(
 
     return {
       success: false,
-      message: `TXT record not found. Please add a DNS TXT record with value: ${expectedTxt}`,
+      message: `TXT record not found. Add a DNS TXT record with value: ${expectedTxt}`,
     };
   } catch (error: any) {
     return { success: false, message: `DNS verification failed: ${error.message}` };
