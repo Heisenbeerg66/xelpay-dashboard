@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Send, ArrowLeft, Bot, RefreshCw, CheckCircle2, ShieldCheck, Loader2, ExternalLink, Unlink, Copy, Link2 } from 'lucide-react';
+import {
+  Send, ArrowLeft, Bot, RefreshCw, CheckCircle2, ShieldCheck, Loader2,
+  ExternalLink, Unlink, Copy, Link2, Info, User, MessageCircle, AlertCircle
+} from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { getMerchantVaultSettings, generateTelegramCode, getTelegramBotUsername } from '@/lib/vault_actions';
 import { supabase } from '@/lib/supabase';
@@ -32,7 +35,7 @@ export default function MasterTelegramPage() {
     setGenerating(true);
     const res = await generateTelegramCode();
     if (res.success) {
-      toast.success('New 12-digit Secure Link Generated!');
+      toast.success('New secure link generated!');
       setMerchantData((prev: any) => ({ ...prev, telegram_link_code: res.code }));
     } else {
       toast.error('Failed to generate code.');
@@ -41,14 +44,17 @@ export default function MasterTelegramPage() {
   };
 
   const handleUnlink = async () => {
-    if (!confirm('Are you sure you want to unlink Telegram? You will stop receiving automated alerts.')) return;
+    if (!confirm('Are you sure you want to unlink Telegram? You will stop receiving alerts.')) return;
     setUnlinking(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Unauthorized');
-      const { error } = await supabase.from('merchants').update({ telegram_chat_id: null }).eq('id', user.id);
+      const { error } = await supabase
+        .from('merchants')
+        .update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null })
+        .eq('id', user.id);
       if (error) throw error;
-      setMerchantData((prev: any) => ({ ...prev, telegram_chat_id: null }));
+      setMerchantData((prev: any) => ({ ...prev, telegram_chat_id: null, telegram_display_name: null, telegram_username: null }));
       toast.success('Telegram unlinked successfully.');
     } catch (err: any) {
       toast.error(err.message || 'Failed to unlink.');
@@ -70,12 +76,14 @@ export default function MasterTelegramPage() {
 
   const isConnected = !!merchantData?.telegram_chat_id;
   const telegramLink = `https://t.me/${botUsername}?start=${merchantData?.telegram_link_code || ''}`;
+  const displayName = merchantData?.telegram_display_name || null;
+  const username = merchantData?.telegram_username || null;
 
   return (
     <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <Toaster position="top-center" richColors />
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div className="flex items-center gap-3">
           <button onClick={() => router.push('/dashboard/vault')} className="hidden md:flex p-2 -ml-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all text-slate-500">
@@ -88,131 +96,168 @@ export default function MasterTelegramPage() {
         </div>
       </div>
 
-      {/* ── Content ── */}
-      <div className="flex justify-center">
-        <div className="w-full max-w-2xl space-y-5">
-
-          {/* ── Status / Main Card ── */}
-          <div className="bg-white dark:bg-[#111827] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden">
-            {/* Status Banner */}
-            <div className={`px-8 py-8 flex flex-col items-center text-center ${isConnected ? 'bg-gradient-to-br from-emerald-600 to-teal-700' : 'bg-gradient-to-br from-blue-600 to-indigo-700'}`}>
-              <div className="w-18 h-18 w-[72px] h-[72px] bg-white/10 rounded-3xl flex items-center justify-center mb-5 border border-white/20 shadow-lg text-white">
-                {isConnected ? <CheckCircle2 size={38} strokeWidth={2} /> : <Bot size={38} strokeWidth={1.5} />}
+      {/* Content */}
+      {isConnected ? (
+        /* ── Connected State ── Premium redesign */
+        <div className="space-y-5">
+          {/* Connected Banner */}
+          <div className="relative bg-gradient-to-br from-emerald-600 to-teal-700 rounded-3xl overflow-hidden shadow-xl p-6 md:p-8 text-white">
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-32 translate-x-20" />
+            </div>
+            <div className="relative z-10 flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center border border-white/30">
+                  <CheckCircle2 size={28} strokeWidth={2} />
+                </div>
+                <div>
+                  <p className="text-emerald-200 text-xs font-bold uppercase tracking-widest">Bot Status</p>
+                  <h2 className="text-2xl font-black uppercase tracking-tight">Connected</h2>
+                  <p className="text-emerald-100 text-sm font-medium mt-0.5">Payment alerts are active for this vault</p>
+                </div>
               </div>
-              <h2 className="text-xl font-black text-white uppercase tracking-tight">
-                {isConnected ? 'Bot Connected' : 'Setup Pending'}
-              </h2>
-              <p className={`text-sm font-medium mt-2 max-w-sm ${isConnected ? 'text-emerald-100' : 'text-blue-100'}`}>
-                {isConnected
-                  ? 'Real-time payment alerts are being sent to your Telegram.'
-                  : 'Link our official bot to receive instant transaction alerts.'}
-              </p>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white/20 border border-white/30 text-white">
+                <div className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+                Live
+              </div>
+            </div>
+          </div>
+
+          {/* Identity Card */}
+          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <User size={16} className="text-emerald-600" />
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Telegram Identity</h3>
+            </div>
+            <div className="space-y-3">
+              {displayName && (
+                <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Display Name</span>
+                  <span className="text-sm font-black text-slate-900 dark:text-white">{displayName}</span>
+                </div>
+              )}
+              {username && (
+                <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Username</span>
+                  <span className="text-sm font-mono font-black text-slate-900 dark:text-white">@{username}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between py-2">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Chat ID</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm font-black text-slate-900 dark:text-white">
+                    {String(merchantData.telegram_chat_id).replace(/(?<=.{3}).(?=.{3})/g, '•')}
+                  </span>
+                  <ShieldCheck size={16} className="text-emerald-500" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleUnlink}
+            disabled={unlinking}
+            className="w-full py-3.5 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/30 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-100 dark:hover:bg-red-900/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+          >
+            {unlinking ? <Loader2 size={14} className="animate-spin" /> : <Unlink size={14} />} Unlink Telegram
+          </button>
+        </div>
+      ) : (
+        /* ── Pending State — two cards side by side on desktop ── */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Setup Card */}
+          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-lg flex flex-col">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 px-8 py-10 text-white text-center flex flex-col items-center">
+              <div className="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center mb-5 border border-white/20 shadow-lg">
+                <Bot size={40} strokeWidth={1.5} />
+              </div>
+              <h2 className="text-xl font-black uppercase tracking-tight">Setup Pending</h2>
+              <p className="text-blue-100 text-sm mt-2 max-w-sm font-medium">Link your Telegram to receive instant payment alerts from your Vault.</p>
             </div>
 
-            <div className="p-6 md:p-8">
-              {isConnected ? (
-                <div className="space-y-5">
-                  {/* Chat ID */}
-                  <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Registered Telegram ID</p>
-                      <p className="font-mono text-lg font-black text-slate-900 dark:text-white tracking-widest">
-                        {String(merchantData.telegram_chat_id).replace(/(?<=.{3}).(?=.{3})/g, '•')}
-                      </p>
-                    </div>
-                    <ShieldCheck className="text-emerald-500 shrink-0" size={28} strokeWidth={1.5} />
-                  </div>
-
+            <div className="p-6 flex-1 flex flex-col justify-between gap-5">
+              {!merchantData?.telegram_link_code ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 text-center font-medium">Generate a secure pairing link to get started.</p>
                   <button
-                    onClick={handleUnlink}
-                    disabled={unlinking}
-                    className="w-full py-3.5 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/30 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-100 dark:hover:bg-red-900/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                    onClick={handleGenerateCode}
+                    disabled={generating}
+                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
                   >
-                    {unlinking ? <Loader2 size={14} className="animate-spin" /> : <Unlink size={14} />}
-                    Unlink Telegram
+                    {generating ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />} Generate Pairing Link
                   </button>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  <p className="text-sm text-slate-600 dark:text-slate-400 font-medium text-center leading-relaxed">
-                    Generate a unique encrypted pairing link. Open it in Telegram to automatically pair your account with our notification bot.
-                  </p>
+                <div className="space-y-4">
+                  {/* Link Preview */}
+                  <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-2xl p-4">
+                    <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Your Pairing Link</p>
+                    <p className="text-xs font-mono text-blue-800 dark:text-blue-300 break-all leading-relaxed">{telegramLink}</p>
+                  </div>
 
-                  {!merchantData?.telegram_link_code ? (
-                    <button onClick={handleGenerateCode} disabled={generating} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50">
-                      {generating ? <><Loader2 className="animate-spin" size={16} /> Generating...</> : <><RefreshCw size={16} strokeWidth={2.5} /> Generate Secure Link</>}
+                  {/* Action buttons - prominent */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={handleGenerateCode}
+                      disabled={generating}
+                      className="py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                    >
+                      {generating ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} strokeWidth={2.5} />}
+                      Regenerate
                     </button>
-                  ) : (
-                    <div className="space-y-5 animate-in fade-in zoom-in-95">
-                      {/* Link Box - redesigned premium */}
-                      <div className="relative">
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-2xl blur-sm" />
-                        <div className="relative bg-slate-50 dark:bg-[#0B1120] border-2 border-dashed border-blue-300 dark:border-blue-700 rounded-2xl p-5">
-                          <div className="flex items-start gap-3">
-                            <Link2 size={18} className="text-blue-600 shrink-0 mt-0.5" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1.5">Your Pairing Link</p>
-                              <p className="font-mono text-xs text-slate-700 dark:text-slate-300 break-all leading-relaxed select-all">{telegramLink}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                    <button
+                      onClick={() => copyToClipboard(telegramLink)}
+                      className="py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all"
+                    >
+                      <Copy size={13} strokeWidth={2.5} /> Copy Link
+                    </button>
+                  </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <button onClick={handleGenerateCode} disabled={generating} className="py-3.5 bg-slate-100 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 hover:border-slate-300 transition-all disabled:opacity-50">
-                          {generating ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} strokeWidth={2.5} />} Regenerate
-                        </button>
-                        <button onClick={() => copyToClipboard(telegramLink)} className="py-3.5 bg-slate-100 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 hover:border-blue-400 transition-all">
-                          <Copy size={13} strokeWidth={2.5} /> Copy Link
-                        </button>
-                        <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all shadow-md">
-                          <ExternalLink size={13} strokeWidth={2.5} /> Open in Telegram
-                        </a>
-                      </div>
-                    </div>
-                  )}
+                  <a
+                    href={telegramLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/25"
+                  >
+                    <ExternalLink size={15} strokeWidth={2.5} /> Open in Telegram
+                  </a>
                 </div>
               )}
             </div>
           </div>
 
-          {/* ── Bot Info Card ── */}
-          {!isConnected && (
-            <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-              <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-4">How It Works</h3>
-              <div className="space-y-3">
+          {/* Instructions Card */}
+          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-lg flex flex-col">
+            <div className="bg-gradient-to-br from-slate-700 to-slate-900 px-8 py-10 text-white text-center flex flex-col items-center">
+              <div className="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center mb-5 border border-white/20 shadow-lg">
+                <Info size={38} strokeWidth={1.5} />
+              </div>
+              <h2 className="text-xl font-black uppercase tracking-tight">How It Works</h2>
+              <p className="text-slate-300 text-sm mt-2 font-medium">Connect in 3 simple steps</p>
+            </div>
+            <div className="p-6 flex-1">
+              <div className="space-y-5">
                 {[
-                  { step: '1', text: 'Click "Generate Secure Link" to create your unique pairing code.' },
-                  { step: '2', text: 'Click "Open in Telegram" or copy and open the link manually.' },
-                  { step: '3', text: 'Send /start in the bot chat — your account will be paired automatically.' },
-                  { step: '4', text: 'Receive instant payment notifications directly in Telegram.' },
-                ].map(({ step, text }) => (
-                  <div key={step} className="flex items-start gap-3">
-                    <span className="w-6 h-6 bg-blue-600 text-white text-[10px] font-black rounded-full flex items-center justify-center shrink-0">{step}</span>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">{text}</p>
+                  { icon: Link2, title: 'Generate Link', desc: 'Click "Generate Pairing Link" to create your unique encrypted connection code.' },
+                  { icon: ExternalLink, title: 'Open in Telegram', desc: 'Click "Open in Telegram" or copy the link and paste it in your browser.' },
+                  { icon: Bot, title: 'Start the Bot', desc: 'Tap /start in the bot. Your vault is paired instantly and alerts begin.' },
+                  { icon: MessageCircle, title: 'Receive Alerts', desc: 'All payment notifications and transaction alerts will now be sent to your Telegram.' },
+                ].map(({ icon: Icon, title, desc }) => (
+                  <div key={title} className="flex items-start gap-4">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 shrink-0">
+                      <Icon size={15} className="text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wide">{title}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{desc}</p>
+                    </div>
                   </div>
                 ))}
               </div>
-
-              {/* Official Bot Link */}
-              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-xl flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-1">Official Bot</p>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">@{botUsername}</p>
-                </div>
-                <a
-                  href={`https://t.me/${botUsername}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0 flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all"
-                >
-                  <Send size={12} /> View Bot
-                </a>
-              </div>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

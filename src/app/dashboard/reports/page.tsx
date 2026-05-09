@@ -1,49 +1,69 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { LineChart, BarChart3, TrendingUp, TrendingDown, Calendar, Download, Loader2, Building2, Wallet, PieChart, RefreshCw, ChevronDown } from 'lucide-react';
+import {
+  TrendingUp, TrendingDown, BarChart3, Wallet, Download,
+  Loader2, Building2, PieChart as PieIcon, RefreshCw, ChevronDown,
+  DollarSign, ShoppingCart, CheckCircle2, Clock
+} from 'lucide-react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer
+} from 'recharts';
 import { supabase } from '@/lib/supabase';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtBDT(n: number) {
   return '৳ ' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+// Group mobile banking variants together
+function normalizeGateway(method: string): string {
+  const m = (method || 'other').toLowerCase().trim();
+  if (m.includes('bkash')) return 'bKash';
+  if (m.includes('nagad')) return 'Nagad';
+  if (m.includes('rocket')) return 'Rocket';
+  if (m.includes('upay')) return 'Upay';
+  if (m.includes('cellfin')) return 'Cellfin';
+  if (m.includes('bank') || m.includes('dutch') || m.includes('dbbl') || m.includes('brac') || m.includes('ebl')) return 'Bank Transfer';
+  if (m.includes('stripe')) return 'Stripe';
+  if (m.includes('paypal')) return 'PayPal';
+  if (m.includes('usdt') || m.includes('crypto') || m.includes('binance')) return 'Crypto';
+  return method || 'Other';
 }
 
 const GATEWAY_COLORS: Record<string, string> = {
-  bkash: '#E91E8C',
-  nagad: '#F26522',
-  rocket: '#8B2FC9',
-  upay: '#00A9E0',
-  bank: '#2563EB',
-  stripe: '#635BFF',
-  paypal: '#003087',
-  usdt: '#26A17B',
-  other: '#64748B',
+  'bKash': '#E91E8C',
+  'Nagad': '#F26522',
+  'Rocket': '#8B2FC9',
+  'Upay': '#00A9E0',
+  'Cellfin': '#00B4D8',
+  'Bank Transfer': '#2563EB',
+  'Stripe': '#635BFF',
+  'PayPal': '#003087',
+  'Crypto': '#26A17B',
+  'Other': '#64748B',
 };
 
-function getGatewayColor(method: string) {
-  const key = method?.toLowerCase() || 'other';
-  for (const [k, v] of Object.entries(GATEWAY_COLORS)) {
-    if (key.includes(k)) return v;
-  }
-  return GATEWAY_COLORS.other;
+function getGatewayColor(name: string) {
+  return GATEWAY_COLORS[name] || '#64748B';
 }
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
-function StatCard({ label, value, sub, icon: Icon, color }: any) {
+function StatCard({ label, value, sub, icon: Icon, bgColor, iconColor }: {
+  label: string; value: string | number; sub?: string; icon: any; bgColor: string; iconColor: string;
+}) {
   return (
-    <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 relative overflow-hidden group hover:shadow-lg transition-all duration-300">
-      <div className={`absolute top-0 right-0 w-20 h-20 rounded-full blur-2xl opacity-10 group-hover:opacity-20 transition-opacity`} style={{ background: color }} />
+    <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
       <div className="flex items-start justify-between mb-3">
-        <div className="p-2 rounded-xl" style={{ background: color + '18' }}>
-          <Icon size={18} style={{ color }} />
+        <div className="p-2.5 rounded-xl" style={{ backgroundColor: bgColor }}>
+          <Icon size={18} style={{ color: iconColor }} />
         </div>
-        <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg`} style={{ background: color + '12', color }}>
-          {sub}
-        </span>
+        {sub && (
+          <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg" style={{ backgroundColor: bgColor, color: iconColor }}>
+            {sub}
+          </span>
+        )}
       </div>
       <p className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">{label}</p>
       <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight">{value}</p>
@@ -51,7 +71,7 @@ function StatCard({ label, value, sub, icon: Icon, color }: any) {
   );
 }
 
-// ── Premium Pie Chart (pure SVG) ──────────────────────────────────────────────
+// ── Premium Pie Chart ─────────────────────────────────────────────────────────
 function PremiumPieChart({ data }: { data: Record<string, number> }) {
   const total = Object.values(data).reduce((a, b) => a + b, 0);
   if (total === 0) return (
@@ -59,11 +79,11 @@ function PremiumPieChart({ data }: { data: Record<string, number> }) {
   );
 
   const entries = Object.entries(data).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  const radius = 70;
-  const cx = 90, cy = 90;
+  const radius = 65;
+  const cx = 80, cy = 80;
   let cumulative = 0;
 
-  const slices = entries.map(([method, value]) => {
+  const slices = entries.map(([name, value]) => {
     const pct = value / total;
     const startAngle = cumulative * 2 * Math.PI - Math.PI / 2;
     const endAngle = (cumulative + pct) * 2 * Math.PI - Math.PI / 2;
@@ -76,91 +96,71 @@ function PremiumPieChart({ data }: { data: Record<string, number> }) {
     const largeArc = pct > 0.5 ? 1 : 0;
 
     return {
-      path: `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`,
-      color: getGatewayColor(method),
-      method,
+      name,
       value,
-      pct: (pct * 100).toFixed(1),
+      pct,
+      path: `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`,
+      color: getGatewayColor(name),
     };
   });
 
   return (
-    <div className="flex flex-col md:flex-row items-center gap-6">
-      <svg viewBox="0 0 180 180" className="w-44 h-44 shrink-0 drop-shadow-lg">
-        {slices.map((s, i) => (
-          <path key={i} d={s.path} fill={s.color} className="hover:opacity-80 transition-opacity cursor-pointer">
-            <title>{s.method}: {s.pct}% — {fmtBDT(s.value)}</title>
-          </path>
-        ))}
-        {/* Center hole */}
-        <circle cx={cx} cy={cy} r={38} className="fill-white dark:fill-[#111827]" />
-        <text x={cx} y={cy - 4} textAnchor="middle" className="text-slate-900" style={{ fontSize: 9, fontWeight: 900, fill: 'currentColor' }}>Total</text>
-        <text x={cx} y={cy + 10} textAnchor="middle" style={{ fontSize: 7, fill: '#6B7280', fontWeight: 600 }}>{fmtBDT(total)}</text>
-      </svg>
-
-      <div className="flex flex-col gap-2 w-full">
-        {slices.map((s, i) => (
-          <div key={i} className="flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 capitalize flex-1">{s.method}</span>
-            <span className="text-xs font-black text-slate-900 dark:text-white">{s.pct}%</span>
-            <span className="text-[10px] text-slate-400 font-medium">{fmtBDT(s.value)}</span>
-          </div>
-        ))}
+    <div className="flex flex-col sm:flex-row items-center gap-6">
+      {/* SVG Pie — no text inside */}
+      <div className="shrink-0">
+        <svg width={160} height={160} viewBox="0 0 160 160">
+          {/* Donut hole */}
+          <circle cx={cx} cy={cy} r={38} fill="transparent" className="stroke-white dark:stroke-[#111827]" strokeWidth={2} />
+          {slices.map((s) => (
+            <path key={s.name} d={s.path} fill={s.color} stroke="white" strokeWidth={2} className="dark:stroke-[#111827]" />
+          ))}
+          <circle cx={cx} cy={cy} r={38} className="fill-white dark:fill-[#111827]" />
+        </svg>
       </div>
-    </div>
-  );
-}
 
-// ── Bar Chart ─────────────────────────────────────────────────────────────────
-function BarChart({ data }: { data: { date: string; amount: number }[] }) {
-  const max = Math.max(...data.map(d => d.amount), 1);
-  return (
-    <div className="flex items-end gap-1.5 md:gap-3 h-44 pt-6 relative">
-      <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
-        {[0, 1, 2, 3].map(i => (
-          <div key={i} className="border-b border-slate-100 dark:border-slate-800/60 w-full h-0" />
-        ))}
-      </div>
-      {data.map((d, i) => {
-        const h = max > 0 ? Math.max((d.amount / max) * 100, d.amount > 0 ? 4 : 0) : 0;
-        return (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
-            <div className="text-[9px] font-black text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-              {fmtBDT(d.amount)}
+      {/* Legend */}
+      <div className="flex-1 space-y-2 w-full">
+        {slices.slice(0, 6).map((s) => (
+          <div key={s.name} className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{s.name}</span>
             </div>
-            <div
-              className="w-full rounded-t-lg transition-all duration-500 relative"
-              style={{ height: `${h}%`, minHeight: d.amount > 0 ? 4 : 0, background: 'linear-gradient(180deg, #2563EB 0%, #3B82F6 100%)' }}
-            />
-            <span className="text-[9px] font-bold text-slate-400 truncate w-full text-center">{d.date}</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-black text-slate-900 dark:text-white">{fmtBDT(s.value)}</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                style={{ backgroundColor: s.color + '20', color: s.color }}>
+                {(s.pct * 100).toFixed(0)}%
+              </span>
+            </div>
           </div>
-        );
-      })}
+        ))}
+        {slices.length > 6 && (
+          <p className="text-xs text-slate-400 text-center">+{slices.length - 6} more</p>
+        )}
+      </div>
     </div>
   );
 }
 
-// ── Dropdown Component ────────────────────────────────────────────────────────
+// ── Dropdown ──────────────────────────────────────────────────────────────────
 function Dropdown({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { id: string; label: string }[] }) {
   const [open, setOpen] = useState(false);
-  const current = options.find(o => o.id === value);
+  const selected = options.find(o => o.id === value);
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 shadow-sm hover:border-blue-400 transition-all whitespace-nowrap"
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-blue-400 transition-all shadow-sm"
       >
-        {current?.label} <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        {selected?.label}
+        <ChevronDown size={14} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute top-full mt-2 right-0 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-20 min-w-[160px] py-1 animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute top-full mt-2 left-0 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-20 min-w-[160px] py-1">
           {options.map(o => (
-            <button
-              key={o.id}
-              onClick={() => { onChange(o.id); setOpen(false); }}
-              className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${value === o.id ? 'text-blue-600 font-bold' : 'text-slate-700 dark:text-slate-300'}`}
-            >
+            <button key={o.id} onClick={() => { onChange(o.id); setOpen(false); }}
+              className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${value === o.id ? 'text-blue-600 font-bold' : 'text-slate-700 dark:text-slate-300'}`}>
               {o.label}
             </button>
           ))}
@@ -170,8 +170,66 @@ function Dropdown({ value, onChange, options }: { value: string; onChange: (v: s
   );
 }
 
+// ── Chart bucket builder ──────────────────────────────────────────────────────
+function buildChartBuckets(timeRange: string, transactions: any[]): { label: string; amount: number }[] {
+  const now = new Date();
+
+  if (timeRange === 'today') {
+    const hours = Array.from({ length: 24 }, (_, i) => ({ label: `${i}:00`, amount: 0, h: i }));
+    transactions.forEach(t => {
+      const h = new Date(t.created_at).getHours();
+      hours[h].amount += t.amount || 0;
+    });
+    return hours.map(({ label, amount }) => ({ label, amount }));
+  }
+
+  if (timeRange === '7d') {
+    const days: { label: string; amount: number; dateStr: string }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      days.push({ label: d.toLocaleDateString('en-US', { weekday: 'short' }), amount: 0, dateStr: d.toISOString().slice(0, 10) });
+    }
+    transactions.forEach(t => {
+      const ds = new Date(t.created_at).toISOString().slice(0, 10);
+      const day = days.find(d => d.dateStr === ds);
+      if (day) day.amount += t.amount || 0;
+    });
+    return days.map(({ label, amount }) => ({ label, amount }));
+  }
+
+  if (timeRange === 'month' || timeRange === '30d') {
+    // Show date numbers 1,2,3...
+    const daysCount = timeRange === 'month'
+      ? new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+      : 30;
+
+    const days: { label: string; amount: number; day: number; month: number; year: number }[] = [];
+    for (let i = daysCount - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      days.push({ label: String(d.getDate()), amount: 0, day: d.getDate(), month: d.getMonth(), year: d.getFullYear() });
+    }
+    transactions.forEach(t => {
+      const d = new Date(t.created_at);
+      const bucket = days.find(b => b.day === d.getDate() && b.month === d.getMonth() && b.year === d.getFullYear());
+      if (bucket) bucket.amount += t.amount || 0;
+    });
+    return days.map(({ label, amount }) => ({ label, amount }));
+  }
+
+  // All time — month-based
+  const monthMap: Map<string, number> = new Map();
+  transactions.forEach(t => {
+    const d = new Date(t.created_at);
+    const key = d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    monthMap.set(key, (monthMap.get(key) || 0) + (t.amount || 0));
+  });
+  return Array.from(monthMap.entries()).map(([label, amount]) => ({ label, amount }));
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function Reports() {
+export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [businessScope, setBusinessScope] = useState<'this' | 'all'>('this');
   const [timeRange, setTimeRange] = useState<'today' | '7d' | 'month' | '30d' | 'all'>('7d');
@@ -179,14 +237,13 @@ export default function Reports() {
   const [allBusinessIds, setAllBusinessIds] = useState<string[]>([]);
 
   const [stats, setStats] = useState({ totalVolume: 0, successCount: 0, failCount: 0, avgOrder: 0, pendingCount: 0 });
-  const [chartData, setChartData] = useState<{ date: string; amount: number }[]>([]);
+  const [chartData, setChartData] = useState<{ label: string; amount: number }[]>([]);
   const [gatewaySplit, setGatewaySplit] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const activeId = localStorage.getItem('active_business_id');
     if (activeId) setBusinessId(activeId);
 
-    // Load all business IDs for "All Businesses" scope
     const loadAllBizIds = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -205,62 +262,52 @@ export default function Reports() {
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     try {
-      // Determine which business IDs to query
       const ids = businessScope === 'all' ? allBusinessIds : (businessId ? [businessId] : []);
       if (ids.length === 0) { setLoading(false); return; }
 
-      // Date filter
-      let startDate: Date | null = null;
       const now = new Date();
-      if (timeRange === 'today') { startDate = new Date(now); startDate.setHours(0, 0, 0, 0); }
-      else if (timeRange === '7d') { startDate = new Date(now); startDate.setDate(now.getDate() - 6); startDate.setHours(0, 0, 0, 0); }
-      else if (timeRange === 'month') { startDate = new Date(now.getFullYear(), now.getMonth(), 1); }
-      else if (timeRange === '30d') { startDate = new Date(now); startDate.setDate(now.getDate() - 29); startDate.setHours(0, 0, 0, 0); }
+      let fromDate: Date | null = null;
 
-      let query = supabase.from('orders').select('amount, status, created_at, method').in('business_id', ids).order('created_at', { ascending: true });
-      if (startDate) query = query.gte('created_at', startDate.toISOString());
+      if (timeRange === 'today') { fromDate = new Date(now); fromDate.setHours(0, 0, 0, 0); }
+      else if (timeRange === '7d') { fromDate = new Date(now); fromDate.setDate(now.getDate() - 7); }
+      else if (timeRange === 'month') { fromDate = new Date(now.getFullYear(), now.getMonth(), 1); }
+      else if (timeRange === '30d') { fromDate = new Date(now); fromDate.setDate(now.getDate() - 30); }
 
-      const { data: orders } = await query;
+      let query = supabase
+        .from('payment_links')
+        .select('id, amount, method, status, created_at')
+        .in('business_id', ids);
 
-      if (!orders) { setLoading(false); return; }
+      if (fromDate) query = query.gte('created_at', fromDate.toISOString());
 
-      let total = 0, successCount = 0, failCount = 0, pendingCount = 0;
+      const { data: txns } = await query;
+      const rows = txns || [];
+
+      let totalVolume = 0, successCount = 0, failCount = 0, pendingCount = 0;
       const methods: Record<string, number> = {};
 
-      // Build chart buckets
-      const numDays = timeRange === 'today' ? 1 : timeRange === '7d' ? 7 : timeRange === 'month' ? now.getDate() : timeRange === '30d' ? 30 : 60;
-      const chartBuckets = Array.from({ length: Math.min(numDays, 60) }).map((_, i) => {
-        const d = new Date(now);
-        d.setDate(now.getDate() - (Math.min(numDays, 60) - 1 - i));
-        return {
-          date: numDays <= 7
-            ? d.toLocaleDateString('en-US', { weekday: 'short' })
-            : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          fullDate: d.toDateString(),
-          amount: 0,
-        };
-      });
+      rows.forEach((t: { status: any; amount: any; method: any }) => {
+        const s = (t.status || '').toLowerCase();
+        const isSuccess = ['paid', 'success', 'completed'].includes(s);
+        const isFail = ['failed', 'rejected', 'cancelled'].includes(s);
+        const isPending = s === 'pending';
 
-      orders.forEach((order: any) => {
-        const amt = parseFloat(order.amount || '0');
-        const method = (order.method || 'other').toLowerCase();
-        const orderDate = new Date(order.created_at).toDateString();
-
-        if (order.status === 'paid' || order.status === 'success') {
-          total += amt;
+        if (isSuccess) {
+          totalVolume += t.amount || 0;
           successCount++;
-          methods[method] = (methods[method] || 0) + amt;
-          const bucket = chartBuckets.find(d => d.fullDate === orderDate);
-          if (bucket) bucket.amount += amt;
-        } else if (order.status === 'failed' || order.status === 'cancelled') {
-          failCount++;
-        } else if (order.status === 'pending') {
-          pendingCount++;
+          const normalized = normalizeGateway(t.method || '');
+          methods[normalized] = (methods[normalized] || 0) + (t.amount || 0);
         }
+        if (isFail) failCount++;
+        if (isPending) pendingCount++;
       });
 
-      setStats({ totalVolume: total, successCount, failCount, avgOrder: successCount > 0 ? total / successCount : 0, pendingCount });
-      setChartData(chartBuckets.map(b => ({ date: b.date, amount: b.amount })));
+      const avgOrder = successCount > 0 ? totalVolume / successCount : 0;
+      setStats({ totalVolume, successCount, failCount, avgOrder, pendingCount });
+      setChartData(buildChartBuckets(timeRange, rows.filter((t: { status: any; }): boolean => {
+        const s = (t.status || '').toLowerCase();
+        return ['paid', 'success', 'completed'].includes(s);
+      })));
       setGatewaySplit(methods);
     } finally {
       setLoading(false);
@@ -277,20 +324,12 @@ export default function Reports() {
       ['Failed Payments', stats.failCount],
       ['Pending Payments', stats.pendingCount],
       ['Average Order Value', stats.avgOrder.toFixed(2)],
-      [],
-      ['Date', 'Revenue'],
-      ...chartData.map(d => [d.date, d.amount.toFixed(2)]),
-      [],
-      ['Gateway', 'Volume'],
-      ...Object.entries(gatewaySplit).map(([k, v]) => [k, v.toFixed(2)]),
     ];
     const csv = rows.map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `xelpay-report-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
+    a.href = url; a.download = `report-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -313,7 +352,9 @@ export default function Reports() {
   if (!businessId && businessScope === 'this') {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
-        <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-full flex items-center justify-center mb-4"><Building2 size={32} /></div>
+        <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-full flex items-center justify-center mb-4">
+          <Building2 size={32} />
+        </div>
         <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase">No Workspace Selected</h2>
         <p className="text-slate-500 mt-2 font-medium text-sm">Please select a business from the sidebar.</p>
       </div>
@@ -323,17 +364,16 @@ export default function Reports() {
   return (
     <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-              <BarChart3 size={28} className="text-blue-600" /> Reports & Analytics
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              Reports & Analytics
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">Payment volume, conversion rates, and gateway breakdown.</p>
           </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
             <button onClick={fetchAnalytics} className="p-2.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl text-slate-500 hover:text-blue-600 hover:border-blue-400 transition-all shadow-sm">
               <RefreshCw size={15} />
             </button>
@@ -343,21 +383,14 @@ export default function Reports() {
           </div>
         </div>
 
-        {/* Filters Row */}
+        {/* Filters */}
         <div className="flex flex-wrap items-center gap-2">
-          <Dropdown
-            value={businessScope}
-            onChange={(v) => setBusinessScope(v as any)}
-            options={scopeOptions}
-          />
+          <Dropdown value={businessScope} onChange={(v) => setBusinessScope(v as any)} options={scopeOptions} />
           <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
           <div className="flex bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-sm overflow-x-auto">
             {rangeOptions.map(o => (
-              <button
-                key={o.id}
-                onClick={() => setTimeRange(o.id as any)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg whitespace-nowrap transition-all ${timeRange === o.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
-              >
+              <button key={o.id} onClick={() => setTimeRange(o.id as any)}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg whitespace-nowrap transition-all ${timeRange === o.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
                 {o.label}
               </button>
             ))}
@@ -371,40 +404,88 @@ export default function Reports() {
         </div>
       ) : (
         <>
-          {/* ── Stat Cards ── */}
+          {/* Stat Cards — solid icon backgrounds */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Total Revenue" value={fmtBDT(stats.totalVolume)} sub="Volume" icon={TrendingUp} color="#2563EB" />
-            <StatCard label="Successful" value={stats.successCount} sub={`${successRate}%`} icon={BarChart3} color="#10B981" />
-            <StatCard label="Failed" value={stats.failCount} sub="Txns" icon={TrendingDown} color="#EF4444" />
-            <StatCard label="Avg. Order" value={fmtBDT(stats.avgOrder)} sub="Per txn" icon={Wallet} color="#8B5CF6" />
+            <StatCard label="Total Revenue" value={fmtBDT(stats.totalVolume)} sub="Volume"
+              icon={DollarSign} bgColor="#2563EB" iconColor="#fff" />
+            <StatCard label="Successful" value={stats.successCount} sub={`${successRate}%`}
+              icon={CheckCircle2} bgColor="#10B981" iconColor="#fff" />
+            <StatCard label="Failed" value={stats.failCount} sub="Txns"
+              icon={TrendingDown} bgColor="#EF4444" iconColor="#fff" />
+            <StatCard label="Avg. Order" value={fmtBDT(stats.avgOrder)} sub="Per txn"
+              icon={Wallet} bgColor="#8B5CF6" iconColor="#fff" />
           </div>
 
-          {/* ── Charts ── */}
+          {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-            {/* Revenue Bar Chart */}
+            {/* Area Chart — smooth trend */}
             <div className="lg:col-span-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-sm">
               <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white mb-1">Revenue Trend</h3>
               <p className="text-[11px] text-slate-400 font-medium mb-4">
                 {rangeOptions.find(r => r.id === timeRange)?.label} — {scopeOptions.find(s => s.id === businessScope)?.label}
               </p>
               {chartData.every(d => d.amount === 0) ? (
-                <div className="h-44 flex items-center justify-center text-slate-400 dark:text-slate-600 text-sm font-medium">No revenue data for this period</div>
+                <div className="h-52 flex items-center justify-center text-slate-400 dark:text-slate-600 text-sm font-medium">No revenue data for this period</div>
               ) : (
-                <BarChart data={chartData} />
+                <div className="h-52">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.12)" />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 10, fill: '#94a3b8' }}
+                        axisLine={false}
+                        tickLine={false}
+                        dy={8}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        tick={{ fontSize: 10, fill: '#94a3b8' }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(v) => v >= 1000 ? `৳${(v / 1000).toFixed(0)}k` : `৳${v}`}
+                      />
+                      <Tooltip
+                        cursor={{ stroke: 'rgba(148,163,184,0.2)', strokeWidth: 1, strokeDasharray: '4 4' }}
+                        contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 4px 20px rgba(0,0,0,0.3)', padding: '8px 14px' }}
+                        labelStyle={{ color: '#94a3b8', fontSize: 11, marginBottom: 4 }}
+                        itemStyle={{ color: '#60a5fa', fontWeight: 'bold', fontSize: 13 }}
+                        formatter={(val: any) => [`৳${Number(val).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`, 'Revenue']}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="amount"
+                        stroke="#3b82f6"
+                        strokeWidth={2.5}
+                        fillOpacity={1}
+                        fill="url(#revenueGradient)"
+                        dot={false}
+                        activeDot={{ r: 5, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </div>
 
             {/* Gateway Pie Chart */}
             <div className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-sm">
-              <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white mb-1 flex items-center gap-2">
-                <PieChart size={14} className="text-blue-600" /> Gateway Usage
-              </h3>
+              <div className="flex items-center gap-2 mb-1">
+                <PieIcon size={14} className="text-blue-600" />
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Gateway Usage</h3>
+              </div>
               <p className="text-[11px] text-slate-400 font-medium mb-4">Revenue by payment method</p>
               <PremiumPieChart data={gatewaySplit} />
             </div>
           </div>
 
-          {/* ── Summary Table ── */}
+          {/* Summary Table */}
           <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
             <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 dark:text-white">Summary</h3>

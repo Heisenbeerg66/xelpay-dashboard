@@ -1,58 +1,53 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Check, Star, Loader2, CreditCard, Calendar, Clock, Zap, ChevronRight, BadgeCheck, Sparkles } from 'lucide-react';
+import {
+  CreditCard, BadgeCheck, Star, Zap, Users, Smartphone, Send,
+  Check, Loader2, Clock, CalendarDays, Receipt, ShieldCheck, Crown, Sparkles
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function fmtDate(iso: string | null) {
-  if (!iso) return 'N/A';
-  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-}
-function countdown(iso: string | null): string {
-  if (!iso) return 'N/A';
-  const diff = new Date(iso).getTime() - Date.now();
-  if (diff <= 0) return 'Expired';
-  const days = Math.floor(diff / 86400000);
-  if (days > 0) return `${days} day${days !== 1 ? 's' : ''} remaining`;
-  const hrs = Math.floor(diff / 3600000);
-  return `${hrs} hour${hrs !== 1 ? 's' : ''} remaining`;
-}
-
 const METHOD_LABELS: Record<string, string> = {
-  mobile: 'Mobile Banking (bKash, Nagad, Rocket)',
-  bank: 'Bank Transfer',
-  international: 'International Gateways',
-  crypto: 'Cryptocurrency',
+  mobile: 'Mobile Banking (bKash, Nagad, etc.)',
+  bank: 'Bank Transfers',
+  international: 'International (Stripe, PayPal)',
+  crypto: 'Cryptocurrency (USDT)',
 };
 
-function getPlanStyle(tag: string | null) {
-  switch (tag) {
-    case 'popular': return { border: 'border-blue-500', badge: 'bg-blue-600 text-white', check: 'text-blue-600', price: 'text-blue-600' };
-    case 'premium': return { border: 'border-purple-500', badge: 'bg-purple-600 text-white', check: 'text-purple-600', price: 'text-purple-600' };
-    case 'enterprise': return { border: 'border-amber-500', badge: 'bg-amber-500 text-white', check: 'text-amber-600', price: 'text-amber-600' };
-    default: return { border: 'border-slate-200 dark:border-slate-700', badge: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300', check: 'text-slate-500', price: 'text-slate-800 dark:text-white' };
-  }
-}
-
-// ── Countdown Timer ───────────────────────────────────────────────────────────
-function CountdownBadge({ expiresAt }: { expiresAt: string | null }) {
-  const [label, setLabel] = useState(countdown(expiresAt));
-  useEffect(() => {
-    const t = setInterval(() => setLabel(countdown(expiresAt)), 60000);
-    return () => clearInterval(t);
-  }, [expiresAt]);
-
-  if (!expiresAt) return null;
-  const isExpired = label === 'Expired';
+function PlanBadge({ tag }: { tag?: string }) {
+  if (!tag) return null;
+  const styles: Record<string, string> = {
+    popular: 'bg-blue-600 text-white',
+    recommended: 'bg-emerald-600 text-white',
+    enterprise: 'bg-purple-600 text-white',
+    starter: 'bg-slate-600 text-white',
+  };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${isExpired ? 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'}`}>
-      <Clock size={11} /> {label}
+    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest ${styles[tag?.toLowerCase()] || 'bg-slate-600 text-white'}`}>
+      {tag}
     </span>
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+function StatusBadge({ status }: { status?: string }) {
+  const s = (status || '').toLowerCase();
+  if (s === 'active') return (
+    <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">
+      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active
+    </span>
+  );
+  if (s === 'expired') return (
+    <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-lg bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 uppercase tracking-wide">
+      <Clock size={10} /> Expired
+    </span>
+  );
+  return (
+    <span className="flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 uppercase tracking-wide">
+      <Clock size={10} /> {status || 'Unknown'}
+    </span>
+  );
+}
+
 export default function SubscriptionsPage() {
   const [loading, setLoading] = useState(true);
   const [merchant, setMerchant] = useState<any>(null);
@@ -70,7 +65,6 @@ export default function SubscriptionsPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Load merchant + plan info
         const [merchantRes, plansRes, settingsRes, subRes] = await Promise.all([
           supabase.from('merchants').select('*').eq('id', user.id).single(),
           supabase.from('plans').select('*').order('serial', { ascending: true }),
@@ -102,19 +96,27 @@ export default function SubscriptionsPage() {
     load();
   }, []);
 
-  const getYearlyPrice = (monthlyPrice: number) => {
-    if (!yearlyDiscountActive) return monthlyPrice * 12;
-    const discount = monthlyPrice * 12 * (yearlyDiscount / 100);
-    return monthlyPrice * 12 - discount;
+  const getPrice = (plan: any) => {
+    if (billing === 'yearly') {
+      if (plan.yearly_price != null) return plan.yearly_price;
+      if (yearlyDiscountActive) {
+        const monthly12 = (plan.price || 0) * 12;
+        return monthly12 - (monthly12 * (yearlyDiscount / 100));
+      }
+      return (plan.price || 0) * 12;
+    }
+    return plan.price || 0;
   };
 
   const getPlanFeatures = (plan: any): string[] => {
-    const tx = (plan.transaction_limit_monthly ?? 100) === 0 ? 'Unlimited transactions/month' : `${(plan.transaction_limit_monthly ?? 100).toLocaleString()} transactions/month`;
+    const tx = (plan.transaction_limit_monthly ?? 100) === 0
+      ? 'Unlimited transactions/month'
+      : `${(plan.transaction_limit_monthly ?? 100).toLocaleString()} transactions/month`;
     const base: (string | null)[] = [
       tx,
       `${plan.business_limit ?? 1} business workspace${(plan.business_limit ?? 1) > 1 ? 's' : ''}`,
       ...(Array.isArray(plan.allowed_method) ? plan.allowed_method : ['mobile']).map((m: string) => METHOD_LABELS[m] ?? m),
-      plan.is_team_allowed ? `Team access — up to ${plan.allowed_team_members ?? 1} members` : 'Single user only',
+      plan.is_team_allowed ? `Team — up to ${plan.allowed_team_members ?? 1} members` : 'Single user',
       `${plan.device_limit ?? 1} device${(plan.device_limit ?? 1) > 1 ? 's' : ''}`,
       plan.allowed_telegram_group ? 'Telegram group alerts' : null,
       plan.is_custom_bot_allowed ? 'Custom Telegram bot' : null,
@@ -123,18 +125,26 @@ export default function SubscriptionsPage() {
     return [...base.filter(Boolean) as string[], ...extra];
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="animate-spin text-blue-600" size={32} />
-      </div>
-    );
-  }
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  const getDaysRemaining = (expires: string) => {
+    const diff = new Date(expires).getTime() - Date.now();
+    return Math.max(0, Math.ceil(diff / 86400000));
+  };
+
+  if (loading) return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <Loader2 className="animate-spin text-blue-600" size={32} />
+    </div>
+  );
+
+  const isFree = !currentPlan || (currentPlan?.price ?? 0) === 0;
+  const planColor = isFree ? 'from-slate-600 to-slate-800' : 'from-blue-600 to-indigo-700';
 
   return (
     <div className="w-full space-y-8 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-      {/* ── Page Header ── */}
+      {/* Page Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
           <CreditCard size={28} className="text-blue-600" /> Subscriptions & Plans
@@ -142,76 +152,92 @@ export default function SubscriptionsPage() {
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">Manage your plan, billing, and payment history.</p>
       </div>
 
-      {/* ── Current Plan Card ── */}
-      {currentPlan && (
-        <div className="bg-white dark:bg-[#111827] border border-blue-200 dark:border-blue-800/40 rounded-2xl overflow-hidden shadow-lg">
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 px-6 py-6 text-white">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-white/10 rounded-xl border border-white/20">
-                  <BadgeCheck size={24} className="text-white" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-200">Current Plan</p>
-                  <h2 className="text-2xl font-black tracking-tight">{currentPlan.name}</h2>
-                </div>
+      {/* Current Plan Card */}
+      <div className="bg-white dark:bg-[#111827] border border-blue-200 dark:border-blue-800/40 rounded-2xl overflow-hidden shadow-lg">
+        <div className={`bg-gradient-to-br ${planColor} px-6 py-6 md:px-8 text-white`}>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white/15 rounded-xl border border-white/20">
+                <BadgeCheck size={24} className="text-white" />
               </div>
-              <div className="text-right">
-                <p className="text-3xl font-black">
-                  {currentPlan.price === 0 ? 'Free' : `৳${currentPlan.price.toLocaleString()}`}
-                </p>
-                {currentPlan.price > 0 && <p className="text-blue-200 text-xs font-medium">/month</p>}
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-200 dark:text-slate-300 mb-0.5">Current Plan</p>
+                <h2 className="text-2xl font-black tracking-tight">
+                  {currentPlan?.name || 'Free Plan'}
+                </h2>
               </div>
             </div>
+            <div className="text-right">
+              <p className="text-3xl font-black">
+                {isFree ? 'Free' : `৳${(currentPlan?.price || 0).toLocaleString()}`}
+              </p>
+              {!isFree && <p className="text-blue-200 text-xs font-medium">/month</p>}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-5 md:p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Status */}
+          <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Status</p>
+            <StatusBadge status={merchant?.subscription_status} />
           </div>
 
-          <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {subscription ? (
-              <>
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Purchase Date</p>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Calendar size={14} className="text-blue-600" /> {fmtDate(subscription.started_at)}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Billing Cycle</p>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white capitalize">{subscription.billing_cycle || 'Monthly'}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Expires / Next Billing</p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">{fmtDate(subscription.expires_at)}</p>
-                    <CountdownBadge expiresAt={subscription.expires_at} />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="sm:col-span-3 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 font-medium">
-                <Zap size={15} className="text-amber-500" />
-                <span>No active subscription record found. You may be on the free plan or a legacy account.</span>
-              </div>
-            )}
-          </div>
+          {/* Purchase Date */}
+          {subscription?.started_at && (
+            <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Purchase Date</p>
+              <p className="text-sm font-black text-slate-900 dark:text-white">{formatDate(subscription.started_at)}</p>
+            </div>
+          )}
 
-          {subscription?.payment_reference && (
-            <div className="px-6 pb-5">
-              <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Payment Reference</p>
-                  <p className="text-sm font-mono font-bold text-slate-900 dark:text-white mt-0.5">{subscription.payment_reference}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Amount Paid</p>
-                  <p className="text-sm font-bold text-emerald-600 mt-0.5">৳{subscription.amount_paid?.toLocaleString()}</p>
-                </div>
-              </div>
+          {/* Expires */}
+          {subscription?.expires_at && (
+            <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Expires</p>
+              <p className="text-sm font-black text-slate-900 dark:text-white">{formatDate(subscription.expires_at)}</p>
+              <p className="text-[10px] text-amber-500 font-bold mt-0.5">{getDaysRemaining(subscription.expires_at)} days left</p>
+            </div>
+          )}
+
+          {/* Amount Paid */}
+          {subscription?.amount_paid != null && (
+            <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Amount Paid</p>
+              <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">৳{subscription.amount_paid?.toLocaleString()}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">{subscription.billing_cycle || 'monthly'}</p>
             </div>
           )}
         </div>
-      )}
 
-      {/* ── Available Plans ── */}
+        {/* Payment Reference */}
+        {subscription?.payment_reference && (
+          <div className="px-5 md:px-6 pb-5">
+            <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Payment Reference</p>
+                <p className="text-sm font-mono font-bold text-slate-900 dark:text-white mt-0.5">{subscription.payment_reference}</p>
+              </div>
+              {subscription.payment_method && (
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Method</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 capitalize">{subscription.payment_method}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {isFree && !subscription && (
+          <div className="px-5 md:px-6 pb-5">
+            <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl px-4 py-3">
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-300">You're on the free plan. Upgrade to unlock more features.</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Available Plans */}
       <div className="space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -233,93 +259,114 @@ export default function SubscriptionsPage() {
             >
               Yearly
               {yearlyDiscountActive && (
-                <span className="text-[9px] bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded-md font-black">
-                  -{yearlyDiscount}%
-                </span>
+                <span className="text-[9px] bg-emerald-500 text-white px-1.5 py-0.5 rounded-full font-black">-{yearlyDiscount}%</span>
               )}
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {allPlans.map((plan: any) => {
-            const style = getPlanStyle(plan.tag);
+        {/* Plans Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {allPlans.map((plan) => {
+            const isCurrentPlan = plan.id === merchant?.plan_id;
+            const price = getPrice(plan);
             const features = getPlanFeatures(plan);
-            const isCurrent = currentPlan?.id === plan.id;
-            const monthlyPrice = plan.price || 0;
-            const yearlyTotal = getYearlyPrice(monthlyPrice);
-            const displayPrice = billing === 'yearly' ? yearlyTotal / 12 : monthlyPrice;
-            const savings = billing === 'yearly' && yearlyDiscountActive ? monthlyPrice * 12 - yearlyTotal : 0;
+            const isFeatured = plan.tag?.toLowerCase() === 'popular' || plan.tag?.toLowerCase() === 'recommended';
 
             return (
               <div
                 key={plan.id}
-                className={`relative bg-white dark:bg-[#111827] border-2 ${isCurrent ? 'border-blue-500' : style.border} rounded-2xl p-6 flex flex-col shadow-sm hover:shadow-xl transition-all duration-300 ${isCurrent ? 'ring-2 ring-blue-500/20' : ''}`}
+                className={`relative bg-white dark:bg-[#111827] rounded-2xl border-2 overflow-hidden transition-all duration-300 ${
+                  isCurrentPlan
+                    ? 'border-blue-500 shadow-xl shadow-blue-500/10'
+                    : isFeatured
+                      ? 'border-slate-200 dark:border-slate-700 shadow-lg hover:border-blue-400 hover:shadow-xl'
+                      : 'border-slate-200 dark:border-slate-800 shadow-sm hover:border-blue-300 hover:shadow-md'
+                }`}
               >
-                {/* Badge */}
-                {isCurrent ? (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-md flex items-center gap-1">
-                      <BadgeCheck size={11} /> Current Plan
-                    </span>
+                {isCurrentPlan && (
+                  <div className="bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest text-center py-1.5">
+                    ✓ Your Current Plan
                   </div>
-                ) : plan.tag && plan.tag !== 'none' ? (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-md flex items-center gap-1 ${style.badge}`}>
-                      <Star size={10} /> {plan.tag}
-                    </span>
-                  </div>
-                ) : null}
+                )}
 
-                <div className="mt-2">
-                  <h3 className="text-base font-black text-slate-900 dark:text-white mb-4">{plan.name}</h3>
-
-                  <div className="mb-1">
-                    <span className={`text-3xl font-black ${style.price}`}>
-                      {monthlyPrice === 0 ? 'Free' : `৳${displayPrice.toFixed(0)}`}
-                    </span>
-                    {monthlyPrice > 0 && <span className="text-slate-400 text-sm font-medium">/mo</span>}
-                  </div>
-
-                  {billing === 'yearly' && monthlyPrice > 0 && (
-                    <div className="mb-4 space-y-0.5">
-                      <p className="text-[11px] text-slate-400 font-medium">Billed ৳{yearlyTotal.toFixed(0)}/year</p>
-                      {savings > 0 && (
-                        <p className="text-[11px] text-emerald-600 font-black flex items-center gap-1">
-                          <Sparkles size={10} /> Save ৳{savings.toFixed(0)} per year
-                        </p>
-                      )}
+                <div className="p-6">
+                  {/* Plan Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-lg font-black text-slate-900 dark:text-white">{plan.name}</h3>
+                        <PlanBadge tag={plan.tag} />
+                      </div>
                     </div>
+                    {isFeatured && <Crown size={18} className="text-amber-500 shrink-0" />}
+                  </div>
+
+                  {/* Price */}
+                  <div className="mb-5">
+                    {price === 0 ? (
+                      <div>
+                        <span className="text-4xl font-black text-slate-900 dark:text-white">Free</span>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="flex items-end gap-1">
+                          <span className="text-3xl font-black text-slate-900 dark:text-white">৳{price.toLocaleString()}</span>
+                          <span className="text-slate-400 text-sm font-medium mb-1">
+                            /{billing === 'yearly' ? 'yr' : 'mo'}
+                          </span>
+                        </div>
+                        {billing === 'yearly' && yearlyDiscountActive && plan.price > 0 && (
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-1">
+                            Save ৳{((plan.price * 12) - price).toFixed(0)} vs monthly
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Features */}
+                  <div className="space-y-2.5 mb-6">
+                    {features.map((f, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <div className="w-4 h-4 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0 mt-0.5">
+                          <Check size={10} className="text-blue-600 dark:text-blue-400" strokeWidth={3} />
+                        </div>
+                        <span className="text-xs text-slate-600 dark:text-slate-400 font-medium leading-relaxed">{f}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* CTA */}
+                  {isCurrentPlan ? (
+                    <div className="w-full py-3 rounded-xl border-2 border-blue-200 dark:border-blue-800/40 text-center text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+                      Current Plan
+                    </div>
+                  ) : (
+                    <button className={`w-full py-3.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${isFeatured ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20' : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'}`}>
+                      {price === 0 ? 'Get Started Free' : 'Upgrade Plan'}
+                    </button>
                   )}
                 </div>
-
-                <ul className="space-y-2.5 flex-1 mb-6 mt-4">
-                  {features.map((f, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
-                      <Check size={14} className={`shrink-0 mt-0.5 ${style.check}`} /> {f}
-                    </li>
-                  ))}
-                </ul>
-
-                <button
-                  disabled={isCurrent}
-                  className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-                    isCurrent
-                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                      : monthlyPrice === 0
-                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 shadow-md'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30 hover:-translate-y-0.5'
-                  }`}
-                >
-                  {isCurrent ? (
-                    <><BadgeCheck size={14} /> Current Plan</>
-                  ) : (
-                    <><ChevronRight size={14} /> {monthlyPrice === 0 ? 'Get Started' : `Upgrade — ${billing === 'yearly' ? 'Yearly' : 'Monthly'}`}</>
-                  )}
-                </button>
               </div>
             );
           })}
+        </div>
+
+        {allPlans.length === 0 && (
+          <div className="text-center py-12 text-slate-400">
+            <CreditCard size={32} className="mx-auto mb-3" />
+            <p className="font-medium">No plans available.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Contact Note */}
+      <div className="flex items-start gap-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-2xl px-5 py-4">
+        <ShieldCheck size={18} className="text-blue-500 mt-0.5 shrink-0" />
+        <div>
+          <p className="text-xs font-black text-blue-800 dark:text-blue-300 uppercase tracking-wide mb-0.5">Need a Custom Plan?</p>
+          <p className="text-xs text-blue-700 dark:text-blue-400 font-medium">Contact our support team for enterprise pricing, custom limits, or white-label solutions.</p>
         </div>
       </div>
     </div>
