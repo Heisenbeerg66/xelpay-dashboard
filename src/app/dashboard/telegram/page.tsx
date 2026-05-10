@@ -166,7 +166,6 @@ export default function BusinessTelegramPage() {
           <div className="p-6 md:p-8">
             {isConnected ? (
               <div className="space-y-6">
-                {/* Premium Connected Box */}
                 <div className="bg-gradient-to-r from-sky-500 to-indigo-600 rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-5 shadow-lg border border-sky-400/30">
                   <div className="w-16 h-16 bg-white/20 text-white rounded-full flex items-center justify-center shrink-0 border border-white/30 backdrop-blur-sm">
                     <User size={28} strokeWidth={2.5} />
@@ -187,9 +186,26 @@ export default function BusinessTelegramPage() {
               </div>
             ) : (
               <div className="space-y-6">
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-3">How to Connect</h4>
+                  <ol className="text-xs md:text-sm text-slate-600 dark:text-slate-300 space-y-3 list-decimal list-inside font-medium">
+                    <li>Copy the Bot Link or click <b>Open Bot</b>.</li>
+                    <li>For Personal Chat: Simply hit <b>Start</b>.</li>
+                    <li>
+                       <span className="font-bold text-sky-600 dark:text-sky-400">For Groups:</span> Add the bot, then send this exact command:
+                       <div className="mt-2 flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2 rounded-xl">
+                           <code className="flex-1 text-xs sm:text-sm font-black text-slate-800 dark:text-white px-2">/start {businessData.telegram_link_code}</code>
+                           <button onClick={() => copyToClipboard(`/start ${businessData.telegram_link_code}`)} className="p-2.5 bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-lg transition-colors shrink-0">
+                               <Copy size={16} strokeWidth={2.5} />
+                           </button>
+                       </div>
+                    </li>
+                  </ol>
+                </div>
+
                 {!businessData?.telegram_link_code ? (
                   <div className="space-y-3">
-                    <button onClick={handleGenerateCode} disabled={generating} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-md flex items-center justify-center gap-2 transition-all">
+                    <button onClick={handleGenerateCode} disabled={generating} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all">
                       {generating ? <><Loader2 size={14} className="animate-spin" /> Generating...</> : <><RefreshCw size={14} /> Generate Pairing Link</>}
                     </button>
                     <button onClick={handleOpenImportModal} disabled={importing} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-md flex items-center justify-center gap-2 transition-all">
@@ -197,25 +213,7 @@ export default function BusinessTelegramPage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-5">
-                    {/* Updated Instruction Box with Code */}
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
-                      <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-3">How to Connect</h4>
-                      <ol className="text-xs md:text-sm text-slate-600 dark:text-slate-300 space-y-3 list-decimal list-inside font-medium">
-                        <li>Copy the Bot Link or click <b>Open Bot</b>.</li>
-                        <li>For Personal Chat: Simply hit <b>Start</b>.</li>
-                        <li>
-                           <span className="font-bold text-sky-600 dark:text-sky-400">For Groups:</span> Add the bot, then send this exact command:
-                           <div className="mt-2 flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2 rounded-xl">
-                               <code className="flex-1 text-xs sm:text-sm font-black text-slate-800 dark:text-white px-2">/start {businessData.telegram_link_code}</code>
-                               <button onClick={() => copyToClipboard(`/start ${businessData.telegram_link_code}`)} className="p-2.5 bg-sky-50 hover:bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 rounded-lg transition-colors shrink-0">
-                                   <Copy size={16} strokeWidth={2.5} />
-                               </button>
-                           </div>
-                        </li>
-                      </ol>
-                    </div>
-
+                  <div className="space-y-4">
                     <div className="p-4 bg-slate-50 dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-700 w-full text-left">
                       <p className="text-[10px] sm:text-xs text-slate-500 font-black mb-2 uppercase tracking-widest">Your Pairing Link</p>
                       <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2 rounded-xl">
@@ -238,13 +236,13 @@ export default function BusinessTelegramPage() {
                       <button onClick={handleGenerateCode} disabled={generating} className="py-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all">
                         <RefreshCw size={14} className={generating ? 'animate-spin' : ''} /> {generating ? '...' : 'Regenerate'}
                       </button>
-                      <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all shadow-md">
+                      <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="py-4 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all shadow-md">
                         <ExternalLink size={14} strokeWidth={2.5} /> Open Bot
                       </a>
                     </div>
 
                     <div className="pt-2">
-                      <button onClick={handleOpenImportModal} disabled={importing} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md">
+                      <button onClick={handleOpenImportModal} disabled={importing} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-sm">
                         <DownloadCloud size={14} strokeWidth={2.5} /> Or Import from Vault
                       </button>
                     </div>
@@ -269,15 +267,19 @@ export default function BusinessTelegramPage() {
               </button>
             </div>
             <div className="p-8 space-y-5">
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">This will link the following Vault Telegram account to this workspace:</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed text-center">This will link the following Vault Telegram account to this workspace:</p>
               
-              <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl flex items-center gap-4">
-                <div className="w-12 h-12 bg-white dark:bg-slate-700 rounded-full flex items-center justify-center shrink-0 border border-slate-100 dark:border-slate-600 shadow-sm">
-                  <User size={20} className="text-slate-500 dark:text-slate-400" />
+              {/* Premium Detailed Card for Import */}
+              <div className="bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-600 dark:to-purple-700 p-6 rounded-2xl flex flex-col items-center gap-3 shadow-xl border border-white/20">
+                <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/40 shadow-inner">
+                  <User size={30} className="text-white" strokeWidth={2.5} />
                 </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 dark:text-white mb-0.5">{vaultTelegramData?.display_name || 'Connected User'}</h3>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{vaultTelegramData?.username || 'Private Account'}</p>
+                <div className="text-center">
+                  <h3 className="text-lg font-black text-white">{vaultTelegramData?.display_name || 'Connected User'}</h3>
+                  <p className="text-xs font-bold text-indigo-100 uppercase tracking-widest mt-0.5">{vaultTelegramData?.username || 'Private Account'}</p>
+                </div>
+                <div className="mt-2 px-3 py-1 bg-white/10 rounded-full border border-white/20">
+                    <span className="text-[10px] font-black text-white uppercase tracking-tighter">Vault Identity</span>
                 </div>
               </div>
 
