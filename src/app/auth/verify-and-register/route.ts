@@ -128,9 +128,6 @@ export async function POST(request: Request) {
     }
 
     // ── 1. Verify OTP server-side and obtain a real session ────────────────
-    //    We use the SSR Supabase client so the resulting session cookies are
-    //    written directly into the HTTP response — the browser receives them
-    //    in the same round-trip, before any navigation happens.
     const cookieStore = await cookies();
     const supabaseSSR = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -170,6 +167,23 @@ export async function POST(request: Request) {
     // ── 2. Resolve the final userId ────────────────────────────────────────
     const finalUserId = userId || verifiedUserId;
 
+    // ── PLAN RESOLUTION FIX: Resolve plan details BEFORE merchant insertion ──
+    let resolvedPlanId = planId;
+    let resolvedPlanPrice = planPrice;
+
+    if (!resolvedPlanId) {
+      const { data: freePlan } = await supabaseAdmin
+        .from('plans')
+        .select('id, price')
+        .order('serial', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (freePlan) {
+        resolvedPlanId = freePlan.id;
+        resolvedPlanPrice = freePlan.price ?? 0;
+      }
+    }
+
     // ── 3. Idempotency — if merchant row already exists, return it ─────────
     const { data: existingById } = await supabaseAdmin
       .from('merchants')
@@ -179,7 +193,7 @@ export async function POST(request: Request) {
 
     if (existingById) {
       // Ensure subscription exists even for returning idempotent calls
-      await createInitialSubscription(finalUserId, planId || null, planPrice ?? 0);
+      await createInitialSubscription(finalUserId, resolvedPlanId || null, resolvedPlanPrice ?? 0);
       return NextResponse.json({ ok: true, merchantDisplayId: existingById.merchant_id_display });
     }
 
@@ -200,7 +214,7 @@ export async function POST(request: Request) {
 
     // ── 5. Insert merchant row ─────────────────────────────────────────────
     const referId = `XEL-${merchantDisplayId}`;
-    const accountStatus = (planPrice ?? 0) === 0 ? 'active' : 'pending';
+    const accountStatus = (resolvedPlanPrice ?? 0) === 0 ? 'active' : 'pending';
 
     const { error: insertError } = await supabaseAdmin.from('merchants').insert({
       id: finalUserId,
@@ -213,7 +227,7 @@ export async function POST(request: Request) {
       currency: 'BDT',
       status: accountStatus,
       subscription_status: accountStatus,
-      plan_id: planId || null,
+      plan_id: resolvedPlanId || null, // FIXED: Now it gets the actual Free Plan ID
       refer_id: referId,
       referred_by: referCode || null,
       total_refer: 0,
@@ -244,9 +258,7 @@ export async function POST(request: Request) {
     }
 
     // ── 6. Create initial subscription ────────────────────────────────────
-    //    The DB trigger should handle this automatically, but we also call it
-    //    here as a safety net in case the trigger is not yet applied.
-    await createInitialSubscription(finalUserId, planId || null, planPrice ?? 0);
+    await createInitialSubscription(finalUserId, resolvedPlanId || null, resolvedPlanPrice ?? 0);
 
     // ── 7. Increment referrer count if applicable ──────────────────────────
     if (referCode) {
