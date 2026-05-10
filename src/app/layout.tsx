@@ -1,3 +1,4 @@
+// PATH: /app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -8,14 +9,50 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  // গুগলে www সহ ইনডেক্সড তাই metadataBase আপডেট করা হয়েছে
+  // গুগলে www সহ ইনডেক্সড তাই metadataBase আপডেট করা হয়েছে
   metadataBase: new URL('https://www.xelpay.site'),
   title: {
     default: "XelPay - Automated Payment Gateway Bangladesh",
     template: "%s | XelPay"
   },
-  description: "Automate your personal bKash, Nagad, and Rocket payments instantly with XelPay. The most secure and zero-commission payment automation gateway in Bangladesh.",
-  keywords: ["XelPay", "Payment Gateway Bangladesh", "bKash Automation", "Nagad Automation", "Automated Payment Verification", "Rocket Payment Gateway", "Payment Automation Solutions"],
+  description: "Automate your bKash, Nagad, Rocket, Upay, Cellfin, Pathao Pay, Bank, and Crypto payments instantly with XelPay. The most secure, zero-commission payment automation API in Bangladesh.",
+  keywords: [
+     'automated payment gateway Bangladesh',
+    'payment automation platform BD',
+    'bKash payment automation',
+    'bKash auto verification',
+    'bKash personal automation',
+    'Nagad payment gateway API',
+    'Nagad personal automation',
+    'Rocket automated payment',
+    'Rocket personal automation',
+    'Upay webhook integration',
+    'Cellfin payment automation',
+    'Pathao Pay verification API',
+    'Bank payment automation Bangladesh',
+    'Crypto payment gateway BD',
+    'cryptocurrency auto payment',
+    'mobile banking automation',
+    'zero commission payment gateway',
+    'zero hidden fee payment API',
+    'instant payment verification BD',
+    'payment gateway for developers',
+    'payment link generator Bangladesh',
+    'e-commerce payment solution Bangladesh',
+    'secure payment gateway BD',
+    'bKash merchant API',
+    'XelPay API integration',
+    'best payment gateway Bangladesh',
+    'Uddoktapay alternative',
+    'ZiniPay alternative',
+    'shurjopay alternative',
+    'SSLCommerz alternative',
+    'AamarPay alternative',
+    'Paystation alternative',
+    'Stripe alternative Bangladesh',
+    'Binance payment alternative BD',
+    'XelPay'
+  ],
   icons: {
     icon: [
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
@@ -34,6 +71,8 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://www.xelpay.site',
     siteName: 'XelPay Technologies',
+    title: 'XelPay — Automated Payment Gateway Bangladesh',
+    description: 'Automate bKash, Nagad, Rocket, Bank & Crypto payments instantly. Zero commission webhook API.',
     images: [
       {
         url: '/og-image.png',
