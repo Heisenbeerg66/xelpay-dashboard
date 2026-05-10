@@ -5,11 +5,11 @@ import crypto from 'crypto';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-// Webhook-এর জন্য Service Role Key দিয়ে সাধারণ Client তৈরি করা হলো (কোনো কুকিজের প্রয়োজন নেই)
+// Webhook-এর জন্য Service Role Key দিয়ে সাধারণ Client তৈরি করা হলো
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const BOT_TOKEN = process.env.XELPAY_BOT_TOKEN;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'; // আপনার সাইটের লিংক
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com'; 
 
 function generateComplexString(length: number): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -90,12 +90,12 @@ async function getChatInfoForEvent(merchantId: string, businessId?: string) {
     return null;
 }
 
-// ─── Supabase Database Webhook Handler (Transactions & Notifications) ───
+// ─── Supabase Database Webhook Handler (Orders & Notifications) ───
 async function handleSupabaseWebhook(body: any) {
     const { type, table, record } = body;
 
-    // ১. Transaction Paid Event
-    if (table === 'transactions' && type === 'UPDATE' && record.status === 'paid') {
+    // ১. Order Paid Event (table name changed to 'orders')
+    if (table === 'orders' && type === 'UPDATE' && record.status === 'paid') {
         const chatInfo = await getChatInfoForEvent(record.merchant_id, record.business_id);
         if (chatInfo?.chatId) {
             const message = `
@@ -105,7 +105,7 @@ async function handleSupabaseWebhook(body: any) {
 🏢 <b>Account:</b> ${chatInfo.accountName}
 💰 <b>Amount:</b> ${record.amount} ${record.currency || 'BDT'}
 💳 <b>Method:</b> ${record.payment_method || 'Gateway'}
-🧾 <b>Trx ID:</b> <code>${record.transaction_id || record.id}</code>
+🧾 <b>Order ID:</b> <code>${record.transaction_id || record.id}</code>
 
 <i>Payment has been verified and updated in your system.</i>`;
 
