@@ -7,6 +7,7 @@ import {
   RefreshCw, Trash2, Key, Eye, EyeOff, CheckCircle2, DownloadCloud, ExternalLink, Wifi, Clock, Info
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   getMerchantVaultSettings, generateDeviceKey, getConnectedDevice,
   deleteMerchantDevice, getAppDownloadLinks
@@ -109,18 +110,22 @@ export default function MasterDevicesPage() {
             <p className="text-slate-500 font-bold text-[10px] md:text-sm mt-1 uppercase tracking-wider">SMS Automation Node</p>
           </div>
         </div>
-        <button onClick={() => setIsDownloadModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 md:px-5 md:py-3 rounded-xl font-black flex items-center justify-center gap-2 transition-all shadow-md text-[10px] md:text-xs uppercase tracking-widest shrink-0">
-          <Download size={16} strokeWidth={2.5} /> <span className="hidden sm:inline">Download App</span>
+        {/* Green Responsive Download Button */}
+        <button onClick={() => setIsDownloadModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 md:px-5 md:py-3 rounded-xl font-black flex items-center justify-center gap-2 transition-all shadow-md text-xs uppercase tracking-widest shrink-0">
+          <Download size={16} strokeWidth={2.5} /> 
+          <span className="sm:hidden">App</span>
+          <span className="hidden sm:inline">Download App</span>
         </button>
       </div>
 
       <div className="max-w-2xl mx-auto w-full">
         {!activeDevice ? (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm flex flex-col">
-            <div className="p-5 md:p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-4 mb-3">
-                <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shrink-0">
-                  <Smartphone size={24} className="text-white" />
+            {/* Premium Clean Top Section */}
+            <div className="p-5 md:p-6 bg-slate-50/50 dark:bg-[#0B1120] border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-4 mb-2">
+                <div className="w-12 h-12 bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-xl flex items-center justify-center shrink-0">
+                  <Smartphone size={24} />
                 </div>
                 <div>
                   <h2 className="text-xl font-black text-slate-900 dark:text-white">Connect Master Node</h2>
@@ -137,7 +142,7 @@ export default function MasterDevicesPage() {
               ].map((t, n) => (
                 <div key={n} className="flex items-start gap-3 p-3 rounded-xl">
                   <span className="w-6 h-6 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-black rounded-full flex items-center justify-center shrink-0">{n + 1}</span>
-                  <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium leading-relaxed mt-0.5">{t}</p>
+                  <p className="text-xs md:text-sm text-slate-800 dark:text-white font-medium leading-relaxed mt-0.5">{t}</p>
                 </div>
               ))}
             </div>
@@ -204,11 +209,18 @@ export default function MasterDevicesPage() {
             <div className="p-6">
               {deviceKey && (
                 <>
+                  {/* QR Code in Modal Restored */}
+                  <div className="flex justify-center mb-5">
+                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
+                      <QRCodeSVG value={`xelpay://connect?key=${deviceKey}`} size={140} level="H" includeMargin={false} />
+                    </div>
+                  </div>
+
                   <div className="flex items-stretch bg-slate-50 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
                     <div className="px-3 flex items-center justify-center bg-slate-100 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shrink-0">
                       <Key size={16} className="text-slate-400" />
                     </div>
-                    {/* Scrollbar hidden logic applied here */}
+                    {/* Scrollbar hidden logic */}
                     <div className="flex-1 py-3 px-3 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] font-mono text-sm tracking-wider font-bold text-slate-800 dark:text-slate-200">
                       {displayedKey}
                     </div>

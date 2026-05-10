@@ -6,6 +6,7 @@ import {
   Trash2, Key, Eye, EyeOff, CheckCircle2, DownloadCloud, Wifi, Clock, Info
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   getBusinessSettings, generateBusinessDeviceKey, getBusinessConnectedDevice,
   deleteBusinessDevice, importVaultDeviceToBusiness, getVaultDataForImport
@@ -142,18 +143,22 @@ export default function BusinessDevicesPage() {
           <h1 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Devices</h1>
           <p className="text-slate-500 font-bold text-[10px] md:text-sm mt-1 uppercase tracking-wider">Workspace Nodes</p>
         </div>
-        <button onClick={() => setIsDownloadModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 md:px-5 md:py-3 rounded-xl font-black flex items-center justify-center gap-2 transition-all shadow-md text-[10px] md:text-xs uppercase tracking-widest shrink-0">
-          <Download size={16} strokeWidth={2.5} /> <span className="hidden sm:inline">Download App</span>
+        {/* Green Responsive Download Button */}
+        <button onClick={() => setIsDownloadModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 md:px-5 md:py-3 rounded-xl font-black flex items-center justify-center gap-2 transition-all shadow-md text-xs uppercase tracking-widest shrink-0">
+          <Download size={16} strokeWidth={2.5} /> 
+          <span className="sm:hidden">App</span>
+          <span className="hidden sm:inline">Download App</span>
         </button>
       </div>
 
       <div className="max-w-2xl mx-auto w-full">
         {!activeDevice ? (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm flex flex-col">
-            <div className="p-5 md:p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-4 mb-3">
-                <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shrink-0">
-                  <Smartphone size={24} className="text-white" />
+            {/* Premium Clean Top Section */}
+            <div className="p-5 md:p-6 bg-slate-50/50 dark:bg-[#0B1120] border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-4 mb-2">
+                <div className="w-12 h-12 bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-xl flex items-center justify-center shrink-0">
+                  <Smartphone size={24} />
                 </div>
                 <div>
                   <h2 className="text-xl font-black text-slate-900 dark:text-white">Connect Device</h2>
@@ -170,7 +175,7 @@ export default function BusinessDevicesPage() {
               ].map((t, n) => (
                 <div key={n} className="flex items-start gap-3 p-3 rounded-xl">
                   <span className="w-6 h-6 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-black rounded-full flex items-center justify-center shrink-0">{n + 1}</span>
-                  <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium leading-relaxed mt-0.5">{t}</p>
+                  <p className="text-xs md:text-sm text-slate-800 dark:text-white font-medium leading-relaxed mt-0.5">{t}</p>
                 </div>
               ))}
             </div>
@@ -179,7 +184,7 @@ export default function BusinessDevicesPage() {
               <button onClick={handleOpenManualModal} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all">
                 <Key size={16} /> Connect with Secret Key
               </button>
-              <button onClick={handleOpenImportModal} disabled={importing} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-sm flex items-center justify-center gap-2 transition-all">
+              <button onClick={handleOpenImportModal} disabled={importing} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-md flex items-center justify-center gap-2 transition-all">
                 <DownloadCloud size={16} strokeWidth={2.5} /> Import from Vault
               </button>
             </div>
@@ -240,6 +245,13 @@ export default function BusinessDevicesPage() {
             <div className="p-6">
               {deviceKey && (
                 <>
+                  {/* QR Code in Modal Restored */}
+                  <div className="flex justify-center mb-5">
+                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
+                      <QRCodeSVG value={`xelpay://connect?key=${deviceKey}`} size={140} level="H" includeMargin={false} />
+                    </div>
+                  </div>
+
                   <div className="flex items-stretch bg-slate-50 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
                     <div className="px-3 flex items-center justify-center bg-slate-100 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shrink-0">
                       <Key size={16} className="text-slate-400" />
@@ -312,7 +324,7 @@ export default function BusinessDevicesPage() {
           <div className="w-full max-w-xs bg-white dark:bg-slate-900 rounded-[24px] overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
-                <div className="p-1.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg"><Download size={16} className="text-indigo-600" /></div>
+                <div className="p-1.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg"><Download size={16} className="text-emerald-600" /></div>
                 <span className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Download App</span>
               </div>
               <button onClick={() => setIsDownloadModalOpen(false)} className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors rounded-lg">
@@ -328,7 +340,7 @@ export default function BusinessDevicesPage() {
               )}
               {downloadLinks.direct_apk && (
                 <a href={downloadLinks.direct_apk} target="_blank" rel="noopener noreferrer"
-                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md rounded-xl">
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md rounded-xl">
                   <DownloadCloud size={16} /> Direct APK Download
                 </a>
               )}

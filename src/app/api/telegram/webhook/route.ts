@@ -86,7 +86,7 @@ export async function POST(req: Request) {
             const data = callbackQuery.data;
 
             const fromUser = callbackQuery.from || {};
-            const username = fromUser.username ? `${fromUser.username}` : null;
+            const username = fromUser.username ? `@${fromUser.username}` : null;
             const displayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
 
             if (data.startsWith('connect_dm_')) {
@@ -98,34 +98,37 @@ export async function POST(req: Request) {
         }
 
         // ─── নরমাল মেসেজ বা /start হ্যান্ডেল করা ───
-        if (body.message && body.message.text) {
-            const chatId = body.message.chat.id;
-            const chatType = body.message.chat.type;
-            const text = body.message.text.trim();
-
-            const fromUser = body.message.from || {};
-            const userUsername = fromUser.username ? `@${fromUser.username}` : null;
-            let userDisplayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
+        if (body.message) {
+            const chat = body.message.chat;
+            const chatId = chat.id;
+            const chatType = chat.type; // 'private', 'group', 'supergroup'
+            
+            // ক্র্যাশ ফিক্স: গ্রুপে অ্যাড হওয়ার সময় text undefined থাকতে পারে
+            const text = body.message.text ? body.message.text.trim() : '';
 
             if (text.startsWith('/start')) {
-                const code = text.split(' ')[1]; 
+                const parts = text.split(/\s+/);
+                const code = parts.length > 1 ? parts[1] : null; 
 
                 if (!code) {
-                    await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\nPlease generate a valid connection link from your Xelpay Dashboard.");
+                    // গ্রুপে স্প্যাম না করার জন্য শুধু প্রাইভেট চ্যাটেই এরর মেসেজ পাঠাবো
+                    if (chatType === 'private') {
+                        await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\nPlease generate a valid connection link from your Xelpay Dashboard.");
+                    }
                     return NextResponse.json({ status: 'no_code' });
                 }
 
-                // গ্রুপ বা সুপারগ্রুপ হলে গ্রুপের নাম ও ইউজারনেম সেভ করবে
+                // যদি ইউজার গ্রুপে বা সুপারগ্রুপে বট অ্যাড করে
                 if (chatType === 'group' || chatType === 'supergroup') {
-                    const groupTitle = body.message.chat.title || userDisplayName;
-                    const groupUsername = body.message.chat.username ? `@${body.message.chat.username}` : userUsername;
+                    const groupTitle = chat.title || 'Connected Group';
+                    const groupUsername = chat.username ? `@${chat.username}` : null;
                     
                     const resultMessage = await connectTelegram(code, chatId, groupUsername, groupTitle);
                     await sendTelegramMessage(chatId, resultMessage);
                     return NextResponse.json({ status: 'connected_group' });
                 }
 
-                // পার্সোনাল চ্যাট হলে
+                // যদি ইউজার পার্সোনাল মেসেজে বট স্টার্ট দেয়, তবে তাকে বাটন দেখাবো
                 const botUsername = await getBotUsername();
                 const replyMarkup = {
                     inline_keyboard: [

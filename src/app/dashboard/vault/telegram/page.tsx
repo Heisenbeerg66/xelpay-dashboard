@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Bot, RefreshCw, CheckCircle2, ShieldCheck,
-  Loader2, ExternalLink, Unlink, Copy, AlertTriangle, User, AtSign
+  Loader2, ExternalLink, Unlink, Copy, AlertTriangle, User
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { getMerchantVaultSettings, generateTelegramCode, getTelegramBotUsername, unlinkMerchantTelegram } from '@/lib/vault_actions';
@@ -67,7 +67,7 @@ export default function MasterTelegramPage() {
 
   if (loading) return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center">
-      <Loader2 className="animate-spin text-blue-600 mb-3" size={36} strokeWidth={2.5} />
+      <Loader2 className="animate-spin text-indigo-600 mb-3" size={36} strokeWidth={2.5} />
       <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Loading Vault</p>
     </div>
   );
@@ -92,14 +92,16 @@ export default function MasterTelegramPage() {
 
       <div className="max-w-2xl mx-auto w-full">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
-          <div className={`p-5 md:p-6 text-center ${isConnected ? 'bg-emerald-600' : 'bg-blue-600'}`}>
-            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-3 border border-white/30 text-white mx-auto">
-              {isConnected ? <CheckCircle2 size={28} strokeWidth={2.5} /> : <Bot size={28} strokeWidth={2} />}
+          
+          {/* Premium Clean Top Section */}
+          <div className={`p-6 md:p-8 text-center border-b border-slate-100 dark:border-slate-800 ${isConnected ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : 'bg-indigo-50/50 dark:bg-indigo-900/10'}`}>
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-sm mx-auto ${isConnected ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'}`}>
+              {isConnected ? <CheckCircle2 size={32} strokeWidth={2.5} /> : <Bot size={32} strokeWidth={2} />}
             </div>
-            <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight">
+            <h2 className={`text-xl font-black uppercase tracking-tight ${isConnected ? 'text-emerald-900 dark:text-emerald-400' : 'text-indigo-900 dark:text-indigo-400'}`}>
               {isConnected ? 'Bot Connected' : 'Setup Pending'}
             </h2>
-            <p className={`text-xs md:text-sm font-medium mt-1 max-w-sm mx-auto ${isConnected ? 'text-emerald-100' : 'text-blue-100'}`}>
+            <p className="text-sm font-medium mt-1.5 max-w-sm mx-auto text-slate-500 dark:text-slate-400">
               {isConnected ? 'Payment notifications are active.' : 'Link the bot to receive instant alerts globally.'}
             </p>
           </div>
@@ -113,9 +115,10 @@ export default function MasterTelegramPage() {
                     <User size={30} strokeWidth={2} />
                   </div>
                   <h3 className="text-lg font-black text-slate-800 dark:text-white mb-1">{merchantData?.telegram_display_name || 'Connected User'}</h3>
+                  {/* Removed the @ icon, kept just the username text */}
                   {merchantData?.telegram_username && (
-                    <p className="text-sm text-slate-500 font-medium flex items-center justify-center gap-1">
-                      <AtSign size={14} /> {merchantData.telegram_username}
+                    <p className="text-sm text-slate-500 font-medium">
+                      {merchantData.telegram_username}
                     </p>
                   )}
                   <div className="mt-4 flex items-center gap-2 text-xs font-bold text-emerald-600 bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-lg uppercase tracking-widest border border-slate-200 dark:border-slate-700">
@@ -123,16 +126,17 @@ export default function MasterTelegramPage() {
                   </div>
                 </div>
 
-                <button onClick={() => setShowUnlinkModal(true)} className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2">
+                {/* Softer Unlink Button */}
+                <button onClick={() => setShowUnlinkModal(true)} className="w-full py-4 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/10 dark:hover:bg-red-900/20 dark:text-red-400 font-black text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2">
                   <Unlink size={16} strokeWidth={2.5} /> Unlink Telegram
                 </button>
               </div>
             ) : (
               <div className="space-y-5">
-                {/* Instruction System */}
+                {/* Instruction System with White Text in Dark Mode */}
                 <div className="bg-slate-50 dark:bg-[#0B1120] p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                   <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-3">How to Connect</h4>
-                  <ol className="text-xs md:text-sm text-slate-600 dark:text-slate-400 space-y-2.5 list-decimal list-inside font-medium">
+                  <ol className="text-xs md:text-sm text-slate-700 dark:text-white space-y-2.5 list-decimal list-inside font-medium">
                     <li>Click <b>Generate Link</b> below.</li>
                     <li>Copy the Bot Link or click <b>Open Bot</b>.</li>
                     <li>Hit the <b>Start</b> button in Telegram to sync.</li>
@@ -140,7 +144,7 @@ export default function MasterTelegramPage() {
                 </div>
 
                 {!merchantData?.telegram_link_code ? (
-                  <button onClick={handleGenerateCode} disabled={generating} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all">
+                  <button onClick={handleGenerateCode} disabled={generating} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-sm flex items-center justify-center gap-2 transition-all">
                     {generating ? <><Loader2 size={14} className="animate-spin" /> Generating...</> : <><RefreshCw size={14} /> Generate Pairing Link</>}
                   </button>
                 ) : (
@@ -165,10 +169,11 @@ export default function MasterTelegramPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                      <button onClick={handleGenerateCode} disabled={generating} className="py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-white rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all">
+                      {/* Premium Tinted Regenerate Button */}
+                      <button onClick={handleGenerateCode} disabled={generating} className="py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 dark:text-indigo-400 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all">
                         <RefreshCw size={14} className={generating ? 'animate-spin' : ''} /> {generating ? '...' : 'Regenerate'}
                       </button>
-                      <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all shadow-md">
+                      <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all shadow-sm">
                         <ExternalLink size={14} strokeWidth={2.5} /> Open Bot
                       </a>
                     </div>
@@ -184,8 +189,8 @@ export default function MasterTelegramPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[24px] shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 text-center space-y-4">
-              <div className="w-14 h-14 bg-red-100 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mx-auto">
-                <AlertTriangle size={28} className="text-red-500" strokeWidth={2} />
+              <div className="w-14 h-14 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mx-auto">
+                <AlertTriangle size={28} className="text-red-500 dark:text-red-400" strokeWidth={2} />
               </div>
               <div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white">Unlink Telegram?</h3>
@@ -195,7 +200,8 @@ export default function MasterTelegramPage() {
                 <button onClick={() => setShowUnlinkModal(false)} disabled={unlinking} className="flex-1 py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
                   Cancel
                 </button>
-                <button onClick={handleUnlink} disabled={unlinking} className="flex-1 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-60">
+                {/* Softer Unlink action button */}
+                <button onClick={handleUnlink} disabled={unlinking} className="flex-1 py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-60 shadow-sm">
                   {unlinking ? <Loader2 size={16} className="animate-spin" /> : 'Unlink'}
                 </button>
               </div>

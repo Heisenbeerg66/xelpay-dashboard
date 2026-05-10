@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   Send, Bot, RefreshCw, CheckCircle2, ShieldCheck, Loader2,
-  Unlink, Copy, ExternalLink, AlertTriangle, User, AtSign, X, DownloadCloud
+  Unlink, Copy, ExternalLink, AlertTriangle, User, X, DownloadCloud
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import {
@@ -136,14 +136,16 @@ export default function BusinessTelegramPage() {
 
       <div className="max-w-2xl mx-auto w-full">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
-          <div className={`p-5 md:p-6 text-center ${isConnected ? 'bg-indigo-600' : 'bg-slate-800'}`}>
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3 shadow-sm mx-auto bg-white/20 text-white border border-white/30">
-              {isConnected ? <CheckCircle2 size={28} strokeWidth={2.5} /> : <Bot size={28} strokeWidth={2} />}
+          
+          {/* Premium Clean Top Section */}
+          <div className={`p-6 md:p-8 text-center border-b border-slate-100 dark:border-slate-800 ${isConnected ? 'bg-sky-50/50 dark:bg-sky-900/10' : 'bg-slate-50/50 dark:bg-[#0B1120]'}`}>
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 shadow-sm mx-auto ${isConnected ? 'bg-sky-100 text-sky-600 dark:bg-sky-900/30 dark:text-sky-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
+              {isConnected ? <CheckCircle2 size={32} strokeWidth={2.5} /> : <Bot size={32} strokeWidth={2} />}
             </div>
-            <h2 className="text-lg md:text-xl font-black uppercase tracking-tight text-white">
+            <h2 className={`text-xl font-black uppercase tracking-tight ${isConnected ? 'text-sky-900 dark:text-sky-400' : 'text-slate-900 dark:text-slate-100'}`}>
               {isConnected ? 'Bot Connected' : 'Setup Pending'}
             </h2>
-            <p className="text-xs md:text-sm font-medium mt-1 max-w-sm mx-auto text-slate-200">
+            <p className="text-sm font-medium mt-1.5 max-w-sm mx-auto text-slate-500 dark:text-slate-400">
               {isConnected ? `Alerts for ${businessData.business_name} are active.` : 'Link the bot to receive alerts for this workspace.'}
             </p>
           </div>
@@ -152,30 +154,32 @@ export default function BusinessTelegramPage() {
             {isConnected ? (
               <div className="space-y-4">
                 <div className="bg-slate-50 dark:bg-[#0B1120] rounded-2xl p-5 border border-slate-100 dark:border-slate-800 mb-6 flex flex-col items-center">
-                  <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 rounded-full flex items-center justify-center mb-3">
+                  <div className="w-16 h-16 bg-sky-100 dark:bg-sky-900/30 text-sky-600 rounded-full flex items-center justify-center mb-3">
                     <User size={30} strokeWidth={2} />
                   </div>
                   <h3 className="text-lg font-black text-slate-800 dark:text-white mb-1">{businessData?.telegram_display_name || 'Connected User'}</h3>
+                  {/* Removed @ icon */}
                   {businessData?.telegram_username && (
-                    <p className="text-sm text-slate-500 font-medium flex items-center justify-center gap-1">
-                      <AtSign size={14} /> {businessData.telegram_username}
+                    <p className="text-sm text-slate-500 font-medium">
+                      {businessData.telegram_username}
                     </p>
                   )}
-                  <div className="mt-4 flex items-center gap-2 text-xs font-bold text-emerald-600 bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-lg uppercase tracking-widest border border-slate-200 dark:border-slate-700">
+                  <div className="mt-4 flex items-center gap-2 text-xs font-bold text-sky-600 bg-sky-50 dark:bg-sky-900/20 px-4 py-2 rounded-lg uppercase tracking-widest border border-slate-200 dark:border-slate-700">
                     <ShieldCheck size={14} /> Active Connection
                   </div>
                 </div>
 
-                <button onClick={() => setShowUnlinkModal(true)} className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2">
+                {/* Softer Unlink Button */}
+                <button onClick={() => setShowUnlinkModal(true)} className="w-full py-4 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/10 dark:hover:bg-red-900/20 dark:text-red-400 font-black text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2">
                   <Unlink size={16} strokeWidth={2.5} /> Unlink Telegram
                 </button>
               </div>
             ) : (
               <div className="space-y-5">
-                {/* Instruction System */}
+                {/* Instruction System with White Text in Dark Mode */}
                 <div className="bg-slate-50 dark:bg-[#0B1120] p-4 rounded-xl border border-slate-100 dark:border-slate-800">
                   <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-3">How to Connect</h4>
-                  <ol className="text-xs md:text-sm text-slate-600 dark:text-slate-400 space-y-2.5 list-decimal list-inside font-medium">
+                  <ol className="text-xs md:text-sm text-slate-700 dark:text-white space-y-2.5 list-decimal list-inside font-medium">
                     <li>Click <b>Generate Link</b> or import from Vault.</li>
                     <li>Copy the Bot Link or click <b>Open Bot</b>.</li>
                     <li>Send the <code>/start</code> command with your code to sync.</li>
@@ -184,10 +188,10 @@ export default function BusinessTelegramPage() {
 
                 {!businessData?.telegram_link_code ? (
                   <div className="space-y-3">
-                    <button onClick={handleGenerateCode} disabled={generating} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all">
+                    <button onClick={handleGenerateCode} disabled={generating} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-sm flex items-center justify-center gap-2 transition-all">
                       {generating ? <><Loader2 size={14} className="animate-spin" /> Generating...</> : <><RefreshCw size={14} /> Generate Pairing Link</>}
                     </button>
-                    <button onClick={handleOpenImportModal} disabled={importing} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-md flex items-center justify-center gap-2 transition-all">
+                    <button onClick={handleOpenImportModal} disabled={importing} className="w-full py-4 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40 rounded-xl font-black text-xs uppercase tracking-widest border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-center gap-2 transition-all">
                       <DownloadCloud size={16} strokeWidth={2.5} /> Import from Vault
                     </button>
                   </div>
@@ -213,16 +217,17 @@ export default function BusinessTelegramPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                      <button onClick={handleGenerateCode} disabled={generating} className="py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-white rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all">
+                      {/* Premium Tinted Regenerate Button */}
+                      <button onClick={handleGenerateCode} disabled={generating} className="py-3.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 dark:text-indigo-400 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all">
                         <RefreshCw size={14} className={generating ? 'animate-spin' : ''} /> {generating ? '...' : 'Regenerate'}
                       </button>
-                      <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all shadow-md">
+                      <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all shadow-sm">
                         <ExternalLink size={14} strokeWidth={2.5} /> Open Bot
                       </a>
                     </div>
 
                     <div className="pt-2">
-                      <button onClick={handleOpenImportModal} disabled={importing} className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all">
+                      <button onClick={handleOpenImportModal} disabled={importing} className="w-full py-3.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:hover:bg-emerald-900/40 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all border border-emerald-200 dark:border-emerald-800/50">
                         <DownloadCloud size={14} strokeWidth={2.5} /> Or Import from Vault
                       </button>
                     </div>
@@ -255,7 +260,7 @@ export default function BusinessTelegramPage() {
                   <User size={20} className="text-slate-600 dark:text-slate-300" />
                 </div>
                 <div>
-                  <p className="text-sm font-black text-slate-900 dark:text-white">{vaultTelegramData?.display_name || 'Connected User'}</p>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white mb-0.5">{vaultTelegramData?.display_name || 'Connected User'}</h3>
                   <p className="text-xs text-slate-500 font-medium">{vaultTelegramData?.username || 'Private Account'}</p>
                 </div>
               </div>
@@ -277,8 +282,8 @@ export default function BusinessTelegramPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[24px] shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 text-center space-y-4">
-              <div className="w-14 h-14 bg-red-100 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mx-auto">
-                <AlertTriangle size={28} className="text-red-500" strokeWidth={2} />
+              <div className="w-14 h-14 bg-red-50 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mx-auto">
+                <AlertTriangle size={28} className="text-red-500 dark:text-red-400" strokeWidth={2} />
               </div>
               <div>
                 <h3 className="text-lg font-black text-slate-900 dark:text-white">Unlink Telegram?</h3>
@@ -288,7 +293,8 @@ export default function BusinessTelegramPage() {
                 <button onClick={() => setShowUnlinkModal(false)} disabled={unlinking} className="flex-1 py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
                   Cancel
                 </button>
-                <button onClick={handleUnlink} disabled={unlinking} className="flex-1 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-60">
+                {/* Softer Unlink action button */}
+                <button onClick={handleUnlink} disabled={unlinking} className="flex-1 py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-60 shadow-sm">
                   {unlinking ? <Loader2 size={16} className="animate-spin" /> : 'Unlink'}
                 </button>
               </div>
