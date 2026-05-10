@@ -148,15 +148,15 @@ export default function Header({ merchant, setSidebarOpen }: any) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // ─── Notifications Fetch Logic (Specific Merchant OR Global) ───
   const fetchNotifications = async () => {
     if (!merchant?.id) return;
     setNotifLoading(true);
     try {
-      // FIXED: .or() ব্যবহার করে merchant.id অথবা null দুটোই আনা হচ্ছে
       const { data } = await supabase
         .from('notifications')
         .select('*')
-        .or(`merchant_id.eq.${merchant.id},merchant_id.is.null`)
+        .or(`merchant_id.eq.${merchant.id},merchant_id.is.null`) // merchant_id miliye othoba null thakle dekhabe
         .order('created_at', { ascending: false })
         .limit(20);
       setNotifications(data || []);
@@ -176,7 +176,6 @@ export default function Header({ merchant, setSidebarOpen }: any) {
   };
 
   const markAsRead = async (id: string) => {
-    // Note: Global notification mark as read will just update local state to avoid DB complexity
     await supabase.from('notifications').update({ is_read: true }).eq('id', id);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
   };
@@ -298,7 +297,6 @@ export default function Header({ merchant, setSidebarOpen }: any) {
                     notifications.map((n) => (
                       <button
                         key={n.id}
-                        // FIXED: action_url না থাকলে শুধু রিড হবে, লিংকে যাবে না
                         onClick={() => { markAsRead(n.id); if (n.action_url) window.location.href = n.action_url; }}
                         className={`w-full flex items-start gap-3 px-4 py-3.5 text-left hover:bg-slate-800/60 transition-colors border-b border-slate-800/50 last:border-0 ${!n.is_read ? 'bg-blue-900/10' : ''}`}
                       >
