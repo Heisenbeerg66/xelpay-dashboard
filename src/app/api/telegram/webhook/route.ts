@@ -1,11 +1,20 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+// Webhook-এর জন্য Service Role Key দিয়ে সাধারণ Client তৈরি করা হলো (কোনো কুকিজের প্রয়োজন নেই)
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const BOT_TOKEN = process.env.XELPAY_BOT_TOKEN;
+
+function generateComplexString(length: number): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const bytes = crypto.randomBytes(length);
+    return Array.from(bytes).map(b => chars[b % chars.length]).join('');
+}
 
 export async function GET() {
     return NextResponse.json({ 
@@ -66,6 +75,26 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
 
+        // ─── ১. Bot Kicked or Removed Handler ───
+        if (body.my_chat_member) {
+            const newStatus = body.my_chat_member.new_chat_member.status;
+            if (newStatus === 'left' || newStatus === 'kicked') {
+                const chatId = body.my_chat_member.chat.id.toString();
+                const newCode = generateComplexString(12);
+
+                await supabase.from('merchants').update({
+                    telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode
+                }).eq('telegram_chat_id', chatId);
+
+                await supabase.from('businesses').update({
+                    telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode, is_telegram_enabled: false
+                }).eq('telegram_chat_id', chatId);
+
+                return NextResponse.json({ status: 'unlinked_on_kick' });
+            }
+        }
+
+        // ─── ২. Callback Query Handler ───
         if (body.callback_query) {
             const callbackQuery = body.callback_query;
             const chatId = callbackQuery.message.chat.id;
@@ -84,13 +113,13 @@ export async function POST(req: Request) {
             return NextResponse.json({ status: 'success' });
         }
 
+        // ─── ৩. Message Handler ───
         if (body.message) {
             const chat = body.message.chat;
             const chatId = chat.id;
             const chatType = chat.type;
             const text = body.message.text ? body.message.text.trim() : '';
 
-            // Group Auto-Connect Fix: টেলিগ্রাম অটোমেটিক /start@botname code পাঠায় গ্রুপে অ্যাড করার সাথে সাথে
             if (text.startsWith('/start')) {
                 const parts = text.split(/\s+/);
                 const code = parts.length > 1 ? parts[1] : null; 
