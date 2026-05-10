@@ -10,8 +10,7 @@ const BOT_TOKEN = process.env.XELPAY_BOT_TOKEN;
 export async function GET() {
     return NextResponse.json({ 
         status: "success", 
-        message: "Telegram Webhook is ALIVE and Working! 🚀",
-        tip: "Now try sending a /start command from your Telegram Bot."
+        message: "Telegram Webhook is ALIVE and Working! 🚀"
     });
 }
 
@@ -89,20 +88,9 @@ export async function POST(req: Request) {
             const chat = body.message.chat;
             const chatId = chat.id;
             const chatType = chat.type;
-
-            // যদি বটকে গ্রুপে অ্যাড করা হয়, তবে অটোমেটিক রিপ্লাই দেবে
-            if (body.message.new_chat_members) {
-                const botUsername = await getBotUsername();
-                const botAdded = body.message.new_chat_members.some((member: any) => member.username === botUsername);
-                
-                if (botAdded) {
-                    await sendTelegramMessage(chatId, "👋 <b>Hello!</b>\nTo connect this group for alerts, please send the start command with your pairing code.\n\n👉 <b>Example:</b> <code>/start YOUR_CODE_HERE</code>");
-                    return NextResponse.json({ status: 'welcomed_group' });
-                }
-            }
-
             const text = body.message.text ? body.message.text.trim() : '';
 
+            // Group Auto-Connect Fix: টেলিগ্রাম অটোমেটিক /start@botname code পাঠায় গ্রুপে অ্যাড করার সাথে সাথে
             if (text.startsWith('/start')) {
                 const parts = text.split(/\s+/);
                 const code = parts.length > 1 ? parts[1] : null; 
