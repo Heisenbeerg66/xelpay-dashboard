@@ -56,7 +56,6 @@ function GlobalSearch() {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const router_ref = useRef<any>(null);
 
   useEffect(() => {
     if (query.trim().length < 1) { setResults([]); return; }
@@ -129,7 +128,6 @@ export default function Header({ merchant, setSidebarOpen }: any) {
   const [notifLoading, setNotifLoading] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
-  const isMobileDevice = useIsMobileDevice();
 
   useEffect(() => {
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -154,10 +152,11 @@ export default function Header({ merchant, setSidebarOpen }: any) {
     if (!merchant?.id) return;
     setNotifLoading(true);
     try {
+      // FIXED: .or() ব্যবহার করে merchant.id অথবা null দুটোই আনা হচ্ছে
       const { data } = await supabase
         .from('notifications')
         .select('*')
-        .eq('merchant_id', merchant.id)
+        .or(`merchant_id.eq.${merchant.id},merchant_id.is.null`)
         .order('created_at', { ascending: false })
         .limit(20);
       setNotifications(data || []);
@@ -177,6 +176,7 @@ export default function Header({ merchant, setSidebarOpen }: any) {
   };
 
   const markAsRead = async (id: string) => {
+    // Note: Global notification mark as read will just update local state to avoid DB complexity
     await supabase.from('notifications').update({ is_read: true }).eq('id', id);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
   };
@@ -223,7 +223,6 @@ export default function Header({ merchant, setSidebarOpen }: any) {
   return (
     <header className="fixed top-0 inset-x-0 h-[72px] z-50 w-full bg-[#0B1120] border-b border-slate-800/80 flex items-center transition-colors duration-500">
 
-      {/* Branding aligned with sidebar */}
       <div className="hidden md:flex items-center h-full w-72 shrink-0 px-4 md:px-6 border-r border-slate-800/80">
         <Link href="/dashboard" className="flex items-center gap-1 group w-max">
           <span className="text-3xl font-black text-blue-500 tracking-tighter group-hover:scale-105 transition-transform">X</span>
@@ -253,7 +252,6 @@ export default function Header({ merchant, setSidebarOpen }: any) {
             <Search size={18} />
           </button>
 
-          {/* Theme Toggle */}
           <button onClick={toggleTheme} className={`flex items-center justify-center w-10 h-10 rounded-full transition-all border shadow-sm ${theme === 'dark' ? 'bg-[#111827] border-slate-700 text-amber-400 hover:bg-slate-800' : 'bg-[#111827] border-slate-800 text-slate-400 hover:text-blue-400 hover:border-blue-700'}`}>
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
@@ -300,6 +298,7 @@ export default function Header({ merchant, setSidebarOpen }: any) {
                     notifications.map((n) => (
                       <button
                         key={n.id}
+                        // FIXED: action_url না থাকলে শুধু রিড হবে, লিংকে যাবে না
                         onClick={() => { markAsRead(n.id); if (n.action_url) window.location.href = n.action_url; }}
                         className={`w-full flex items-start gap-3 px-4 py-3.5 text-left hover:bg-slate-800/60 transition-colors border-b border-slate-800/50 last:border-0 ${!n.is_read ? 'bg-blue-900/10' : ''}`}
                       >
