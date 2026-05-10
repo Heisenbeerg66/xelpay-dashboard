@@ -5,81 +5,60 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   LayoutDashboard, Receipt, MessageSquare, Wallet, Link as LinkIcon,
-  Settings, Send, LogOut, X,
-  ChevronDown, Building2, Plus, Check, Loader2, PlusCircle,
-  ServerCog, Smartphone, BarChart2, Code2, LifeBuoy, CreditCard,
-  Zap, Globe, FileText
+  Settings, LineChart, Send, Users, Code, Headphones, LogOut,
+  ChevronDown, Building2, Plus, Check, Loader2, PlusCircle, ServerCog, Smartphone, CreditCard
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 const menuItems = [
-  { name: 'Dashboard',           icon: LayoutDashboard, path: '/dashboard' },
-  { name: 'Global Vault',        icon: ServerCog,       path: '/dashboard/vault' },
-  { name: 'Transactions',        icon: Receipt,         path: '/dashboard/transactions' },
-  { name: 'Gateways',            icon: Wallet,          path: '/dashboard/gateways' },
-  { name: 'Devices',             icon: Smartphone,      path: '/dashboard/devices' },
-  { name: 'Telegram Alerts',     icon: Send,            path: '/dashboard/telegram' },
-  { name: 'Payment Links',       icon: LinkIcon,        path: '/dashboard/links' },
-  { name: 'SMS Data',            icon: MessageSquare,   path: '/dashboard/sms' },
-  { name: 'Reports',             icon: BarChart2,       path: '/dashboard/reports' },
-  { name: 'Subscriptions',       icon: CreditCard,      path: '/dashboard/subscriptions' },
-  { name: 'API Access',          icon: Code2,           path: '/dashboard/api' },
-  { name: 'Brand Settings',      icon: Settings,        path: '/dashboard/brand' },
-  { name: 'Add Business',        icon: PlusCircle,      path: '/dashboard/business/new' },
-  { name: 'Support',             icon: LifeBuoy,        path: '/dashboard/support' },
+  { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+  { name: 'Global Vault', icon: ServerCog, path: '/dashboard/vault' },
+  { name: 'Transactions', icon: Receipt, path: '/dashboard/transactions' },
+  { name: 'Connected Gateways', icon: Wallet, path: '/dashboard/gateways' },
+  { name: 'Devices / Automation', icon: Smartphone, path: '/dashboard/devices' },
+  { name: 'Telegram Alerts', icon: Send, path: '/dashboard/telegram' },
+  { name: 'Payment Links', icon: LinkIcon, path: '/dashboard/links' },
+  { name: 'SMS Data', icon: MessageSquare, path: '/dashboard/sms' },
+  { name: 'Customers', icon: Users, path: '/dashboard/customers' },
+  { name: 'Reports', icon: LineChart, path: '/dashboard/reports' },
+  { name: 'Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions' },
+  { name: 'API & Plugins', icon: Code, path: '/dashboard/api' },
+  { name: 'Support', icon: Headphones, path: '/dashboard/support' },
 ];
-
-function useIsMobileDevice() {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia('(pointer: coarse)');
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-  return isMobile;
-}
 
 export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
   const pathname = usePathname();
   const router = useRouter();
-  const isMobileDevice = useIsMobileDevice();
 
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [activeBusiness, setActiveBusiness] = useState<any>(null);
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const switcherRef = useRef<HTMLDivElement>(null);
 
-  const loadBusinesses = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase
-      .from('businesses')
-      .select('id, business_name, logo_url, status')
-      .eq('merchant_id', user.id)
-      .order('created_at', { ascending: true });
-    if (data) {
-      setBusinesses(data);
-      const activeId = localStorage.getItem('active_business_id');
-      const found = data.find((b: any) => b.id === activeId) || data[0];
-      if (found) {
-        setActiveBusiness(found);
-        if (!activeId) localStorage.setItem('active_business_id', found.id);
+  useEffect(() => {
+    const fetchBusinesses = async () => {
+      const { data } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('merchant_id', merchant.id)
+        .order('created_at', { ascending: true });
+      if (data && data.length > 0) {
+        setBusinesses(data);
+        const savedBizId = localStorage.getItem('active_business_id');
+        const savedBiz = data.find((b: any) => b.id === savedBizId) || data[0];
+        setActiveBusiness(savedBiz);
+        localStorage.setItem('active_business_id', savedBiz.id);
       }
-    }
-  }, []);
+      setIsLoading(false);
+    };
+    fetchBusinesses();
+  }, [merchant.id]);
 
   useEffect(() => {
-    loadBusinesses();
-    window.addEventListener('businessChanged', loadBusinesses);
-    return () => window.removeEventListener('businessChanged', loadBusinesses);
-  }, [loadBusinesses]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (switcherRef.current && !switcherRef.current.contains(event.target as Node)) {
         setIsSwitcherOpen(false);
       }
     };
@@ -87,162 +66,169 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleBusinessChange = (biz: any) => {
+  const handleBusinessChange = async (biz: any) => {
     setActiveBusiness(biz);
     localStorage.setItem('active_business_id', biz.id);
-    window.dispatchEvent(new Event('businessChanged'));
     setIsSwitcherOpen(false);
+    toast.loading(`Switching to ${biz.business_name}...`, { id: 'switch' });
+    await supabase.from('merchants').update({ active_business_id: biz.id }).eq('id', merchant.id);
+    window.dispatchEvent(new Event('businessChanged'));
+    router.refresh();
+    toast.success(`Switched to ${biz.business_name}`, { id: 'switch' });
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/login');
+    window.location.href = '/login';
   };
 
-  const isActive = (path: string) =>
-    path === '/dashboard' ? pathname === path : pathname === path || pathname.startsWith(`${path}/`);
-
   return (
-    <>
-      {/* Mobile overlay */}
-      {isOpen && isMobileDevice && (
-        <div
-          onClick={() => setIsOpen(false)}
-          className="fixed inset-0 top-[72px] bg-black/50 backdrop-blur-sm z-30"
-        />
-      )}
+    <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#0B1120] border-r border-slate-800/80 flex flex-col transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
 
-      <aside
-        className={`fixed top-[72px] left-0 h-[calc(100vh-72px)] w-72 z-40 flex flex-col bg-white dark:bg-[#0B1120] border-r border-slate-200 dark:border-slate-800/80 transition-transform duration-300 ease-in-out
-          ${isOpen || !isMobileDevice ? 'translate-x-0' : '-translate-x-full'}
-          ${!isMobileDevice ? 'md:translate-x-0' : ''}
-        `}
-      >
-        {/* Mobile close */}
-        {isMobileDevice && isOpen && (
+      {/* ── Top Logo (mobile) ── */}
+      <div className="flex items-center h-[72px] px-5 border-b border-slate-800/80 shrink-0 md:hidden">
+        <Link href="/dashboard" className="flex items-center gap-1">
+          <span className="text-2xl font-black text-blue-500 tracking-tighter">X</span>
+          <span className="text-xl font-bold text-white tracking-tight -ml-0.5">elPay</span>
+        </Link>
+      </div>
+
+      {/* ── Business Switcher ── */}
+      <div className="px-4 pt-4 pb-3 border-b border-slate-800/80 shrink-0" ref={switcherRef}>
+        <div className="relative">
           <button
-            onClick={() => setIsOpen(false)}
-            className="absolute top-3 right-3 p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+            onClick={() => setIsSwitcherOpen(v => !v)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 rounded-xl transition-all"
           >
-            <X size={16} />
+            <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0">
+              {activeBusiness?.logo_url
+                ? <img src={activeBusiness.logo_url} className="w-full h-full rounded-lg object-cover" alt="" />
+                : <Building2 size={14} className="text-blue-400" />}
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-xs font-black text-white truncate">{activeBusiness?.business_name || 'Select Business'}</p>
+            </div>
+            {isLoading
+              ? <Loader2 size={14} className="text-slate-500 animate-spin shrink-0" />
+              : <ChevronDown size={14} className={`text-slate-400 shrink-0 transition-transform duration-200 ${isSwitcherOpen ? 'rotate-180' : ''}`} />}
           </button>
-        )}
 
-        {/* Business Switcher */}
-        <div className="p-3 border-b border-slate-200 dark:border-slate-800/80" ref={switcherRef}>
-          <div className="relative">
-            <button
-              onClick={() => setIsSwitcherOpen(v => !v)}
-              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/60 transition-all group"
-            >
-              <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 shadow-sm">
-                {activeBusiness?.logo_url
-                  ? <img src={activeBusiness.logo_url} className="w-full h-full object-cover rounded-lg" alt="" />
-                  : <Building2 size={14} className="text-white" />}
-              </div>
-              <span className="flex-1 text-left text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
-                {activeBusiness?.business_name || 'Select Business'}
-              </span>
-              <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 shrink-0 ${isSwitcherOpen ? 'rotate-180' : ''}`} />
-            </button>
-
-            {isSwitcherOpen && (
-              <div className="absolute top-full left-0 w-full mt-1.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl py-1.5 z-50 max-h-60 overflow-y-auto">
-                <p className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Workspaces</p>
-                {businesses.length === 0 ? (
-                  <p className="px-4 py-2.5 text-sm text-slate-400">No business found.</p>
-                ) : (
-                  businesses.map((biz, index) => (
-                    <button
-                      key={biz.id}
-                      onClick={() => handleBusinessChange(biz)}
-                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                          {biz.logo_url
-                            ? <img src={biz.logo_url} className="w-full h-full object-cover rounded-md" alt="" />
-                            : <Building2 size={11} className="text-slate-400" />}
-                        </div>
-                        <span className={`text-sm font-semibold truncate ${activeBusiness?.id === biz.id ? 'text-blue-600' : 'text-slate-700 dark:text-slate-300'}`}>
-                          {biz.business_name}
-                        </span>
-                        {index === 0 && (
-                          <span className="text-[9px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shrink-0">Main</span>
-                        )}
+          {isSwitcherOpen && (
+            <div className="absolute top-full left-0 w-full mt-2 bg-[#111827] border border-slate-800 rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200 max-h-64 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <div className="px-3 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Your Businesses</div>
+              {businesses.length === 0 ? (
+                <div className="px-4 py-3 text-sm font-medium text-slate-400">No business found.</div>
+              ) : (
+                businesses.map((biz) => (
+                  <button key={biz.id} onClick={() => handleBusinessChange(biz)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#0B1120] transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-md bg-slate-800 flex items-center justify-center text-slate-400">
+                        {biz.logo_url ? <img src={biz.logo_url} className="w-full h-full object-cover rounded-md" alt="" /> : <Building2 size={12} />}
                       </div>
-                      {activeBusiness?.id === biz.id && <Check size={14} className="text-blue-600 shrink-0" />}
-                    </button>
-                  ))
-                )}
-                <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
-                <Link
-                  href="/dashboard/business/new"
-                  onClick={() => setIsSwitcherOpen(false)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                >
-                  <div className="w-6 h-6 rounded-md border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center">
-                    <Plus size={12} />
-                  </div>
-                  New Business
-                </Link>
-              </div>
-            )}
-          </div>
+                      <span className={`text-sm font-bold ${activeBusiness?.id === biz.id ? 'text-blue-500' : 'text-slate-300 group-hover:text-white'}`}>
+                        {biz.business_name}
+                      </span>
+                    </div>
+                    {activeBusiness?.id === biz.id && <Check size={16} className="text-blue-500" />}
+                  </button>
+                ))
+              )}
+              <div className="h-px bg-slate-800 my-2" />
+              <Link
+                href="/dashboard/business/new"
+                onClick={() => { setIsSwitcherOpen(false); setIsOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-slate-400 hover:bg-[#0B1120] hover:text-blue-500 transition-colors"
+              >
+                <div className="w-6 h-6 rounded-md border border-dashed border-slate-600 flex items-center justify-center"><Plus size={14} /></div>
+                Create New Business
+              </Link>
+            </div>
+          )}
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-0.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        {/* Add Business link */}
+        <Link
+          href="/dashboard/business/new"
+          onClick={() => setIsOpen(false)}
+          className={`mt-2 flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-sm transition-all group ${
+            pathname === '/dashboard/business/new'
+              ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+              : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+          }`}
+        >
+          <PlusCircle size={16} strokeWidth={2} />
+          Add New Business
+        </Link>
+      </div>
+
+      {/* ── Navigation ── */}
+      <div className="flex-1 overflow-y-auto p-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+
+        {/* Brand Settings */}
+        <div className="mb-1">
+          <Link
+            href="/dashboard/brand"
+            onClick={() => setIsOpen(false)}
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-sm transition-all group ${
+              pathname === '/dashboard/brand' || pathname.startsWith('/dashboard/brand/')
+                ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+            }`}
+          >
+            <Settings size={16} strokeWidth={2} />
+            Brand Settings
+          </Link>
+        </div>
+
+        <div className="space-y-1">
           {menuItems.map((item) => {
-            const active = isActive(item.path);
-            const isAdd = item.name === 'Add Business';
+            const isActive = item.path === '/dashboard'
+              ? pathname === item.path
+              : pathname === item.path || pathname.startsWith(`${item.path}/`);
             return (
               <Link
                 key={item.name}
                 href={item.path}
-                onClick={() => { if (isMobileDevice) setIsOpen(false); }}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all group
-                  ${active
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/25'
-                    : isAdd
-                      ? 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
-                  }`}
+                onClick={() => setIsOpen(false)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-sm transition-all group ${
+                  isActive
+                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                }`}
               >
-                <item.icon
-                  size={17}
-                  className={`shrink-0 transition-colors ${active ? 'text-white' : isAdd ? 'text-blue-500' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`}
-                  strokeWidth={active ? 2.5 : 2}
-                />
-                <span className="truncate">{item.name}</span>
-                {item.name === 'Subscriptions' && !active && (
-                  <span className="ml-auto text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide shrink-0">Pro</span>
-                )}
+                <item.icon size={16} strokeWidth={2} className={`${isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
+                {item.name}
               </Link>
             );
           })}
-        </nav>
-
-        {/* Footer */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800/80">
-          <div className="flex items-center gap-2.5 px-2 py-2 mb-1">
-            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-              {merchant?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'M'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">{merchant?.name || 'Merchant'}</p>
-              <p className="text-[10px] text-slate-400 truncate">{merchant?.email || ''}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
-          >
-            <LogOut size={15} />
-            Sign Out
-          </button>
         </div>
-      </aside>
-    </>
+      </div>
+
+      {/* ── Footer ── */}
+      <div className="p-4 border-t border-slate-800/80 shrink-0">
+        <div className="flex items-center gap-3 px-3 py-2 mb-3">
+          <div className="w-8 h-8 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-xs font-black text-blue-400">
+            {merchant?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'M'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-black text-white truncate">{merchant?.name || 'Merchant'}</p>
+            <p className="text-[10px] text-slate-500 font-medium truncate">{merchant?.email || ''}</p>
+          </div>
+        </div>
+        <Link
+          href="/dashboard/settings"
+          onClick={() => setIsOpen(false)}
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl transition-colors mb-1"
+        >
+          <Settings size={14} className="text-slate-400" /> Settings
+        </Link>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-900/20 rounded-xl transition-colors"
+        >
+          <LogOut size={14} /> Sign Out
+        </button>
+      </div>
+    </aside>
   );
 }

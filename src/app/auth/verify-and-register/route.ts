@@ -9,9 +9,10 @@
 //   1. Client POSTs { email, token, ...merchantPayload }
 //   2. Server verifies OTP with Supabase admin client (no client session needed)
 //   3. Server inserts merchant row atomically in the same request
-//   4. Server sets Supabase session cookies via SSR cookie helpers
-//   5. Returns { ok: true, merchantDisplayId } — client shows success modal
-//   6. Client does window.location.href = '/dashboard' (full reload, cookies
+//   4. Server inserts initial merchant_subscriptions record
+//   5. Server sets Supabase session cookies via SSR cookie helpers
+//   6. Returns { ok: true, merchantDisplayId } — client shows success modal
+//   7. Client does window.location.href = '/dashboard' (full reload, cookies
 //      are already committed — middleware sees session + merchant immediately)
 
 import { NextResponse } from 'next/server';
@@ -49,6 +50,59 @@ async function incrementReferrer(referCode: string): Promise<void> {
     .from('merchants')
     .update({ total_refer: (referrer.total_refer ?? 0) + 1 })
     .eq('id', referrer.id);
+}
+
+// ── Create initial subscription for new merchant ─────────────────────────────
+async function createInitialSubscription(merchantId: string, planId: string | null, planPrice: number): Promise<void> {
+  try {
+    // Resolve plan — use provided planId or fall back to free plan
+    let resolvedPlanId = planId;
+    let resolvedPrice = planPrice;
+
+    if (!resolvedPlanId) {
+      const { data: freePlan } = await supabaseAdmin
+        .from('plans')
+        .select('id, price')
+        .order('serial', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (freePlan) {
+        resolvedPlanId = freePlan.id;
+        resolvedPrice = freePlan.price ?? 0;
+      }
+    }
+
+    if (!resolvedPlanId) return; // No plans in DB yet — skip gracefully
+
+    const now = new Date();
+    const isFreePlan = resolvedPrice === 0;
+
+    // Check if subscription already exists (trigger may have created one)
+    const { data: existing } = await supabaseAdmin
+      .from('merchant_subscriptions')
+      .select('id')
+      .eq('merchant_id', merchantId)
+      .maybeSingle();
+
+    if (existing) return; // Already created by DB trigger
+
+    await supabaseAdmin.from('merchant_subscriptions').insert({
+      merchant_id: merchantId,
+      plan_id: resolvedPlanId,
+      billing_cycle: 'monthly',
+      amount_paid: resolvedPrice,
+      currency: 'BDT',
+      status: isFreePlan ? 'active' : 'pending',
+      started_at: now.toISOString(),
+      expires_at: isFreePlan ? null : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      next_billing_at: isFreePlan ? null : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      payment_method: isFreePlan ? 'free' : null,
+      payment_reference: null,
+    });
+  } catch (e) {
+    // Non-fatal — subscription can be created later via admin or trigger
+    console.warn('[createInitialSubscription] Failed (non-fatal):', e);
+  }
 }
 
 // ── POST handler ─────────────────────────────────────────────────────────────
@@ -90,8 +144,6 @@ export async function POST(request: Request) {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, {
                 ...options,
-                // localhost-এ secure: true হলে cookie set হয় না (HTTP),
-                // তাই production ছাড়া secure: false রাখতে হবে।
                 secure: process.env.NODE_ENV === 'production',
               })
             );
@@ -116,8 +168,6 @@ export async function POST(request: Request) {
     const verifiedUserId = verifyData.user.id;
 
     // ── 2. Resolve the final userId ────────────────────────────────────────
-    //    For ghost users the client-side userId was empty string; we now have
-    //    the real one from the verified session.
     const finalUserId = userId || verifiedUserId;
 
     // ── 3. Idempotency — if merchant row already exists, return it ─────────
@@ -128,6 +178,8 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (existingById) {
+      // Ensure subscription exists even for returning idempotent calls
+      await createInitialSubscription(finalUserId, planId || null, planPrice ?? 0);
       return NextResponse.json({ ok: true, merchantDisplayId: existingById.merchant_id_display });
     }
 
@@ -139,8 +191,6 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (existingByEmail) {
-      // A merchant with this email exists under a different auth user — sign
-      // out the newly verified session to avoid limbo state, then report.
       await supabaseSSR.auth.signOut();
       return NextResponse.json(
         { error: 'Email already registered. Please login instead.' },
@@ -193,16 +243,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // ── 6. Increment referrer count if applicable ──────────────────────────
+    // ── 6. Create initial subscription ────────────────────────────────────
+    //    The DB trigger should handle this automatically, but we also call it
+    //    here as a safety net in case the trigger is not yet applied.
+    await createInitialSubscription(finalUserId, planId || null, planPrice ?? 0);
+
+    // ── 7. Increment referrer count if applicable ──────────────────────────
     if (referCode) {
       await incrementReferrer(referCode);
     }
 
-    // ── 7. Respond with success ────────────────────────────────────────────
-    //    Session cookies were already written to the response by the SSR
-    //    client in step 1 — the browser now has a valid authenticated session
-    //    AND the merchant row exists. Middleware will see both on the next
-    //    request, so window.location.href = '/dashboard' works immediately.
+    // ── 8. Respond with success ────────────────────────────────────────────
     return NextResponse.json({ ok: true, merchantDisplayId });
 
   } catch (err) {

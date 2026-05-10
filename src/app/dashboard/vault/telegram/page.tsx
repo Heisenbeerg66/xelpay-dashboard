@@ -3,18 +3,18 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Send, ArrowLeft, Bot, RefreshCw, CheckCircle2, ShieldCheck, Loader2,
-  ExternalLink, Unlink, Copy, Link2, Info, User, MessageCircle, AlertCircle
+  Send, ArrowLeft, Bot, RefreshCw, CheckCircle2, ShieldCheck,
+  Loader2, ExternalLink, Unlink, Copy, AlertTriangle, User, AtSign
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
-import { getMerchantVaultSettings, generateTelegramCode, getTelegramBotUsername } from '@/lib/vault_actions';
-import { supabase } from '@/lib/supabase';
+import { getMerchantVaultSettings, generateTelegramCode, getTelegramBotUsername, unlinkMerchantTelegram } from '@/lib/vault_actions';
 
 export default function MasterTelegramPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
+  const [showUnlinkModal, setShowUnlinkModal] = useState(false);
   const [merchantData, setMerchantData] = useState<any>(null);
   const [botUsername, setBotUsername] = useState<string>('xelpay_alert_bot');
 
@@ -35,7 +35,7 @@ export default function MasterTelegramPage() {
     setGenerating(true);
     const res = await generateTelegramCode();
     if (res.success) {
-      toast.success('New secure link generated!');
+      toast.success('New 12-digit Secure Link Generated!');
       setMerchantData((prev: any) => ({ ...prev, telegram_link_code: res.code }));
     } else {
       toast.error('Failed to generate code.');
@@ -44,23 +44,21 @@ export default function MasterTelegramPage() {
   };
 
   const handleUnlink = async () => {
-    if (!confirm('Are you sure you want to unlink Telegram? You will stop receiving alerts.')) return;
     setUnlinking(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Unauthorized');
-      const { error } = await supabase
-        .from('merchants')
-        .update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null })
-        .eq('id', user.id);
-      if (error) throw error;
-      setMerchantData((prev: any) => ({ ...prev, telegram_chat_id: null, telegram_display_name: null, telegram_username: null }));
+    const res = await unlinkMerchantTelegram();
+    if (res.success) {
+      setMerchantData((prev: any) => ({
+        ...prev,
+        telegram_chat_id: null,
+        telegram_display_name: null,
+        telegram_username: null
+      }));
       toast.success('Telegram unlinked successfully.');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to unlink.');
-    } finally {
-      setUnlinking(false);
+    } else {
+      toast.error(res.message || 'Failed to unlink.');
     }
+    setUnlinking(false);
+    setShowUnlinkModal(false);
   };
 
   const copyToClipboard = (text: string) => {
@@ -76,183 +74,156 @@ export default function MasterTelegramPage() {
 
   const isConnected = !!merchantData?.telegram_chat_id;
   const telegramLink = `https://t.me/${botUsername}?start=${merchantData?.telegram_link_code || ''}`;
-  const displayName = merchantData?.telegram_display_name || null;
-  const username = merchantData?.telegram_username || null;
 
   return (
     <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <Toaster position="top-center" richColors />
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/dashboard/vault')} className="hidden md:flex p-2 -ml-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all text-slate-500">
-            <ArrowLeft size={18} strokeWidth={2.5} />
-          </button>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Master Telegram</h1>
-            <p className="text-slate-500 font-bold text-xs md:text-sm mt-1 uppercase tracking-wider">Global Notification Node</p>
-          </div>
+      {/* ── Header ── */}
+      <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-5">
+        <button onClick={() => router.push('/dashboard/vault')} className="hidden md:flex p-2 -ml-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all text-slate-500">
+          <ArrowLeft size={18} strokeWidth={2.5} />
+        </button>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Master Telegram</h1>
+          <p className="text-slate-500 font-bold text-xs md:text-sm mt-1 uppercase tracking-wider">Global Notification Node</p>
         </div>
       </div>
 
-      {/* Content */}
-      {isConnected ? (
-        /* ── Connected State ── Premium redesign */
-        <div className="space-y-5">
-          {/* Connected Banner */}
-          <div className="relative bg-gradient-to-br from-emerald-600 to-teal-700 rounded-3xl overflow-hidden shadow-xl p-6 md:p-8 text-white">
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-32 translate-x-20" />
-            </div>
-            <div className="relative z-10 flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center border border-white/30">
-                  <CheckCircle2 size={28} strokeWidth={2} />
-                </div>
-                <div>
-                  <p className="text-emerald-200 text-xs font-bold uppercase tracking-widest">Bot Status</p>
-                  <h2 className="text-2xl font-black uppercase tracking-tight">Connected</h2>
-                  <p className="text-emerald-100 text-sm font-medium mt-0.5">Payment alerts are active for this vault</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white/20 border border-white/30 text-white">
-                <div className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
-                Live
-              </div>
-            </div>
-          </div>
+      {/* ── Content ── */}
+      <div className="flex justify-center">
+        <div className="w-full max-w-2xl space-y-4">
 
-          {/* Identity Card */}
-          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <User size={16} className="text-emerald-600" />
-              <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Telegram Identity</h3>
-            </div>
-            <div className="space-y-3">
-              {displayName && (
-                <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Display Name</span>
-                  <span className="text-sm font-black text-slate-900 dark:text-white">{displayName}</span>
-                </div>
-              )}
-              {username && (
-                <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Username</span>
-                  <span className="text-sm font-mono font-black text-slate-900 dark:text-white">@{username}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between py-2">
-                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Chat ID</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm font-black text-slate-900 dark:text-white">
-                    {String(merchantData.telegram_chat_id).replace(/(?<=.{3}).(?=.{3})/g, '•')}
-                  </span>
-                  <ShieldCheck size={16} className="text-emerald-500" />
-                </div>
+          {/* ── Main Card ── */}
+          <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg overflow-hidden">
+            {/* Banner */}
+            <div className={`px-8 py-8 flex flex-col items-center text-center ${isConnected ? 'bg-gradient-to-br from-emerald-600 to-teal-700' : 'bg-gradient-to-br from-blue-600 to-indigo-700'}`}>
+              <div className="w-[72px] h-[72px] bg-white/10 rounded-2xl flex items-center justify-center mb-5 border border-white/20 shadow-lg text-white">
+                {isConnected ? <CheckCircle2 size={38} strokeWidth={2} /> : <Bot size={38} strokeWidth={1.5} />}
               </div>
-            </div>
-          </div>
-
-          <button
-            onClick={handleUnlink}
-            disabled={unlinking}
-            className="w-full py-3.5 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/30 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-100 dark:hover:bg-red-900/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-          >
-            {unlinking ? <Loader2 size={14} className="animate-spin" /> : <Unlink size={14} />} Unlink Telegram
-          </button>
-        </div>
-      ) : (
-        /* ── Pending State — two cards side by side on desktop ── */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Setup Card */}
-          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-lg flex flex-col">
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 px-8 py-10 text-white text-center flex flex-col items-center">
-              <div className="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center mb-5 border border-white/20 shadow-lg">
-                <Bot size={40} strokeWidth={1.5} />
-              </div>
-              <h2 className="text-xl font-black uppercase tracking-tight">Setup Pending</h2>
-              <p className="text-blue-100 text-sm mt-2 max-w-sm font-medium">Link your Telegram to receive instant payment alerts from your Vault.</p>
+              <h2 className="text-xl font-black text-white uppercase tracking-tight">
+                {isConnected ? 'Bot Connected' : 'Setup Pending'}
+              </h2>
+              <p className={`text-sm font-medium mt-2 max-w-sm ${isConnected ? 'text-emerald-100' : 'text-blue-100'}`}>
+                {isConnected
+                  ? 'Payment notifications are being sent to your Telegram.'
+                  : 'Link the bot to receive instant payment alerts globally.'}
+              </p>
             </div>
 
-            <div className="p-6 flex-1 flex flex-col justify-between gap-5">
-              {!merchantData?.telegram_link_code ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-slate-500 dark:text-slate-400 text-center font-medium">Generate a secure pairing link to get started.</p>
+            <div className="p-6 md:p-8">
+              {isConnected ? (
+                <div className="space-y-4">
+                  {/* Connected Identity */}
+                  <div className="grid grid-cols-1 gap-3">
+                    {merchantData?.telegram_display_name && (
+                      <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex items-center gap-3">
+                        <User size={18} className="text-emerald-500 shrink-0" />
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Full Name</p>
+                          <p className="text-sm font-black text-slate-900 dark:text-white">{merchantData.telegram_display_name}</p>
+                        </div>
+                      </div>
+                    )}
+                    {merchantData?.telegram_username && (
+                      <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex items-center gap-3">
+                        <AtSign size={18} className="text-emerald-500 shrink-0" />
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Username</p>
+                          <p className="text-sm font-black text-slate-900 dark:text-white">@{merchantData.telegram_username}</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <ShieldCheck size={18} className="text-emerald-500 shrink-0" />
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Chat ID</p>
+                          <p className="font-mono text-sm font-black text-slate-900 dark:text-white">
+                            {String(merchantData.telegram_chat_id)}
+                          </p>
+                        </div>
+                      </div>
+                      <button onClick={() => copyToClipboard(merchantData.telegram_chat_id)} className="p-2 text-slate-400 hover:text-emerald-600 transition-colors">
+                        <Copy size={15} />
+                      </button>
+                    </div>
+                  </div>
+
                   <button
-                    onClick={handleGenerateCode}
-                    disabled={generating}
-                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                    onClick={() => setShowUnlinkModal(true)}
+                    className="w-full py-3.5 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/30 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-100 dark:hover:bg-red-900/20 flex items-center justify-center gap-2 transition-all"
                   >
-                    {generating ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />} Generate Pairing Link
+                    <Unlink size={14} /> Unlink Telegram
                   </button>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {/* Link Preview */}
-                  <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-2xl p-4">
-                    <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Your Pairing Link</p>
-                    <p className="text-xs font-mono text-blue-800 dark:text-blue-300 break-all leading-relaxed">{telegramLink}</p>
-                  </div>
-
-                  {/* Action buttons - prominent */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={handleGenerateCode}
-                      disabled={generating}
-                      className="py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
-                    >
-                      {generating ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} strokeWidth={2.5} />}
-                      Regenerate
+                <div className="space-y-5">
+                  {!merchantData?.telegram_link_code ? (
+                    <button onClick={handleGenerateCode} disabled={generating} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50">
+                      {generating ? <><Loader2 size={14} className="animate-spin" /> Generating...</> : <><RefreshCw size={14} /> Generate Pairing Link</>}
                     </button>
-                    <button
-                      onClick={() => copyToClipboard(telegramLink)}
-                      className="py-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all"
-                    >
-                      <Copy size={13} strokeWidth={2.5} /> Copy Link
-                    </button>
-                  </div>
-
-                  <a
-                    href={telegramLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/25"
-                  >
-                    <ExternalLink size={15} strokeWidth={2.5} /> Open in Telegram
-                  </a>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-2">
+                        <button onClick={handleGenerateCode} disabled={generating} className="py-3.5 bg-slate-100 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 hover:border-blue-400 transition-all disabled:opacity-60">
+                          {generating ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} strokeWidth={2.5} />} Regenerate
+                        </button>
+                        <button onClick={() => copyToClipboard(telegramLink)} className="py-3.5 bg-slate-100 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 hover:border-sky-400 transition-all">
+                          <Copy size={13} strokeWidth={2.5} /> Copy Link
+                        </button>
+                        <a href={telegramLink} target="_blank" rel="noopener noreferrer" className="py-3.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all shadow-md">
+                          <ExternalLink size={13} strokeWidth={2.5} /> Open
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Instructions Card */}
-          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-lg flex flex-col">
-            <div className="bg-gradient-to-br from-slate-700 to-slate-900 px-8 py-10 text-white text-center flex flex-col items-center">
-              <div className="w-20 h-20 bg-white/10 rounded-3xl flex items-center justify-center mb-5 border border-white/20 shadow-lg">
-                <Info size={38} strokeWidth={1.5} />
-              </div>
-              <h2 className="text-xl font-black uppercase tracking-tight">How It Works</h2>
-              <p className="text-slate-300 text-sm mt-2 font-medium">Connect in 3 simple steps</p>
-            </div>
-            <div className="p-6 flex-1">
-              <div className="space-y-5">
+          {/* ── How It Works (compact, only when not connected) ── */}
+          {!isConnected && (
+            <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">How It Works</p>
+              <div className="grid grid-cols-2 gap-2">
                 {[
-                  { icon: Link2, title: 'Generate Link', desc: 'Click "Generate Pairing Link" to create your unique encrypted connection code.' },
-                  { icon: ExternalLink, title: 'Open in Telegram', desc: 'Click "Open in Telegram" or copy the link and paste it in your browser.' },
-                  { icon: Bot, title: 'Start the Bot', desc: 'Tap /start in the bot. Your vault is paired instantly and alerts begin.' },
-                  { icon: MessageCircle, title: 'Receive Alerts', desc: 'All payment notifications and transaction alerts will now be sent to your Telegram.' },
-                ].map(({ icon: Icon, title, desc }) => (
-                  <div key={title} className="flex items-start gap-4">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/40 shrink-0">
-                      <Icon size={15} className="text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wide">{title}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{desc}</p>
-                    </div>
+                  { n: '1', t: 'Generate a secure pairing link.' },
+                  { n: '2', t: 'Open the link in Telegram.' },
+                  { n: '3', t: 'Click /start in the bot.' },
+                  { n: '4', t: 'Alerts start flowing instantly.' },
+                ].map(({ n, t }) => (
+                  <div key={n} className="flex items-start gap-2 bg-slate-50 dark:bg-[#0B1120] border border-slate-100 dark:border-slate-800 rounded-lg p-2.5">
+                    <span className="w-5 h-5 bg-sky-600 text-white text-[9px] font-black rounded flex items-center justify-center shrink-0">{n}</span>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium leading-relaxed">{t}</p>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Unlink Confirmation Modal ── */}
+      {showUnlinkModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-white dark:bg-[#111827] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center space-y-4">
+              <div className="w-14 h-14 bg-red-100 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mx-auto">
+                <AlertTriangle size={28} className="text-red-500" strokeWidth={2} />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">Unlink Telegram?</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium">You will stop receiving automated payment alerts. This action can be undone by reconnecting.</p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setShowUnlinkModal(false)} disabled={unlinking} className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                  Cancel
+                </button>
+                <button onClick={handleUnlink} disabled={unlinking} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-60">
+                  {unlinking ? <Loader2 size={13} className="animate-spin" /> : <Unlink size={13} />} Unlink
+                </button>
               </div>
             </div>
           </div>

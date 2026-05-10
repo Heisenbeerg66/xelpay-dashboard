@@ -34,9 +34,21 @@ export async function getVaultDataForImport(type: 'telegram' | 'device') {
         if (!user) throw new Error('Unauthorized');
 
         if (type === 'telegram') {
-            const { data } = await supabase.from('merchants').select('telegram_chat_id').eq('id', user.id).single();
+            // FIXED: also fetch telegram_display_name and telegram_username
+            const { data } = await supabase
+                .from('merchants')
+                .select('telegram_chat_id, telegram_display_name, telegram_username')
+                .eq('id', user.id)
+                .single();
             if (!data?.telegram_chat_id) return { success: false, message: 'No active Telegram found in Vault.' };
-            return { success: true, data: { chat_id: data.telegram_chat_id } };
+            return {
+                success: true,
+                data: {
+                    chat_id: data.telegram_chat_id,
+                    display_name: data.telegram_display_name || null,
+                    username: data.telegram_username || null,
+                },
+            };
         } else {
             const { data } = await supabase.from('merchant_devices_vault').select('device_name, device_model').eq('merchant_id', user.id).single();
             if (!data) return { success: false, message: 'No connected device found in Vault.' };
@@ -64,15 +76,41 @@ export async function importVaultTelegramToBusiness(businessId: string) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Unauthorized');
 
-        const { data: merchantData } = await supabase.from('merchants').select('telegram_chat_id, telegram_link_code').eq('id', user.id).single();
+        // FIXED: also fetch and copy telegram_display_name and telegram_username
+        const { data: merchantData } = await supabase
+            .from('merchants')
+            .select('telegram_chat_id, telegram_link_code, telegram_display_name, telegram_username')
+            .eq('id', user.id)
+            .single();
         if (!merchantData?.telegram_chat_id) throw new Error('No Telegram ID found in vault.');
 
+        // FIXED: also write display_name, username, and enable telegram
         await supabase.from('businesses').update({
             telegram_chat_id: merchantData.telegram_chat_id,
-            telegram_link_code: merchantData.telegram_link_code
+            telegram_link_code: merchantData.telegram_link_code,
+            telegram_display_name: merchantData.telegram_display_name || null,
+            telegram_username: merchantData.telegram_username || null,
+            is_telegram_enabled: true,
         }).eq('id', businessId);
 
         return { success: true, message: 'Telegram imported successfully to Business!' };
+    } catch (error: any) { return { success: false, message: error.message }; }
+}
+
+// ADDED: Unlink business telegram — clears all telegram identity fields
+export async function unlinkBusinessTelegram(businessId: string) {
+    try {
+        const supabase = await getSupabase();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { success: false, message: 'Unauthorized' };
+        const { error } = await supabase.from('businesses').update({
+            telegram_chat_id: null,
+            telegram_display_name: null,
+            telegram_username: null,
+            is_telegram_enabled: false,
+        }).eq('id', businessId);
+        if (error) throw error;
+        return { success: true };
     } catch (error: any) { return { success: false, message: error.message }; }
 }
 
