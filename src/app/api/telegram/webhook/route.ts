@@ -46,18 +46,27 @@ async function getBotUsername() {
 }
 
 // কানেকশন লজিক (Vault বা Business চেক করে আপডেট করবে)
-async function connectTelegram(code: string, chatId: string | number): Promise<string> {
+async function connectTelegram(code: string, chatId: string | number, username: string | null, displayName: string | null): Promise<string> {
     // ১. প্রথমে চেক করব Vault (merchants) এ আছে কিনা
     const { data: merchantData } = await supabase.from('merchants').select('id').eq('telegram_link_code', code).single();
     if (merchantData) {
-        await supabase.from('merchants').update({ telegram_chat_id: chatId.toString() }).eq('id', merchantData.id);
+        await supabase.from('merchants').update({ 
+            telegram_chat_id: chatId.toString(),
+            telegram_username: username,
+            telegram_display_name: displayName
+        }).eq('id', merchantData.id);
         return "✅ <b>Successfully Connected to Vault!</b>\nYour master alerts will now be sent to this chat.";
     }
 
     // ২. Vault এ না পেলে চেক করব Business এ আছে কিনা
     const { data: businessData } = await supabase.from('businesses').select('id, business_name').eq('telegram_link_code', code).single();
     if (businessData) {
-        await supabase.from('businesses').update({ telegram_chat_id: chatId.toString() }).eq('id', businessData.id);
+        await supabase.from('businesses').update({ 
+            telegram_chat_id: chatId.toString(),
+            telegram_username: username,
+            telegram_display_name: displayName,
+            is_telegram_enabled: true
+        }).eq('id', businessData.id);
         return `✅ <b>Successfully Connected to Business Workspace!</b>\nAlerts for <b>${businessData.business_name}</b> will now be sent here.`;
     }
 
@@ -76,9 +85,13 @@ export async function POST(req: Request) {
             const messageId = callbackQuery.message.message_id;
             const data = callbackQuery.data; // উদাঃ "connect_dm_TG-XXXX"
 
+            const fromUser = callbackQuery.from || {};
+            const username = fromUser.username ? `@${fromUser.username}` : null;
+            const displayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
+
             if (data.startsWith('connect_dm_')) {
                 const code = data.replace('connect_dm_', '');
-                const resultMessage = await connectTelegram(code, chatId);
+                const resultMessage = await connectTelegram(code, chatId, username, displayName);
                 // মেসেজ এডিট করে সাকসেস মেসেজ দেখাবো
                 await editTelegramMessage(chatId, messageId, resultMessage);
             }
@@ -91,6 +104,10 @@ export async function POST(req: Request) {
             const chatType = body.message.chat.type; // 'private', 'group', 'supergroup'
             const text = body.message.text.trim();
 
+            const fromUser = body.message.from || {};
+            const username = fromUser.username ? `@${fromUser.username}` : null;
+            let displayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
+
             if (text.startsWith('/start')) {
                 const code = text.split(' ')[1]; 
 
@@ -101,7 +118,10 @@ export async function POST(req: Request) {
 
                 // যদি ইউজার গ্রুপে বট অ্যাড করে, তবে সরাসরি গ্রুপেই কানেক্ট হয়ে যাবে
                 if (chatType === 'group' || chatType === 'supergroup') {
-                    const resultMessage = await connectTelegram(code, chatId);
+                    if (body.message.chat.title) {
+                        displayName = body.message.chat.title;
+                    }
+                    const resultMessage = await connectTelegram(code, chatId, username, displayName);
                     await sendTelegramMessage(chatId, resultMessage);
                     return NextResponse.json({ status: 'connected_group' });
                 }
