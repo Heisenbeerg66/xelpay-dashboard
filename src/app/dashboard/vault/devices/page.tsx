@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Smartphone, ArrowLeft, Download, Battery, Cpu, Copy, Loader2, X,
-  RefreshCw, Trash2, Key, Eye, EyeOff, CheckCircle2, DownloadCloud, ExternalLink, Wifi, Clock, Info
+  RefreshCw, Trash2, Key, Eye, EyeOff, CheckCircle2, DownloadCloud, Wifi, Clock, Info
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
@@ -18,15 +18,6 @@ function maskKey(key: string): string {
   const show = 4;
   return key.slice(0, show) + '•'.repeat(Math.max(key.length - show * 2, 4)) + key.slice(-show);
 }
-
-const PlayStoreIcon = () => (
-  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3 20.5V3.5C3 2.91 3.34 2.39 3.86 2.15L14.74 12L3.86 21.85C3.34 21.61 3 21.09 3 20.5Z" fill="#00E676"/>
-    <path d="M14.74 12L17.5 9.42L20.4 11.05C21.2 11.5 21.2 12.5 20.4 12.95L17.5 14.58L14.74 12Z" fill="#FFC107"/>
-    <path d="M3.86 2.15C4.05 2.06 4.27 2 4.5 2C4.83 2 5.14 2.1 5.4 2.25L17.5 9.42L14.74 12L3.86 2.15Z" fill="#FF3D00"/>
-    <path d="M3.86 21.85L14.74 12L17.5 14.58L5.4 21.75C5.14 21.9 4.83 22 4.5 22C4.27 22 4.05 21.94 3.86 21.85Z" fill="#F50057"/>
-  </svg>
-);
 
 export default function MasterDevicesPage() {
   const router = useRouter();
@@ -99,7 +90,6 @@ export default function MasterDevicesPage() {
     <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <Toaster position="top-center" richColors />
 
-      {/* ── Header ── */}
       <div className="flex justify-between items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div className="flex items-center gap-3">
           <button onClick={() => router.push('/dashboard/vault')} className="hidden md:flex p-2 -ml-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all text-slate-500">
@@ -110,8 +100,7 @@ export default function MasterDevicesPage() {
             <p className="text-slate-500 font-bold text-[10px] md:text-sm mt-1 uppercase tracking-wider">SMS Automation Node</p>
           </div>
         </div>
-        {/* Green Responsive Download Button */}
-        <button onClick={() => setIsDownloadModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 md:px-5 md:py-3 rounded-xl font-black flex items-center justify-center gap-2 transition-all shadow-md text-xs uppercase tracking-widest shrink-0">
+        <button onClick={() => setIsDownloadModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-xl font-black flex items-center justify-center gap-2 transition-all shadow-md text-xs uppercase tracking-widest shrink-0">
           <Download size={16} strokeWidth={2.5} /> 
           <span className="sm:hidden">App</span>
           <span className="hidden sm:inline">Download App</span>
@@ -121,15 +110,16 @@ export default function MasterDevicesPage() {
       <div className="max-w-2xl mx-auto w-full">
         {!activeDevice ? (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm flex flex-col">
-            {/* Premium Clean Top Section */}
-            <div className="p-5 md:p-6 bg-slate-50/50 dark:bg-[#0B1120] border-b border-slate-100 dark:border-slate-800">
+            
+            {/* Solid Premium Top Section */}
+            <div className="p-6 md:p-8 bg-slate-900 border-b border-slate-800 text-white">
               <div className="flex items-center gap-4 mb-2">
-                <div className="w-12 h-12 bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-xl flex items-center justify-center shrink-0">
-                  <Smartphone size={24} />
+                <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center shrink-0 border border-white/20">
+                  <Smartphone size={24} className="text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white">Connect Master Node</h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Link your dedicated device to act as the global gateway.</p>
+                  <h2 className="text-xl font-black">Connect Master Node</h2>
+                  <p className="text-xs text-slate-300 font-medium mt-1">Link your dedicated device to act as the global gateway.</p>
                 </div>
               </div>
             </div>
@@ -155,12 +145,12 @@ export default function MasterDevicesPage() {
           </div>
         ) : (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
-            <div className="p-6 md:p-8 bg-indigo-600 text-white text-center">
+            <div className="p-6 md:p-8 bg-emerald-600 text-white text-center">
               <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/30">
                 <CheckCircle2 size={30} strokeWidth={2.5} />
               </div>
               <h2 className="text-xl font-black uppercase tracking-tight">Master Device Online</h2>
-              <p className="text-indigo-100 text-sm mt-1 font-medium">Global SMS automation is active.</p>
+              <p className="text-emerald-100 text-sm mt-1 font-medium">Global SMS automation is active.</p>
             </div>
             <div className="p-6 md:p-8 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
@@ -184,7 +174,7 @@ export default function MasterDevicesPage() {
                 ))}
               </div>
               <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                <button onClick={handleDeleteDevice} className="flex items-center gap-2 px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-colors">
+                <button onClick={handleDeleteDevice} className="flex items-center gap-2 px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-colors shadow-sm">
                   <Trash2 size={16} /> Disconnect
                 </button>
               </div>
@@ -193,13 +183,12 @@ export default function MasterDevicesPage() {
         )}
       </div>
 
-      {/* Manual Key Modal */}
       {isManualModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[24px] overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
-                <div className="p-1.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg"><Key size={16} className="text-indigo-600" /></div>
+                <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg"><Key size={16} className="text-indigo-600" /></div>
                 <span className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Secret Key</span>
               </div>
               <button onClick={() => setIsManualModalOpen(false)} className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors rounded-lg">
@@ -209,7 +198,6 @@ export default function MasterDevicesPage() {
             <div className="p-6">
               {deviceKey && (
                 <>
-                  {/* QR Code in Modal Restored */}
                   <div className="flex justify-center mb-5">
                     <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
                       <QRCodeSVG value={`xelpay://connect?key=${deviceKey}`} size={140} level="H" includeMargin={false} />
@@ -220,7 +208,6 @@ export default function MasterDevicesPage() {
                     <div className="px-3 flex items-center justify-center bg-slate-100 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shrink-0">
                       <Key size={16} className="text-slate-400" />
                     </div>
-                    {/* Scrollbar hidden logic */}
                     <div className="flex-1 py-3 px-3 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] font-mono text-sm tracking-wider font-bold text-slate-800 dark:text-slate-200">
                       {displayedKey}
                     </div>
@@ -243,13 +230,12 @@ export default function MasterDevicesPage() {
         </div>
       )}
 
-      {/* Download App Modal */}
       {isDownloadModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-xs bg-white dark:bg-slate-900 rounded-[24px] overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center p-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
-                <div className="p-1.5 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg"><Download size={16} className="text-emerald-600" /></div>
+                <div className="p-1.5 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg"><Download size={16} className="text-emerald-600" /></div>
                 <span className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Download App</span>
               </div>
               <button onClick={() => setIsDownloadModalOpen(false)} className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors rounded-lg">
@@ -260,7 +246,7 @@ export default function MasterDevicesPage() {
               {downloadLinks.play_store && (
                 <a href={downloadLinks.play_store} target="_blank" rel="noopener noreferrer"
                   className="w-full py-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-md rounded-xl">
-                  <PlayStoreIcon /> Google Play Store
+                  Google Play Store
                 </a>
               )}
               {downloadLinks.direct_apk && (

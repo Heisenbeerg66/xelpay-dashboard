@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// ডাটাবেস আপডেট করার জন্য Service Role Key লাগবে (যেহেতু এটা ব্যাকএন্ড রিকোয়েস্ট)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const BOT_TOKEN = process.env.XELPAY_BOT_TOKEN;
 
-// ─── ব্রাউজারে টেস্ট করার জন্য GET রিকোয়েস্ট (ALIVE চেকার) ───
 export async function GET() {
     return NextResponse.json({ 
         status: "success", 
@@ -17,9 +15,6 @@ export async function GET() {
     });
 }
 
-// ─── টেলিগ্রামের জন্য POST রিকোয়েস্ট (আসল লজিক) ───
-
-// টেলিগ্রামে নরমাল মেসেজ পাঠানোর ফাংশন
 async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
     await fetch(url, {
@@ -29,7 +24,6 @@ async function sendTelegramMessage(chatId: string | number, text: string, replyM
     });
 }
 
-// টেলিগ্রামের আগের মেসেজ এডিট করার ফাংশন (বাটন ক্লিক করার পর)
 async function editTelegramMessage(chatId: string | number, messageId: number, text: string) {
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`;
     await fetch(url, {
@@ -39,15 +33,12 @@ async function editTelegramMessage(chatId: string | number, messageId: number, t
     });
 }
 
-// ডাটাবেস থেকে বটের ইউজারনেম আনার ফাংশন
 async function getBotUsername() {
     const { data } = await supabase.from('site_settings').select('value').eq('key_name', 'telegram').single();
     return data?.value ? data.value.replace('@', '') : 'xelpay_alert_bot';
 }
 
-// কানেকশন লজিক (Vault বা Business চেক করে আপডেট করবে)
 async function connectTelegram(code: string, chatId: string | number, username: string | null, displayName: string | null): Promise<string> {
-    // ১. প্রথমে চেক করব Vault (merchants) এ আছে কিনা
     const { data: merchantData } = await supabase.from('merchants').select('id').eq('telegram_link_code', code).single();
     if (merchantData) {
         await supabase.from('merchants').update({ 
@@ -58,7 +49,6 @@ async function connectTelegram(code: string, chatId: string | number, username: 
         return "✅ <b>Successfully Connected to Vault!</b>\nYour master alerts will now be sent to this chat.";
     }
 
-    // ২. Vault এ না পেলে চেক করব Business এ আছে কিনা
     const { data: businessData } = await supabase.from('businesses').select('id, business_name').eq('telegram_link_code', code).single();
     if (businessData) {
         await supabase.from('businesses').update({ 
@@ -70,7 +60,6 @@ async function connectTelegram(code: string, chatId: string | number, username: 
         return `✅ <b>Successfully Connected to Business Workspace!</b>\nAlerts for <b>${businessData.business_name}</b> will now be sent here.`;
     }
 
-    // ৩. কোড ভুল হলে
     return "❌ <b>Connection Failed!</b>\nThe connection code has expired or is invalid. Please generate a new link from your dashboard.";
 }
 
@@ -78,7 +67,6 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
 
-        // ─── বাটন ক্লিক (Callback Query) হ্যান্ডেল করা ───
         if (body.callback_query) {
             const callbackQuery = body.callback_query;
             const chatId = callbackQuery.message.chat.id;
@@ -97,13 +85,22 @@ export async function POST(req: Request) {
             return NextResponse.json({ status: 'success' });
         }
 
-        // ─── নরমাল মেসেজ বা /start হ্যান্ডেল করা ───
         if (body.message) {
             const chat = body.message.chat;
             const chatId = chat.id;
-            const chatType = chat.type; // 'private', 'group', 'supergroup'
-            
-            // ক্র্যাশ ফিক্স: গ্রুপে অ্যাড হওয়ার সময় text undefined থাকতে পারে
+            const chatType = chat.type;
+
+            // যদি বটকে গ্রুপে অ্যাড করা হয়, তবে অটোমেটিক রিপ্লাই দেবে
+            if (body.message.new_chat_members) {
+                const botUsername = await getBotUsername();
+                const botAdded = body.message.new_chat_members.some((member: any) => member.username === botUsername);
+                
+                if (botAdded) {
+                    await sendTelegramMessage(chatId, "👋 <b>Hello!</b>\nTo connect this group for alerts, please send the start command with your pairing code.\n\n👉 <b>Example:</b> <code>/start YOUR_CODE_HERE</code>");
+                    return NextResponse.json({ status: 'welcomed_group' });
+                }
+            }
+
             const text = body.message.text ? body.message.text.trim() : '';
 
             if (text.startsWith('/start')) {
@@ -111,14 +108,12 @@ export async function POST(req: Request) {
                 const code = parts.length > 1 ? parts[1] : null; 
 
                 if (!code) {
-                    // গ্রুপে স্প্যাম না করার জন্য শুধু প্রাইভেট চ্যাটেই এরর মেসেজ পাঠাবো
                     if (chatType === 'private') {
                         await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\nPlease generate a valid connection link from your Xelpay Dashboard.");
                     }
                     return NextResponse.json({ status: 'no_code' });
                 }
 
-                // যদি ইউজার গ্রুপে বা সুপারগ্রুপে বট অ্যাড করে
                 if (chatType === 'group' || chatType === 'supergroup') {
                     const groupTitle = chat.title || 'Connected Group';
                     const groupUsername = chat.username ? `@${chat.username}` : null;
@@ -128,7 +123,6 @@ export async function POST(req: Request) {
                     return NextResponse.json({ status: 'connected_group' });
                 }
 
-                // যদি ইউজার পার্সোনাল মেসেজে বট স্টার্ট দেয়, তবে তাকে বাটন দেখাবো
                 const botUsername = await getBotUsername();
                 const replyMarkup = {
                     inline_keyboard: [
