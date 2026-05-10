@@ -28,12 +28,12 @@ async function sendTelegramMessage(chatId: string | number, text: string, replyM
     });
 }
 
-async function editTelegramMessage(chatId: string | number, messageId: number, text: string) {
+async function editTelegramMessage(chatId: string | number, messageId: number, text: string, replyMarkup?: any) {
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`;
     await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text, parse_mode: 'HTML' }),
+        body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
     });
 }
 
@@ -42,7 +42,7 @@ async function getBotUsername() {
     return data?.value ? data.value.replace('@', '') : 'xelpay_alert_bot';
 }
 
-async function connectTelegram(code: string, chatId: string | number, username: string | null, displayName: string | null): Promise<string> {
+async function connectTelegram(code: string, chatId: string | number, username: string | null, displayName: string | null): Promise<{ text: string, replyMarkup?: any }> {
     const { data: merchantData } = await supabase.from('merchants').select('id').eq('telegram_link_code', code).single();
     if (merchantData) {
         await supabase.from('merchants').update({ 
@@ -50,7 +50,10 @@ async function connectTelegram(code: string, chatId: string | number, username: 
             telegram_username: username,
             telegram_display_name: displayName
         }).eq('id', merchantData.id);
-        return `✅ <b>Connection Successful</b>\n<b>সংযোগ সফল হয়েছে</b>\n\n🔹 <b>Account Type:</b> Master Vault\n\nYour master alerts will now be routed here.\nআপনার সব মাস্টার এলার্ট এখন থেকে এই চ্যাটে আসবে।`;
+        return {
+            text: `✅ <b>Connection Successful</b>\n<b>সংযোগ সফল হয়েছে</b>\n\n🔹 <b>Account Type:</b> Master Vault\n\nYour master alerts will now be routed here.\nআপনার সব মাস্টার এলার্ট এখন থেকে এই চ্যাটে আসবে।`,
+            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_m_${merchantData.id}` }]] }
+        };
     }
 
     const { data: businessData } = await supabase.from('businesses').select('id, business_name').eq('telegram_link_code', code).single();
@@ -61,40 +64,91 @@ async function connectTelegram(code: string, chatId: string | number, username: 
             telegram_display_name: displayName,
             is_telegram_enabled: true
         }).eq('id', businessData.id);
-        return `✅ <b>Connection Successful</b>\n<b>সংযোগ সফল হয়েছে</b>\n\n🔹 <b>Workspace:</b> ${businessData.business_name}\n\nWorkspace alerts will now be routed here.\nএই ওয়ার্কস্পেসের পেমেন্ট এলার্ট এখন থেকে এখানে আসবে।`;
+        return {
+            text: `✅ <b>Connection Successful</b>\n<b>সংযোগ সফল হয়েছে</b>\n\n🔹 <b>Workspace:</b> ${businessData.business_name}\n\nWorkspace alerts will now be routed here.\nএই ওয়ার্কস্পেসের পেমেন্ট এলার্ট এখন থেকে এখানে আসবে।`,
+            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_b_${businessData.id}` }]] }
+        };
     }
 
-    return "❌ <b>Connection Failed</b>\n<b>সংযোগ বিফল</b>\n\nThe connection code has expired or is invalid.\nলিংকটি মেয়াদোত্তীর্ণ বা ভুল।";
+    return {
+        text: "❌ <b>Connection Failed</b>\n<b>সংযোগ বিফল</b>\n\nThe connection code has expired or is invalid.\nলিংকটি মেয়াদোত্তীর্ণ বা ভুল।"
+    };
 }
 
-// ─── ডাটাবেস ইভেন্ট চ্যাট আইডি খোঁজার লজিক ───
-async function getChatInfoForEvent(merchantId?: string | null, businessId?: string | null) {
+// ─── ডাটাবেস ইভেন্ট চ্যাট আইডি খোঁজার লজিক (Orders) ───
+async function getOrderTargets(merchantId?: string | null, businessId?: string | null) {
     let targets: { chatId: string, accountName: string }[] = [];
 
-    // যদি Business ID থাকে, তবে সেই Business এর চ্যাট আইডি নিবে
+    // ১. প্রথমে Business ID থাকলে সেই Business এর চ্যাট আইডি নিবে (Priority 1)
     if (businessId) {
         const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
         if (data?.telegram_chat_id && data.is_telegram_enabled) {
             targets.push({ chatId: data.telegram_chat_id, accountName: data.business_name });
+            return targets; // Business এ পেলে সরাসরি রিটার্ন করবে, Master এ যাবে না
         }
     }
-    // যদি Merchant ID থাকে, তবে সেই Merchant (Vault) এর চ্যাট আইডি নিবে
+
+    // ২. যদি Business এ না থাকে, তবে Master/Merchant এর চ্যাট আইডি নিবে (Priority 2)
     if (merchantId) {
         const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
         if (data?.telegram_chat_id) {
             targets.push({ chatId: data.telegram_chat_id, accountName: data.display_name || 'Master Vault' });
         }
     }
-    // যদি কোনোটাই না থাকে (Universal Notification), তবে ডাটাবেসের সমস্ত কানেক্টেড চ্যাটে মেসেজ পাঠাবে
+
+    return targets; 
+}
+
+// ─── ডাটাবেস ইভেন্ট চ্যাট আইডি খোঁজার লজিক (Notifications) ───
+async function getNotificationTargets(merchantId?: string | null, businessId?: string | null) {
+    let targets: { chatId: string, accountName: string }[] = [];
+
+    // Universal Notification (কোনো ID না থাকলে)
     if (!merchantId && !businessId) {
         const { data: merchants } = await supabase.from('merchants').select('telegram_chat_id').not('telegram_chat_id', 'is', null);
         const { data: businesses } = await supabase.from('businesses').select('telegram_chat_id').not('telegram_chat_id', 'is', null).eq('is_telegram_enabled', true);
         
-        merchants?.forEach(m => targets.push({ chatId: m.telegram_chat_id, accountName: 'System Notice' }));
-        businesses?.forEach(b => targets.push({ chatId: b.telegram_chat_id, accountName: 'System Notice' }));
+        const uniqueChats = new Map<string, string>();
+        merchants?.forEach(m => uniqueChats.set(m.telegram_chat_id, 'System Notice'));
+        businesses?.forEach(b => uniqueChats.set(b.telegram_chat_id, 'System Notice'));
+        
+        uniqueChats.forEach((accountName, chatId) => {
+            targets.push({ chatId, accountName });
+        });
+        return targets;
     }
 
-    return targets; // একাধিক চ্যাট আইডি রিটার্ন করতে পারে
+    // Targeted Notification
+    let bChatId: string | null = null;
+    let bAccountName: string = '';
+    if (businessId) {
+        const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
+        if (data?.telegram_chat_id && data.is_telegram_enabled) {
+            bChatId = data.telegram_chat_id;
+            bAccountName = data.business_name;
+        }
+    }
+
+    let mChatId: string | null = null;
+    let mAccountName: string = '';
+    if (merchantId) {
+        const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
+        if (data?.telegram_chat_id) {
+            mChatId = data.telegram_chat_id;
+            mAccountName = data.display_name || 'Master Vault';
+        }
+    }
+
+    // দুটিতেই থাকলে এবং চ্যাট আইডি একই হলে শুধু একবার পাঠাবে
+    if (mChatId && bChatId && mChatId === bChatId) {
+        targets.push({ chatId: mChatId, accountName: `${mAccountName} (Vault & Workspace)` });
+    } else {
+        // আলাদা হলে বা যেকোনো একটা থাকলে সেগুলোতে পাঠাবে
+        if (mChatId) targets.push({ chatId: mChatId, accountName: mAccountName });
+        if (bChatId) targets.push({ chatId: bChatId, accountName: bAccountName });
+    }
+
+    return targets;
 }
 
 // ─── Supabase Database Webhook Handler ───
@@ -103,10 +157,9 @@ async function handleSupabaseWebhook(body: any) {
 
     // ১. Order Paid Event (Premium Design)
     if (table === 'orders' && type === 'UPDATE' && (record.status === 'success' || record.status === 'paid')) {
-        const targets = await getChatInfoForEvent(record.merchant_id, record.business_id);
+        const targets = await getOrderTargets(record.merchant_id, record.business_id);
         
         if (targets.length > 0) {
-            // uppercase method (e.g. bKash, Nagad)
             const payMethod = record.method ? record.method.toUpperCase() : 'GATEWAY';
             const currency = record.currency || 'BDT';
 
@@ -128,7 +181,6 @@ async function handleSupabaseWebhook(body: any) {
                 inline_keyboard: [[{ text: "View Transaction ➔", url: `${SITE_URL}/dashboard/transactions` }]]
             };
 
-            // Send to all relevant connected chats (Business and/or Master Vault)
             for (const target of targets) {
                 await sendTelegramMessage(target.chatId, message, replyMarkup);
             }
@@ -137,7 +189,7 @@ async function handleSupabaseWebhook(body: any) {
 
     // ২. Notification Event (Universal or Targeted)
     if (table === 'notifications' && type === 'INSERT') {
-        const targets = await getChatInfoForEvent(record.merchant_id, record.business_id);
+        const targets = await getNotificationTargets(record.merchant_id, record.business_id);
         
         if (targets.length > 0) {
             const message = `
@@ -155,7 +207,6 @@ ${record.message}`;
                 ]);
             }
 
-            // Send to all relevant connected chats (Universal or Specific)
             for (const target of targets) {
                 await sendTelegramMessage(target.chatId, message, replyMarkup.inline_keyboard.length > 0 ? replyMarkup : undefined);
             }
@@ -199,9 +250,24 @@ export async function POST(req: Request) {
 
             if (data.startsWith('connect_dm_')) {
                 const code = data.replace('connect_dm_', '');
-                const resultMessage = await connectTelegram(code, chatId, username, displayName);
-                await editTelegramMessage(chatId, messageId, resultMessage);
+                const result = await connectTelegram(code, chatId, username, displayName);
+                await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
             }
+            // Disconnect Master
+            else if (data.startsWith('disconnect_m_')) {
+                const id = data.replace('disconnect_m_', '');
+                const newCode = generateComplexString(12);
+                await supabase.from('merchants').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode }).eq('id', id);
+                await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Master Vault alerts.");
+            }
+            // Disconnect Business
+            else if (data.startsWith('disconnect_b_')) {
+                const id = data.replace('disconnect_b_', '');
+                const newCode = generateComplexString(12);
+                await supabase.from('businesses').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode, is_telegram_enabled: false }).eq('id', id);
+                await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Workspace alerts.");
+            }
+
             return NextResponse.json({ status: 'success' });
         }
 
@@ -226,8 +292,8 @@ export async function POST(req: Request) {
                     const groupTitle = chat.title || 'Connected Group';
                     const groupUsername = chat.username ? `@${chat.username}` : null;
                     
-                    const resultMessage = await connectTelegram(code, chatId, groupUsername, groupTitle);
-                    await sendTelegramMessage(chatId, resultMessage);
+                    const result = await connectTelegram(code, chatId, groupUsername, groupTitle);
+                    await sendTelegramMessage(chatId, result.text, result.replyMarkup);
                     return NextResponse.json({ status: 'connected_group' });
                 }
 
