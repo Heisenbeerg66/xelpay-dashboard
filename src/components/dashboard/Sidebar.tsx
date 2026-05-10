@@ -6,7 +6,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   LayoutDashboard, Receipt, MessageSquare, Wallet, Link as LinkIcon,
   Settings, LineChart, Send, Users, Code, Headphones, LogOut,
-  ChevronDown, Building2, Plus, Check, Loader2, PlusCircle, ServerCog, Smartphone, CreditCard
+  ChevronDown, Building2, Plus, Check, Loader2, PlusCircle, ServerCog, Smartphone, CreditCard,
+  Vault
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -15,8 +16,8 @@ const menuItems = [
   { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
   { name: 'Global Vault', icon: ServerCog, path: '/dashboard/vault' },
   { name: 'Transactions', icon: Receipt, path: '/dashboard/transactions' },
-  { name: 'Connected Gateways', icon: Wallet, path: '/dashboard/gateways' },
-  { name: 'Devices / Automation', icon: Smartphone, path: '/dashboard/devices' },
+  { name: 'Gateway Manager', icon: Wallet, path: '/dashboard/gateways' },
+  { name: 'Devices Manager', icon: Smartphone, path: '/dashboard/devices' },
   { name: 'Telegram Alerts', icon: Send, path: '/dashboard/telegram' },
   { name: 'Payment Links', icon: LinkIcon, path: '/dashboard/links' },
   { name: 'SMS Data', icon: MessageSquare, path: '/dashboard/sms' },
