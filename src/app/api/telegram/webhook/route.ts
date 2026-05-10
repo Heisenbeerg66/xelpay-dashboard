@@ -83,16 +83,15 @@ export async function POST(req: Request) {
             const callbackQuery = body.callback_query;
             const chatId = callbackQuery.message.chat.id;
             const messageId = callbackQuery.message.message_id;
-            const data = callbackQuery.data; // উদাঃ "connect_dm_TG-XXXX"
+            const data = callbackQuery.data;
 
             const fromUser = callbackQuery.from || {};
-            const username = fromUser.username ? `@${fromUser.username}` : null;
+            const username = fromUser.username ? `${fromUser.username}` : null;
             const displayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
 
             if (data.startsWith('connect_dm_')) {
                 const code = data.replace('connect_dm_', '');
                 const resultMessage = await connectTelegram(code, chatId, username, displayName);
-                // মেসেজ এডিট করে সাকসেস মেসেজ দেখাবো
                 await editTelegramMessage(chatId, messageId, resultMessage);
             }
             return NextResponse.json({ status: 'success' });
@@ -101,12 +100,12 @@ export async function POST(req: Request) {
         // ─── নরমাল মেসেজ বা /start হ্যান্ডেল করা ───
         if (body.message && body.message.text) {
             const chatId = body.message.chat.id;
-            const chatType = body.message.chat.type; // 'private', 'group', 'supergroup'
+            const chatType = body.message.chat.type;
             const text = body.message.text.trim();
 
             const fromUser = body.message.from || {};
-            const username = fromUser.username ? `@${fromUser.username}` : null;
-            let displayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
+            const userUsername = fromUser.username ? `@${fromUser.username}` : null;
+            let userDisplayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
 
             if (text.startsWith('/start')) {
                 const code = text.split(' ')[1]; 
@@ -116,17 +115,17 @@ export async function POST(req: Request) {
                     return NextResponse.json({ status: 'no_code' });
                 }
 
-                // যদি ইউজার গ্রুপে বট অ্যাড করে, তবে সরাসরি গ্রুপেই কানেক্ট হয়ে যাবে
+                // গ্রুপ বা সুপারগ্রুপ হলে গ্রুপের নাম ও ইউজারনেম সেভ করবে
                 if (chatType === 'group' || chatType === 'supergroup') {
-                    if (body.message.chat.title) {
-                        displayName = body.message.chat.title;
-                    }
-                    const resultMessage = await connectTelegram(code, chatId, username, displayName);
+                    const groupTitle = body.message.chat.title || userDisplayName;
+                    const groupUsername = body.message.chat.username ? `@${body.message.chat.username}` : userUsername;
+                    
+                    const resultMessage = await connectTelegram(code, chatId, groupUsername, groupTitle);
                     await sendTelegramMessage(chatId, resultMessage);
                     return NextResponse.json({ status: 'connected_group' });
                 }
 
-                // যদি ইউজার পার্সোনাল মেসেজে বট স্টার্ট দেয়, তবে তাকে বাটন দেখাবো
+                // পার্সোনাল চ্যাট হলে
                 const botUsername = await getBotUsername();
                 const replyMarkup = {
                     inline_keyboard: [

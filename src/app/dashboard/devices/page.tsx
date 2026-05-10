@@ -3,11 +3,9 @@
 import { useState, useEffect } from 'react';
 import {
   Smartphone, Download, Battery, Cpu, Copy, Loader2, X, RefreshCw,
-  Trash2, Key, Eye, EyeOff, CheckCircle2, DownloadCloud, ExternalLink,
-  Wifi, Clock, Info
+  Trash2, Key, Eye, EyeOff, CheckCircle2, DownloadCloud, Wifi, Clock, Info
 } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
-import { QRCodeSVG } from 'qrcode.react';
 import {
   getBusinessSettings, generateBusinessDeviceKey, getBusinessConnectedDevice,
   deleteBusinessDevice, importVaultDeviceToBusiness, getVaultDataForImport
@@ -74,7 +72,7 @@ export default function BusinessDevicesPage() {
     const res = await generateBusinessDeviceKey(businessId);
     if (res.success) {
       setBusinessData((prev: any) => ({ ...prev, device_connection_key: res.key }));
-      toast.success('New 24-character key generated!');
+      toast.success('New key generated!');
     } else toast.error('Failed to generate key.');
     setGenerating(false);
   };
@@ -121,7 +119,7 @@ export default function BusinessDevicesPage() {
 
   if (loading) return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center">
-      <Loader2 className="animate-spin text-indigo-500 mb-3" size={36} strokeWidth={2.5} />
+      <Loader2 className="animate-spin text-indigo-600 mb-3" size={36} strokeWidth={2.5} />
       <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Loading</p>
     </div>
   );
@@ -149,102 +147,82 @@ export default function BusinessDevicesPage() {
         </button>
       </div>
 
-      {!activeDevice ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="max-w-2xl mx-auto w-full">
+        {!activeDevice ? (
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm flex flex-col">
-            <div className="p-6 md:p-8 border-b border-slate-100 dark:border-slate-800 flex-1">
-              <div className="w-14 h-14 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center mb-6">
-                <Smartphone size={28} className="text-indigo-600 dark:text-indigo-400" />
+            <div className="p-5 md:p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-4 mb-3">
+                <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+                  <Smartphone size={24} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white">Connect Device</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Link your dedicated device for workspace SMS automation.</p>
+                </div>
               </div>
-              <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white mb-3">Connect Device</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed mb-6">
-                Install the Xelpay Android App on your dedicated device and link it to this workspace to enable SMS automation.
-              </p>
             </div>
-            <div className="p-4 md:p-8 space-y-2.5 md:space-y-3">
+            
+            <div className="p-6 md:p-8 space-y-3">
               {[
                 'Install the Android app on your dedicated device.',
-                'Log in using your account credentials or secret key.',
                 'Ensure the app is running in the background and battery optimization is disabled.',
-                'Your device will appear here once successfully synced.'
+                'Click the button below to get your secret key and login.',
               ].map((t, n) => (
-                <div key={n} className="flex items-start gap-2.5 md:gap-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-100 dark:border-slate-800 rounded-xl p-2.5 md:p-3">
-                  <span className="w-5 h-5 md:w-6 md:h-6 bg-indigo-600 text-white text-[10px] md:text-xs font-black rounded-lg flex items-center justify-center shrink-0">{n + 1}</span>
-                  <p className="text-[11px] md:text-xs text-slate-600 dark:text-slate-400 font-medium leading-relaxed mt-0.5">{t}</p>
+                <div key={n} className="flex items-start gap-3 p-3 rounded-xl">
+                  <span className="w-6 h-6 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-black rounded-full flex items-center justify-center shrink-0">{n + 1}</span>
+                  <p className="text-xs md:text-sm text-slate-600 dark:text-slate-400 font-medium leading-relaxed mt-0.5">{t}</p>
                 </div>
               ))}
             </div>
-            <div className="p-4 md:p-8 pt-0 space-y-3">
-              <button onClick={handleOpenManualModal} className="w-full py-3.5 md:py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[11px] md:text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+            
+            <div className="p-6 md:p-8 pt-0 space-y-3">
+              <button onClick={handleOpenManualModal} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all">
                 <Key size={16} /> Connect with Secret Key
               </button>
-              <button onClick={handleOpenImportModal} disabled={importing} className="w-full py-3.5 md:py-4 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-xl font-black text-[11px] md:text-xs uppercase tracking-widest shadow-sm border border-emerald-200 dark:border-emerald-800/50 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+              <button onClick={handleOpenImportModal} disabled={importing} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-sm flex items-center justify-center gap-2 transition-all">
                 <DownloadCloud size={16} strokeWidth={2.5} /> Import from Vault
               </button>
             </div>
           </div>
-
-          {/* QR Component */}
-          <div className="bg-slate-900 rounded-3xl overflow-hidden shadow-xl flex flex-col items-center justify-center p-6 md:p-10 relative group">
-            <div className="absolute inset-0 opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
-            <div className="relative z-10 w-full flex flex-col items-center">
-              <div className="bg-white p-4 md:p-6 rounded-3xl shadow-2xl mb-6 ring-4 ring-white/10 group-hover:ring-indigo-500/30 transition-all duration-500">
-                {deviceKey ? (
-                  <QRCodeSVG value={`xelpay://connect?key=${deviceKey}`} size={180} level="H" includeMargin={false} fgColor="#0f172a" />
-                ) : (
-                  <div className="w-[180px] h-[180px] bg-slate-100 rounded-xl flex items-center justify-center">
-                    <Loader2 size={30} className="animate-spin text-slate-400" />
-                  </div>
-                )}
+        ) : (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+            <div className="p-6 md:p-8 bg-indigo-600 text-white text-center">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/30">
+                <CheckCircle2 size={30} strokeWidth={2.5} />
               </div>
-              <h3 className="text-white font-black text-lg md:text-xl tracking-tight mb-2 text-center">Scan to Connect</h3>
-              <p className="text-slate-400 text-xs md:text-sm font-medium text-center max-w-[250px] mb-8">
-                Open the Xelpay App and scan this QR code to instantly pair your device.
-              </p>
-              <button onClick={handleGenerateKey} disabled={generating} className="flex items-center gap-2 text-[10px] md:text-xs font-bold text-slate-300 hover:text-white uppercase tracking-widest transition-colors bg-white/5 hover:bg-white/10 px-4 py-2.5 md:py-3 rounded-full">
-                <RefreshCw size={14} className={generating ? 'animate-spin' : ''} /> {generating ? 'Regenerating...' : 'Regenerate QR'}
-              </button>
+              <h2 className="text-xl font-black uppercase tracking-tight">Device Online</h2>
+              <p className="text-indigo-100 text-sm mt-1 font-medium">SMS automation is active for this workspace.</p>
             </div>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm max-w-3xl">
-          <div className="p-8 bg-gradient-to-br from-indigo-600 to-violet-700 text-white text-center">
-            <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/20 shadow-xl">
-              <CheckCircle2 size={36} strokeWidth={2} />
-            </div>
-            <h2 className="text-xl font-black uppercase tracking-tight">Device Online</h2>
-            <p className="text-indigo-100 text-sm mt-1.5 font-medium">SMS automation is active for this workspace.</p>
-          </div>
-          <div className="p-6 md:p-8 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-              {[
-                { label: 'Device Name', value: activeDevice.device_name || 'Unknown', icon: Smartphone },
-                { label: 'Model', value: activeDevice.device_model || 'N/A', icon: Cpu },
-                { label: 'Battery', value: `${activeDevice.battery_level ?? '?'}%`, icon: Battery },
-                { label: 'Last Sync', value: activeDevice.last_sync ? new Date(activeDevice.last_sync).toLocaleTimeString() : 'N/A', icon: Clock },
-                { label: 'Status', value: activeDevice.is_active ? 'Online' : 'Offline', icon: Wifi },
-                { label: 'App Version', value: activeDevice.app_version || 'v1.0.0', icon: Info },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-                  <div className="w-10 h-10 bg-white dark:bg-slate-800 shadow-sm rounded-xl flex items-center justify-center shrink-0">
-                    <item.icon size={18} className="text-indigo-600 dark:text-indigo-400" />
+            <div className="p-6 md:p-8 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                {[
+                  { label: 'Device Name', value: activeDevice.device_name || 'Unknown', icon: Smartphone },
+                  { label: 'Model', value: activeDevice.device_model || 'N/A', icon: Cpu },
+                  { label: 'Battery', value: `${activeDevice.battery_level ?? '?'}%`, icon: Battery },
+                  { label: 'Last Sync', value: activeDevice.last_sync ? new Date(activeDevice.last_sync).toLocaleTimeString() : 'N/A', icon: Clock },
+                  { label: 'Status', value: activeDevice.is_active ? 'Online' : 'Offline', icon: Wifi },
+                  { label: 'App Version', value: activeDevice.app_version || 'v1.0.0', icon: Info },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <div className="w-10 h-10 bg-white dark:bg-slate-800 shadow-sm rounded-lg flex items-center justify-center shrink-0">
+                      <item.icon size={18} className="text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{item.label}</p>
+                      <p className="text-sm font-black text-slate-800 dark:text-white mt-0.5">{item.value}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{item.label}</p>
-                    <p className="text-sm font-black text-slate-800 dark:text-white mt-0.5">{item.value}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-              <button onClick={handleDeleteDevice} className="flex items-center gap-2 px-5 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/40 font-black text-xs uppercase tracking-widest rounded-xl transition-colors">
-                <Trash2 size={16} /> Disconnect
-              </button>
+                ))}
+              </div>
+              <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                <button onClick={handleDeleteDevice} className="flex items-center gap-2 px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-colors">
+                  <Trash2 size={16} /> Disconnect
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Manual Key Modal */}
       {isManualModalOpen && (
@@ -262,16 +240,12 @@ export default function BusinessDevicesPage() {
             <div className="p-6">
               {deviceKey && (
                 <>
-                  <div className="flex justify-center mb-5">
-                    <div className="bg-white p-3 rounded-2xl shadow-lg border border-slate-100">
-                      <QRCodeSVG value={`xelpay://connect?key=${deviceKey}`} size={120} level="H" includeMargin={false} />
-                    </div>
-                  </div>
                   <div className="flex items-stretch bg-slate-50 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
-                    <div className="px-3 flex items-center justify-center bg-slate-100 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700">
+                    <div className="px-3 flex items-center justify-center bg-slate-100 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shrink-0">
                       <Key size={16} className="text-slate-400" />
                     </div>
-                    <div className="flex-1 py-3 px-3 overflow-x-auto text-center font-mono text-sm tracking-wider font-bold text-slate-800 dark:text-slate-200">
+                    {/* Scrollbar hidden logic */}
+                    <div className="flex-1 py-3 px-3 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] font-mono text-sm tracking-wider font-bold text-slate-800 dark:text-slate-200">
                       {displayedKey}
                     </div>
                     <button onClick={() => setShowKey(!showKey)} className="px-3 bg-slate-100 dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-600 transition-colors shrink-0">
@@ -281,11 +255,11 @@ export default function BusinessDevicesPage() {
                       <Copy size={16} />
                     </button>
                   </div>
-                  <p className="text-center text-[10px] text-slate-400 mt-4 uppercase tracking-widest font-bold">Never share this key with anyone</p>
+                  <p className="text-center text-[10px] text-slate-400 mt-4 uppercase tracking-widest font-bold">Never share this key</p>
                 </>
               )}
               <button onClick={handleGenerateKey} disabled={generating}
-                className="w-full py-3.5 mt-5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 font-black text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2">
+                className="w-full py-3.5 mt-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2">
                 <RefreshCw size={14} className={generating ? 'animate-spin' : ''} /> {generating ? 'Generating...' : 'Regenerate Key'}
               </button>
             </div>
@@ -309,13 +283,13 @@ export default function BusinessDevicesPage() {
             <div className="p-6 space-y-4">
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">This will copy the master device connection from your Vault to this workspace.</p>
               {vaultData && (
-                <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 p-4 rounded-xl flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg flex items-center justify-center shrink-0">
-                    <Smartphone size={20} className="text-emerald-600 dark:text-emerald-400" />
+                <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 rounded-xl flex items-center gap-3">
+                  <div className="w-10 h-10 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center shrink-0">
+                    <Smartphone size={20} className="text-slate-600 dark:text-slate-300" />
                   </div>
                   <div>
-                    <p className="text-sm font-black text-emerald-900 dark:text-emerald-100">{vaultData.device_name || 'Unknown'}</p>
-                    <p className="text-xs text-emerald-600 dark:text-emerald-500 font-medium">{vaultData.device_model || 'N/A'}</p>
+                    <p className="text-sm font-black text-slate-900 dark:text-white">{vaultData.device_name || 'Unknown'}</p>
+                    <p className="text-xs text-slate-500 font-medium">{vaultData.device_model || 'N/A'}</p>
                   </div>
                 </div>
               )}
