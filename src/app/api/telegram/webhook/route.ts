@@ -29,21 +29,16 @@ export async function GET() {
 }
 
 async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
-    if (!BOT_TOKEN) {
-        console.error("❌ XELPAY_BOT_TOKEN is missing!");
-        return;
-    }
+    if (!BOT_TOKEN) return;
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
     try {
-        const response = await fetch(url, {
+        await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
         });
-        const result = await response.json();
-        if (!result.ok) console.error("Telegram API Error:", result);
     } catch (err) {
-        console.error("Fetch Error in sendTelegramMessage:", err);
+        console.error("Fetch Error:", err);
     }
 }
 
@@ -303,7 +298,6 @@ async function handleSupabaseWebhook(body: any) {
     return NextResponse.json({ status: 'webhook_processed' });
 }
 
-
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -314,7 +308,6 @@ export async function POST(req: Request) {
             if (expectedSupabaseSecret) {
                 const incomingSecret = req.headers.get('x-supabase-webhook-secret');
                 if (incomingSecret !== expectedSupabaseSecret) {
-                    console.log("❌ Supabase Secret Mismatch!");
                     return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
                 }
             }
@@ -326,7 +319,6 @@ export async function POST(req: Request) {
         if (expectedTelegramSecret) {
             const incomingTelegramSecret = req.headers.get('x-telegram-bot-api-secret-token');
             if (incomingTelegramSecret !== expectedTelegramSecret) {
-                console.log(`❌ Telegram Secret Mismatch! Expected: ${expectedTelegramSecret}, Got: ${incomingTelegramSecret}`);
                 return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
             }
         }
@@ -361,7 +353,16 @@ export async function POST(req: Request) {
                 const code = data.replace('takeover_', '');
 
                 if (chatType === 'group' || chatType === 'supergroup') {
-                    const isAdmin = await isGroupAdmin(chatId, userId);
+                    // Check if clicked anonymously or as normal user
+                    const isAnonymousAdminClick = fromUser.username === 'GroupAnonymousBot';
+                    let isAdmin = false;
+                    
+                    if (isAnonymousAdminClick) {
+                        isAdmin = true;
+                    } else {
+                        isAdmin = await isGroupAdmin(chatId, userId);
+                    }
+
                     if (!isAdmin) {
                         await answerCallbackQuery(callbackQuery.id, "⚠️ Access Denied: Only admins can confirm this takeover.");
                         return NextResponse.json({ status: 'not_admin' });
@@ -395,7 +396,6 @@ export async function POST(req: Request) {
         }
 
         if (body.message) {
-            console.log("✅ Received Message Event");
             const chat = body.message.chat;
             const chatId = chat.id;
             const chatType = chat.type;
@@ -407,7 +407,6 @@ export async function POST(req: Request) {
                 const code = parts.length > 1 ? parts[1] : null; 
 
                 if (!code) {
-                    console.log("⚠️ /start called without code in chat:", chatId);
                     if (chatType === 'private') {
                         await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\n<b>ভুল কমান্ড!</b>\nPlease generate a valid connection link from your dashboard.");
                     }
@@ -415,9 +414,17 @@ export async function POST(req: Request) {
                 }
 
                 if (chatType === 'group' || chatType === 'supergroup') {
-                    if (!userId) return NextResponse.json({ status: 'ignored' });
+                    // লজিক: যদি Sender Chat থাকে (অ্যাডমিন চ্যানেল হিসেবে মেসেজ দিচ্ছে) বা Anonymous Bot হয়
+                    const isAnonymousAdmin = body.message.sender_chat?.id === chatId || body.message.from?.username === 'GroupAnonymousBot';
+                    
+                    let isAdmin = false;
+                    
+                    if (isAnonymousAdmin) {
+                        isAdmin = true; // অটোমেটিক অ্যাডমিন এক্সেস 
+                    } else if (userId) {
+                        isAdmin = await isGroupAdmin(chatId, userId);
+                    }
 
-                    const isAdmin = await isGroupAdmin(chatId, userId);
                     if (!isAdmin) {
                         await sendTelegramMessage(chatId, "⚠️ <b>Access Denied</b>\n\nOnly group administrators can connect or configure this bot. Please ask an admin to send the connection command.");
                         return NextResponse.json({ status: 'not_admin' });
@@ -431,7 +438,6 @@ export async function POST(req: Request) {
                     return NextResponse.json({ status: 'connected_group' });
                 }
 
-                console.log(`✅ Sending connection prompt to private chat: ${chatId}`);
                 const replyMarkup = {
                     inline_keyboard: [
                         [{ text: "Connect to THIS Chat ➔", callback_data: `connect_dm_${code}` }],

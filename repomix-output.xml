@@ -9671,6 +9671,69 @@ export default function CustomersPage() {
 }
 </file>
 
+<file path="src/app/dashboard/layout.tsx">
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import DashboardClient from '@/components/dashboard/DashboardClient';
+import type { Metadata, Viewport } from 'next';
+import { Toaster } from 'sonner'; // 🚀 ফিক্স: Toaster ইম্পোর্ট করা হয়েছে
+
+export const metadata: Metadata = {
+  title: { default: 'Dashboard — XelPay', template: '%s — XelPay' },
+  description: 'XelPay merchant dashboard.',
+  robots: { index: false, follow: false },
+};
+
+// 💥 মোবাইলের জুম ইন/আউট চিরতরে বন্ধ করার ম্যাজিক ফিক্স
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, // এটি আঙুল দিয়ে জুম করা বন্ধ করে দেবে
+};
+
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies();
+
+  // Fast check — middleware already handled this
+  if (cookieStore.get('auth_session')?.value !== 'authenticated') {
+    redirect('/login');
+  }
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) { return cookieStore.get(name)?.value; },
+        set() {},
+        remove() {},
+      },
+    }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const { data: merchant } = await supabase
+    .from('merchants')
+    .select('*')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (!merchant) redirect('/auth/force-signout?redirect=/signup');
+
+  return (
+    <DashboardClient merchant={merchant} user={user}>
+      {/* 🚀 ফিক্স: ড্যাশবোর্ডে পপআপ/মেসেজ দেখানোর জন্য Toaster যুক্ত করা হয়েছে */}
+      <Toaster richColors position="top-center" />
+      {children}
+    </DashboardClient>
+  );
+}
+</file>
+
 <file path="src/app/layout.tsx">
 // PATH: /app/layout.tsx
 import type { Metadata } from "next";
@@ -10181,69 +10244,6 @@ export async function POST(request: Request) {
 }
 </file>
 
-<file path="src/app/dashboard/layout.tsx">
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import DashboardClient from '@/components/dashboard/DashboardClient';
-import type { Metadata, Viewport } from 'next';
-import { Toaster } from 'sonner'; // 🚀 ফিক্স: Toaster ইম্পোর্ট করা হয়েছে
-
-export const metadata: Metadata = {
-  title: { default: 'Dashboard — XelPay', template: '%s — XelPay' },
-  description: 'XelPay merchant dashboard.',
-  robots: { index: false, follow: false },
-};
-
-// 💥 মোবাইলের জুম ইন/আউট চিরতরে বন্ধ করার ম্যাজিক ফিক্স
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false, // এটি আঙুল দিয়ে জুম করা বন্ধ করে দেবে
-};
-
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-
-  // Fast check — middleware already handled this
-  if (cookieStore.get('auth_session')?.value !== 'authenticated') {
-    redirect('/login');
-  }
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) { return cookieStore.get(name)?.value; },
-        set() {},
-        remove() {},
-      },
-    }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
-
-  const { data: merchant } = await supabase
-    .from('merchants')
-    .select('*')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (!merchant) redirect('/auth/force-signout?redirect=/signup');
-
-  return (
-    <DashboardClient merchant={merchant} user={user}>
-      {/* 🚀 ফিক্স: ড্যাশবোর্ডে পপআপ/মেসেজ দেখানোর জন্য Toaster যুক্ত করা হয়েছে */}
-      <Toaster richColors position="top-center" />
-      {children}
-    </DashboardClient>
-  );
-}
-</file>
-
 <file path="src/app/dashboard/reports/page.tsx">
 'use client';
 
@@ -10693,6 +10693,88 @@ export default function ReportsPage() {
             </div>
           </div>
         </>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/dashboard/DashboardClient.tsx">
+'use client';
+// PATH: components/dashboard/DashboardClient.tsx
+
+import { useState, useEffect } from 'react';
+import Sidebar from './Sidebar';
+import Header from './Header';
+import ActivationScreen from './ActivationScreen'; 
+import { Loader2 } from 'lucide-react';
+
+function useIsMobileDevice() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isMobile;
+}
+
+export default function DashboardClient({ merchant, user, children }: any) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const isMobileDevice = useIsMobileDevice();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#111827]">
+      <Loader2 className="animate-spin text-blue-600" size={40} />
+    </div>
+  );
+
+  if (merchant.status === 'pending' && !merchant.is_demo) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-[#111827] flex items-center justify-center p-4 transition-colors duration-500">
+        <ActivationScreen merchant={merchant} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen w-full flex flex-col font-sans">
+      
+      {/* Header */}
+      <Header merchant={merchant} setSidebarOpen={setIsSidebarOpen} />
+
+      {/* Main Content Area */}
+      <div className="flex flex-1 pt-[72px]">
+        
+        {/* Sidebar */}
+        <Sidebar merchant={merchant} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+
+        {/* 
+          💥 FIX: 'relative z-10' রিমুভ করা হয়েছে যাতে পেজের ভেতরের মোডালগুলো হেডারের উপরে আসতে পারে।
+        */}
+        <div className={`flex flex-col h-[calc(100vh-72px)] w-full overflow-hidden transition-all duration-300 bg-slate-50 dark:bg-[#111827] ${!isMobileDevice ? 'ml-72' : ''}`}>
+          
+          {/* 💥 FIX: 'animate-in' রিমুভ করা হয়েছে যাতে Stacking Context Trap না হয়। */}
+          <main className="flex-1 w-full max-w-full overflow-x-hidden overflow-y-auto p-4 md:p-8">
+            {children}
+          </main>
+        </div>
+
+      </div>
+
+      {/* Overlay শুধু touch device-এ sidebar open থাকলে */}
+      {isSidebarOpen && isMobileDevice && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)} 
+          className="fixed inset-0 top-[72px] bg-slate-900/60 dark:bg-[#0B1120]/80 backdrop-blur-sm z-30 animate-in fade-in duration-300" 
+        />
       )}
     </div>
   );
@@ -12945,88 +13027,6 @@ export async function verifyDomainOwnership(
   } catch (error: any) {
     return { success: false, message: `DNS verification failed: ${error.message}` };
   }
-}
-</file>
-
-<file path="src/components/dashboard/DashboardClient.tsx">
-'use client';
-// PATH: components/dashboard/DashboardClient.tsx
-
-import { useState, useEffect } from 'react';
-import Sidebar from './Sidebar';
-import Header from './Header';
-import ActivationScreen from './ActivationScreen'; 
-import { Loader2 } from 'lucide-react';
-
-function useIsMobileDevice() {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia('(pointer: coarse)');
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-  return isMobile;
-}
-
-export default function DashboardClient({ merchant, user, children }: any) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const isMobileDevice = useIsMobileDevice();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#111827]">
-      <Loader2 className="animate-spin text-blue-600" size={40} />
-    </div>
-  );
-
-  if (merchant.status === 'pending' && !merchant.is_demo) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#111827] flex items-center justify-center p-4 transition-colors duration-500">
-        <ActivationScreen merchant={merchant} />
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen w-full flex flex-col font-sans">
-      
-      {/* Header */}
-      <Header merchant={merchant} setSidebarOpen={setIsSidebarOpen} />
-
-      {/* Main Content Area */}
-      <div className="flex flex-1 pt-[72px]">
-        
-        {/* Sidebar */}
-        <Sidebar merchant={merchant} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-
-        {/* 
-          💥 FIX: 'relative z-10' রিমুভ করা হয়েছে যাতে পেজের ভেতরের মোডালগুলো হেডারের উপরে আসতে পারে।
-        */}
-        <div className={`flex flex-col h-[calc(100vh-72px)] w-full overflow-hidden transition-all duration-300 bg-slate-50 dark:bg-[#111827] ${!isMobileDevice ? 'ml-72' : ''}`}>
-          
-          {/* 💥 FIX: 'animate-in' রিমুভ করা হয়েছে যাতে Stacking Context Trap না হয়। */}
-          <main className="flex-1 w-full max-w-full overflow-x-hidden overflow-y-auto p-4 md:p-8">
-            {children}
-          </main>
-        </div>
-
-      </div>
-
-      {/* Overlay শুধু touch device-এ sidebar open থাকলে */}
-      {isSidebarOpen && isMobileDevice && (
-        <div 
-          onClick={() => setIsSidebarOpen(false)} 
-          className="fixed inset-0 top-[72px] bg-slate-900/60 dark:bg-[#0B1120]/80 backdrop-blur-sm z-30 animate-in fade-in duration-300" 
-        />
-      )}
-    </div>
-  );
 }
 </file>
 
@@ -15385,6 +15385,361 @@ export default function GlobalVaultPage() {
 }
 </file>
 
+<file path="src/components/dashboard/Header.tsx">
+'use client';
+
+import {
+  Menu, Search, Sun, Moon, Bell, LogOut, X,
+  LayoutDashboard, Receipt, Link2, MessageSquare, Building2, User,
+  KeyRound, Settings, ChevronRight, CheckCircle, Clock, AlertCircle,
+  Smartphone, Send, CreditCard, DollarSign, Loader2
+} from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+
+function useIsMobileDevice() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(pointer: coarse)');
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isMobile;
+}
+
+// ─── Searchable Pages ─────────────────────────────────────────────────────────
+const SEARCH_PAGES = [
+  { label: 'Dashboard Overview', path: '/dashboard', icon: LayoutDashboard, keywords: ['dashboard', 'overview', 'home', 'stats', 'revenue'], description: 'View your business metrics and recent transactions' },
+  { label: 'All Transactions', path: '/dashboard/transactions', icon: Receipt, keywords: ['transactions', 'orders', 'payments', 'history', 'trx'], description: 'Browse and filter all payment transactions' },
+  { label: 'Payment Links', path: '/dashboard/links', icon: Link2, keywords: ['links', 'payment links', 'checkout', 'products'], description: 'Create and manage payment links' },
+  { label: 'SMS Data', path: '/dashboard/sms', icon: MessageSquare, keywords: ['sms', 'messages', 'mobile banking', 'bkash', 'nagad', 'rocket'], description: 'View incoming SMS from your Android reader device' },
+  { label: 'Business Settings', path: '/dashboard/settings', icon: Building2, keywords: ['settings', 'business', 'configure', 'setup'], description: 'Manage your business configuration' },
+  { label: 'Profile Settings', path: '/dashboard/settings/profile', icon: User, keywords: ['profile', 'account', 'name', 'avatar', 'personal'], description: 'Update your personal profile information' },
+  { label: 'API Keys', path: '/dashboard/settings/api', icon: KeyRound, keywords: ['api', 'api keys', 'developer', 'integration', 'webhook', 'secret'], description: 'Manage API keys and webhook configuration' },
+  { label: 'Subscriptions', path: '/dashboard/subscriptions', icon: CreditCard, keywords: ['subscription', 'plan', 'billing', 'upgrade'], description: 'Manage your subscription plan' },
+  { label: 'Reports', path: '/dashboard/reports', icon: Receipt, keywords: ['reports', 'analytics', 'revenue', 'chart'], description: 'View payment analytics and reports' },
+  { label: 'Customers', path: '/dashboard/customers', icon: User, keywords: ['customers', 'clients', 'buyers'], description: 'View customer information from orders' },
+  { label: 'Telegram Alerts', path: '/dashboard/telegram', icon: Send, keywords: ['telegram', 'alerts', 'notifications', 'bot'], description: 'Configure Telegram payment notifications' },
+  { label: 'Devices', path: '/dashboard/devices', icon: Smartphone, keywords: ['devices', 'sms', 'android', 'automation'], description: 'Manage connected Android devices' },
+];
+
+// ─── Notification type icon ───────────────────────────────────────────────────
+function NotifIcon({ type }: { type: string }) {
+  const cls = "shrink-0";
+  if (type === 'payment') return <DollarSign size={14} className={`text-emerald-500 ${cls}`} />;
+  if (type === 'success') return <CheckCircle size={14} className={`text-emerald-500 ${cls}`} />;
+  if (type === 'warning') return <AlertCircle size={14} className={`text-amber-500 ${cls}`} />;
+  if (type === 'error') return <AlertCircle size={14} className={`text-red-500 ${cls}`} />;
+  if (type === 'system') return <Settings size={14} className={`text-blue-500 ${cls}`} />;
+  return <Bell size={14} className={`text-slate-400 ${cls}`} />;
+}
+
+// ─── Global Search ────────────────────────────────────────────────────────────
+function GlobalSearch() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<typeof SEARCH_PAGES>([]);
+  const [selectedIdx, setSelectedIdx] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (query.trim().length < 1) { setResults([]); return; }
+    const q = query.toLowerCase();
+    setResults(SEARCH_PAGES.filter(p =>
+      p.label.toLowerCase().includes(q) || p.keywords.some(k => k.includes(q))
+    ).slice(0, 5));
+    setSelectedIdx(0);
+  }, [query]);
+
+  const navigate = (path: string) => { window.location.href = path; setQuery(''); };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!results.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx(i => Math.min(i + 1, results.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIdx(i => Math.max(i - 1, 0)); }
+    else if (e.key === 'Enter') navigate(results[selectedIdx].path);
+    else if (e.key === 'Escape') { setQuery(''); inputRef.current?.blur(); }
+  };
+
+  return (
+    <div className="relative w-full">
+      <div className="flex items-center gap-2.5 bg-[#111827] border border-slate-800 hover:border-slate-600 rounded-xl px-4 py-2.5 transition-all w-full">
+        <Search size={15} className="text-slate-500 shrink-0" />
+        <input ref={inputRef} type="text" placeholder="Search pages, features…" value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setTimeout(() => setIsFocused(false), 150)}
+          className="bg-transparent text-slate-300 placeholder-slate-600 text-sm font-medium outline-none w-full" />
+        {query && <button onClick={() => setQuery('')} className="text-slate-600 hover:text-slate-400"><X size={14} /></button>}
+      </div>
+      {isFocused && results.length > 0 && (
+        <div className="absolute top-full mt-2 left-0 w-full bg-[#111827] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-150">
+          {results.map((r, i) => {
+            const Icon = r.icon;
+            return (
+              <button key={r.path} onClick={() => navigate(r.path)}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${i === selectedIdx ? 'bg-blue-900/30' : 'hover:bg-slate-800/80'}`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${i === selectedIdx ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}><Icon size={14} /></div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-xs font-semibold truncate ${i === selectedIdx ? 'text-blue-400' : 'text-slate-200'}`}>{r.label}</p>
+                  <p className="text-[10px] text-slate-500 truncate">{r.description}</p>
+                </div>
+                <ChevronRight size={12} className={`shrink-0 ${i === selectedIdx ? 'text-blue-400' : 'text-slate-600'}`} />
+              </button>
+            );
+          })}
+          <div className="px-3 py-2 border-t border-slate-800/80 flex items-center gap-3">
+            <kbd className="px-1.5 py-0.5 text-[10px] font-bold bg-slate-800 border border-slate-700 rounded text-slate-400">↑↓</kbd>
+            <span className="text-[10px] text-slate-500">Navigate</span>
+            <kbd className="px-1.5 py-0.5 text-[10px] font-bold bg-slate-800 border border-slate-700 rounded text-slate-400">↵</kbd>
+            <span className="text-[10px] text-slate-500">Go</span>
+            <kbd className="px-1.5 py-0.5 text-[10px] font-bold bg-slate-800 border border-slate-700 rounded text-slate-400">Esc</kbd>
+            <span className="text-[10px] text-slate-500">Close</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Header ─────────────────────────────────────────────────────────────
+export default function Header({ merchant, setSidebarOpen }: any) {
+  const [theme, setTheme] = useState('dark');
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+      setTheme('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      setTheme('light');
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) setIsProfileOpen(false);
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) setIsNotifOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // ─── Notifications Fetch Logic (Specific Merchant OR Global) ───
+  const fetchNotifications = async () => {
+    if (!merchant?.id) return;
+    setNotifLoading(true);
+    try {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .or(`merchant_id.eq.${merchant.id},merchant_id.is.null`) // merchant_id miliye othoba null thakle dekhabe
+        .order('created_at', { ascending: false })
+        .limit(20);
+      setNotifications(data || []);
+    } catch {
+      // silently fail
+    } finally {
+      setNotifLoading(false);
+    }
+  };
+
+  const handleOpenNotif = () => {
+    setIsNotifOpen(v => {
+      if (!v) fetchNotifications();
+      return !v;
+    });
+    setIsProfileOpen(false);
+  };
+
+  const markAsRead = async (id: string) => {
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+  };
+
+  const markAllRead = async () => {
+    if (!merchant?.id) return;
+    await supabase.from('notifications').update({ is_read: true }).eq('merchant_id', merchant.id).eq('is_read', false);
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+  };
+
+  const toggleTheme = () => {
+    if (theme === 'dark') {
+      document.documentElement.classList.remove('dark');
+      localStorage.theme = 'light';
+      setTheme('light');
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.theme = 'dark';
+      setTheme('dark');
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  const initials = merchant?.full_name
+    ? merchant.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'M';
+
+  const fmtNotifTime = (d: string) => {
+    const diff = Date.now() - new Date(d).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return 'Just now';
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+  };
+
+  return (
+    <header className="fixed top-0 inset-x-0 h-[72px] z-50 w-full bg-[#0B1120] border-b border-slate-800/80 flex items-center transition-colors duration-500">
+
+      <div className="hidden md:flex items-center h-full w-72 shrink-0 px-4 md:px-6 border-r border-slate-800/80">
+        <Link href="/dashboard" className="flex items-center gap-1 group w-max">
+          <span className="text-3xl font-black text-blue-500 tracking-tighter group-hover:scale-105 transition-transform">X</span>
+          <span className="text-2xl font-bold text-white tracking-tight -ml-0.5">elPay</span>
+        </Link>
+      </div>
+
+      <div className="flex flex-1 items-center justify-between h-full px-4 md:px-6 lg:px-8">
+
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <button onClick={() => setSidebarOpen((prev: boolean) => !prev)} className="md:hidden p-2.5 bg-slate-800/80 hover:bg-slate-700 rounded-full text-slate-300 shrink-0 transition-all">
+            <Menu size={20} />
+          </button>
+          <div className="hidden md:flex flex-1 max-w-xl">
+            <GlobalSearch />
+          </div>
+          {mobileSearchOpen && (
+            <div className="absolute inset-x-0 top-0 h-[72px] z-50 bg-[#0B1120] px-4 flex items-center gap-3 border-b border-slate-800">
+              <div className="flex-1"><GlobalSearch /></div>
+              <button onClick={() => setMobileSearchOpen(false)} className="p-2 rounded-full hover:bg-slate-800 transition-colors"><X size={20} className="text-slate-400" /></button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          <button onClick={() => setMobileSearchOpen(true)} className="md:hidden p-2.5 bg-[#111827] border border-slate-800 rounded-full text-slate-400 hover:text-blue-500 transition-all">
+            <Search size={18} />
+          </button>
+
+          <button onClick={toggleTheme} className={`flex items-center justify-center w-10 h-10 rounded-full transition-all border shadow-sm ${theme === 'dark' ? 'bg-[#111827] border-slate-700 text-amber-400 hover:bg-slate-800' : 'bg-[#111827] border-slate-800 text-slate-400 hover:text-blue-400 hover:border-blue-700'}`}>
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          {/* ── Notifications ── */}
+          <div className="relative" ref={notifRef}>
+            <button
+              onClick={handleOpenNotif}
+              className="relative flex items-center justify-center w-10 h-10 rounded-full bg-[#111827] border border-slate-800 text-slate-400 hover:text-blue-400 hover:border-blue-700 transition-all shadow-sm"
+            >
+              <Bell size={18} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {isNotifOpen && (
+              <div className="absolute right-0 top-full mt-3 w-80 bg-[#111827] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-800">
+                  <div>
+                    <p className="text-sm font-black text-white">Notifications</p>
+                    {unreadCount > 0 && <p className="text-[10px] text-slate-400 font-medium">{unreadCount} unread</p>}
+                  </div>
+                  {unreadCount > 0 && (
+                    <button onClick={markAllRead} className="text-[10px] font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest transition-colors">
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-[340px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {notifLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 size={20} className="animate-spin text-blue-500" />
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="py-10 text-center">
+                      <Bell size={28} className="mx-auto text-slate-600 mb-2" />
+                      <p className="text-sm text-slate-500 font-medium">No notifications yet</p>
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <button
+                        key={n.id}
+                        onClick={() => { markAsRead(n.id); if (n.action_url) window.location.href = n.action_url; }}
+                        className={`w-full flex items-start gap-3 px-4 py-3.5 text-left hover:bg-slate-800/60 transition-colors border-b border-slate-800/50 last:border-0 ${!n.is_read ? 'bg-blue-900/10' : ''}`}
+                      >
+                        <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${n.type === 'payment' ? 'bg-emerald-900/30' : n.type === 'success' ? 'bg-emerald-900/30' : n.type === 'warning' ? 'bg-amber-900/30' : n.type === 'error' ? 'bg-red-900/30' : 'bg-blue-900/30'}`}>
+                          <NotifIcon type={n.type} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-black truncate ${!n.is_read ? 'text-white' : 'text-slate-300'}`}>{n.title}</p>
+                          <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-0.5 line-clamp-2">{n.message}</p>
+                          <p className="text-[10px] text-slate-600 font-medium mt-1">{fmtNotifTime(n.created_at)}</p>
+                        </div>
+                        {!n.is_read && <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-2" />}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Profile Dropdown */}
+          <div className="relative" ref={profileRef}>
+            <button onClick={() => { setIsProfileOpen(v => !v); setIsNotifOpen(false); }} className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-full bg-[#111827] border border-slate-800 hover:border-blue-700 transition-all shadow-sm">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[11px] font-black shrink-0">
+                {initials}
+              </div>
+              <span className="hidden sm:block text-xs font-semibold text-slate-300 max-w-[100px] truncate">
+                {merchant?.full_name || 'Merchant'}
+              </span>
+            </button>
+
+            {isProfileOpen && (
+              <div className="absolute right-0 top-full mt-3 w-56 bg-[#111827] border border-slate-800 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="px-4 py-3 border-b border-slate-800">
+                  <p className="text-xs font-bold text-white truncate">{merchant?.full_name || 'Merchant'}</p>
+                  <p className="text-[11px] text-slate-400 truncate mt-0.5">{merchant?.email || ''}</p>
+                </div>
+                <div className="p-1.5">
+                  <Link href="/dashboard/settings" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl transition-colors">
+                    <Settings size={14} className="text-slate-400" /> Settings
+                  </Link>
+                  <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-900/20 rounded-xl transition-colors">
+                    <LogOut size={14} /> Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+</file>
+
 <file path="src/app/dashboard/subscriptions/page.tsx">
 'use client';
 
@@ -15895,6 +16250,215 @@ export default function SubscriptionsPage() {
 }
 </file>
 
+<file path="src/components/dashboard/Sidebar.tsx">
+'use client';
+
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  LayoutDashboard, Receipt, MessageSquare, Wallet, Link as LinkIcon,
+  Settings, LineChart, Send, Users, Code, Headphones, LogOut,
+  ChevronDown, Building2, Plus, Check, Loader2, PlusCircle, ServerCog, Smartphone, CreditCard,
+  Vault
+} from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
+
+const menuItems = [
+  { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+  { name: 'Global Vault', icon: ServerCog, path: '/dashboard/vault' },
+  { name: 'New Business', icon: PlusCircle, path: '/dashboard/business/new' },
+  { name: 'Brand Settings', icon: Settings, path: '/dashboard/brand' },
+  { name: 'Transactions', icon: Receipt, path: '/dashboard/transactions' },
+  { name: 'Gateway Manager', icon: Wallet, path: '/dashboard/gateways' },
+  { name: 'Devices Manager', icon: Smartphone, path: '/dashboard/devices' },
+  { name: 'Telegram Alerts', icon: Send, path: '/dashboard/telegram' },
+  { name: 'Payment Links', icon: LinkIcon, path: '/dashboard/links' },
+  { name: 'Reports', icon: LineChart, path: '/dashboard/reports' },
+  { name: 'SMS Data', icon: MessageSquare, path: '/dashboard/sms' },
+  { name: 'Customers', icon: Users, path: '/dashboard/customers' },
+  { name: 'Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions' },
+  { name: 'API & Plugins', icon: Code, path: '/dashboard/api' },
+  { name: 'Support', icon: Headphones, path: '/dashboard/support' },
+];
+
+export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const [businesses, setBusinesses] = useState<any[]>([]);
+  const [activeBusiness, setActiveBusiness] = useState<any>(null);
+  const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const switcherRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fetchBusinesses = async () => {
+      const { data } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('merchant_id', merchant.id)
+        .order('created_at', { ascending: true });
+      if (data && data.length > 0) {
+        setBusinesses(data);
+        const savedBizId = localStorage.getItem('active_business_id');
+        const savedBiz = data.find((b: any) => b.id === savedBizId) || data[0];
+        setActiveBusiness(savedBiz);
+        localStorage.setItem('active_business_id', savedBiz.id);
+      }
+      setIsLoading(false);
+    };
+    fetchBusinesses();
+  }, [merchant.id]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (switcherRef.current && !switcherRef.current.contains(event.target as Node)) {
+        setIsSwitcherOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleBusinessChange = async (biz: any) => {
+    setActiveBusiness(biz);
+    localStorage.setItem('active_business_id', biz.id);
+    setIsSwitcherOpen(false);
+    toast.loading(`Switching to ${biz.business_name}...`, { id: 'switch' });
+    await supabase.from('merchants').update({ active_business_id: biz.id }).eq('id', merchant.id);
+    window.dispatchEvent(new Event('businessChanged'));
+    router.refresh();
+    toast.success(`Switched to ${biz.business_name}`, { id: 'switch' });
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
+
+  return (
+    <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#0B1120] border-r border-slate-800/80 flex flex-col transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+
+      {/* ── Top Logo ── */}
+      <div className="flex items-center h-[72px] px-5 border-b border-slate-800/80 shrink-0">
+        <Link href="/dashboard" className="flex items-center gap-1">
+          <span className="text-2xl font-black text-blue-500 tracking-tighter">X</span>
+          <span className="text-xl font-bold text-white tracking-tight -ml-0.5">elPay</span>
+        </Link>
+      </div>
+
+      {/* ── Business Switcher ── */}
+      <div className="px-4 pt-4 pb-3 border-b border-slate-800/80 shrink-0" ref={switcherRef}>
+        <div className="relative">
+          <button
+            onClick={() => setIsSwitcherOpen(v => !v)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 rounded-xl transition-all"
+          >
+            <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0">
+              {activeBusiness?.logo_url
+                ? <img src={activeBusiness.logo_url} className="w-full h-full rounded-lg object-cover" alt="" />
+                : <Building2 size={14} className="text-blue-400" />}
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-xs font-black text-white truncate">{activeBusiness?.business_name || 'Select Business'}</p>
+            </div>
+            {isLoading
+              ? <Loader2 size={14} className="text-slate-500 animate-spin shrink-0" />
+              : <ChevronDown size={14} className={`text-slate-400 shrink-0 transition-transform duration-200 ${isSwitcherOpen ? 'rotate-180' : ''}`} />}
+          </button>
+
+          {isSwitcherOpen && (
+            <div className="absolute top-full left-0 w-full mt-2 bg-[#111827] border border-slate-800 rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200 max-h-64 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <div className="px-3 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Your Businesses</div>
+              {businesses.length === 0 ? (
+                <div className="px-4 py-3 text-sm font-medium text-slate-400">No business found.</div>
+              ) : (
+                businesses.map((biz) => (
+                  <button key={biz.id} onClick={() => handleBusinessChange(biz)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#0B1120] transition-colors group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-md bg-slate-800 flex items-center justify-center text-slate-400">
+                        {biz.logo_url ? <img src={biz.logo_url} className="w-full h-full object-cover rounded-md" alt="" /> : <Building2 size={12} />}
+                      </div>
+                      <span className={`text-sm font-bold ${activeBusiness?.id === biz.id ? 'text-blue-500' : 'text-slate-300 group-hover:text-white'}`}>
+                        {biz.business_name}
+                      </span>
+                    </div>
+                    {activeBusiness?.id === biz.id && <Check size={16} className="text-blue-500" />}
+                  </button>
+                ))
+              )}
+              <div className="h-px bg-slate-800 my-2" />
+              <Link
+                href="/dashboard/business/new"
+                onClick={() => { setIsSwitcherOpen(false); setIsOpen(false); }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-slate-400 hover:bg-[#0B1120] hover:text-blue-500 transition-colors"
+              >
+                <div className="w-6 h-6 rounded-md border border-dashed border-slate-600 flex items-center justify-center"><Plus size={14} /></div>
+                Create New Business
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Navigation ── */}
+      <div className="flex-1 overflow-y-auto p-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="space-y-1">
+          {menuItems.map((item) => {
+            const isActive = item.path === '/dashboard'
+              ? pathname === item.path
+              : pathname === item.path || pathname.startsWith(`${item.path}/`);
+            return (
+              <Link
+                key={item.name}
+                href={item.path}
+                onClick={() => setIsOpen(false)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-sm transition-all group ${
+                  isActive
+                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                }`}
+              >
+                <item.icon size={16} strokeWidth={2} className={`${isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
+                {item.name}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Footer ── */}
+      <div className="p-4 border-t border-slate-800/80 shrink-0">
+        <div className="flex items-center gap-3 px-3 py-2 mb-3">
+          <div className="w-8 h-8 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-xs font-black text-blue-400">
+            {merchant?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'M'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-black text-white truncate">{merchant?.name || 'Merchant'}</p>
+            <p className="text-[10px] text-slate-500 font-medium truncate">{merchant?.email || ''}</p>
+          </div>
+        </div>
+        <Link
+          href="/dashboard/settings"
+          onClick={() => setIsOpen(false)}
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl transition-colors mb-1"
+        >
+          <Settings size={14} className="text-slate-400" /> Settings
+        </Link>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-900/20 rounded-xl transition-colors"
+        >
+          <LogOut size={14} /> Sign Out
+        </button>
+      </div>
+    </aside>
+  );
+}
+</file>
+
 <file path="src/app/dashboard/business/new/page.tsx">
 'use client';
 
@@ -16390,570 +16954,6 @@ export default function NewBusiness() {
         </button>
       </form>
     </div>
-  );
-}
-</file>
-
-<file path="src/components/dashboard/Header.tsx">
-'use client';
-
-import {
-  Menu, Search, Sun, Moon, Bell, LogOut, X,
-  LayoutDashboard, Receipt, Link2, MessageSquare, Building2, User,
-  KeyRound, Settings, ChevronRight, CheckCircle, Clock, AlertCircle,
-  Smartphone, Send, CreditCard, DollarSign, Loader2
-} from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
-
-function useIsMobileDevice() {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia('(pointer: coarse)');
-    setIsMobile(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-  return isMobile;
-}
-
-// ─── Searchable Pages ─────────────────────────────────────────────────────────
-const SEARCH_PAGES = [
-  { label: 'Dashboard Overview', path: '/dashboard', icon: LayoutDashboard, keywords: ['dashboard', 'overview', 'home', 'stats', 'revenue'], description: 'View your business metrics and recent transactions' },
-  { label: 'All Transactions', path: '/dashboard/transactions', icon: Receipt, keywords: ['transactions', 'orders', 'payments', 'history', 'trx'], description: 'Browse and filter all payment transactions' },
-  { label: 'Payment Links', path: '/dashboard/links', icon: Link2, keywords: ['links', 'payment links', 'checkout', 'products'], description: 'Create and manage payment links' },
-  { label: 'SMS Data', path: '/dashboard/sms', icon: MessageSquare, keywords: ['sms', 'messages', 'mobile banking', 'bkash', 'nagad', 'rocket'], description: 'View incoming SMS from your Android reader device' },
-  { label: 'Business Settings', path: '/dashboard/settings', icon: Building2, keywords: ['settings', 'business', 'configure', 'setup'], description: 'Manage your business configuration' },
-  { label: 'Profile Settings', path: '/dashboard/settings/profile', icon: User, keywords: ['profile', 'account', 'name', 'avatar', 'personal'], description: 'Update your personal profile information' },
-  { label: 'API Keys', path: '/dashboard/settings/api', icon: KeyRound, keywords: ['api', 'api keys', 'developer', 'integration', 'webhook', 'secret'], description: 'Manage API keys and webhook configuration' },
-  { label: 'Subscriptions', path: '/dashboard/subscriptions', icon: CreditCard, keywords: ['subscription', 'plan', 'billing', 'upgrade'], description: 'Manage your subscription plan' },
-  { label: 'Reports', path: '/dashboard/reports', icon: Receipt, keywords: ['reports', 'analytics', 'revenue', 'chart'], description: 'View payment analytics and reports' },
-  { label: 'Customers', path: '/dashboard/customers', icon: User, keywords: ['customers', 'clients', 'buyers'], description: 'View customer information from orders' },
-  { label: 'Telegram Alerts', path: '/dashboard/telegram', icon: Send, keywords: ['telegram', 'alerts', 'notifications', 'bot'], description: 'Configure Telegram payment notifications' },
-  { label: 'Devices', path: '/dashboard/devices', icon: Smartphone, keywords: ['devices', 'sms', 'android', 'automation'], description: 'Manage connected Android devices' },
-];
-
-// ─── Notification type icon ───────────────────────────────────────────────────
-function NotifIcon({ type }: { type: string }) {
-  const cls = "shrink-0";
-  if (type === 'payment') return <DollarSign size={14} className={`text-emerald-500 ${cls}`} />;
-  if (type === 'success') return <CheckCircle size={14} className={`text-emerald-500 ${cls}`} />;
-  if (type === 'warning') return <AlertCircle size={14} className={`text-amber-500 ${cls}`} />;
-  if (type === 'error') return <AlertCircle size={14} className={`text-red-500 ${cls}`} />;
-  if (type === 'system') return <Settings size={14} className={`text-blue-500 ${cls}`} />;
-  return <Bell size={14} className={`text-slate-400 ${cls}`} />;
-}
-
-// ─── Global Search ────────────────────────────────────────────────────────────
-function GlobalSearch() {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<typeof SEARCH_PAGES>([]);
-  const [selectedIdx, setSelectedIdx] = useState(0);
-  const [isFocused, setIsFocused] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (query.trim().length < 1) { setResults([]); return; }
-    const q = query.toLowerCase();
-    setResults(SEARCH_PAGES.filter(p =>
-      p.label.toLowerCase().includes(q) || p.keywords.some(k => k.includes(q))
-    ).slice(0, 5));
-    setSelectedIdx(0);
-  }, [query]);
-
-  const navigate = (path: string) => { window.location.href = path; setQuery(''); };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!results.length) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx(i => Math.min(i + 1, results.length - 1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIdx(i => Math.max(i - 1, 0)); }
-    else if (e.key === 'Enter') navigate(results[selectedIdx].path);
-    else if (e.key === 'Escape') { setQuery(''); inputRef.current?.blur(); }
-  };
-
-  return (
-    <div className="relative w-full">
-      <div className="flex items-center gap-2.5 bg-[#111827] border border-slate-800 hover:border-slate-600 rounded-xl px-4 py-2.5 transition-all w-full">
-        <Search size={15} className="text-slate-500 shrink-0" />
-        <input ref={inputRef} type="text" placeholder="Search pages, features…" value={query}
-          onChange={e => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setTimeout(() => setIsFocused(false), 150)}
-          className="bg-transparent text-slate-300 placeholder-slate-600 text-sm font-medium outline-none w-full" />
-        {query && <button onClick={() => setQuery('')} className="text-slate-600 hover:text-slate-400"><X size={14} /></button>}
-      </div>
-      {isFocused && results.length > 0 && (
-        <div className="absolute top-full mt-2 left-0 w-full bg-[#111827] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-[100] animate-in fade-in slide-in-from-top-2 duration-150">
-          {results.map((r, i) => {
-            const Icon = r.icon;
-            return (
-              <button key={r.path} onClick={() => navigate(r.path)}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${i === selectedIdx ? 'bg-blue-900/30' : 'hover:bg-slate-800/80'}`}>
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${i === selectedIdx ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}><Icon size={14} /></div>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-xs font-semibold truncate ${i === selectedIdx ? 'text-blue-400' : 'text-slate-200'}`}>{r.label}</p>
-                  <p className="text-[10px] text-slate-500 truncate">{r.description}</p>
-                </div>
-                <ChevronRight size={12} className={`shrink-0 ${i === selectedIdx ? 'text-blue-400' : 'text-slate-600'}`} />
-              </button>
-            );
-          })}
-          <div className="px-3 py-2 border-t border-slate-800/80 flex items-center gap-3">
-            <kbd className="px-1.5 py-0.5 text-[10px] font-bold bg-slate-800 border border-slate-700 rounded text-slate-400">↑↓</kbd>
-            <span className="text-[10px] text-slate-500">Navigate</span>
-            <kbd className="px-1.5 py-0.5 text-[10px] font-bold bg-slate-800 border border-slate-700 rounded text-slate-400">↵</kbd>
-            <span className="text-[10px] text-slate-500">Go</span>
-            <kbd className="px-1.5 py-0.5 text-[10px] font-bold bg-slate-800 border border-slate-700 rounded text-slate-400">Esc</kbd>
-            <span className="text-[10px] text-slate-500">Close</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Main Header ─────────────────────────────────────────────────────────────
-export default function Header({ merchant, setSidebarOpen }: any) {
-  const [theme, setTheme] = useState('dark');
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [notifLoading, setNotifLoading] = useState(false);
-  const profileRef = useRef<HTMLDivElement>(null);
-  const notifRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      document.documentElement.classList.add('dark');
-      setTheme('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      setTheme('light');
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(event.target as Node)) setIsProfileOpen(false);
-      if (notifRef.current && !notifRef.current.contains(event.target as Node)) setIsNotifOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // ─── Notifications Fetch Logic (Specific Merchant OR Global) ───
-  const fetchNotifications = async () => {
-    if (!merchant?.id) return;
-    setNotifLoading(true);
-    try {
-      const { data } = await supabase
-        .from('notifications')
-        .select('*')
-        .or(`merchant_id.eq.${merchant.id},merchant_id.is.null`) // merchant_id miliye othoba null thakle dekhabe
-        .order('created_at', { ascending: false })
-        .limit(20);
-      setNotifications(data || []);
-    } catch {
-      // silently fail
-    } finally {
-      setNotifLoading(false);
-    }
-  };
-
-  const handleOpenNotif = () => {
-    setIsNotifOpen(v => {
-      if (!v) fetchNotifications();
-      return !v;
-    });
-    setIsProfileOpen(false);
-  };
-
-  const markAsRead = async (id: string) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-  };
-
-  const markAllRead = async () => {
-    if (!merchant?.id) return;
-    await supabase.from('notifications').update({ is_read: true }).eq('merchant_id', merchant.id).eq('is_read', false);
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-  };
-
-  const toggleTheme = () => {
-    if (theme === 'dark') {
-      document.documentElement.classList.remove('dark');
-      localStorage.theme = 'light';
-      setTheme('light');
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.theme = 'dark';
-      setTheme('dark');
-    }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/login';
-  };
-
-  const unreadCount = notifications.filter(n => !n.is_read).length;
-
-  const initials = merchant?.full_name
-    ? merchant.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'M';
-
-  const fmtNotifTime = (d: string) => {
-    const diff = Date.now() - new Date(d).getTime();
-    const m = Math.floor(diff / 60000);
-    if (m < 1) return 'Just now';
-    if (m < 60) return `${m}m ago`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    return `${Math.floor(h / 24)}d ago`;
-  };
-
-  return (
-    <header className="fixed top-0 inset-x-0 h-[72px] z-50 w-full bg-[#0B1120] border-b border-slate-800/80 flex items-center transition-colors duration-500">
-
-      <div className="hidden md:flex items-center h-full w-72 shrink-0 px-4 md:px-6 border-r border-slate-800/80">
-        <Link href="/dashboard" className="flex items-center gap-1 group w-max">
-          <span className="text-3xl font-black text-blue-500 tracking-tighter group-hover:scale-105 transition-transform">X</span>
-          <span className="text-2xl font-bold text-white tracking-tight -ml-0.5">elPay</span>
-        </Link>
-      </div>
-
-      <div className="flex flex-1 items-center justify-between h-full px-4 md:px-6 lg:px-8">
-
-        <div className="flex items-center gap-4 flex-1 min-w-0">
-          <button onClick={() => setSidebarOpen((prev: boolean) => !prev)} className="md:hidden p-2.5 bg-slate-800/80 hover:bg-slate-700 rounded-full text-slate-300 shrink-0 transition-all">
-            <Menu size={20} />
-          </button>
-          <div className="hidden md:flex flex-1 max-w-xl">
-            <GlobalSearch />
-          </div>
-          {mobileSearchOpen && (
-            <div className="absolute inset-x-0 top-0 h-[72px] z-50 bg-[#0B1120] px-4 flex items-center gap-3 border-b border-slate-800">
-              <div className="flex-1"><GlobalSearch /></div>
-              <button onClick={() => setMobileSearchOpen(false)} className="p-2 rounded-full hover:bg-slate-800 transition-colors"><X size={20} className="text-slate-400" /></button>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-          <button onClick={() => setMobileSearchOpen(true)} className="md:hidden p-2.5 bg-[#111827] border border-slate-800 rounded-full text-slate-400 hover:text-blue-500 transition-all">
-            <Search size={18} />
-          </button>
-
-          <button onClick={toggleTheme} className={`flex items-center justify-center w-10 h-10 rounded-full transition-all border shadow-sm ${theme === 'dark' ? 'bg-[#111827] border-slate-700 text-amber-400 hover:bg-slate-800' : 'bg-[#111827] border-slate-800 text-slate-400 hover:text-blue-400 hover:border-blue-700'}`}>
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-
-          {/* ── Notifications ── */}
-          <div className="relative" ref={notifRef}>
-            <button
-              onClick={handleOpenNotif}
-              className="relative flex items-center justify-center w-10 h-10 rounded-full bg-[#111827] border border-slate-800 text-slate-400 hover:text-blue-400 hover:border-blue-700 transition-all shadow-sm"
-            >
-              <Bell size={18} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </button>
-
-            {isNotifOpen && (
-              <div className="absolute right-0 top-full mt-3 w-80 bg-[#111827] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-800">
-                  <div>
-                    <p className="text-sm font-black text-white">Notifications</p>
-                    {unreadCount > 0 && <p className="text-[10px] text-slate-400 font-medium">{unreadCount} unread</p>}
-                  </div>
-                  {unreadCount > 0 && (
-                    <button onClick={markAllRead} className="text-[10px] font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest transition-colors">
-                      Mark all read
-                    </button>
-                  )}
-                </div>
-
-                <div className="max-h-[340px] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  {notifLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 size={20} className="animate-spin text-blue-500" />
-                    </div>
-                  ) : notifications.length === 0 ? (
-                    <div className="py-10 text-center">
-                      <Bell size={28} className="mx-auto text-slate-600 mb-2" />
-                      <p className="text-sm text-slate-500 font-medium">No notifications yet</p>
-                    </div>
-                  ) : (
-                    notifications.map((n) => (
-                      <button
-                        key={n.id}
-                        onClick={() => { markAsRead(n.id); if (n.action_url) window.location.href = n.action_url; }}
-                        className={`w-full flex items-start gap-3 px-4 py-3.5 text-left hover:bg-slate-800/60 transition-colors border-b border-slate-800/50 last:border-0 ${!n.is_read ? 'bg-blue-900/10' : ''}`}
-                      >
-                        <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${n.type === 'payment' ? 'bg-emerald-900/30' : n.type === 'success' ? 'bg-emerald-900/30' : n.type === 'warning' ? 'bg-amber-900/30' : n.type === 'error' ? 'bg-red-900/30' : 'bg-blue-900/30'}`}>
-                          <NotifIcon type={n.type} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-xs font-black truncate ${!n.is_read ? 'text-white' : 'text-slate-300'}`}>{n.title}</p>
-                          <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-0.5 line-clamp-2">{n.message}</p>
-                          <p className="text-[10px] text-slate-600 font-medium mt-1">{fmtNotifTime(n.created_at)}</p>
-                        </div>
-                        {!n.is_read && <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-2" />}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Profile Dropdown */}
-          <div className="relative" ref={profileRef}>
-            <button onClick={() => { setIsProfileOpen(v => !v); setIsNotifOpen(false); }} className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-full bg-[#111827] border border-slate-800 hover:border-blue-700 transition-all shadow-sm">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[11px] font-black shrink-0">
-                {initials}
-              </div>
-              <span className="hidden sm:block text-xs font-semibold text-slate-300 max-w-[100px] truncate">
-                {merchant?.full_name || 'Merchant'}
-              </span>
-            </button>
-
-            {isProfileOpen && (
-              <div className="absolute right-0 top-full mt-3 w-56 bg-[#111827] border border-slate-800 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="px-4 py-3 border-b border-slate-800">
-                  <p className="text-xs font-bold text-white truncate">{merchant?.full_name || 'Merchant'}</p>
-                  <p className="text-[11px] text-slate-400 truncate mt-0.5">{merchant?.email || ''}</p>
-                </div>
-                <div className="p-1.5">
-                  <Link href="/dashboard/settings" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl transition-colors">
-                    <Settings size={14} className="text-slate-400" /> Settings
-                  </Link>
-                  <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-900/20 rounded-xl transition-colors">
-                    <LogOut size={14} /> Sign Out
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-}
-</file>
-
-<file path="src/components/dashboard/Sidebar.tsx">
-'use client';
-
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  LayoutDashboard, Receipt, MessageSquare, Wallet, Link as LinkIcon,
-  Settings, LineChart, Send, Users, Code, Headphones, LogOut,
-  ChevronDown, Building2, Plus, Check, Loader2, PlusCircle, ServerCog, Smartphone, CreditCard,
-  Vault
-} from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
-
-const menuItems = [
-  { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-  { name: 'Global Vault', icon: ServerCog, path: '/dashboard/vault' },
-  { name: 'New Business', icon: PlusCircle, path: '/dashboard/business/new' },
-  { name: 'Brand Settings', icon: Settings, path: '/dashboard/brand' },
-  { name: 'Transactions', icon: Receipt, path: '/dashboard/transactions' },
-  { name: 'Gateway Manager', icon: Wallet, path: '/dashboard/gateways' },
-  { name: 'Devices Manager', icon: Smartphone, path: '/dashboard/devices' },
-  { name: 'Telegram Alerts', icon: Send, path: '/dashboard/telegram' },
-  { name: 'Payment Links', icon: LinkIcon, path: '/dashboard/links' },
-  { name: 'Reports', icon: LineChart, path: '/dashboard/reports' },
-  { name: 'SMS Data', icon: MessageSquare, path: '/dashboard/sms' },
-  { name: 'Customers', icon: Users, path: '/dashboard/customers' },
-  { name: 'Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions' },
-  { name: 'API & Plugins', icon: Code, path: '/dashboard/api' },
-  { name: 'Support', icon: Headphones, path: '/dashboard/support' },
-];
-
-export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
-  const pathname = usePathname();
-  const router = useRouter();
-
-  const [businesses, setBusinesses] = useState<any[]>([]);
-  const [activeBusiness, setActiveBusiness] = useState<any>(null);
-  const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const switcherRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const fetchBusinesses = async () => {
-      const { data } = await supabase
-        .from('businesses')
-        .select('*')
-        .eq('merchant_id', merchant.id)
-        .order('created_at', { ascending: true });
-      if (data && data.length > 0) {
-        setBusinesses(data);
-        const savedBizId = localStorage.getItem('active_business_id');
-        const savedBiz = data.find((b: any) => b.id === savedBizId) || data[0];
-        setActiveBusiness(savedBiz);
-        localStorage.setItem('active_business_id', savedBiz.id);
-      }
-      setIsLoading(false);
-    };
-    fetchBusinesses();
-  }, [merchant.id]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (switcherRef.current && !switcherRef.current.contains(event.target as Node)) {
-        setIsSwitcherOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleBusinessChange = async (biz: any) => {
-    setActiveBusiness(biz);
-    localStorage.setItem('active_business_id', biz.id);
-    setIsSwitcherOpen(false);
-    toast.loading(`Switching to ${biz.business_name}...`, { id: 'switch' });
-    await supabase.from('merchants').update({ active_business_id: biz.id }).eq('id', merchant.id);
-    window.dispatchEvent(new Event('businessChanged'));
-    router.refresh();
-    toast.success(`Switched to ${biz.business_name}`, { id: 'switch' });
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/login';
-  };
-
-  return (
-    <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#0B1120] border-r border-slate-800/80 flex flex-col transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-
-      {/* ── Top Logo ── */}
-      <div className="flex items-center h-[72px] px-5 border-b border-slate-800/80 shrink-0">
-        <Link href="/dashboard" className="flex items-center gap-1">
-          <span className="text-2xl font-black text-blue-500 tracking-tighter">X</span>
-          <span className="text-xl font-bold text-white tracking-tight -ml-0.5">elPay</span>
-        </Link>
-      </div>
-
-      {/* ── Business Switcher ── */}
-      <div className="px-4 pt-4 pb-3 border-b border-slate-800/80 shrink-0" ref={switcherRef}>
-        <div className="relative">
-          <button
-            onClick={() => setIsSwitcherOpen(v => !v)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 rounded-xl transition-all"
-          >
-            <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0">
-              {activeBusiness?.logo_url
-                ? <img src={activeBusiness.logo_url} className="w-full h-full rounded-lg object-cover" alt="" />
-                : <Building2 size={14} className="text-blue-400" />}
-            </div>
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-xs font-black text-white truncate">{activeBusiness?.business_name || 'Select Business'}</p>
-            </div>
-            {isLoading
-              ? <Loader2 size={14} className="text-slate-500 animate-spin shrink-0" />
-              : <ChevronDown size={14} className={`text-slate-400 shrink-0 transition-transform duration-200 ${isSwitcherOpen ? 'rotate-180' : ''}`} />}
-          </button>
-
-          {isSwitcherOpen && (
-            <div className="absolute top-full left-0 w-full mt-2 bg-[#111827] border border-slate-800 rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200 max-h-64 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              <div className="px-3 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Your Businesses</div>
-              {businesses.length === 0 ? (
-                <div className="px-4 py-3 text-sm font-medium text-slate-400">No business found.</div>
-              ) : (
-                businesses.map((biz) => (
-                  <button key={biz.id} onClick={() => handleBusinessChange(biz)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#0B1120] transition-colors group">
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-md bg-slate-800 flex items-center justify-center text-slate-400">
-                        {biz.logo_url ? <img src={biz.logo_url} className="w-full h-full object-cover rounded-md" alt="" /> : <Building2 size={12} />}
-                      </div>
-                      <span className={`text-sm font-bold ${activeBusiness?.id === biz.id ? 'text-blue-500' : 'text-slate-300 group-hover:text-white'}`}>
-                        {biz.business_name}
-                      </span>
-                    </div>
-                    {activeBusiness?.id === biz.id && <Check size={16} className="text-blue-500" />}
-                  </button>
-                ))
-              )}
-              <div className="h-px bg-slate-800 my-2" />
-              <Link
-                href="/dashboard/business/new"
-                onClick={() => { setIsSwitcherOpen(false); setIsOpen(false); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-slate-400 hover:bg-[#0B1120] hover:text-blue-500 transition-colors"
-              >
-                <div className="w-6 h-6 rounded-md border border-dashed border-slate-600 flex items-center justify-center"><Plus size={14} /></div>
-                Create New Business
-              </Link>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Navigation ── */}
-      <div className="flex-1 overflow-y-auto p-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <div className="space-y-1">
-          {menuItems.map((item) => {
-            const isActive = item.path === '/dashboard'
-              ? pathname === item.path
-              : pathname === item.path || pathname.startsWith(`${item.path}/`);
-            return (
-              <Link
-                key={item.name}
-                href={item.path}
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-sm transition-all group ${
-                  isActive
-                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <item.icon size={16} strokeWidth={2} className={`${isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
-                {item.name}
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Footer ── */}
-      <div className="p-4 border-t border-slate-800/80 shrink-0">
-        <div className="flex items-center gap-3 px-3 py-2 mb-3">
-          <div className="w-8 h-8 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-xs font-black text-blue-400">
-            {merchant?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'M'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-black text-white truncate">{merchant?.name || 'Merchant'}</p>
-            <p className="text-[10px] text-slate-500 font-medium truncate">{merchant?.email || ''}</p>
-          </div>
-        </div>
-        <Link
-          href="/dashboard/settings"
-          onClick={() => setIsOpen(false)}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl transition-colors mb-1"
-        >
-          <Settings size={14} className="text-slate-400" /> Settings
-        </Link>
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-900/20 rounded-xl transition-colors"
-        >
-          <LogOut size={14} /> Sign Out
-        </button>
-      </div>
-    </aside>
   );
 }
 </file>
@@ -18565,465 +18565,6 @@ export default function SmsData() {
 }
 </file>
 
-<file path="src/app/api/telegram/webhook/route.ts">
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-const BOT_TOKEN = process.env.XELPAY_BOT_TOKEN;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com';
-
-function generateComplexString(length: number): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    const bytes = crypto.randomBytes(length);
-    return Array.from(bytes).map(b => chars[b % chars.length]).join('');
-}
-
-// ─── Utility: Escape HTML to prevent Telegram Parser Crashes ───
-function escapeHTML(text: string | null | undefined): string {
-    if (!text) return '';
-    return text.toString()
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-}
-
-export async function GET() {
-    return NextResponse.json({ status: "success", message: "Webhook API is Secure & Running! 🚀" });
-}
-
-async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-    await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
-    });
-}
-
-async function editTelegramMessage(chatId: string | number, messageId: number, text: string, replyMarkup?: any) {
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`;
-    await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
-    });
-}
-
-async function answerCallbackQuery(callbackQueryId: string, text: string, showAlert: boolean = true) {
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`;
-    await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ callback_query_id: callbackQueryId, text: text, show_alert: showAlert }),
-    });
-}
-
-// ─── Dynamic Bot Username Resolver ───
-async function getBotUsername() {
-    if (process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME) {
-        return process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME.replace('@', '');
-    }
-    const { data } = await supabase.from('site_settings').select('value').eq('key_name', 'telegram').single();
-    return data?.value ? data.value.replace('@', '') : 'xelpay_alert_bot';
-}
-
-// ─── Group Admin Check Utility ───
-async function isGroupAdmin(chatId: string | number, userId: string | number): Promise<boolean> {
-    try {
-        const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${chatId}&user_id=${userId}`;
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.ok && data.result) {
-            const status = data.result.status;
-            return status === 'creator' || status === 'administrator';
-        }
-        return false;
-    } catch (error) {
-        console.error("Admin Check Error:", error);
-        return false;
-    }
-}
-
-// ─── Connection & Takeover Logic ───
-async function connectTelegram(
-    code: string, 
-    chatId: string | number, 
-    username: string | null, 
-    displayName: string | null, 
-    forceTakeover: boolean = false
-): Promise<{ text: string, replyMarkup?: any }> {
-    const chatStr = chatId.toString();
-
-    const { data: targetMerchant } = await supabase.from('merchants').select('id').eq('telegram_link_code', code).single();
-    const { data: targetBusiness } = await supabase.from('businesses').select('id, merchant_id, business_name').eq('telegram_link_code', code).single();
-
-    if (!targetMerchant && !targetBusiness) {
-        return { text: "❌ <b>Connection Failed</b>\nলিংকটি মেয়াদোত্তীর্ণ বা ভুল। নতুন করে জেনারেট করুন।" };
-    }
-
-    const currentMerchantId = targetMerchant ? targetMerchant.id : targetBusiness!.merchant_id;
-    let takeoverNotice = '';
-
-    const { data: existingMerchant } = await supabase.from('merchants').select('id').eq('telegram_chat_id', chatStr).single();
-    const { data: existingBusinesses } = await supabase.from('businesses').select('id, merchant_id').eq('telegram_chat_id', chatStr);
-
-    const isOwnedByOtherMerchant = (existingMerchant && existingMerchant.id !== currentMerchantId) || 
-                                   (existingBusinesses && existingBusinesses.some(b => b.merchant_id !== currentMerchantId));
-
-    // ─── 1. Ownership & Takeover Handling ───
-    if (isOwnedByOtherMerchant) {
-        if (!forceTakeover) {
-            const otherMerchantId = (existingMerchant && existingMerchant.id !== currentMerchantId) 
-                ? existingMerchant.id 
-                : existingBusinesses?.find(b => b.merchant_id !== currentMerchantId)?.merchant_id;
-            
-            let maskedEmail = 'Another Account';
-            if (otherMerchantId) {
-                const { data: authData } = await supabase.auth.admin.getUserById(otherMerchantId);
-                if (authData?.user?.email) {
-                    const parts = authData.user.email.split('@');
-                    if (parts.length === 2) {
-                        maskedEmail = `${parts[0].substring(0, 2)}***@${parts[1]}`;
-                    }
-                }
-            }
-
-            return {
-                text: `⚠️ <b>Already Connected</b>\n\nThis group/chat is currently connected to another account (<code>${maskedEmail}</code>).\n\nDo you want to disconnect it from that account and take over?`,
-                replyMarkup: {
-                    inline_keyboard: [[{ text: "Confirm Takeover 🔄", callback_data: `takeover_${code}` }]]
-                }
-            };
-        } else {
-            const dummyCode = generateComplexString(12);
-            await supabase.from('merchants').update({ telegram_chat_id: null, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
-            await supabase.from('businesses').update({ telegram_chat_id: null, is_telegram_enabled: false, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
-            takeoverNotice = `\n⚠️ <i>Unlinked from previous account.</i>`;
-        }
-    }
-
-    // ─── 2. Merchant (Vault) Connection ───
-    if (targetMerchant) {
-        const newCode = generateComplexString(12);
-        await supabase.from('merchants').update({ 
-            telegram_chat_id: chatStr,
-            telegram_username: username,
-            telegram_display_name: displayName,
-            telegram_link_code: newCode 
-        }).eq('id', targetMerchant.id).select();
-
-        return {
-            text: `✅ <b>Master Vault Connected</b>\n<b>মাস্টার ভল্ট সংযোগ সফল</b>${takeoverNotice}\n\nYour master alerts will now be routed here.`,
-            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_m_${targetMerchant.id}` }]] }
-        };
-    }
-
-    // ─── 3. Business (Workspace) Connection ───
-    if (targetBusiness) {
-        if (existingMerchant && existingMerchant.id === currentMerchantId && !forceTakeover) {
-            return { 
-                text: `⚠️ <b>Already in Vault</b>\n\nএই চ্যাটটি অলরেডি আপনার Master Vault-এ যুক্ত আছে।\nনতুন করে কানেক্ট করার প্রয়োজন নেই, দয়া করে ড্যাশবোর্ড থেকে <b>"Import from Vault"</b> বাটনে ক্লিক করুন।` 
-            };
-        }
-
-        const newCode = generateComplexString(12);
-        await supabase.from('businesses').update({ 
-            telegram_chat_id: chatStr,
-            telegram_username: username,
-            telegram_display_name: displayName,
-            telegram_link_code: newCode,
-            is_telegram_enabled: true
-        }).eq('id', targetBusiness.id).select();
-
-        return {
-            text: `✅ <b>Workspace Connected</b>\n<b>ওয়ার্কস্পেস সংযোগ সফল</b>${takeoverNotice}\n\n🔹 <b>Workspace:</b> ${escapeHTML(targetBusiness.business_name)}\n\nWorkspace alerts will now be routed here.`,
-            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_b_${targetBusiness.id}` }]] }
-        };
-    }
-
-    return { text: "❌ <b>Unknown Error Occurred</b>" };
-}
-
-// ─── ডাটাবেস ইভেন্ট চ্যাট আইডি খোঁজার লজিক (Orders) ───
-async function getOrderTargets(merchantId?: string | null, businessId?: string | null) {
-    let targets: { chatId: string, accountName: string }[] = [];
-
-    if (businessId) {
-        const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
-        if (data?.telegram_chat_id && data.is_telegram_enabled) {
-            targets.push({ chatId: data.telegram_chat_id, accountName: data.business_name });
-            return targets; 
-        }
-    }
-
-    if (merchantId) {
-        const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
-        if (data?.telegram_chat_id) {
-            targets.push({ chatId: data.telegram_chat_id, accountName: data.display_name || 'Master Vault' });
-        }
-    }
-
-    return targets; 
-}
-
-// ─── ডাটাবেস ইভেন্ট চ্যাট আইডি খোঁজার লজিক (Notifications) ───
-async function getNotificationTargets(merchantId?: string | null, businessId?: string | null) {
-    let targets: { chatId: string, accountName: string }[] = [];
-
-    if (!merchantId && !businessId) {
-        const { data: merchants } = await supabase.from('merchants').select('telegram_chat_id').not('telegram_chat_id', 'is', null);
-        const { data: businesses } = await supabase.from('businesses').select('telegram_chat_id').not('telegram_chat_id', 'is', null).eq('is_telegram_enabled', true);
-        
-        const uniqueChats = new Map<string, string>();
-        merchants?.forEach(m => uniqueChats.set(m.telegram_chat_id, 'System Notice'));
-        businesses?.forEach(b => uniqueChats.set(b.telegram_chat_id, 'System Notice'));
-        
-        uniqueChats.forEach((accountName, chatId) => {
-            targets.push({ chatId, accountName });
-        });
-        return targets;
-    }
-
-    let bChatId: string | null = null;
-    let bAccountName: string = '';
-    if (businessId) {
-        const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
-        if (data?.telegram_chat_id && data.is_telegram_enabled) {
-            bChatId = data.telegram_chat_id;
-            bAccountName = data.business_name;
-        }
-    }
-
-    let mChatId: string | null = null;
-    let mAccountName: string = '';
-    if (merchantId) {
-        const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
-        if (data?.telegram_chat_id) {
-            mChatId = data.telegram_chat_id;
-            mAccountName = data.display_name || 'Master Vault';
-        }
-    }
-
-    if (mChatId && bChatId && mChatId === bChatId) {
-        targets.push({ chatId: mChatId, accountName: `${mAccountName} (Vault & Workspace)` });
-    } else {
-        if (mChatId) targets.push({ chatId: mChatId, accountName: mAccountName });
-        if (bChatId) targets.push({ chatId: bChatId, accountName: bAccountName });
-    }
-
-    return targets;
-}
-
-// ─── Supabase Database Webhook Handler ───
-async function handleSupabaseWebhook(body: any) {
-    const { type, table, record } = body;
-
-    if (table === 'orders' && type === 'UPDATE' && (record.status === 'success' || record.status === 'paid')) {
-        const targets = await getOrderTargets(record.merchant_id, record.business_id);
-        
-        if (targets.length > 0) {
-            const payMethod = record.method ? record.method.toUpperCase() : 'GATEWAY';
-            const currency = record.currency || 'BDT';
-
-            const message = `
-🟢 <b>Payment Received Successfully</b>
-<b>পেমেন্ট সফলভাবে গ্রহণ করা হয়েছে</b>
-
-━━━━━━━━━━━━━━━━━━━━
-▪️ <b>Account :</b> ${escapeHTML(targets[0].accountName)}
-▪️ <b>Amount  :</b> ${record.amount} ${currency}
-▪️ <b>Method  :</b> ${escapeHTML(payMethod)}
-▪️ <b>Product :</b> ${escapeHTML(record.product_name) || 'N/A'}
-▪️ <b>Trx ID  :</b> <code>${escapeHTML(record.trx_id) || 'N/A'}</code>
-▪️ <b>Order # :</b> <code>${escapeHTML(record.order_no) || record.id}</code>
-━━━━━━━━━━━━━━━━━━━━
-<i>This transaction has been automatically verified.</i>`;
-
-            const replyMarkup = {
-                inline_keyboard: [[{ text: "View Transaction ➔", url: `${SITE_URL}/dashboard/transactions` }]]
-            };
-
-            for (const target of targets) {
-                await sendTelegramMessage(target.chatId, message, replyMarkup);
-            }
-        }
-    }
-
-    if (table === 'notifications' && type === 'INSERT') {
-        const targets = await getNotificationTargets(record.merchant_id, record.business_id);
-        
-        if (targets.length > 0) {
-            const message = `📢 <b>System Notice</b>\n\n<b>${escapeHTML(record.title)}</b>\n${escapeHTML(record.message)}`;
-
-            const replyMarkup: any = { inline_keyboard: [] };
-            
-            if (record.action_url) {
-                const actionUrl = record.action_url.startsWith('http') ? record.action_url : `${SITE_URL}${record.action_url}`;
-                replyMarkup.inline_keyboard.push([
-                    { text: "View Details ➔", url: actionUrl }
-                ]);
-            }
-
-            for (const target of targets) {
-                await sendTelegramMessage(target.chatId, message, replyMarkup.inline_keyboard.length > 0 ? replyMarkup : undefined);
-            }
-        }
-    }
-
-    return NextResponse.json({ status: 'webhook_processed' });
-}
-
-
-export async function POST(req: Request) {
-    try {
-        const body = await req.json();
-
-        // ─── Security Check 1: Supabase Webhook Authorization ───
-        if (body.type && body.table && body.record) {
-            const expectedSupabaseSecret = process.env.SUPABASE_WEBHOOK_SECRET;
-            if (expectedSupabaseSecret) {
-                const incomingSecret = req.headers.get('x-supabase-webhook-secret');
-                if (incomingSecret !== expectedSupabaseSecret) {
-                    return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
-                }
-            }
-            return await handleSupabaseWebhook(body);
-        }
-
-        // ─── Security Check 2: Telegram Webhook Authorization ───
-        const expectedTelegramSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
-        if (expectedTelegramSecret) {
-            const incomingTelegramSecret = req.headers.get('x-telegram-bot-api-secret-token');
-            if (incomingTelegramSecret !== expectedTelegramSecret) {
-                return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
-            }
-        }
-
-        if (body.my_chat_member) {
-            const newStatus = body.my_chat_member.new_chat_member.status;
-            if (newStatus === 'left' || newStatus === 'kicked') {
-                const chatId = body.my_chat_member.chat.id.toString();
-                const newCode = generateComplexString(12);
-
-                await supabase.from('merchants').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode }).eq('telegram_chat_id', chatId);
-                await supabase.from('businesses').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode, is_telegram_enabled: false }).eq('telegram_chat_id', chatId);
-
-                return NextResponse.json({ status: 'unlinked_on_kick' });
-            }
-        }
-
-        if (body.callback_query) {
-            const callbackQuery = body.callback_query;
-            const chatId = callbackQuery.message.chat.id;
-            const messageId = callbackQuery.message.message_id;
-            const data = callbackQuery.data;
-
-            const fromUser = callbackQuery.from || {};
-            const userId = fromUser.id;
-            const username = fromUser.username ? `@${fromUser.username}` : null;
-            const displayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
-            const chatType = callbackQuery.message.chat.type;
-
-            if (data.startsWith('takeover_')) {
-                const code = data.replace('takeover_', '');
-
-                if (chatType === 'group' || chatType === 'supergroup') {
-                    const isAdmin = await isGroupAdmin(chatId, userId);
-                    if (!isAdmin) {
-                        await answerCallbackQuery(callbackQuery.id, "⚠️ Access Denied: Only admins can confirm this takeover.");
-                        return NextResponse.json({ status: 'not_admin' });
-                    }
-                }
-
-                const result = await connectTelegram(code, chatId, username, displayName, true);
-                await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
-                return NextResponse.json({ status: 'success' });
-            }
-
-            if (data.startsWith('connect_dm_')) {
-                const code = data.replace('connect_dm_', '');
-                const result = await connectTelegram(code, chatId, username, displayName, false);
-                await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
-            }
-            else if (data.startsWith('disconnect_m_')) {
-                const id = data.replace('disconnect_m_', '');
-                const newCode = generateComplexString(12);
-                await supabase.from('merchants').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode }).eq('id', id);
-                await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Master Vault alerts.");
-            }
-            else if (data.startsWith('disconnect_b_')) {
-                const id = data.replace('disconnect_b_', '');
-                const newCode = generateComplexString(12);
-                await supabase.from('businesses').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode, is_telegram_enabled: false }).eq('id', id);
-                await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Workspace alerts.");
-            }
-
-            return NextResponse.json({ status: 'success' });
-        }
-
-        if (body.message) {
-            const chat = body.message.chat;
-            const chatId = chat.id;
-            const chatType = chat.type;
-            const text = body.message.text ? body.message.text.trim() : '';
-            const userId = body.message.from?.id;
-
-            if (text.startsWith('/start')) {
-                const parts = text.split(/\s+/);
-                const code = parts.length > 1 ? parts[1] : null; 
-
-                if (!code) {
-                    if (chatType === 'private') {
-                        await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\n<b>ভুল কমান্ড!</b>\nPlease generate a valid connection link from your dashboard.");
-                    }
-                    return NextResponse.json({ status: 'no_code' });
-                }
-
-                if (chatType === 'group' || chatType === 'supergroup') {
-                    if (!userId) return NextResponse.json({ status: 'ignored' });
-
-                    const isAdmin = await isGroupAdmin(chatId, userId);
-                    if (!isAdmin) {
-                        await sendTelegramMessage(chatId, "⚠️ <b>Access Denied</b>\n\nOnly group administrators can connect or configure this bot. Please ask an admin to send the connection command.");
-                        return NextResponse.json({ status: 'not_admin' });
-                    }
-
-                    const groupTitle = chat.title || 'Connected Group';
-                    const groupUsername = chat.username ? `@${chat.username}` : null;
-                    
-                    const result = await connectTelegram(code, chatId, groupUsername, groupTitle, false);
-                    await sendTelegramMessage(chatId, result.text, result.replyMarkup);
-                    return NextResponse.json({ status: 'connected_group' });
-                }
-
-                const botUsername = await getBotUsername();
-                const replyMarkup = {
-                    inline_keyboard: [
-                        [{ text: "Connect to THIS Chat ➔", callback_data: `connect_dm_${code}` }],
-                        [{ text: "Add to a GROUP instead ➔", url: `https://t.me/${botUsername}?startgroup=${code}` }]
-                    ]
-                };
-
-                await sendTelegramMessage(chatId, "<b>Where do you want to receive alerts?</b>\n<b>আপনি কোথায় এলার্ট পেতে চান?</b>\n\nYou can receive alerts directly in this chat, or add me to a group.", replyMarkup);
-                return NextResponse.json({ status: 'asked_user' });
-            }
-        }
-
-        return NextResponse.json({ status: 'ignored' });
-
-    } catch (error) {
-        console.error("Webhook Error:", error);
-        return NextResponse.json({ status: 'error_logged_but_ok' }, { status: 200 });
-    }
-}
-</file>
-
 <file path="src/app/dashboard/devices/page.tsx">
 'use client';
 
@@ -20220,6 +19761,468 @@ export default function MasterTelegramPage() {
       )}
     </div>
   );
+}
+</file>
+
+<file path="src/app/api/telegram/webhook/route.ts">
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const BOT_TOKEN = process.env.XELPAY_BOT_TOKEN;
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com';
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'xelpay_alert_bot';
+
+function generateComplexString(length: number): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const bytes = crypto.randomBytes(length);
+    return Array.from(bytes).map(b => chars[b % chars.length]).join('');
+}
+
+function escapeHTML(text: string | null | undefined): string {
+    if (!text) return '';
+    return text.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+export async function GET() {
+    return NextResponse.json({ status: "success", message: "Webhook API is Secure & Running! 🚀" });
+}
+
+async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
+    if (!BOT_TOKEN) return;
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+    try {
+        await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
+        });
+    } catch (err) {
+        console.error("Fetch Error:", err);
+    }
+}
+
+async function editTelegramMessage(chatId: string | number, messageId: number, text: string, replyMarkup?: any) {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`;
+    await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
+    });
+}
+
+async function answerCallbackQuery(callbackQueryId: string, text: string, showAlert: boolean = true) {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`;
+    await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callback_query_id: callbackQueryId, text: text, show_alert: showAlert }),
+    });
+}
+
+async function isGroupAdmin(chatId: string | number, userId: string | number): Promise<boolean> {
+    try {
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${chatId}&user_id=${userId}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.ok && data.result) {
+            const status = data.result.status;
+            return status === 'creator' || status === 'administrator';
+        }
+        return false;
+    } catch (error) {
+        return false;
+    }
+}
+
+async function connectTelegram(
+    code: string, 
+    chatId: string | number, 
+    username: string | null, 
+    displayName: string | null, 
+    forceTakeover: boolean = false
+): Promise<{ text: string, replyMarkup?: any }> {
+    const chatStr = chatId.toString();
+
+    const { data: targetMerchant } = await supabase.from('merchants').select('id').eq('telegram_link_code', code).single();
+    const { data: targetBusiness } = await supabase.from('businesses').select('id, merchant_id, business_name').eq('telegram_link_code', code).single();
+
+    if (!targetMerchant && !targetBusiness) {
+        return { text: "❌ <b>Connection Failed</b>\nলিংকটি মেয়াদোত্তীর্ণ বা ভুল। নতুন করে জেনারেট করুন।" };
+    }
+
+    const currentMerchantId = targetMerchant ? targetMerchant.id : targetBusiness!.merchant_id;
+    let takeoverNotice = '';
+
+    const { data: existingMerchant } = await supabase.from('merchants').select('id').eq('telegram_chat_id', chatStr).single();
+    const { data: existingBusinesses } = await supabase.from('businesses').select('id, merchant_id').eq('telegram_chat_id', chatStr);
+
+    const isOwnedByOtherMerchant = (existingMerchant && existingMerchant.id !== currentMerchantId) || 
+                                   (existingBusinesses && existingBusinesses.some(b => b.merchant_id !== currentMerchantId));
+
+    if (isOwnedByOtherMerchant) {
+        if (!forceTakeover) {
+            const otherMerchantId = (existingMerchant && existingMerchant.id !== currentMerchantId) 
+                ? existingMerchant.id 
+                : existingBusinesses?.find(b => b.merchant_id !== currentMerchantId)?.merchant_id;
+            
+            let maskedEmail = 'Another Account';
+            if (otherMerchantId) {
+                const { data: authData } = await supabase.auth.admin.getUserById(otherMerchantId);
+                if (authData?.user?.email) {
+                    const parts = authData.user.email.split('@');
+                    if (parts.length === 2) {
+                        maskedEmail = `${parts[0].substring(0, 2)}***@${parts[1]}`;
+                    }
+                }
+            }
+
+            return {
+                text: `⚠️ <b>Already Connected</b>\n\nThis group/chat is currently connected to another account (<code>${maskedEmail}</code>).\n\nDo you want to disconnect it from that account and take over?`,
+                replyMarkup: {
+                    inline_keyboard: [[{ text: "Confirm Takeover 🔄", callback_data: `takeover_${code}` }]]
+                }
+            };
+        } else {
+            const dummyCode = generateComplexString(12);
+            await supabase.from('merchants').update({ telegram_chat_id: null, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
+            await supabase.from('businesses').update({ telegram_chat_id: null, is_telegram_enabled: false, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
+            takeoverNotice = `\n⚠️ <i>Unlinked from previous account.</i>`;
+        }
+    }
+
+    if (targetMerchant) {
+        const newCode = generateComplexString(12);
+        await supabase.from('merchants').update({ 
+            telegram_chat_id: chatStr,
+            telegram_username: username,
+            telegram_display_name: displayName,
+            telegram_link_code: newCode 
+        }).eq('id', targetMerchant.id).select();
+
+        return {
+            text: `✅ <b>Master Vault Connected</b>\n<b>মাস্টার ভল্ট সংযোগ সফল</b>${takeoverNotice}\n\nYour master alerts will now be routed here.`,
+            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_m_${targetMerchant.id}` }]] }
+        };
+    }
+
+    if (targetBusiness) {
+        if (existingMerchant && existingMerchant.id === currentMerchantId && !forceTakeover) {
+            return { 
+                text: `⚠️ <b>Already in Vault</b>\n\nএই চ্যাটটি অলরেডি আপনার Master Vault-এ যুক্ত আছে।\nনতুন করে কানেক্ট করার প্রয়োজন নেই, দয়া করে ড্যাশবোর্ড থেকে <b>"Import from Vault"</b> বাটনে ক্লিক করুন।` 
+            };
+        }
+
+        const newCode = generateComplexString(12);
+        await supabase.from('businesses').update({ 
+            telegram_chat_id: chatStr,
+            telegram_username: username,
+            telegram_display_name: displayName,
+            telegram_link_code: newCode,
+            is_telegram_enabled: true
+        }).eq('id', targetBusiness.id).select();
+
+        return {
+            text: `✅ <b>Workspace Connected</b>\n<b>ওয়ার্কস্পেস সংযোগ সফল</b>${takeoverNotice}\n\n🔹 <b>Workspace:</b> ${escapeHTML(targetBusiness.business_name)}\n\nWorkspace alerts will now be routed here.`,
+            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_b_${targetBusiness.id}` }]] }
+        };
+    }
+
+    return { text: "❌ <b>Unknown Error Occurred</b>" };
+}
+
+async function getOrderTargets(merchantId?: string | null, businessId?: string | null) {
+    let targets: { chatId: string, accountName: string }[] = [];
+
+    if (businessId) {
+        const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
+        if (data?.telegram_chat_id && data.is_telegram_enabled) {
+            targets.push({ chatId: data.telegram_chat_id, accountName: data.business_name });
+            return targets; 
+        }
+    }
+
+    if (merchantId) {
+        const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
+        if (data?.telegram_chat_id) {
+            targets.push({ chatId: data.telegram_chat_id, accountName: data.display_name || 'Master Vault' });
+        }
+    }
+
+    return targets; 
+}
+
+async function getNotificationTargets(merchantId?: string | null, businessId?: string | null) {
+    let targets: { chatId: string, accountName: string }[] = [];
+
+    if (!merchantId && !businessId) {
+        const { data: merchants } = await supabase.from('merchants').select('telegram_chat_id').not('telegram_chat_id', 'is', null);
+        const { data: businesses } = await supabase.from('businesses').select('telegram_chat_id').not('telegram_chat_id', 'is', null).eq('is_telegram_enabled', true);
+        
+        const uniqueChats = new Map<string, string>();
+        merchants?.forEach(m => uniqueChats.set(m.telegram_chat_id, 'System Notice'));
+        businesses?.forEach(b => uniqueChats.set(b.telegram_chat_id, 'System Notice'));
+        
+        uniqueChats.forEach((accountName, chatId) => {
+            targets.push({ chatId, accountName });
+        });
+        return targets;
+    }
+
+    let bChatId: string | null = null;
+    let bAccountName: string = '';
+    if (businessId) {
+        const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
+        if (data?.telegram_chat_id && data.is_telegram_enabled) {
+            bChatId = data.telegram_chat_id;
+            bAccountName = data.business_name;
+        }
+    }
+
+    let mChatId: string | null = null;
+    let mAccountName: string = '';
+    if (merchantId) {
+        const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
+        if (data?.telegram_chat_id) {
+            mChatId = data.telegram_chat_id;
+            mAccountName = data.display_name || 'Master Vault';
+        }
+    }
+
+    if (mChatId && bChatId && mChatId === bChatId) {
+        targets.push({ chatId: mChatId, accountName: `${mAccountName} (Vault & Workspace)` });
+    } else {
+        if (mChatId) targets.push({ chatId: mChatId, accountName: mAccountName });
+        if (bChatId) targets.push({ chatId: bChatId, accountName: bAccountName });
+    }
+
+    return targets;
+}
+
+async function handleSupabaseWebhook(body: any) {
+    const { type, table, record } = body;
+
+    if (table === 'orders' && type === 'UPDATE' && (record.status === 'success' || record.status === 'paid')) {
+        const targets = await getOrderTargets(record.merchant_id, record.business_id);
+        
+        if (targets.length > 0) {
+            const payMethod = record.method ? record.method.toUpperCase() : 'GATEWAY';
+            const currency = record.currency || 'BDT';
+
+            const message = `
+🟢 <b>Payment Received Successfully</b>
+<b>পেমেন্ট সফলভাবে গ্রহণ করা হয়েছে</b>
+
+━━━━━━━━━━━━━━━━━━━━
+▪️ <b>Account :</b> ${escapeHTML(targets[0].accountName)}
+▪️ <b>Amount  :</b> ${record.amount} ${currency}
+▪️ <b>Method  :</b> ${escapeHTML(payMethod)}
+▪️ <b>Product :</b> ${escapeHTML(record.product_name) || 'N/A'}
+▪️ <b>Trx ID  :</b> <code>${escapeHTML(record.trx_id) || 'N/A'}</code>
+▪️ <b>Order # :</b> <code>${escapeHTML(record.order_no) || record.id}</code>
+━━━━━━━━━━━━━━━━━━━━
+<i>This transaction has been automatically verified.</i>`;
+
+            const replyMarkup = {
+                inline_keyboard: [[{ text: "View Transaction ➔", url: `${SITE_URL}/dashboard/transactions` }]]
+            };
+
+            for (const target of targets) {
+                await sendTelegramMessage(target.chatId, message, replyMarkup);
+            }
+        }
+    }
+
+    if (table === 'notifications' && type === 'INSERT') {
+        const targets = await getNotificationTargets(record.merchant_id, record.business_id);
+        
+        if (targets.length > 0) {
+            const message = `📢 <b>System Notice</b>\n\n<b>${escapeHTML(record.title)}</b>\n${escapeHTML(record.message)}`;
+
+            const replyMarkup: any = { inline_keyboard: [] };
+            
+            if (record.action_url) {
+                const actionUrl = record.action_url.startsWith('http') ? record.action_url : `${SITE_URL}${record.action_url}`;
+                replyMarkup.inline_keyboard.push([
+                    { text: "View Details ➔", url: actionUrl }
+                ]);
+            }
+
+            for (const target of targets) {
+                await sendTelegramMessage(target.chatId, message, replyMarkup.inline_keyboard.length > 0 ? replyMarkup : undefined);
+            }
+        }
+    }
+
+    return NextResponse.json({ status: 'webhook_processed' });
+}
+
+export async function POST(req: Request) {
+    try {
+        const body = await req.json();
+
+        // ─── 1. Supabase Webhook Authorization ───
+        if (body.type && body.table && body.record) {
+            const expectedSupabaseSecret = process.env.SUPABASE_WEBHOOK_SECRET;
+            if (expectedSupabaseSecret) {
+                const incomingSecret = req.headers.get('x-supabase-webhook-secret');
+                if (incomingSecret !== expectedSupabaseSecret) {
+                    return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
+                }
+            }
+            return await handleSupabaseWebhook(body);
+        }
+
+        // ─── 2. Telegram Webhook Authorization ───
+        const expectedTelegramSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+        if (expectedTelegramSecret) {
+            const incomingTelegramSecret = req.headers.get('x-telegram-bot-api-secret-token');
+            if (incomingTelegramSecret !== expectedTelegramSecret) {
+                return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
+            }
+        }
+
+        // ─── 3. Event Handlers ───
+        if (body.my_chat_member) {
+            const newStatus = body.my_chat_member.new_chat_member.status;
+            if (newStatus === 'left' || newStatus === 'kicked') {
+                const chatId = body.my_chat_member.chat.id.toString();
+                const newCode = generateComplexString(12);
+
+                await supabase.from('merchants').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode }).eq('telegram_chat_id', chatId);
+                await supabase.from('businesses').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode, is_telegram_enabled: false }).eq('telegram_chat_id', chatId);
+
+                return NextResponse.json({ status: 'unlinked_on_kick' });
+            }
+        }
+
+        if (body.callback_query) {
+            const callbackQuery = body.callback_query;
+            const chatId = callbackQuery.message.chat.id;
+            const messageId = callbackQuery.message.message_id;
+            const data = callbackQuery.data;
+
+            const fromUser = callbackQuery.from || {};
+            const userId = fromUser.id;
+            const username = fromUser.username ? `@${fromUser.username}` : null;
+            const displayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
+            const chatType = callbackQuery.message.chat.type;
+
+            if (data.startsWith('takeover_')) {
+                const code = data.replace('takeover_', '');
+
+                if (chatType === 'group' || chatType === 'supergroup') {
+                    // Check if clicked anonymously or as normal user
+                    const isAnonymousAdminClick = fromUser.username === 'GroupAnonymousBot';
+                    let isAdmin = false;
+                    
+                    if (isAnonymousAdminClick) {
+                        isAdmin = true;
+                    } else {
+                        isAdmin = await isGroupAdmin(chatId, userId);
+                    }
+
+                    if (!isAdmin) {
+                        await answerCallbackQuery(callbackQuery.id, "⚠️ Access Denied: Only admins can confirm this takeover.");
+                        return NextResponse.json({ status: 'not_admin' });
+                    }
+                }
+
+                const result = await connectTelegram(code, chatId, username, displayName, true);
+                await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
+                return NextResponse.json({ status: 'success' });
+            }
+
+            if (data.startsWith('connect_dm_')) {
+                const code = data.replace('connect_dm_', '');
+                const result = await connectTelegram(code, chatId, username, displayName, false);
+                await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
+            }
+            else if (data.startsWith('disconnect_m_')) {
+                const id = data.replace('disconnect_m_', '');
+                const newCode = generateComplexString(12);
+                await supabase.from('merchants').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode }).eq('id', id);
+                await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Master Vault alerts.");
+            }
+            else if (data.startsWith('disconnect_b_')) {
+                const id = data.replace('disconnect_b_', '');
+                const newCode = generateComplexString(12);
+                await supabase.from('businesses').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode, is_telegram_enabled: false }).eq('id', id);
+                await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Workspace alerts.");
+            }
+
+            return NextResponse.json({ status: 'success' });
+        }
+
+        if (body.message) {
+            const chat = body.message.chat;
+            const chatId = chat.id;
+            const chatType = chat.type;
+            const text = body.message.text ? body.message.text.trim() : '';
+            const userId = body.message.from?.id;
+
+            if (text.startsWith('/start')) {
+                const parts = text.split(/\s+/);
+                const code = parts.length > 1 ? parts[1] : null; 
+
+                if (!code) {
+                    if (chatType === 'private') {
+                        await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\n<b>ভুল কমান্ড!</b>\nPlease generate a valid connection link from your dashboard.");
+                    }
+                    return NextResponse.json({ status: 'no_code' });
+                }
+
+                if (chatType === 'group' || chatType === 'supergroup') {
+                    // লজিক: যদি Sender Chat থাকে (অ্যাডমিন চ্যানেল হিসেবে মেসেজ দিচ্ছে) বা Anonymous Bot হয়
+                    const isAnonymousAdmin = body.message.sender_chat?.id === chatId || body.message.from?.username === 'GroupAnonymousBot';
+                    
+                    let isAdmin = false;
+                    
+                    if (isAnonymousAdmin) {
+                        isAdmin = true; // অটোমেটিক অ্যাডমিন এক্সেস 
+                    } else if (userId) {
+                        isAdmin = await isGroupAdmin(chatId, userId);
+                    }
+
+                    if (!isAdmin) {
+                        await sendTelegramMessage(chatId, "⚠️ <b>Access Denied</b>\n\nOnly group administrators can connect or configure this bot. Please ask an admin to send the connection command.");
+                        return NextResponse.json({ status: 'not_admin' });
+                    }
+
+                    const groupTitle = chat.title || 'Connected Group';
+                    const groupUsername = chat.username ? `@${chat.username}` : null;
+                    
+                    const result = await connectTelegram(code, chatId, groupUsername, groupTitle, false);
+                    await sendTelegramMessage(chatId, result.text, result.replyMarkup);
+                    return NextResponse.json({ status: 'connected_group' });
+                }
+
+                const replyMarkup = {
+                    inline_keyboard: [
+                        [{ text: "Connect to THIS Chat ➔", callback_data: `connect_dm_${code}` }],
+                        [{ text: "Add to a GROUP instead ➔", url: `https://t.me/${BOT_USERNAME}?startgroup=${code}` }]
+                    ]
+                };
+
+                await sendTelegramMessage(chatId, "<b>Where do you want to receive alerts?</b>\n<b>আপনি কোথায় এলার্ট পেতে চান?</b>\n\nYou can receive alerts directly in this chat, or add me to a group.", replyMarkup);
+                return NextResponse.json({ status: 'asked_user' });
+            }
+        }
+
+        return NextResponse.json({ status: 'ignored' });
+
+    } catch (error) {
+        console.error("Webhook Error Exception:", error);
+        return NextResponse.json({ status: 'error_logged_but_ok' }, { status: 200 });
+    }
 }
 </file>
 
