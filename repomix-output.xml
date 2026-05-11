@@ -202,6 +202,129 @@ const eslintConfig = defineConfig([
 export default eslintConfig;
 </file>
 
+<file path="middleware.ts">
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
+
+// ─── ROUTE DEFINITIONS ──────────────────────────────────────────────────────
+const PROTECTED_ROUTES = ['/dashboard'];
+const AUTH_ROUTES = ['/login', '/signup', '/forgot-password', '/reset-password'];
+// Everything else is public — no redirect in either direction.
+
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({
+    request: { headers: request.headers },
+  });
+
+  const pathname = request.nextUrl.pathname;
+
+  // Pass-through: auth callbacks and API routes — never intercept these.
+  if (pathname.startsWith('/auth/') || pathname.startsWith('/api/')) {
+    return response;
+  }
+
+  // ── Build SSR Supabase client (keeps session cookies in sync) ────────────
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({
+            request: { headers: request.headers },
+          });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, {
+              ...options,
+              secure: process.env.NODE_ENV === 'production', // 👈 লোকালহোস্টের জন্য ফিক্স
+            })
+          );
+        },
+      },
+    }
+  );
+
+  // ── Verify session server-side (never trust client state alone) ──────────
+  // getUser() validates the JWT against Supabase — cannot be spoofed.
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const isProtected = PROTECTED_ROUTES.some(r => pathname.startsWith(r));
+  const isAuthRoute = AUTH_ROUTES.some(r => pathname.startsWith(r));
+
+  // ─── 1. No session + protected route → force login ───────────────────────
+  if (!user && isProtected) {
+    // Clear stale auth_session cookie so landing page doesn't show Dashboard
+    // button for a user whose Supabase session has already expired.
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('next', pathname);
+    const redirectResponse = NextResponse.redirect(loginUrl);
+    redirectResponse.cookies.delete('auth_session');
+    return redirectResponse;
+  }
+
+  // ─── 2. Active session + auth route → bounce to dashboard ────────────────
+  if (user && isAuthRoute) {
+    // Special case: password-recovery flow must be allowed through
+    const isRecoveryMode = request.cookies.get('xelpay_recovery_mode')?.value === 'true';
+    if ((pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password')) && isRecoveryMode) {
+      return response;
+    }
+
+    // Confirm merchant record exists before redirecting
+    const { data: merchant } = await supabase
+      .from('merchants')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (!merchant) {
+      // Auth session exists but no merchant profile → force re-signup
+      const url = new URL('/auth/force-signout', request.url);
+      url.searchParams.set('redirect', '/signup');
+      return NextResponse.redirect(url);
+    }
+
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // ─── 3. Set custom HttpOnly auth cookie on every valid session ───────────
+  // No maxAge — cookie persists until user explicitly logs out or clears
+  // browser data. Supabase handles its own token refresh automatically.
+  if (user) {
+    response.cookies.set('auth_session', 'authenticated', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      // No maxAge — session lives as long as the Supabase JWT is valid and
+      // auto-refreshed. User must explicitly log out to clear.
+      path: '/',
+    });
+  } else {
+    // Clear our custom cookie if Supabase session is gone
+    response.cookies.delete('auth_session');
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: [
+    '/dashboard/:path*',
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+    // Include root and info pages so the auth_session cookie gets set/cleared
+    '/',
+    '/info/:path*',
+  ],
+};
+</file>
+
 <file path="next.config.ts">
 import type { NextConfig } from "next";
 
@@ -724,6 +847,120 @@ export async function POST(req: Request) {
   } catch (error: any) {
     return NextResponse.json({ success: false, message: "Internal Server Error" }, { status: 500 });
   }
+}
+</file>
+
+<file path="src/app/auth/callback/route.ts">
+import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: Request) {
+  const requestUrl = new URL(request.url);
+  const code = requestUrl.searchParams.get('code');
+  const next = requestUrl.searchParams.get('next') || '/dashboard';
+
+  if (!code) {
+    return NextResponse.redirect(
+      new URL('/login?error=no_code', requestUrl.origin)
+    );
+  }
+
+  const cookieStore = await cookies();
+
+  // cookiesToCommit — redirect response-এ manually set করার জন্য collect করব
+  const cookiesToCommit: { name: string; value: string; options: any }[] = [];
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, {
+              ...options,
+              secure: process.env.NODE_ENV === 'production',
+            });
+            cookiesToCommit.push({
+              name,
+              value,
+              options: {
+                ...options,
+                secure: process.env.NODE_ENV === 'production',
+              },
+            });
+          });
+        },
+      },
+    }
+  );
+
+  const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (exchangeError || !data?.user) {
+    return NextResponse.redirect(
+      new URL('/login?error=exchange_failed', requestUrl.origin)
+    );
+  }
+
+  const user = data.user;
+
+  const { data: merchant, error: merchantError } = await supabase
+    .from('merchants')
+    .select('id, status, is_demo')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (merchantError) {
+    return NextResponse.redirect(
+      new URL('/login?error=db_error', requestUrl.origin)
+    );
+  }
+
+  if (!merchant) {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(
+      new URL('/login?error=no_account', requestUrl.origin)
+    );
+  }
+
+  const mStatus = merchant.status?.toLowerCase();
+
+  if (['suspended', 'ban', 'banned'].includes(mStatus)) {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(
+      new URL('/login?error=suspended', requestUrl.origin)
+    );
+  }
+
+  if (mStatus === 'pending') {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(
+      new URL('/login?error=pending', requestUrl.origin)
+    );
+  }
+
+  const safeNext =
+    next.startsWith('/') && !next.startsWith('//')
+      ? next
+      : '/dashboard';
+
+  // ── Redirect response-এ Supabase session cookies সরাসরি set করি ────────────
+  // Next.js Route Handler-এ cookies() দিয়ে set করা values redirect response-এ
+  // automatically forward হয় না। তাই collect করা cookies manually লাগাতে হয়।
+  const redirectResponse = NextResponse.redirect(new URL(safeNext, requestUrl.origin));
+
+  cookiesToCommit.forEach(({ name, value, options }) => {
+    redirectResponse.cookies.set(name, value, options);
+  });
+
+  return redirectResponse;
 }
 </file>
 
@@ -5272,6 +5509,787 @@ export default function LandingPageUI({ isAuthenticated, initialPlans, initialRe
 }
 </file>
 
+<file path="src/app/login/LoginClient.tsx">
+'use client';
+
+import { useState, useEffect, useRef, Suspense } from 'react';
+import {
+  Mail, Lock, LogIn, Eye, EyeOff, AlertCircle, Send, ArrowLeft,
+  Moon, Sun, Menu, X, Home, HelpCircle, Sparkles, Clock,
+  ShieldCheck, RefreshCw, UserPlus,
+} from 'lucide-react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Toaster, toast } from 'sonner';
+import ReCAPTCHA from 'react-google-recaptcha';
+import { syncEmailVerified } from '@/lib/auth';
+import { useTheme } from 'next-themes';
+
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
+
+// ─── SUSPENDED MODAL ─────────────────────────────────────────────────────────
+const SuspendedModal = ({ isOpen, telegramLink, onClose }: any) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl p-7 text-center shadow-2xl border border-slate-100 dark:border-slate-800">
+        <div className="w-14 h-14 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-5">
+          <AlertCircle size={28} className="text-red-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Account Suspended</h3>
+        <p className="text-slate-400 text-sm mb-7 leading-relaxed">
+          Your account has been suspended due to a policy violation or review.
+        </p>
+        <div className="flex flex-col gap-2.5">
+          <button
+            onClick={() => telegramLink && telegramLink !== '#' && window.open(telegramLink, '_blank', 'noopener,noreferrer')}
+            className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-all"
+          >
+            <Send size={15} /> Contact Support
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── PENDING MODAL ────────────────────────────────────────────────────────────
+const PendingModal = ({ isOpen, telegramLink, onClose }: any) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl p-7 text-center shadow-2xl border border-slate-100 dark:border-slate-800">
+        <div className="w-14 h-14 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto mb-5">
+          <Clock size={28} className="text-amber-500" />
+        </div>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Account Pending</h3>
+        <p className="text-slate-400 text-sm mb-7 leading-relaxed">
+          Your account is currently under review. We will notify you once approved.
+        </p>
+        <div className="flex flex-col gap-2.5">
+          <button
+            onClick={() => telegramLink && telegramLink !== '#' && window.open(telegramLink, '_blank', 'noopener,noreferrer')}
+            className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-all"
+          >
+            <Send size={15} /> Contact Support
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── NO ACCOUNT MODAL (Google OAuth — no merchant record) ────────────────────
+const NoAccountModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+      <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl p-7 text-center shadow-2xl border border-slate-100 dark:border-slate-800">
+        <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-5">
+          <AlertCircle size={28} className="text-slate-500 dark:text-slate-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Account Found</h3>
+        <p className="text-slate-400 dark:text-slate-500 text-sm mb-7 leading-relaxed">
+          We couldn't find a XelPay account linked to this Google account.
+          Please create an account or try a different login method.
+        </p>
+        <div className="flex flex-col gap-2.5">
+          <Link
+            href="/signup"
+            className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-all"
+          >
+            <UserPlus size={15} /> Create An Account
+          </Link>
+          <button
+            onClick={onClose}
+            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── DEMO BANNER ──────────────────────────────────────────────────────────────
+const DemoBanner = () => (
+  <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 text-amber-950 px-4 py-2 text-center flex items-center justify-center gap-2">
+    <Sparkles size={13} className="shrink-0" />
+    <span className="text-[10px] font-black uppercase tracking-widest">
+      Demo Mode Active — Credentials pre-filled for exploration
+    </span>
+    <Sparkles size={13} className="shrink-0" />
+  </div>
+);
+
+// ─── MAIN LOGIN CONTENT ───────────────────────────────────────────────────────
+function LoginContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const mode = searchParams.get('mode');
+  const nextUrl = searchParams.get('next') || '/dashboard';
+  const { resolvedTheme, setTheme } = useTheme();
+
+  const [mounted, setMounted] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<any>(null);
+
+  const [showSuspendedModal, setShowSuspendedModal] = useState(false);
+  const [showPendingModal, setShowPendingModal] = useState(false);
+  const [showNoAccountModal, setShowNoAccountModal] = useState(false);
+  const [telegramLink, setTelegramLink] = useState('#');
+
+  const [otpLoginEnabled, setOtpLoginEnabled] = useState(false);
+  const [otpSettingLoaded, setOtpSettingLoaded] = useState(false);
+
+  // OTP login flow state
+  const [viewState, setViewState] = useState<'form' | 'otp_input'>('form');
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Guard to prevent double-fire of auto-verify
+  const isVerifyingRef = useRef(false);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) { setLoading(false); setGoogleLoading(false); }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
+  // OTP login setting load
+  useEffect(() => {
+    const loadOtpSetting = async () => {
+      try {
+        const { data } = await supabase
+          .from('site_settings')
+          .select('value, is_active')
+          .eq('key_name', 'otp_login')
+          .maybeSingle();
+        setOtpLoginEnabled(data?.is_active === true);
+      } catch {
+        setOtpLoginEnabled(false);
+      } finally {
+        setOtpSettingLoaded(true);
+      }
+    };
+    loadOtpSetting();
+  }, []);
+
+  // ─── AUTO-VERIFY: fire as soon as the 6th OTP digit is entered ───────────
+  useEffect(() => {
+    if (viewState === 'otp_input' && otp.length === 6 && !loading && !isVerifyingRef.current) {
+      isVerifyingRef.current = true;
+      handleVerifyOtp();
+    }
+    if (otp.length < 6) isVerifyingRef.current = false;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp, viewState]);
+
+  const fetchTelegramLink = async () => {
+    const { data: settings } = await supabase
+      .from('site_settings')
+      .select('value')
+      .eq('key_name', 'support_telegram')
+      .maybeSingle();
+    if (settings?.value) setTelegramLink(settings.value);
+  };
+
+  // ── error param থেকে modal দেখাও ──────────────────────────────────────────
+  const errorParam = searchParams.get('error');
+  useEffect(() => {
+    if (!errorParam) return;
+    if (errorParam === 'no_account') {
+      setShowNoAccountModal(true);
+    } else if (errorParam === 'suspended' || errorParam === 'ban') {
+      fetchTelegramLink().then(() => setShowSuspendedModal(true));
+    } else if (errorParam === 'pending') {
+      fetchTelegramLink().then(() => setShowPendingModal(true));
+    } else if (errorParam === 'exchange_failed') {
+      toast.error('Login failed. Please try again.');
+    } else if (errorParam === 'db_error') {
+      toast.error('Something went wrong. Please try again.');
+    } else if (errorParam === 'invalid_tx') {
+      toast.error('Security check failed. Please try again.');
+    }
+  }, [errorParam]);
+
+  // Demo mode
+  useEffect(() => {
+    if (mode === 'demo') {
+      sessionStorage.setItem('xelpay_demo_mode', 'true');
+      (async () => {
+        try {
+          const { data } = await supabase
+            .from('site_settings')
+            .select('value')
+            .eq('key_name', 'demo_credentials')
+            .maybeSingle();
+
+          if (data?.value) {
+            const parsed = JSON.parse(data.value);
+            if (parsed?.email) setEmail(parsed.email);
+            if (parsed?.password) setPassword(parsed.password);
+            toast.success('Demo credentials loaded! Explore freely.', { icon: '✨', duration: 4000 });
+          } else {
+            toast.error('Demo credentials not configured.', { duration: 4000 });
+          }
+        } catch {
+          toast.error('Failed to load demo credentials.', { duration: 4000 });
+        }
+      })();
+    } else {
+      sessionStorage.removeItem('xelpay_demo_mode');
+    }
+  }, [mode]);
+
+  useEffect(() => {
+    if (otpCooldown > 0) {
+      const t = setInterval(() => setOtpCooldown(c => c - 1), 1000);
+      return () => clearInterval(t);
+    }
+  }, [otpCooldown]);
+
+  const clearForgotSession = () => {
+    sessionStorage.removeItem('xelpay_fp_step');
+    sessionStorage.removeItem('xelpay_fp_email');
+    sessionStorage.removeItem('xelpay_fp_resend');
+    sessionStorage.removeItem('xelpay_fp_cooldown_end');
+  };
+
+  // ── Merchant check & redirect ─────────────────────────────────────────────
+  const checkMerchantAndRedirect = async (userId: string, emailConfirmedAt: string | null) => {
+    try {
+      const { data: merchant } = await supabase
+        .from('merchants')
+        .select('status, is_demo')
+        .eq('id', userId)
+        .single();
+
+      if (mode === 'demo' && merchant?.is_demo !== true) {
+        await supabase.auth.signOut();
+        toast.error('Not a demo account.');
+        setLoading(false);
+        return;
+      }
+
+      const mStatus = merchant?.status?.toLowerCase();
+
+      if (['suspended', 'ban', 'banned'].includes(mStatus)) {
+        await supabase.auth.signOut();
+        await fetchTelegramLink();
+        setShowSuspendedModal(true);
+        setLoading(false);
+        return;
+      }
+      if (mStatus === 'pending') {
+        await supabase.auth.signOut();
+        await fetchTelegramLink();
+        setShowPendingModal(true);
+        setLoading(false);
+        return;
+      }
+
+      if (emailConfirmedAt) {
+        try { await syncEmailVerified(userId); } catch (_) {}
+      }
+      // window.location.href ব্যবহার করা হচ্ছে কারণ এটা full page reload করে।
+      // এতে middleware নতুন request-এ Supabase session detect করে
+      // auth_session HttpOnly cookie সঠিকভাবে set করতে পারে।
+      // router.push() শুধু client-side navigation করে — middleware cookie
+      // set হওয়ার আগেই navigate হয়ে login page-এ ফিরে আসার সমস্যা তৈরি করে।
+      window.location.href = nextUrl;
+    } catch {
+      window.location.href = nextUrl;
+    }
+  };
+
+  // ── Password Login ────────────────────────────────────────────────────────
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!captchaToken) { toast.error('Please complete the reCAPTCHA.'); return; }
+    setLoading(true);
+
+    const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      if (error.message.toLowerCase().includes('invalid login credentials')) {
+        toast.error('Wrong email or password.');
+      } else {
+        toast.error(error.message);
+      }
+      setLoading(false);
+      recaptchaRef.current?.reset();
+      setCaptchaToken(null);
+      return;
+    }
+
+    if (authData.user) {
+      await checkMerchantAndRedirect(authData.user.id, authData.user.email_confirmed_at);
+    }
+  };
+
+  // ── OTP Step 1: Send ──────────────────────────────────────────────────────
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!captchaToken) { toast.error('Please complete the reCAPTCHA.'); return; }
+    if (mode === 'demo') { toast.error('OTP login is disabled in demo mode.'); return; }
+    setLoading(true);
+
+    const { data: merchant } = await supabase
+      .from('merchants')
+      .select('status, is_email_verified')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (!merchant) {
+      toast.error('No account found with this email address.');
+      setLoading(false); recaptchaRef.current?.reset(); setCaptchaToken(null); return;
+    }
+
+    const mStatus = merchant.status?.toLowerCase();
+    if (['suspended', 'ban', 'banned'].includes(mStatus)) {
+      await fetchTelegramLink(); setShowSuspendedModal(true); setLoading(false); return;
+    }
+    if (mStatus === 'pending') {
+      await fetchTelegramLink(); setShowPendingModal(true); setLoading(false); return;
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    });
+
+    if (error) {
+      toast.error(error.message);
+      setLoading(false); recaptchaRef.current?.reset(); setCaptchaToken(null); return;
+    }
+
+    setOtpEmail(email);
+    setOtp('');
+    setOtpCooldown(60);
+    setViewState('otp_input');
+    toast.success('OTP sent! Check your inbox.');
+    recaptchaRef.current?.reset(); setCaptchaToken(null); setLoading(false);
+  };
+
+  // ── OTP Step 2: Verify ────────────────────────────────────────────────────
+  const handleVerifyOtp = async () => {
+    if (otp.length < 6) return;
+    setLoading(true);
+
+    const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+      email: otpEmail,
+      token: otp,
+      type: 'email',
+    });
+
+    if (verifyError) {
+      toast.error('Invalid or expired OTP. Please try again.');
+      isVerifyingRef.current = false;
+      setLoading(false); return;
+    }
+
+    if (verifyData.user) {
+      await checkMerchantAndRedirect(verifyData.user.id, verifyData.user.email_confirmed_at);
+    }
+  };
+
+  // ── OTP Resend ────────────────────────────────────────────────────────────
+  const handleResendOtp = async () => {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email: otpEmail,
+      options: { shouldCreateUser: false },
+    });
+    if (error) { toast.error('Resend failed: ' + error.message); }
+    else { toast.success('New OTP sent! Check your inbox.'); setOtpCooldown(60); setOtp(''); }
+    setLoading(false);
+  };
+
+  // ── OTP digit helpers ─────────────────────────────────────────────────────
+  const handleOtpChange = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, '').slice(-1);
+    const newOtp = otp.split('');
+    newOtp[index] = digit;
+    const joined = newOtp.join('');
+    setOtp(joined);
+    if (digit && index < 5) otpInputRefs.current[index + 1]?.focus();
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pasted.length === 6) { setOtp(pasted); otpInputRefs.current[5]?.focus(); }
+  };
+
+  // ── Google Login ──────────────────────────────────────────────────────────
+  const handleGoogleLogin = async () => {
+    if (mode === 'demo') { toast.error('Google login disabled in demo mode.'); return; }
+    setGoogleLoading(true);
+
+    const txId =
+      (typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID().replace(/-/g, '')
+        : Math.random().toString(36).substring(2, 15)) + Date.now().toString(36);
+
+    sessionStorage.setItem('auth_tx', txId);
+    localStorage.setItem('oauth_source', 'login');
+
+    const redirectTo = `${window.location.origin}/auth/callback?tx=${txId}&next=${encodeURIComponent(nextUrl)}`;
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo },
+    });
+    if (error) { toast.error(error.message); setGoogleLoading(false); }
+  };
+
+  const inputClass = 'w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm text-slate-900 dark:text-white placeholder:text-slate-400';
+  const labelClass = 'text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-0.5 mb-1 block';
+  const isDark = resolvedTheme === 'dark';
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] font-sans transition-colors duration-300 flex flex-col">
+      <Toaster position="top-center" richColors />
+
+      {/* HEADER */}
+      <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+        <div className="hidden md:flex items-center h-16 px-8 justify-between max-w-7xl mx-auto w-full">
+          <Link href="/" className="flex items-center gap-1">
+            <span className="text-2xl font-black text-blue-600 tracking-tighter">X</span>
+            <span className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
+          </Link>
+          <div className="flex items-center gap-6 text-sm">
+            <Link href="/" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Home</Link>
+            <Link href="/info/contact" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Support</Link>
+            {mounted && (
+              <button
+                onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50 hover:scale-110 transition-all"
+                aria-label="Toggle theme"
+              >
+                {isDark ? <Sun size={17} /> : <Moon size={17} />}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex md:hidden items-center h-16 px-4 justify-between max-w-7xl mx-auto w-full">
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all"
+          >
+            {menuOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+          <div className="flex items-center justify-end flex-1">
+            {mounted && (
+              <button
+                onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50 hover:scale-110 transition-all"
+                aria-label="Toggle theme"
+              >
+                {isDark ? <Sun size={17} /> : <Moon size={17} />}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {menuOpen && (
+          <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0d1526] animate-in slide-in-from-top-2 duration-200">
+            <div className="px-4 py-3 flex flex-col gap-1 max-w-7xl mx-auto w-full">
+              <Link href="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
+                <Home size={15} /> Home
+              </Link>
+              <Link href="/info/contact" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
+                <HelpCircle size={15} /> Support
+              </Link>
+            </div>
+          </div>
+        )}
+      </header>
+
+      <div className="flex-1 flex items-center justify-center p-4 py-10">
+        <div className="w-full max-w-md md:max-w-2xl bg-white dark:bg-[#111827] rounded-2xl md:rounded-3xl shadow-sm md:shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+
+          {mode === 'demo' && <DemoBanner />}
+
+          <div className="flex flex-col md:flex-row md:items-stretch">
+            {/* Left Sidebar */}
+            <div className="hidden md:flex flex-col justify-between bg-blue-600 rounded-l-3xl p-10 min-w-[200px] text-white">
+              <Link href="/" className="flex items-center gap-1.5 text-white/70 hover:text-white text-xs transition-colors">
+                <ArrowLeft size={14} /> Home
+              </Link>
+              <div className="flex flex-col items-center">
+                <Link href="/" className="inline-flex items-center gap-1 mb-5">
+                  <span className="text-4xl font-black text-white tracking-tighter">X</span>
+                  <span className="text-3xl font-semibold text-white tracking-tight -ml-0.5 opacity-90">elPay</span>
+                </Link>
+                <p className="text-sm opacity-80 text-center leading-relaxed">Secure merchant payment automation</p>
+                <div className="mt-7 flex flex-col gap-3 w-full">
+                  {['99.9% Uptime', 'Bank-grade security', '24/7 support'].map(s => (
+                    <div key={s} className="flex items-center gap-2 text-xs opacity-70">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-300" /> {s}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="text-[10px] text-white/40 text-center">© {new Date().getFullYear()} XelPay</div>
+            </div>
+
+            <div className="flex-1 p-6 md:p-10 flex flex-col justify-center">
+
+              <div className="md:hidden flex justify-center mb-6">
+                <Link href="/" className="inline-flex items-center gap-1">
+                  <span className="text-3xl font-black text-blue-600 tracking-tighter">X</span>
+                  <span className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
+                </Link>
+              </div>
+
+              {/* ── OTP INPUT VIEW ── */}
+              {viewState === 'otp_input' ? (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 text-center">
+                  <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                    <ShieldCheck size={32} className="text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Enter Your OTP</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-7 leading-relaxed">
+                    We sent a 6-digit code to{' '}
+                    <b className="text-slate-700 dark:text-slate-300">{otpEmail}</b>.
+                  </p>
+
+                  <div className="flex gap-2.5 justify-center mb-7" onPaste={handleOtpPaste}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <input
+                        key={i}
+                        ref={el => { otpInputRefs.current[i] = el; }}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={otp[i] || ''}
+                        onChange={e => handleOtpChange(i, e.target.value)}
+                        onKeyDown={e => handleOtpKeyDown(i, e)}
+                        className="w-11 h-13 text-center text-lg font-bold bg-white dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-900 dark:text-white py-3"
+                      />
+                    ))}
+                  </div>
+
+                  <button
+                    disabled={loading || otp.length < 6}
+                    onClick={handleVerifyOtp}
+                    className="w-full bg-blue-600 disabled:bg-blue-400 text-white py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2.5 mb-3"
+                  >
+                    {loading
+                      ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying...</>
+                      : <><ShieldCheck size={16} /> Sign In</>
+                    }
+                  </button>
+
+                  <button
+                    disabled={otpCooldown > 0 || loading}
+                    onClick={handleResendOtp}
+                    className="w-full flex items-center justify-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors disabled:opacity-50 mb-5"
+                  >
+                    <RefreshCw size={13} />
+                    {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : 'Resend OTP'}
+                  </button>
+
+                  <button
+                    onClick={() => { setViewState('form'); setOtp(''); }}
+                    className="flex items-center justify-center gap-1.5 mx-auto text-xs text-slate-400 hover:text-blue-600 uppercase tracking-widest font-bold transition-colors"
+                  >
+                    <ArrowLeft size={14} /> Back to Login
+                  </button>
+                </div>
+
+              /* ── MAIN FORM ── */
+              ) : (
+                <>
+                  <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-5 text-center md:text-left">
+                    Welcome Back
+                  </h2>
+
+                  {otpSettingLoaded && otpLoginEnabled && (
+                    <div className="flex bg-slate-100 dark:bg-[#0B1120] p-1 rounded-xl mb-6 border border-slate-200 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setLoginMethod('password')}
+                        className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${loginMethod === 'password' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                      >
+                        With Password
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLoginMethod('otp')}
+                        className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${loginMethod === 'otp' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                      >
+                        <Sparkles size={13} /> With OTP
+                      </button>
+                    </div>
+                  )}
+
+                  {(!otpLoginEnabled || loginMethod === 'password') ? (
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <div>
+                        <label className={labelClass}>Email <span className="text-red-400">*</span></label>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                          <input required type="email" name="email" autoComplete="username" placeholder="admin@xelpay.com" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
+                        </div>
+                      </div>
+                      <div>
+                        <label className={labelClass}>Password <span className="text-red-400">*</span></label>
+                        <div className="relative">
+                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                          <input required type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className={`${inputClass} pr-11`} />
+                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
+                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 rounded border-slate-300 accent-blue-600" />
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Remember me</span>
+                        </label>
+                        <Link href={`/forgot-password${mode === 'demo' ? '?mode=demo' : ''}`} onClick={clearForgotSession} className="text-xs text-blue-600 hover:underline">
+                          Forgot Password?
+                        </Link>
+                      </div>
+                      <div className="flex justify-center pt-2">
+                        {mounted && (
+                          <ReCAPTCHA
+                            ref={recaptchaRef}
+                            sitekey={RECAPTCHA_SITE_KEY}
+                            onChange={token => setCaptchaToken(token)}
+                            onExpired={() => setCaptchaToken(null)}
+                            theme={isDark ? 'dark' : 'light'}
+                          />
+                        )}
+                      </div>
+                      <button disabled={loading} type="submit" className="w-full bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-lg shadow-blue-600/25 h-[50px]">
+                        {loading
+                          ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          : <>Sign In <LogIn size={15} className="ml-1.5" /></>
+                        }
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleSendOtp} className="space-y-4">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                        Enter your email and we'll send you a 6-digit OTP to log in instantly — no password needed.
+                      </p>
+                      <div>
+                        <label className={labelClass}>Email <span className="text-red-400">*</span></label>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                          <input required type="email" name="email" autoComplete="username" placeholder="admin@xelpay.com" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
+                        </div>
+                      </div>
+                      <div className="flex justify-center pt-2">
+                        {mounted && (
+                          <ReCAPTCHA
+                            ref={recaptchaRef}
+                            sitekey={RECAPTCHA_SITE_KEY}
+                            onChange={token => setCaptchaToken(token)}
+                            onExpired={() => setCaptchaToken(null)}
+                            theme={isDark ? 'dark' : 'light'}
+                          />
+                        )}
+                      </div>
+                      <button disabled={loading} type="submit" className="w-full bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-lg shadow-blue-600/25 h-[50px]">
+                        {loading
+                          ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          : <>Send OTP <Send size={15} className="ml-1.5" /></>
+                        }
+                      </button>
+                    </form>
+                  )}
+
+                  {mode !== 'demo' && (
+                    <>
+                      <div className="relative my-3 text-center">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+                        </div>
+                        <span className="relative px-4 bg-white dark:bg-[#111827] text-[10px] text-slate-400 uppercase tracking-widest">Or</span>
+                      </div>
+                      <button
+                        onClick={handleGoogleLogin}
+                        disabled={googleLoading}
+                        className="w-full bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 py-3.5 rounded-xl text-sm text-slate-700 dark:text-slate-200 flex items-center justify-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                      >
+                        {googleLoading
+                          ? <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                          : <><img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="google" /> Sign in with Google</>
+                        }
+                      </button>
+                      <p className="mt-4 text-center text-slate-400 text-sm">
+                        New to XelPay?{' '}
+                        <Link href="/signup" onClick={clearForgotSession} className="text-blue-600 font-medium hover:underline">
+                          Create Account
+                        </Link>
+                      </p>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* MODALS */}
+      <SuspendedModal isOpen={showSuspendedModal} telegramLink={telegramLink} onClose={() => setShowSuspendedModal(false)} />
+      <PendingModal isOpen={showPendingModal} telegramLink={telegramLink} onClose={() => setShowPendingModal(false)} />
+      <NoAccountModal isOpen={showNoAccountModal} onClose={() => setShowNoAccountModal(false)} />
+    </div>
+  );
+}
+
+export default function LoginClient() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+</file>
+
 <file path="src/app/login/page.tsx">
 // PATH: src/app/login/page.tsx
 
@@ -8277,243 +9295,6 @@ if (process.env.NODE_ENV !== 'production') {
 }
 </file>
 
-<file path="middleware.ts">
-import { createServerClient } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
-
-// ─── ROUTE DEFINITIONS ──────────────────────────────────────────────────────
-const PROTECTED_ROUTES = ['/dashboard'];
-const AUTH_ROUTES = ['/login', '/signup', '/forgot-password', '/reset-password'];
-// Everything else is public — no redirect in either direction.
-
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: { headers: request.headers },
-  });
-
-  const pathname = request.nextUrl.pathname;
-
-  // Pass-through: auth callbacks and API routes — never intercept these.
-  if (pathname.startsWith('/auth/') || pathname.startsWith('/api/')) {
-    return response;
-  }
-
-  // ── Build SSR Supabase client (keeps session cookies in sync) ────────────
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, {
-              ...options,
-              secure: process.env.NODE_ENV === 'production', // 👈 লোকালহোস্টের জন্য ফিক্স
-            })
-          );
-        },
-      },
-    }
-  );
-
-  // ── Verify session server-side (never trust client state alone) ──────────
-  // getUser() validates the JWT against Supabase — cannot be spoofed.
-  const { data: { user } } = await supabase.auth.getUser();
-
-  const isProtected = PROTECTED_ROUTES.some(r => pathname.startsWith(r));
-  const isAuthRoute = AUTH_ROUTES.some(r => pathname.startsWith(r));
-
-  // ─── 1. No session + protected route → force login ───────────────────────
-  if (!user && isProtected) {
-    // Clear stale auth_session cookie so landing page doesn't show Dashboard
-    // button for a user whose Supabase session has already expired.
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('next', pathname);
-    const redirectResponse = NextResponse.redirect(loginUrl);
-    redirectResponse.cookies.delete('auth_session');
-    return redirectResponse;
-  }
-
-  // ─── 2. Active session + auth route → bounce to dashboard ────────────────
-  if (user && isAuthRoute) {
-    // Special case: password-recovery flow must be allowed through
-    const isRecoveryMode = request.cookies.get('xelpay_recovery_mode')?.value === 'true';
-    if ((pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password')) && isRecoveryMode) {
-      return response;
-    }
-
-    // Confirm merchant record exists before redirecting
-    const { data: merchant } = await supabase
-      .from('merchants')
-      .select('id')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (!merchant) {
-      // Auth session exists but no merchant profile → force re-signup
-      const url = new URL('/auth/force-signout', request.url);
-      url.searchParams.set('redirect', '/signup');
-      return NextResponse.redirect(url);
-    }
-
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
-  // ─── 3. Set custom HttpOnly auth cookie on every valid session ───────────
-  // No maxAge — cookie persists until user explicitly logs out or clears
-  // browser data. Supabase handles its own token refresh automatically.
-  if (user) {
-    response.cookies.set('auth_session', 'authenticated', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      // No maxAge — session lives as long as the Supabase JWT is valid and
-      // auto-refreshed. User must explicitly log out to clear.
-      path: '/',
-    });
-  } else {
-    // Clear our custom cookie if Supabase session is gone
-    response.cookies.delete('auth_session');
-  }
-
-  return response;
-}
-
-export const config = {
-  matcher: [
-    '/dashboard/:path*',
-    '/login',
-    '/signup',
-    '/forgot-password',
-    '/reset-password',
-    // Include root and info pages so the auth_session cookie gets set/cleared
-    '/',
-    '/info/:path*',
-  ],
-};
-</file>
-
-<file path="src/app/auth/callback/route.ts">
-import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-
-export const dynamic = 'force-dynamic';
-
-export async function GET(request: Request) {
-  const requestUrl = new URL(request.url);
-  const code = requestUrl.searchParams.get('code');
-  const next = requestUrl.searchParams.get('next') || '/dashboard';
-
-  if (!code) {
-    return NextResponse.redirect(
-      new URL('/login?error=no_code', requestUrl.origin)
-    );
-  }
-
-  const cookieStore = await cookies();
-
-  // cookiesToCommit — redirect response-এ manually set করার জন্য collect করব
-  const cookiesToCommit: { name: string; value: string; options: any }[] = [];
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, {
-              ...options,
-              secure: process.env.NODE_ENV === 'production',
-            });
-            cookiesToCommit.push({
-              name,
-              value,
-              options: {
-                ...options,
-                secure: process.env.NODE_ENV === 'production',
-              },
-            });
-          });
-        },
-      },
-    }
-  );
-
-  const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-
-  if (exchangeError || !data?.user) {
-    return NextResponse.redirect(
-      new URL('/login?error=exchange_failed', requestUrl.origin)
-    );
-  }
-
-  const user = data.user;
-
-  const { data: merchant, error: merchantError } = await supabase
-    .from('merchants')
-    .select('id, status, is_demo')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (merchantError) {
-    return NextResponse.redirect(
-      new URL('/login?error=db_error', requestUrl.origin)
-    );
-  }
-
-  if (!merchant) {
-    await supabase.auth.signOut();
-    return NextResponse.redirect(
-      new URL('/login?error=no_account', requestUrl.origin)
-    );
-  }
-
-  const mStatus = merchant.status?.toLowerCase();
-
-  if (['suspended', 'ban', 'banned'].includes(mStatus)) {
-    await supabase.auth.signOut();
-    return NextResponse.redirect(
-      new URL('/login?error=suspended', requestUrl.origin)
-    );
-  }
-
-  if (mStatus === 'pending') {
-    await supabase.auth.signOut();
-    return NextResponse.redirect(
-      new URL('/login?error=pending', requestUrl.origin)
-    );
-  }
-
-  const safeNext =
-    next.startsWith('/') && !next.startsWith('//')
-      ? next
-      : '/dashboard';
-
-  // ── Redirect response-এ Supabase session cookies সরাসরি set করি ────────────
-  // Next.js Route Handler-এ cookies() দিয়ে set করা values redirect response-এ
-  // automatically forward হয় না। তাই collect করা cookies manually লাগাতে হয়।
-  const redirectResponse = NextResponse.redirect(new URL(safeNext, requestUrl.origin));
-
-  cookiesToCommit.forEach(({ name, value, options }) => {
-    redirectResponse.cookies.set(name, value, options);
-  });
-
-  return redirectResponse;
-}
-</file>
-
 <file path="src/app/dashboard/customers/page.tsx">
 'use client';
 
@@ -8996,787 +9777,6 @@ export default function RootLayout({
 }
 </file>
 
-<file path="src/app/login/LoginClient.tsx">
-'use client';
-
-import { useState, useEffect, useRef, Suspense } from 'react';
-import {
-  Mail, Lock, LogIn, Eye, EyeOff, AlertCircle, Send, ArrowLeft,
-  Moon, Sun, Menu, X, Home, HelpCircle, Sparkles, Clock,
-  ShieldCheck, RefreshCw, UserPlus,
-} from 'lucide-react';
-import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Toaster, toast } from 'sonner';
-import ReCAPTCHA from 'react-google-recaptcha';
-import { syncEmailVerified } from '@/lib/auth';
-import { useTheme } from 'next-themes';
-
-const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '';
-
-// ─── SUSPENDED MODAL ─────────────────────────────────────────────────────────
-const SuspendedModal = ({ isOpen, telegramLink, onClose }: any) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl p-7 text-center shadow-2xl border border-slate-100 dark:border-slate-800">
-        <div className="w-14 h-14 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-5">
-          <AlertCircle size={28} className="text-red-500" />
-        </div>
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Account Suspended</h3>
-        <p className="text-slate-400 text-sm mb-7 leading-relaxed">
-          Your account has been suspended due to a policy violation or review.
-        </p>
-        <div className="flex flex-col gap-2.5">
-          <button
-            onClick={() => telegramLink && telegramLink !== '#' && window.open(telegramLink, '_blank', 'noopener,noreferrer')}
-            className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-all"
-          >
-            <Send size={15} /> Contact Support
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── PENDING MODAL ────────────────────────────────────────────────────────────
-const PendingModal = ({ isOpen, telegramLink, onClose }: any) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl p-7 text-center shadow-2xl border border-slate-100 dark:border-slate-800">
-        <div className="w-14 h-14 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto mb-5">
-          <Clock size={28} className="text-amber-500" />
-        </div>
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Account Pending</h3>
-        <p className="text-slate-400 text-sm mb-7 leading-relaxed">
-          Your account is currently under review. We will notify you once approved.
-        </p>
-        <div className="flex flex-col gap-2.5">
-          <button
-            onClick={() => telegramLink && telegramLink !== '#' && window.open(telegramLink, '_blank', 'noopener,noreferrer')}
-            className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-all"
-          >
-            <Send size={15} /> Contact Support
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── NO ACCOUNT MODAL (Google OAuth — no merchant record) ────────────────────
-const NoAccountModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl p-7 text-center shadow-2xl border border-slate-100 dark:border-slate-800">
-        <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-5">
-          <AlertCircle size={28} className="text-slate-500 dark:text-slate-400" />
-        </div>
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Account Found</h3>
-        <p className="text-slate-400 dark:text-slate-500 text-sm mb-7 leading-relaxed">
-          We couldn't find a XelPay account linked to this Google account.
-          Please create an account or try a different login method.
-        </p>
-        <div className="flex flex-col gap-2.5">
-          <Link
-            href="/signup"
-            className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-all"
-          >
-            <UserPlus size={15} /> Create An Account
-          </Link>
-          <button
-            onClick={onClose}
-            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── DEMO BANNER ──────────────────────────────────────────────────────────────
-const DemoBanner = () => (
-  <div className="bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 text-amber-950 px-4 py-2 text-center flex items-center justify-center gap-2">
-    <Sparkles size={13} className="shrink-0" />
-    <span className="text-[10px] font-black uppercase tracking-widest">
-      Demo Mode Active — Credentials pre-filled for exploration
-    </span>
-    <Sparkles size={13} className="shrink-0" />
-  </div>
-);
-
-// ─── MAIN LOGIN CONTENT ───────────────────────────────────────────────────────
-function LoginContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const mode = searchParams.get('mode');
-  const nextUrl = searchParams.get('next') || '/dashboard';
-  const { resolvedTheme, setTheme } = useTheme();
-
-  const [mounted, setMounted] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const recaptchaRef = useRef<any>(null);
-
-  const [showSuspendedModal, setShowSuspendedModal] = useState(false);
-  const [showPendingModal, setShowPendingModal] = useState(false);
-  const [showNoAccountModal, setShowNoAccountModal] = useState(false);
-  const [telegramLink, setTelegramLink] = useState('#');
-
-  const [otpLoginEnabled, setOtpLoginEnabled] = useState(false);
-  const [otpSettingLoaded, setOtpSettingLoaded] = useState(false);
-
-  // OTP login flow state
-  const [viewState, setViewState] = useState<'form' | 'otp_input'>('form');
-  const [otpEmail, setOtpEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [otpCooldown, setOtpCooldown] = useState(0);
-  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
-
-  // Guard to prevent double-fire of auto-verify
-  const isVerifyingRef = useRef(false);
-
-  useEffect(() => { setMounted(true); }, []);
-
-  useEffect(() => {
-    const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) { setLoading(false); setGoogleLoading(false); }
-    };
-    window.addEventListener('pageshow', handlePageShow);
-    return () => window.removeEventListener('pageshow', handlePageShow);
-  }, []);
-
-  // OTP login setting load
-  useEffect(() => {
-    const loadOtpSetting = async () => {
-      try {
-        const { data } = await supabase
-          .from('site_settings')
-          .select('value, is_active')
-          .eq('key_name', 'otp_login')
-          .maybeSingle();
-        setOtpLoginEnabled(data?.is_active === true);
-      } catch {
-        setOtpLoginEnabled(false);
-      } finally {
-        setOtpSettingLoaded(true);
-      }
-    };
-    loadOtpSetting();
-  }, []);
-
-  // ─── AUTO-VERIFY: fire as soon as the 6th OTP digit is entered ───────────
-  useEffect(() => {
-    if (viewState === 'otp_input' && otp.length === 6 && !loading && !isVerifyingRef.current) {
-      isVerifyingRef.current = true;
-      handleVerifyOtp();
-    }
-    if (otp.length < 6) isVerifyingRef.current = false;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [otp, viewState]);
-
-  const fetchTelegramLink = async () => {
-    const { data: settings } = await supabase
-      .from('site_settings')
-      .select('value')
-      .eq('key_name', 'support_telegram')
-      .maybeSingle();
-    if (settings?.value) setTelegramLink(settings.value);
-  };
-
-  // ── error param থেকে modal দেখাও ──────────────────────────────────────────
-  const errorParam = searchParams.get('error');
-  useEffect(() => {
-    if (!errorParam) return;
-    if (errorParam === 'no_account') {
-      setShowNoAccountModal(true);
-    } else if (errorParam === 'suspended' || errorParam === 'ban') {
-      fetchTelegramLink().then(() => setShowSuspendedModal(true));
-    } else if (errorParam === 'pending') {
-      fetchTelegramLink().then(() => setShowPendingModal(true));
-    } else if (errorParam === 'exchange_failed') {
-      toast.error('Login failed. Please try again.');
-    } else if (errorParam === 'db_error') {
-      toast.error('Something went wrong. Please try again.');
-    } else if (errorParam === 'invalid_tx') {
-      toast.error('Security check failed. Please try again.');
-    }
-  }, [errorParam]);
-
-  // Demo mode
-  useEffect(() => {
-    if (mode === 'demo') {
-      sessionStorage.setItem('xelpay_demo_mode', 'true');
-      (async () => {
-        try {
-          const { data } = await supabase
-            .from('site_settings')
-            .select('value')
-            .eq('key_name', 'demo_credentials')
-            .maybeSingle();
-
-          if (data?.value) {
-            const parsed = JSON.parse(data.value);
-            if (parsed?.email) setEmail(parsed.email);
-            if (parsed?.password) setPassword(parsed.password);
-            toast.success('Demo credentials loaded! Explore freely.', { icon: '✨', duration: 4000 });
-          } else {
-            toast.error('Demo credentials not configured.', { duration: 4000 });
-          }
-        } catch {
-          toast.error('Failed to load demo credentials.', { duration: 4000 });
-        }
-      })();
-    } else {
-      sessionStorage.removeItem('xelpay_demo_mode');
-    }
-  }, [mode]);
-
-  useEffect(() => {
-    if (otpCooldown > 0) {
-      const t = setInterval(() => setOtpCooldown(c => c - 1), 1000);
-      return () => clearInterval(t);
-    }
-  }, [otpCooldown]);
-
-  const clearForgotSession = () => {
-    sessionStorage.removeItem('xelpay_fp_step');
-    sessionStorage.removeItem('xelpay_fp_email');
-    sessionStorage.removeItem('xelpay_fp_resend');
-    sessionStorage.removeItem('xelpay_fp_cooldown_end');
-  };
-
-  // ── Merchant check & redirect ─────────────────────────────────────────────
-  const checkMerchantAndRedirect = async (userId: string, emailConfirmedAt: string | null) => {
-    try {
-      const { data: merchant } = await supabase
-        .from('merchants')
-        .select('status, is_demo')
-        .eq('id', userId)
-        .single();
-
-      if (mode === 'demo' && merchant?.is_demo !== true) {
-        await supabase.auth.signOut();
-        toast.error('Not a demo account.');
-        setLoading(false);
-        return;
-      }
-
-      const mStatus = merchant?.status?.toLowerCase();
-
-      if (['suspended', 'ban', 'banned'].includes(mStatus)) {
-        await supabase.auth.signOut();
-        await fetchTelegramLink();
-        setShowSuspendedModal(true);
-        setLoading(false);
-        return;
-      }
-      if (mStatus === 'pending') {
-        await supabase.auth.signOut();
-        await fetchTelegramLink();
-        setShowPendingModal(true);
-        setLoading(false);
-        return;
-      }
-
-      if (emailConfirmedAt) {
-        try { await syncEmailVerified(userId); } catch (_) {}
-      }
-      // window.location.href ব্যবহার করা হচ্ছে কারণ এটা full page reload করে।
-      // এতে middleware নতুন request-এ Supabase session detect করে
-      // auth_session HttpOnly cookie সঠিকভাবে set করতে পারে।
-      // router.push() শুধু client-side navigation করে — middleware cookie
-      // set হওয়ার আগেই navigate হয়ে login page-এ ফিরে আসার সমস্যা তৈরি করে।
-      window.location.href = nextUrl;
-    } catch {
-      window.location.href = nextUrl;
-    }
-  };
-
-  // ── Password Login ────────────────────────────────────────────────────────
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!captchaToken) { toast.error('Please complete the reCAPTCHA.'); return; }
-    setLoading(true);
-
-    const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      if (error.message.toLowerCase().includes('invalid login credentials')) {
-        toast.error('Wrong email or password.');
-      } else {
-        toast.error(error.message);
-      }
-      setLoading(false);
-      recaptchaRef.current?.reset();
-      setCaptchaToken(null);
-      return;
-    }
-
-    if (authData.user) {
-      await checkMerchantAndRedirect(authData.user.id, authData.user.email_confirmed_at);
-    }
-  };
-
-  // ── OTP Step 1: Send ──────────────────────────────────────────────────────
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!captchaToken) { toast.error('Please complete the reCAPTCHA.'); return; }
-    if (mode === 'demo') { toast.error('OTP login is disabled in demo mode.'); return; }
-    setLoading(true);
-
-    const { data: merchant } = await supabase
-      .from('merchants')
-      .select('status, is_email_verified')
-      .eq('email', email)
-      .maybeSingle();
-
-    if (!merchant) {
-      toast.error('No account found with this email address.');
-      setLoading(false); recaptchaRef.current?.reset(); setCaptchaToken(null); return;
-    }
-
-    const mStatus = merchant.status?.toLowerCase();
-    if (['suspended', 'ban', 'banned'].includes(mStatus)) {
-      await fetchTelegramLink(); setShowSuspendedModal(true); setLoading(false); return;
-    }
-    if (mStatus === 'pending') {
-      await fetchTelegramLink(); setShowPendingModal(true); setLoading(false); return;
-    }
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: false },
-    });
-
-    if (error) {
-      toast.error(error.message);
-      setLoading(false); recaptchaRef.current?.reset(); setCaptchaToken(null); return;
-    }
-
-    setOtpEmail(email);
-    setOtp('');
-    setOtpCooldown(60);
-    setViewState('otp_input');
-    toast.success('OTP sent! Check your inbox.');
-    recaptchaRef.current?.reset(); setCaptchaToken(null); setLoading(false);
-  };
-
-  // ── OTP Step 2: Verify ────────────────────────────────────────────────────
-  const handleVerifyOtp = async () => {
-    if (otp.length < 6) return;
-    setLoading(true);
-
-    const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-      email: otpEmail,
-      token: otp,
-      type: 'email',
-    });
-
-    if (verifyError) {
-      toast.error('Invalid or expired OTP. Please try again.');
-      isVerifyingRef.current = false;
-      setLoading(false); return;
-    }
-
-    if (verifyData.user) {
-      await checkMerchantAndRedirect(verifyData.user.id, verifyData.user.email_confirmed_at);
-    }
-  };
-
-  // ── OTP Resend ────────────────────────────────────────────────────────────
-  const handleResendOtp = async () => {
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: otpEmail,
-      options: { shouldCreateUser: false },
-    });
-    if (error) { toast.error('Resend failed: ' + error.message); }
-    else { toast.success('New OTP sent! Check your inbox.'); setOtpCooldown(60); setOtp(''); }
-    setLoading(false);
-  };
-
-  // ── OTP digit helpers ─────────────────────────────────────────────────────
-  const handleOtpChange = (index: number, value: string) => {
-    const digit = value.replace(/\D/g, '').slice(-1);
-    const newOtp = otp.split('');
-    newOtp[index] = digit;
-    const joined = newOtp.join('');
-    setOtp(joined);
-    if (digit && index < 5) otpInputRefs.current[index + 1]?.focus();
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      otpInputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleOtpPaste = (e: React.ClipboardEvent) => {
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (pasted.length === 6) { setOtp(pasted); otpInputRefs.current[5]?.focus(); }
-  };
-
-  // ── Google Login ──────────────────────────────────────────────────────────
-  const handleGoogleLogin = async () => {
-    if (mode === 'demo') { toast.error('Google login disabled in demo mode.'); return; }
-    setGoogleLoading(true);
-
-    const txId =
-      (typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID().replace(/-/g, '')
-        : Math.random().toString(36).substring(2, 15)) + Date.now().toString(36);
-
-    sessionStorage.setItem('auth_tx', txId);
-    localStorage.setItem('oauth_source', 'login');
-
-    const redirectTo = `${window.location.origin}/auth/callback?tx=${txId}&next=${encodeURIComponent(nextUrl)}`;
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo },
-    });
-    if (error) { toast.error(error.message); setGoogleLoading(false); }
-  };
-
-  const inputClass = 'w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm text-slate-900 dark:text-white placeholder:text-slate-400';
-  const labelClass = 'text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-0.5 mb-1 block';
-  const isDark = resolvedTheme === 'dark';
-
-  return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] font-sans transition-colors duration-300 flex flex-col">
-      <Toaster position="top-center" richColors />
-
-      {/* HEADER */}
-      <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-        <div className="hidden md:flex items-center h-16 px-8 justify-between max-w-7xl mx-auto w-full">
-          <Link href="/" className="flex items-center gap-1">
-            <span className="text-2xl font-black text-blue-600 tracking-tighter">X</span>
-            <span className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
-          </Link>
-          <div className="flex items-center gap-6 text-sm">
-            <Link href="/" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Home</Link>
-            <Link href="/info/contact" className="text-slate-600 dark:text-slate-300 hover:text-blue-600 transition font-medium">Support</Link>
-            {mounted && (
-              <button
-                onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50 hover:scale-110 transition-all"
-                aria-label="Toggle theme"
-              >
-                {isDark ? <Sun size={17} /> : <Moon size={17} />}
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex md:hidden items-center h-16 px-4 justify-between max-w-7xl mx-auto w-full">
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all"
-          >
-            {menuOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
-          <div className="flex items-center justify-end flex-1">
-            {mounted && (
-              <button
-                onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50 hover:scale-110 transition-all"
-                aria-label="Toggle theme"
-              >
-                {isDark ? <Sun size={17} /> : <Moon size={17} />}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {menuOpen && (
-          <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0d1526] animate-in slide-in-from-top-2 duration-200">
-            <div className="px-4 py-3 flex flex-col gap-1 max-w-7xl mx-auto w-full">
-              <Link href="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
-                <Home size={15} /> Home
-              </Link>
-              <Link href="/info/contact" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
-                <HelpCircle size={15} /> Support
-              </Link>
-            </div>
-          </div>
-        )}
-      </header>
-
-      <div className="flex-1 flex items-center justify-center p-4 py-10">
-        <div className="w-full max-w-md md:max-w-2xl bg-white dark:bg-[#111827] rounded-2xl md:rounded-3xl shadow-sm md:shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-
-          {mode === 'demo' && <DemoBanner />}
-
-          <div className="flex flex-col md:flex-row md:items-stretch">
-            {/* Left Sidebar */}
-            <div className="hidden md:flex flex-col justify-between bg-blue-600 rounded-l-3xl p-10 min-w-[200px] text-white">
-              <Link href="/" className="flex items-center gap-1.5 text-white/70 hover:text-white text-xs transition-colors">
-                <ArrowLeft size={14} /> Home
-              </Link>
-              <div className="flex flex-col items-center">
-                <Link href="/" className="inline-flex items-center gap-1 mb-5">
-                  <span className="text-4xl font-black text-white tracking-tighter">X</span>
-                  <span className="text-3xl font-semibold text-white tracking-tight -ml-0.5 opacity-90">elPay</span>
-                </Link>
-                <p className="text-sm opacity-80 text-center leading-relaxed">Secure merchant payment automation</p>
-                <div className="mt-7 flex flex-col gap-3 w-full">
-                  {['99.9% Uptime', 'Bank-grade security', '24/7 support'].map(s => (
-                    <div key={s} className="flex items-center gap-2 text-xs opacity-70">
-                      <div className="w-1.5 h-1.5 rounded-full bg-green-300" /> {s}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="text-[10px] text-white/40 text-center">© {new Date().getFullYear()} XelPay</div>
-            </div>
-
-            <div className="flex-1 p-6 md:p-10 flex flex-col justify-center">
-
-              <div className="md:hidden flex justify-center mb-6">
-                <Link href="/" className="inline-flex items-center gap-1">
-                  <span className="text-3xl font-black text-blue-600 tracking-tighter">X</span>
-                  <span className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
-                </Link>
-              </div>
-
-              {/* ── OTP INPUT VIEW ── */}
-              {viewState === 'otp_input' ? (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 text-center">
-                  <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                    <ShieldCheck size={32} className="text-blue-600" />
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Enter Your OTP</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-7 leading-relaxed">
-                    We sent a 6-digit code to{' '}
-                    <b className="text-slate-700 dark:text-slate-300">{otpEmail}</b>.
-                  </p>
-
-                  <div className="flex gap-2.5 justify-center mb-7" onPaste={handleOtpPaste}>
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <input
-                        key={i}
-                        ref={el => { otpInputRefs.current[i] = el; }}
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={1}
-                        value={otp[i] || ''}
-                        onChange={e => handleOtpChange(i, e.target.value)}
-                        onKeyDown={e => handleOtpKeyDown(i, e)}
-                        className="w-11 h-13 text-center text-lg font-bold bg-white dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-900 dark:text-white py-3"
-                      />
-                    ))}
-                  </div>
-
-                  <button
-                    disabled={loading || otp.length < 6}
-                    onClick={handleVerifyOtp}
-                    className="w-full bg-blue-600 disabled:bg-blue-400 text-white py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2.5 mb-3"
-                  >
-                    {loading
-                      ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying...</>
-                      : <><ShieldCheck size={16} /> Sign In</>
-                    }
-                  </button>
-
-                  <button
-                    disabled={otpCooldown > 0 || loading}
-                    onClick={handleResendOtp}
-                    className="w-full flex items-center justify-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors disabled:opacity-50 mb-5"
-                  >
-                    <RefreshCw size={13} />
-                    {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : 'Resend OTP'}
-                  </button>
-
-                  <button
-                    onClick={() => { setViewState('form'); setOtp(''); }}
-                    className="flex items-center justify-center gap-1.5 mx-auto text-xs text-slate-400 hover:text-blue-600 uppercase tracking-widest font-bold transition-colors"
-                  >
-                    <ArrowLeft size={14} /> Back to Login
-                  </button>
-                </div>
-
-              /* ── MAIN FORM ── */
-              ) : (
-                <>
-                  <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-5 text-center md:text-left">
-                    Welcome Back
-                  </h2>
-
-                  {otpSettingLoaded && otpLoginEnabled && (
-                    <div className="flex bg-slate-100 dark:bg-[#0B1120] p-1 rounded-xl mb-6 border border-slate-200 dark:border-slate-800">
-                      <button
-                        type="button"
-                        onClick={() => setLoginMethod('password')}
-                        className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${loginMethod === 'password' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
-                      >
-                        With Password
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLoginMethod('otp')}
-                        className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${loginMethod === 'otp' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
-                      >
-                        <Sparkles size={13} /> With OTP
-                      </button>
-                    </div>
-                  )}
-
-                  {(!otpLoginEnabled || loginMethod === 'password') ? (
-                    <form onSubmit={handleLogin} className="space-y-4">
-                      <div>
-                        <label className={labelClass}>Email <span className="text-red-400">*</span></label>
-                        <div className="relative">
-                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                          <input required type="email" name="email" autoComplete="username" placeholder="admin@xelpay.com" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
-                        </div>
-                      </div>
-                      <div>
-                        <label className={labelClass}>Password <span className="text-red-400">*</span></label>
-                        <div className="relative">
-                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                          <input required type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className={`${inputClass} pr-11`} />
-                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
-                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 rounded border-slate-300 accent-blue-600" />
-                          <span className="text-xs text-slate-500 dark:text-slate-400">Remember me</span>
-                        </label>
-                        <Link href={`/forgot-password${mode === 'demo' ? '?mode=demo' : ''}`} onClick={clearForgotSession} className="text-xs text-blue-600 hover:underline">
-                          Forgot Password?
-                        </Link>
-                      </div>
-                      <div className="flex justify-center pt-2">
-                        {mounted && (
-                          <ReCAPTCHA
-                            ref={recaptchaRef}
-                            sitekey={RECAPTCHA_SITE_KEY}
-                            onChange={token => setCaptchaToken(token)}
-                            onExpired={() => setCaptchaToken(null)}
-                            theme={isDark ? 'dark' : 'light'}
-                          />
-                        )}
-                      </div>
-                      <button disabled={loading} type="submit" className="w-full bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-lg shadow-blue-600/25 h-[50px]">
-                        {loading
-                          ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          : <>Sign In <LogIn size={15} className="ml-1.5" /></>
-                        }
-                      </button>
-                    </form>
-                  ) : (
-                    <form onSubmit={handleSendOtp} className="space-y-4">
-                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
-                        Enter your email and we'll send you a 6-digit OTP to log in instantly — no password needed.
-                      </p>
-                      <div>
-                        <label className={labelClass}>Email <span className="text-red-400">*</span></label>
-                        <div className="relative">
-                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                          <input required type="email" name="email" autoComplete="username" placeholder="admin@xelpay.com" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
-                        </div>
-                      </div>
-                      <div className="flex justify-center pt-2">
-                        {mounted && (
-                          <ReCAPTCHA
-                            ref={recaptchaRef}
-                            sitekey={RECAPTCHA_SITE_KEY}
-                            onChange={token => setCaptchaToken(token)}
-                            onExpired={() => setCaptchaToken(null)}
-                            theme={isDark ? 'dark' : 'light'}
-                          />
-                        )}
-                      </div>
-                      <button disabled={loading} type="submit" className="w-full bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-lg shadow-blue-600/25 h-[50px]">
-                        {loading
-                          ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          : <>Send OTP <Send size={15} className="ml-1.5" /></>
-                        }
-                      </button>
-                    </form>
-                  )}
-
-                  {mode !== 'demo' && (
-                    <>
-                      <div className="relative my-3 text-center">
-                        <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-slate-200 dark:border-slate-700" />
-                        </div>
-                        <span className="relative px-4 bg-white dark:bg-[#111827] text-[10px] text-slate-400 uppercase tracking-widest">Or</span>
-                      </div>
-                      <button
-                        onClick={handleGoogleLogin}
-                        disabled={googleLoading}
-                        className="w-full bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 py-3.5 rounded-xl text-sm text-slate-700 dark:text-slate-200 flex items-center justify-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
-                      >
-                        {googleLoading
-                          ? <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-                          : <><img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="google" /> Sign in with Google</>
-                        }
-                      </button>
-                      <p className="mt-4 text-center text-slate-400 text-sm">
-                        New to XelPay?{' '}
-                        <Link href="/signup" onClick={clearForgotSession} className="text-blue-600 font-medium hover:underline">
-                          Create Account
-                        </Link>
-                      </p>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* MODALS */}
-      <SuspendedModal isOpen={showSuspendedModal} telegramLink={telegramLink} onClose={() => setShowSuspendedModal(false)} />
-      <PendingModal isOpen={showPendingModal} telegramLink={telegramLink} onClose={() => setShowPendingModal(false)} />
-      <NoAccountModal isOpen={showNoAccountModal} onClose={() => setShowNoAccountModal(false)} />
-    </div>
-  );
-}
-
-export default function LoginClient() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">Loading...</div>}>
-      <LoginContent />
-    </Suspense>
-  );
-}
-</file>
-
 <file path="src/app/page.tsx">
 // PATH: /app/page.tsx
 import { cookies } from 'next/headers';
@@ -9899,69 +9899,6 @@ export default async function LandingPage() {
       initialFaqs={faqs || []}
       initialSettings={settingsMap}
     />
-  );
-}
-</file>
-
-<file path="src/app/dashboard/layout.tsx">
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import DashboardClient from '@/components/dashboard/DashboardClient';
-import type { Metadata, Viewport } from 'next';
-import { Toaster } from 'sonner'; // 🚀 ফিক্স: Toaster ইম্পোর্ট করা হয়েছে
-
-export const metadata: Metadata = {
-  title: { default: 'Dashboard — XelPay', template: '%s — XelPay' },
-  description: 'XelPay merchant dashboard.',
-  robots: { index: false, follow: false },
-};
-
-// 💥 মোবাইলের জুম ইন/আউট চিরতরে বন্ধ করার ম্যাজিক ফিক্স
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false, // এটি আঙুল দিয়ে জুম করা বন্ধ করে দেবে
-};
-
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-
-  // Fast check — middleware already handled this
-  if (cookieStore.get('auth_session')?.value !== 'authenticated') {
-    redirect('/login');
-  }
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) { return cookieStore.get(name)?.value; },
-        set() {},
-        remove() {},
-      },
-    }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/login');
-
-  const { data: merchant } = await supabase
-    .from('merchants')
-    .select('*')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (!merchant) redirect('/auth/force-signout?redirect=/signup');
-
-  return (
-    <DashboardClient merchant={merchant} user={user}>
-      {/* 🚀 ফিক্স: ড্যাশবোর্ডে পপআপ/মেসেজ দেখানোর জন্য Toaster যুক্ত করা হয়েছে */}
-      <Toaster richColors position="top-center" />
-      {children}
-    </DashboardClient>
   );
 }
 </file>
@@ -10241,6 +10178,69 @@ export async function POST(request: Request) {
     console.error('[verify-and-register] Unexpected error:', err);
     return NextResponse.json({ error: 'An unexpected error occurred.' }, { status: 500 });
   }
+}
+</file>
+
+<file path="src/app/dashboard/layout.tsx">
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import DashboardClient from '@/components/dashboard/DashboardClient';
+import type { Metadata, Viewport } from 'next';
+import { Toaster } from 'sonner'; // 🚀 ফিক্স: Toaster ইম্পোর্ট করা হয়েছে
+
+export const metadata: Metadata = {
+  title: { default: 'Dashboard — XelPay', template: '%s — XelPay' },
+  description: 'XelPay merchant dashboard.',
+  robots: { index: false, follow: false },
+};
+
+// 💥 মোবাইলের জুম ইন/আউট চিরতরে বন্ধ করার ম্যাজিক ফিক্স
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false, // এটি আঙুল দিয়ে জুম করা বন্ধ করে দেবে
+};
+
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies();
+
+  // Fast check — middleware already handled this
+  if (cookieStore.get('auth_session')?.value !== 'authenticated') {
+    redirect('/login');
+  }
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) { return cookieStore.get(name)?.value; },
+        set() {},
+        remove() {},
+      },
+    }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const { data: merchant } = await supabase
+    .from('merchants')
+    .select('*')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (!merchant) redirect('/auth/force-signout?redirect=/signup');
+
+  return (
+    <DashboardClient merchant={merchant} user={user}>
+      {/* 🚀 ফিক্স: ড্যাশবোর্ডে পপআপ/মেসেজ দেখানোর জন্য Toaster যুক্ত করা হয়েছে */}
+      <Toaster richColors position="top-center" />
+      {children}
+    </DashboardClient>
+  );
 }
 </file>
 
@@ -16958,448 +16958,6 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
 }
 </file>
 
-<file path="src/app/api/telegram/webhook/route.ts">
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-// ⚠️ Note: To fetch emails using admin.getUserById, ensure this is the Service Role Key
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-const BOT_TOKEN = process.env.XELPAY_BOT_TOKEN;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com';
-
-function generateComplexString(length: number): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    const bytes = crypto.randomBytes(length);
-    return Array.from(bytes).map(b => chars[b % chars.length]).join('');
-}
-
-export async function GET() {
-    return NextResponse.json({ status: "success", message: "Webhook API is ALIVE and Working! 🚀" });
-}
-
-async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-    await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
-    });
-}
-
-async function editTelegramMessage(chatId: string | number, messageId: number, text: string, replyMarkup?: any) {
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`;
-    await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
-    });
-}
-
-async function answerCallbackQuery(callbackQueryId: string, text: string, showAlert: boolean = true) {
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`;
-    await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ callback_query_id: callbackQueryId, text: text, show_alert: showAlert }),
-    });
-}
-
-async function getBotUsername() {
-    const { data } = await supabase.from('site_settings').select('value').eq('key_name', 'telegram').single();
-    return data?.value ? data.value.replace('@', '') : 'xelpay_alert_bot';
-}
-
-// ─── Group Admin Check Utility ───
-async function isGroupAdmin(chatId: string | number, userId: string | number): Promise<boolean> {
-    try {
-        const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${chatId}&user_id=${userId}`;
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.ok && data.result) {
-            const status = data.result.status;
-            return status === 'creator' || status === 'administrator';
-        }
-        return false;
-    } catch (error) {
-        console.error("Admin Check Error:", error);
-        return false;
-    }
-}
-
-// ─── Connection & Takeover Logic ───
-async function connectTelegram(
-    code: string, 
-    chatId: string | number, 
-    username: string | null, 
-    displayName: string | null, 
-    forceTakeover: boolean = false
-): Promise<{ text: string, replyMarkup?: any }> {
-    const chatStr = chatId.toString();
-
-    const { data: targetMerchant } = await supabase.from('merchants').select('id').eq('telegram_link_code', code).single();
-    const { data: targetBusiness } = await supabase.from('businesses').select('id, merchant_id, business_name').eq('telegram_link_code', code).single();
-
-    if (!targetMerchant && !targetBusiness) {
-        return { text: "❌ <b>Connection Failed</b>\nলিংকটি মেয়াদোত্তীর্ণ বা ভুল। নতুন করে জেনারেট করুন।" };
-    }
-
-    // TypeScript Fix: Using non-null assertion (!) for targetBusiness since we know it's not null here
-    const currentMerchantId = targetMerchant ? targetMerchant.id : targetBusiness!.merchant_id;
-    let takeoverNotice = '';
-
-    const { data: existingMerchant } = await supabase.from('merchants').select('id').eq('telegram_chat_id', chatStr).single();
-    const { data: existingBusinesses } = await supabase.from('businesses').select('id, merchant_id').eq('telegram_chat_id', chatStr);
-
-    const isOwnedByOtherMerchant = (existingMerchant && existingMerchant.id !== currentMerchantId) || 
-                                   (existingBusinesses && existingBusinesses.some(b => b.merchant_id !== currentMerchantId));
-
-    // ─── 1. Ownership & Takeover Handling ───
-    if (isOwnedByOtherMerchant) {
-        if (!forceTakeover) {
-            // Find who owns it currently to mask their email
-            const otherMerchantId = (existingMerchant && existingMerchant.id !== currentMerchantId) 
-                ? existingMerchant.id 
-                : existingBusinesses?.find(b => b.merchant_id !== currentMerchantId)?.merchant_id;
-            
-            let maskedEmail = 'Another Account';
-            if (otherMerchantId) {
-                // Fetching user email using Admin API
-                const { data: authData } = await supabase.auth.admin.getUserById(otherMerchantId);
-                if (authData?.user?.email) {
-                    const parts = authData.user.email.split('@');
-                    if (parts.length === 2) {
-                        maskedEmail = `${parts[0].substring(0, 2)}***@${parts[1]}`;
-                    }
-                }
-            }
-
-            return {
-                text: `⚠️ <b>Already Connected</b>\n\nThis group/chat is currently connected to another account (<code>${maskedEmail}</code>).\n\nDo you want to disconnect it from that account and take over?`,
-                replyMarkup: {
-                    inline_keyboard: [[{ text: "Confirm Takeover 🔄", callback_data: `takeover_${code}` }]]
-                }
-            };
-        } else {
-            // User confirmed the takeover. Force unlink from previous accounts.
-            const dummyCode = generateComplexString(12);
-            await supabase.from('merchants').update({ telegram_chat_id: null, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
-            await supabase.from('businesses').update({ telegram_chat_id: null, is_telegram_enabled: false, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
-            takeoverNotice = `\n⚠️ <i>Unlinked from previous account.</i>`;
-        }
-    }
-
-    // ─── 2. Merchant (Vault) Connection ───
-    if (targetMerchant) {
-        const newCode = generateComplexString(12);
-        await supabase.from('merchants').update({ 
-            telegram_chat_id: chatStr,
-            telegram_username: username,
-            telegram_display_name: displayName,
-            telegram_link_code: newCode 
-        }).eq('id', targetMerchant.id).select();
-
-        return {
-            text: `✅ <b>Master Vault Connected</b>\n<b>মাস্টার ভল্ট সংযোগ সফল</b>${takeoverNotice}\n\nYour master alerts will now be routed here.`,
-            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_m_${targetMerchant.id}` }]] }
-        };
-    }
-
-    // ─── 3. Business (Workspace) Connection ───
-    if (targetBusiness) {
-        // Vault to Business Guidance (Prevents direct duplicate connection logic)
-        if (existingMerchant && existingMerchant.id === currentMerchantId && !forceTakeover) {
-            return { 
-                text: `⚠️ <b>Already in Vault</b>\n\nএই চ্যাটটি অলরেডি আপনার Master Vault-এ যুক্ত আছে।\nনতুন করে কানেক্ট করার প্রয়োজন নেই, দয়া করে ড্যাশবোর্ড থেকে <b>"Import from Vault"</b> বাটনে ক্লিক করুন।` 
-            };
-        }
-
-        const newCode = generateComplexString(12);
-        await supabase.from('businesses').update({ 
-            telegram_chat_id: chatStr,
-            telegram_username: username,
-            telegram_display_name: displayName,
-            telegram_link_code: newCode,
-            is_telegram_enabled: true
-        }).eq('id', targetBusiness.id).select();
-
-        return {
-            text: `✅ <b>Workspace Connected</b>\n<b>ওয়ার্কস্পেস সংযোগ সফল</b>${takeoverNotice}\n\n🔹 <b>Workspace:</b> ${targetBusiness.business_name}\n\nWorkspace alerts will now be routed here.`,
-            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_b_${targetBusiness.id}` }]] }
-        };
-    }
-
-    return { text: "❌ <b>Unknown Error Occurred</b>" };
-}
-
-// ─── ডাটাবেস ইভেন্ট চ্যাট আইডি খোঁজার লজিক (Orders) ───
-async function getOrderTargets(merchantId?: string | null, businessId?: string | null) {
-    let targets: { chatId: string, accountName: string }[] = [];
-
-    if (businessId) {
-        const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
-        if (data?.telegram_chat_id && data.is_telegram_enabled) {
-            targets.push({ chatId: data.telegram_chat_id, accountName: data.business_name });
-            return targets; 
-        }
-    }
-
-    if (merchantId) {
-        const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
-        if (data?.telegram_chat_id) {
-            targets.push({ chatId: data.telegram_chat_id, accountName: data.display_name || 'Master Vault' });
-        }
-    }
-
-    return targets; 
-}
-
-// ─── ডাটাবেস ইভেন্ট চ্যাট আইডি খোঁজার লজিক (Notifications) ───
-async function getNotificationTargets(merchantId?: string | null, businessId?: string | null) {
-    let targets: { chatId: string, accountName: string }[] = [];
-
-    if (!merchantId && !businessId) {
-        const { data: merchants } = await supabase.from('merchants').select('telegram_chat_id').not('telegram_chat_id', 'is', null);
-        const { data: businesses } = await supabase.from('businesses').select('telegram_chat_id').not('telegram_chat_id', 'is', null).eq('is_telegram_enabled', true);
-        
-        const uniqueChats = new Map<string, string>();
-        merchants?.forEach(m => uniqueChats.set(m.telegram_chat_id, 'System Notice'));
-        businesses?.forEach(b => uniqueChats.set(b.telegram_chat_id, 'System Notice'));
-        
-        uniqueChats.forEach((accountName, chatId) => {
-            targets.push({ chatId, accountName });
-        });
-        return targets;
-    }
-
-    let bChatId: string | null = null;
-    let bAccountName: string = '';
-    if (businessId) {
-        const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
-        if (data?.telegram_chat_id && data.is_telegram_enabled) {
-            bChatId = data.telegram_chat_id;
-            bAccountName = data.business_name;
-        }
-    }
-
-    let mChatId: string | null = null;
-    let mAccountName: string = '';
-    if (merchantId) {
-        const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
-        if (data?.telegram_chat_id) {
-            mChatId = data.telegram_chat_id;
-            mAccountName = data.display_name || 'Master Vault';
-        }
-    }
-
-    if (mChatId && bChatId && mChatId === bChatId) {
-        targets.push({ chatId: mChatId, accountName: `${mAccountName} (Vault & Workspace)` });
-    } else {
-        if (mChatId) targets.push({ chatId: mChatId, accountName: mAccountName });
-        if (bChatId) targets.push({ chatId: bChatId, accountName: bAccountName });
-    }
-
-    return targets;
-}
-
-// ─── Supabase Database Webhook Handler ───
-async function handleSupabaseWebhook(body: any) {
-    const { type, table, record } = body;
-
-    if (table === 'orders' && type === 'UPDATE' && (record.status === 'success' || record.status === 'paid')) {
-        const targets = await getOrderTargets(record.merchant_id, record.business_id);
-        
-        if (targets.length > 0) {
-            const payMethod = record.method ? record.method.toUpperCase() : 'GATEWAY';
-            const currency = record.currency || 'BDT';
-
-            const message = `
-🟢 <b>Payment Received Successfully</b>
-<b>পেমেন্ট সফলভাবে গ্রহণ করা হয়েছে</b>
-
-━━━━━━━━━━━━━━━━━━━━
-▪️ <b>Account :</b> ${targets[0].accountName}
-▪️ <b>Amount  :</b> ${record.amount} ${currency}
-▪️ <b>Method  :</b> ${payMethod}
-▪️ <b>Product :</b> ${record.product_name || 'N/A'}
-▪️ <b>Trx ID  :</b> <code>${record.trx_id || 'N/A'}</code>
-▪️ <b>Order # :</b> <code>${record.order_no || record.id}</code>
-━━━━━━━━━━━━━━━━━━━━
-<i>This transaction has been automatically verified.</i>`;
-
-            const replyMarkup = {
-                inline_keyboard: [[{ text: "View Transaction ➔", url: `${SITE_URL}/dashboard/transactions` }]]
-            };
-
-            for (const target of targets) {
-                await sendTelegramMessage(target.chatId, message, replyMarkup);
-            }
-        }
-    }
-
-    if (table === 'notifications' && type === 'INSERT') {
-        const targets = await getNotificationTargets(record.merchant_id, record.business_id);
-        
-        if (targets.length > 0) {
-            const message = `
-📢 <b>System Notice</b>
-
-<b>${record.title}</b>
-${record.message}`;
-
-            const replyMarkup: any = { inline_keyboard: [] };
-            
-            if (record.action_url) {
-                const actionUrl = record.action_url.startsWith('http') ? record.action_url : `${SITE_URL}${record.action_url}`;
-                replyMarkup.inline_keyboard.push([
-                    { text: "View Details ➔", url: actionUrl }
-                ]);
-            }
-
-            for (const target of targets) {
-                await sendTelegramMessage(target.chatId, message, replyMarkup.inline_keyboard.length > 0 ? replyMarkup : undefined);
-            }
-        }
-    }
-
-    return NextResponse.json({ status: 'webhook_processed' });
-}
-
-
-export async function POST(req: Request) {
-    try {
-        const body = await req.json();
-
-        if (body.type && body.table && body.record) {
-            return await handleSupabaseWebhook(body);
-        }
-
-        if (body.my_chat_member) {
-            const newStatus = body.my_chat_member.new_chat_member.status;
-            if (newStatus === 'left' || newStatus === 'kicked') {
-                const chatId = body.my_chat_member.chat.id.toString();
-                const newCode = generateComplexString(12);
-
-                await supabase.from('merchants').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode }).eq('telegram_chat_id', chatId);
-                await supabase.from('businesses').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode, is_telegram_enabled: false }).eq('telegram_chat_id', chatId);
-
-                return NextResponse.json({ status: 'unlinked_on_kick' });
-            }
-        }
-
-        if (body.callback_query) {
-            const callbackQuery = body.callback_query;
-            const chatId = callbackQuery.message.chat.id;
-            const messageId = callbackQuery.message.message_id;
-            const data = callbackQuery.data;
-
-            const fromUser = callbackQuery.from || {};
-            const userId = fromUser.id;
-            const username = fromUser.username ? `@${fromUser.username}` : null;
-            const displayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
-            const chatType = callbackQuery.message.chat.type;
-
-            // ─── Takeover Confirmation Handler ───
-            if (data.startsWith('takeover_')) {
-                const code = data.replace('takeover_', '');
-
-                // Admin check for inline button click in groups
-                if (chatType === 'group' || chatType === 'supergroup') {
-                    const isAdmin = await isGroupAdmin(chatId, userId);
-                    if (!isAdmin) {
-                        await answerCallbackQuery(callbackQuery.id, "⚠️ Access Denied: Only admins can confirm this takeover.");
-                        return NextResponse.json({ status: 'not_admin' });
-                    }
-                }
-
-                const result = await connectTelegram(code, chatId, username, displayName, true);
-                await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
-                return NextResponse.json({ status: 'success' });
-            }
-
-            if (data.startsWith('connect_dm_')) {
-                const code = data.replace('connect_dm_', '');
-                const result = await connectTelegram(code, chatId, username, displayName, false);
-                await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
-            }
-            else if (data.startsWith('disconnect_m_')) {
-                const id = data.replace('disconnect_m_', '');
-                const newCode = generateComplexString(12);
-                await supabase.from('merchants').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode }).eq('id', id);
-                await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Master Vault alerts.");
-            }
-            else if (data.startsWith('disconnect_b_')) {
-                const id = data.replace('disconnect_b_', '');
-                const newCode = generateComplexString(12);
-                await supabase.from('businesses').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode, is_telegram_enabled: false }).eq('id', id);
-                await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Workspace alerts.");
-            }
-
-            return NextResponse.json({ status: 'success' });
-        }
-
-        if (body.message) {
-            const chat = body.message.chat;
-            const chatId = chat.id;
-            const chatType = chat.type;
-            const text = body.message.text ? body.message.text.trim() : '';
-            const userId = body.message.from?.id;
-
-            if (text.startsWith('/start')) {
-                const parts = text.split(/\s+/);
-                const code = parts.length > 1 ? parts[1] : null; 
-
-                if (!code) {
-                    if (chatType === 'private') {
-                        await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\n<b>ভুল কমান্ড!</b>\nPlease generate a valid connection link from your dashboard.");
-                    }
-                    return NextResponse.json({ status: 'no_code' });
-                }
-
-                // ─── Admin Security Logic ───
-                if (chatType === 'group' || chatType === 'supergroup') {
-                    if (!userId) return NextResponse.json({ status: 'ignored' });
-
-                    const isAdmin = await isGroupAdmin(chatId, userId);
-                    if (!isAdmin) {
-                        await sendTelegramMessage(chatId, "⚠️ <b>Access Denied</b>\n\nOnly group administrators can connect or configure this bot. Please ask an admin to send the connection command.");
-                        return NextResponse.json({ status: 'not_admin' });
-                    }
-
-                    const groupTitle = chat.title || 'Connected Group';
-                    const groupUsername = chat.username ? `@${chat.username}` : null;
-                    
-                    const result = await connectTelegram(code, chatId, groupUsername, groupTitle, false);
-                    await sendTelegramMessage(chatId, result.text, result.replyMarkup);
-                    return NextResponse.json({ status: 'connected_group' });
-                }
-
-                const botUsername = await getBotUsername();
-                const replyMarkup = {
-                    inline_keyboard: [
-                        [{ text: "Connect to THIS Chat ➔", callback_data: `connect_dm_${code}` }],
-                        [{ text: "Add to a GROUP instead ➔", url: `https://t.me/${botUsername}?startgroup=${code}` }]
-                    ]
-                };
-
-                await sendTelegramMessage(chatId, "<b>Where do you want to receive alerts?</b>\n<b>আপনি কোথায় এলার্ট পেতে চান?</b>\n\nYou can receive alerts directly in this chat, or add me to a group.", replyMarkup);
-                return NextResponse.json({ status: 'asked_user' });
-            }
-        }
-
-        return NextResponse.json({ status: 'ignored' });
-
-    } catch (error) {
-        console.error("Webhook Error:", error);
-        return NextResponse.json({ status: 'error' }, { status: 500 });
-    }
-}
-</file>
-
 <file path="src/app/dashboard/links/page.tsx">
 'use client';
 
@@ -19004,6 +18562,465 @@ export default function SmsData() {
       <SmsDataContent />
     </Suspense>
   );
+}
+</file>
+
+<file path="src/app/api/telegram/webhook/route.ts">
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const BOT_TOKEN = process.env.XELPAY_BOT_TOKEN;
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com';
+
+function generateComplexString(length: number): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const bytes = crypto.randomBytes(length);
+    return Array.from(bytes).map(b => chars[b % chars.length]).join('');
+}
+
+// ─── Utility: Escape HTML to prevent Telegram Parser Crashes ───
+function escapeHTML(text: string | null | undefined): string {
+    if (!text) return '';
+    return text.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+export async function GET() {
+    return NextResponse.json({ status: "success", message: "Webhook API is Secure & Running! 🚀" });
+}
+
+async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+    await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
+    });
+}
+
+async function editTelegramMessage(chatId: string | number, messageId: number, text: string, replyMarkup?: any) {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`;
+    await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
+    });
+}
+
+async function answerCallbackQuery(callbackQueryId: string, text: string, showAlert: boolean = true) {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`;
+    await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callback_query_id: callbackQueryId, text: text, show_alert: showAlert }),
+    });
+}
+
+// ─── Dynamic Bot Username Resolver ───
+async function getBotUsername() {
+    if (process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME) {
+        return process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME.replace('@', '');
+    }
+    const { data } = await supabase.from('site_settings').select('value').eq('key_name', 'telegram').single();
+    return data?.value ? data.value.replace('@', '') : 'xelpay_alert_bot';
+}
+
+// ─── Group Admin Check Utility ───
+async function isGroupAdmin(chatId: string | number, userId: string | number): Promise<boolean> {
+    try {
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${chatId}&user_id=${userId}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.ok && data.result) {
+            const status = data.result.status;
+            return status === 'creator' || status === 'administrator';
+        }
+        return false;
+    } catch (error) {
+        console.error("Admin Check Error:", error);
+        return false;
+    }
+}
+
+// ─── Connection & Takeover Logic ───
+async function connectTelegram(
+    code: string, 
+    chatId: string | number, 
+    username: string | null, 
+    displayName: string | null, 
+    forceTakeover: boolean = false
+): Promise<{ text: string, replyMarkup?: any }> {
+    const chatStr = chatId.toString();
+
+    const { data: targetMerchant } = await supabase.from('merchants').select('id').eq('telegram_link_code', code).single();
+    const { data: targetBusiness } = await supabase.from('businesses').select('id, merchant_id, business_name').eq('telegram_link_code', code).single();
+
+    if (!targetMerchant && !targetBusiness) {
+        return { text: "❌ <b>Connection Failed</b>\nলিংকটি মেয়াদোত্তীর্ণ বা ভুল। নতুন করে জেনারেট করুন।" };
+    }
+
+    const currentMerchantId = targetMerchant ? targetMerchant.id : targetBusiness!.merchant_id;
+    let takeoverNotice = '';
+
+    const { data: existingMerchant } = await supabase.from('merchants').select('id').eq('telegram_chat_id', chatStr).single();
+    const { data: existingBusinesses } = await supabase.from('businesses').select('id, merchant_id').eq('telegram_chat_id', chatStr);
+
+    const isOwnedByOtherMerchant = (existingMerchant && existingMerchant.id !== currentMerchantId) || 
+                                   (existingBusinesses && existingBusinesses.some(b => b.merchant_id !== currentMerchantId));
+
+    // ─── 1. Ownership & Takeover Handling ───
+    if (isOwnedByOtherMerchant) {
+        if (!forceTakeover) {
+            const otherMerchantId = (existingMerchant && existingMerchant.id !== currentMerchantId) 
+                ? existingMerchant.id 
+                : existingBusinesses?.find(b => b.merchant_id !== currentMerchantId)?.merchant_id;
+            
+            let maskedEmail = 'Another Account';
+            if (otherMerchantId) {
+                const { data: authData } = await supabase.auth.admin.getUserById(otherMerchantId);
+                if (authData?.user?.email) {
+                    const parts = authData.user.email.split('@');
+                    if (parts.length === 2) {
+                        maskedEmail = `${parts[0].substring(0, 2)}***@${parts[1]}`;
+                    }
+                }
+            }
+
+            return {
+                text: `⚠️ <b>Already Connected</b>\n\nThis group/chat is currently connected to another account (<code>${maskedEmail}</code>).\n\nDo you want to disconnect it from that account and take over?`,
+                replyMarkup: {
+                    inline_keyboard: [[{ text: "Confirm Takeover 🔄", callback_data: `takeover_${code}` }]]
+                }
+            };
+        } else {
+            const dummyCode = generateComplexString(12);
+            await supabase.from('merchants').update({ telegram_chat_id: null, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
+            await supabase.from('businesses').update({ telegram_chat_id: null, is_telegram_enabled: false, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
+            takeoverNotice = `\n⚠️ <i>Unlinked from previous account.</i>`;
+        }
+    }
+
+    // ─── 2. Merchant (Vault) Connection ───
+    if (targetMerchant) {
+        const newCode = generateComplexString(12);
+        await supabase.from('merchants').update({ 
+            telegram_chat_id: chatStr,
+            telegram_username: username,
+            telegram_display_name: displayName,
+            telegram_link_code: newCode 
+        }).eq('id', targetMerchant.id).select();
+
+        return {
+            text: `✅ <b>Master Vault Connected</b>\n<b>মাস্টার ভল্ট সংযোগ সফল</b>${takeoverNotice}\n\nYour master alerts will now be routed here.`,
+            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_m_${targetMerchant.id}` }]] }
+        };
+    }
+
+    // ─── 3. Business (Workspace) Connection ───
+    if (targetBusiness) {
+        if (existingMerchant && existingMerchant.id === currentMerchantId && !forceTakeover) {
+            return { 
+                text: `⚠️ <b>Already in Vault</b>\n\nএই চ্যাটটি অলরেডি আপনার Master Vault-এ যুক্ত আছে।\nনতুন করে কানেক্ট করার প্রয়োজন নেই, দয়া করে ড্যাশবোর্ড থেকে <b>"Import from Vault"</b> বাটনে ক্লিক করুন।` 
+            };
+        }
+
+        const newCode = generateComplexString(12);
+        await supabase.from('businesses').update({ 
+            telegram_chat_id: chatStr,
+            telegram_username: username,
+            telegram_display_name: displayName,
+            telegram_link_code: newCode,
+            is_telegram_enabled: true
+        }).eq('id', targetBusiness.id).select();
+
+        return {
+            text: `✅ <b>Workspace Connected</b>\n<b>ওয়ার্কস্পেস সংযোগ সফল</b>${takeoverNotice}\n\n🔹 <b>Workspace:</b> ${escapeHTML(targetBusiness.business_name)}\n\nWorkspace alerts will now be routed here.`,
+            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_b_${targetBusiness.id}` }]] }
+        };
+    }
+
+    return { text: "❌ <b>Unknown Error Occurred</b>" };
+}
+
+// ─── ডাটাবেস ইভেন্ট চ্যাট আইডি খোঁজার লজিক (Orders) ───
+async function getOrderTargets(merchantId?: string | null, businessId?: string | null) {
+    let targets: { chatId: string, accountName: string }[] = [];
+
+    if (businessId) {
+        const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
+        if (data?.telegram_chat_id && data.is_telegram_enabled) {
+            targets.push({ chatId: data.telegram_chat_id, accountName: data.business_name });
+            return targets; 
+        }
+    }
+
+    if (merchantId) {
+        const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
+        if (data?.telegram_chat_id) {
+            targets.push({ chatId: data.telegram_chat_id, accountName: data.display_name || 'Master Vault' });
+        }
+    }
+
+    return targets; 
+}
+
+// ─── ডাটাবেস ইভেন্ট চ্যাট আইডি খোঁজার লজিক (Notifications) ───
+async function getNotificationTargets(merchantId?: string | null, businessId?: string | null) {
+    let targets: { chatId: string, accountName: string }[] = [];
+
+    if (!merchantId && !businessId) {
+        const { data: merchants } = await supabase.from('merchants').select('telegram_chat_id').not('telegram_chat_id', 'is', null);
+        const { data: businesses } = await supabase.from('businesses').select('telegram_chat_id').not('telegram_chat_id', 'is', null).eq('is_telegram_enabled', true);
+        
+        const uniqueChats = new Map<string, string>();
+        merchants?.forEach(m => uniqueChats.set(m.telegram_chat_id, 'System Notice'));
+        businesses?.forEach(b => uniqueChats.set(b.telegram_chat_id, 'System Notice'));
+        
+        uniqueChats.forEach((accountName, chatId) => {
+            targets.push({ chatId, accountName });
+        });
+        return targets;
+    }
+
+    let bChatId: string | null = null;
+    let bAccountName: string = '';
+    if (businessId) {
+        const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
+        if (data?.telegram_chat_id && data.is_telegram_enabled) {
+            bChatId = data.telegram_chat_id;
+            bAccountName = data.business_name;
+        }
+    }
+
+    let mChatId: string | null = null;
+    let mAccountName: string = '';
+    if (merchantId) {
+        const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
+        if (data?.telegram_chat_id) {
+            mChatId = data.telegram_chat_id;
+            mAccountName = data.display_name || 'Master Vault';
+        }
+    }
+
+    if (mChatId && bChatId && mChatId === bChatId) {
+        targets.push({ chatId: mChatId, accountName: `${mAccountName} (Vault & Workspace)` });
+    } else {
+        if (mChatId) targets.push({ chatId: mChatId, accountName: mAccountName });
+        if (bChatId) targets.push({ chatId: bChatId, accountName: bAccountName });
+    }
+
+    return targets;
+}
+
+// ─── Supabase Database Webhook Handler ───
+async function handleSupabaseWebhook(body: any) {
+    const { type, table, record } = body;
+
+    if (table === 'orders' && type === 'UPDATE' && (record.status === 'success' || record.status === 'paid')) {
+        const targets = await getOrderTargets(record.merchant_id, record.business_id);
+        
+        if (targets.length > 0) {
+            const payMethod = record.method ? record.method.toUpperCase() : 'GATEWAY';
+            const currency = record.currency || 'BDT';
+
+            const message = `
+🟢 <b>Payment Received Successfully</b>
+<b>পেমেন্ট সফলভাবে গ্রহণ করা হয়েছে</b>
+
+━━━━━━━━━━━━━━━━━━━━
+▪️ <b>Account :</b> ${escapeHTML(targets[0].accountName)}
+▪️ <b>Amount  :</b> ${record.amount} ${currency}
+▪️ <b>Method  :</b> ${escapeHTML(payMethod)}
+▪️ <b>Product :</b> ${escapeHTML(record.product_name) || 'N/A'}
+▪️ <b>Trx ID  :</b> <code>${escapeHTML(record.trx_id) || 'N/A'}</code>
+▪️ <b>Order # :</b> <code>${escapeHTML(record.order_no) || record.id}</code>
+━━━━━━━━━━━━━━━━━━━━
+<i>This transaction has been automatically verified.</i>`;
+
+            const replyMarkup = {
+                inline_keyboard: [[{ text: "View Transaction ➔", url: `${SITE_URL}/dashboard/transactions` }]]
+            };
+
+            for (const target of targets) {
+                await sendTelegramMessage(target.chatId, message, replyMarkup);
+            }
+        }
+    }
+
+    if (table === 'notifications' && type === 'INSERT') {
+        const targets = await getNotificationTargets(record.merchant_id, record.business_id);
+        
+        if (targets.length > 0) {
+            const message = `📢 <b>System Notice</b>\n\n<b>${escapeHTML(record.title)}</b>\n${escapeHTML(record.message)}`;
+
+            const replyMarkup: any = { inline_keyboard: [] };
+            
+            if (record.action_url) {
+                const actionUrl = record.action_url.startsWith('http') ? record.action_url : `${SITE_URL}${record.action_url}`;
+                replyMarkup.inline_keyboard.push([
+                    { text: "View Details ➔", url: actionUrl }
+                ]);
+            }
+
+            for (const target of targets) {
+                await sendTelegramMessage(target.chatId, message, replyMarkup.inline_keyboard.length > 0 ? replyMarkup : undefined);
+            }
+        }
+    }
+
+    return NextResponse.json({ status: 'webhook_processed' });
+}
+
+
+export async function POST(req: Request) {
+    try {
+        const body = await req.json();
+
+        // ─── Security Check 1: Supabase Webhook Authorization ───
+        if (body.type && body.table && body.record) {
+            const expectedSupabaseSecret = process.env.SUPABASE_WEBHOOK_SECRET;
+            if (expectedSupabaseSecret) {
+                const incomingSecret = req.headers.get('x-supabase-webhook-secret');
+                if (incomingSecret !== expectedSupabaseSecret) {
+                    return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
+                }
+            }
+            return await handleSupabaseWebhook(body);
+        }
+
+        // ─── Security Check 2: Telegram Webhook Authorization ───
+        const expectedTelegramSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+        if (expectedTelegramSecret) {
+            const incomingTelegramSecret = req.headers.get('x-telegram-bot-api-secret-token');
+            if (incomingTelegramSecret !== expectedTelegramSecret) {
+                return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
+            }
+        }
+
+        if (body.my_chat_member) {
+            const newStatus = body.my_chat_member.new_chat_member.status;
+            if (newStatus === 'left' || newStatus === 'kicked') {
+                const chatId = body.my_chat_member.chat.id.toString();
+                const newCode = generateComplexString(12);
+
+                await supabase.from('merchants').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode }).eq('telegram_chat_id', chatId);
+                await supabase.from('businesses').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode, is_telegram_enabled: false }).eq('telegram_chat_id', chatId);
+
+                return NextResponse.json({ status: 'unlinked_on_kick' });
+            }
+        }
+
+        if (body.callback_query) {
+            const callbackQuery = body.callback_query;
+            const chatId = callbackQuery.message.chat.id;
+            const messageId = callbackQuery.message.message_id;
+            const data = callbackQuery.data;
+
+            const fromUser = callbackQuery.from || {};
+            const userId = fromUser.id;
+            const username = fromUser.username ? `@${fromUser.username}` : null;
+            const displayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
+            const chatType = callbackQuery.message.chat.type;
+
+            if (data.startsWith('takeover_')) {
+                const code = data.replace('takeover_', '');
+
+                if (chatType === 'group' || chatType === 'supergroup') {
+                    const isAdmin = await isGroupAdmin(chatId, userId);
+                    if (!isAdmin) {
+                        await answerCallbackQuery(callbackQuery.id, "⚠️ Access Denied: Only admins can confirm this takeover.");
+                        return NextResponse.json({ status: 'not_admin' });
+                    }
+                }
+
+                const result = await connectTelegram(code, chatId, username, displayName, true);
+                await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
+                return NextResponse.json({ status: 'success' });
+            }
+
+            if (data.startsWith('connect_dm_')) {
+                const code = data.replace('connect_dm_', '');
+                const result = await connectTelegram(code, chatId, username, displayName, false);
+                await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
+            }
+            else if (data.startsWith('disconnect_m_')) {
+                const id = data.replace('disconnect_m_', '');
+                const newCode = generateComplexString(12);
+                await supabase.from('merchants').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode }).eq('id', id);
+                await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Master Vault alerts.");
+            }
+            else if (data.startsWith('disconnect_b_')) {
+                const id = data.replace('disconnect_b_', '');
+                const newCode = generateComplexString(12);
+                await supabase.from('businesses').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode, is_telegram_enabled: false }).eq('id', id);
+                await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Workspace alerts.");
+            }
+
+            return NextResponse.json({ status: 'success' });
+        }
+
+        if (body.message) {
+            const chat = body.message.chat;
+            const chatId = chat.id;
+            const chatType = chat.type;
+            const text = body.message.text ? body.message.text.trim() : '';
+            const userId = body.message.from?.id;
+
+            if (text.startsWith('/start')) {
+                const parts = text.split(/\s+/);
+                const code = parts.length > 1 ? parts[1] : null; 
+
+                if (!code) {
+                    if (chatType === 'private') {
+                        await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\n<b>ভুল কমান্ড!</b>\nPlease generate a valid connection link from your dashboard.");
+                    }
+                    return NextResponse.json({ status: 'no_code' });
+                }
+
+                if (chatType === 'group' || chatType === 'supergroup') {
+                    if (!userId) return NextResponse.json({ status: 'ignored' });
+
+                    const isAdmin = await isGroupAdmin(chatId, userId);
+                    if (!isAdmin) {
+                        await sendTelegramMessage(chatId, "⚠️ <b>Access Denied</b>\n\nOnly group administrators can connect or configure this bot. Please ask an admin to send the connection command.");
+                        return NextResponse.json({ status: 'not_admin' });
+                    }
+
+                    const groupTitle = chat.title || 'Connected Group';
+                    const groupUsername = chat.username ? `@${chat.username}` : null;
+                    
+                    const result = await connectTelegram(code, chatId, groupUsername, groupTitle, false);
+                    await sendTelegramMessage(chatId, result.text, result.replyMarkup);
+                    return NextResponse.json({ status: 'connected_group' });
+                }
+
+                const botUsername = await getBotUsername();
+                const replyMarkup = {
+                    inline_keyboard: [
+                        [{ text: "Connect to THIS Chat ➔", callback_data: `connect_dm_${code}` }],
+                        [{ text: "Add to a GROUP instead ➔", url: `https://t.me/${botUsername}?startgroup=${code}` }]
+                    ]
+                };
+
+                await sendTelegramMessage(chatId, "<b>Where do you want to receive alerts?</b>\n<b>আপনি কোথায় এলার্ট পেতে চান?</b>\n\nYou can receive alerts directly in this chat, or add me to a group.", replyMarkup);
+                return NextResponse.json({ status: 'asked_user' });
+            }
+        }
+
+        return NextResponse.json({ status: 'ignored' });
+
+    } catch (error) {
+        console.error("Webhook Error:", error);
+        return NextResponse.json({ status: 'error_logged_but_ok' }, { status: 200 });
+    }
 }
 </file>
 

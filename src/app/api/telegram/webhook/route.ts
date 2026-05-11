@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-// ⚠️ Note: To fetch emails using admin.getUserById, ensure this is the Service Role Key
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -16,8 +15,17 @@ function generateComplexString(length: number): string {
     return Array.from(bytes).map(b => chars[b % chars.length]).join('');
 }
 
+// ─── Utility: Escape HTML to prevent Telegram Parser Crashes ───
+function escapeHTML(text: string | null | undefined): string {
+    if (!text) return '';
+    return text.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
 export async function GET() {
-    return NextResponse.json({ status: "success", message: "Webhook API is ALIVE and Working! 🚀" });
+    return NextResponse.json({ status: "success", message: "Webhook API is Secure & Running! 🚀" });
 }
 
 async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
@@ -47,7 +55,11 @@ async function answerCallbackQuery(callbackQueryId: string, text: string, showAl
     });
 }
 
+// ─── Dynamic Bot Username Resolver ───
 async function getBotUsername() {
+    if (process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME) {
+        return process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME.replace('@', '');
+    }
     const { data } = await supabase.from('site_settings').select('value').eq('key_name', 'telegram').single();
     return data?.value ? data.value.replace('@', '') : 'xelpay_alert_bot';
 }
@@ -87,7 +99,6 @@ async function connectTelegram(
         return { text: "❌ <b>Connection Failed</b>\nলিংকটি মেয়াদোত্তীর্ণ বা ভুল। নতুন করে জেনারেট করুন।" };
     }
 
-    // TypeScript Fix: Using non-null assertion (!) for targetBusiness since we know it's not null here
     const currentMerchantId = targetMerchant ? targetMerchant.id : targetBusiness!.merchant_id;
     let takeoverNotice = '';
 
@@ -100,14 +111,12 @@ async function connectTelegram(
     // ─── 1. Ownership & Takeover Handling ───
     if (isOwnedByOtherMerchant) {
         if (!forceTakeover) {
-            // Find who owns it currently to mask their email
             const otherMerchantId = (existingMerchant && existingMerchant.id !== currentMerchantId) 
                 ? existingMerchant.id 
                 : existingBusinesses?.find(b => b.merchant_id !== currentMerchantId)?.merchant_id;
             
             let maskedEmail = 'Another Account';
             if (otherMerchantId) {
-                // Fetching user email using Admin API
                 const { data: authData } = await supabase.auth.admin.getUserById(otherMerchantId);
                 if (authData?.user?.email) {
                     const parts = authData.user.email.split('@');
@@ -124,7 +133,6 @@ async function connectTelegram(
                 }
             };
         } else {
-            // User confirmed the takeover. Force unlink from previous accounts.
             const dummyCode = generateComplexString(12);
             await supabase.from('merchants').update({ telegram_chat_id: null, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
             await supabase.from('businesses').update({ telegram_chat_id: null, is_telegram_enabled: false, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
@@ -150,7 +158,6 @@ async function connectTelegram(
 
     // ─── 3. Business (Workspace) Connection ───
     if (targetBusiness) {
-        // Vault to Business Guidance (Prevents direct duplicate connection logic)
         if (existingMerchant && existingMerchant.id === currentMerchantId && !forceTakeover) {
             return { 
                 text: `⚠️ <b>Already in Vault</b>\n\nএই চ্যাটটি অলরেডি আপনার Master Vault-এ যুক্ত আছে।\nনতুন করে কানেক্ট করার প্রয়োজন নেই, দয়া করে ড্যাশবোর্ড থেকে <b>"Import from Vault"</b> বাটনে ক্লিক করুন।` 
@@ -167,7 +174,7 @@ async function connectTelegram(
         }).eq('id', targetBusiness.id).select();
 
         return {
-            text: `✅ <b>Workspace Connected</b>\n<b>ওয়ার্কস্পেস সংযোগ সফল</b>${takeoverNotice}\n\n🔹 <b>Workspace:</b> ${targetBusiness.business_name}\n\nWorkspace alerts will now be routed here.`,
+            text: `✅ <b>Workspace Connected</b>\n<b>ওয়ার্কস্পেস সংযোগ সফল</b>${takeoverNotice}\n\n🔹 <b>Workspace:</b> ${escapeHTML(targetBusiness.business_name)}\n\nWorkspace alerts will now be routed here.`,
             replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_b_${targetBusiness.id}` }]] }
         };
     }
@@ -261,12 +268,12 @@ async function handleSupabaseWebhook(body: any) {
 <b>পেমেন্ট সফলভাবে গ্রহণ করা হয়েছে</b>
 
 ━━━━━━━━━━━━━━━━━━━━
-▪️ <b>Account :</b> ${targets[0].accountName}
+▪️ <b>Account :</b> ${escapeHTML(targets[0].accountName)}
 ▪️ <b>Amount  :</b> ${record.amount} ${currency}
-▪️ <b>Method  :</b> ${payMethod}
-▪️ <b>Product :</b> ${record.product_name || 'N/A'}
-▪️ <b>Trx ID  :</b> <code>${record.trx_id || 'N/A'}</code>
-▪️ <b>Order # :</b> <code>${record.order_no || record.id}</code>
+▪️ <b>Method  :</b> ${escapeHTML(payMethod)}
+▪️ <b>Product :</b> ${escapeHTML(record.product_name) || 'N/A'}
+▪️ <b>Trx ID  :</b> <code>${escapeHTML(record.trx_id) || 'N/A'}</code>
+▪️ <b>Order # :</b> <code>${escapeHTML(record.order_no) || record.id}</code>
 ━━━━━━━━━━━━━━━━━━━━
 <i>This transaction has been automatically verified.</i>`;
 
@@ -284,11 +291,7 @@ async function handleSupabaseWebhook(body: any) {
         const targets = await getNotificationTargets(record.merchant_id, record.business_id);
         
         if (targets.length > 0) {
-            const message = `
-📢 <b>System Notice</b>
-
-<b>${record.title}</b>
-${record.message}`;
+            const message = `📢 <b>System Notice</b>\n\n<b>${escapeHTML(record.title)}</b>\n${escapeHTML(record.message)}`;
 
             const replyMarkup: any = { inline_keyboard: [] };
             
@@ -313,8 +316,25 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
 
+        // ─── Security Check 1: Supabase Webhook Authorization ───
         if (body.type && body.table && body.record) {
+            const expectedSupabaseSecret = process.env.SUPABASE_WEBHOOK_SECRET;
+            if (expectedSupabaseSecret) {
+                const incomingSecret = req.headers.get('x-supabase-webhook-secret');
+                if (incomingSecret !== expectedSupabaseSecret) {
+                    return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
+                }
+            }
             return await handleSupabaseWebhook(body);
+        }
+
+        // ─── Security Check 2: Telegram Webhook Authorization ───
+        const expectedTelegramSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+        if (expectedTelegramSecret) {
+            const incomingTelegramSecret = req.headers.get('x-telegram-bot-api-secret-token');
+            if (incomingTelegramSecret !== expectedTelegramSecret) {
+                return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
+            }
         }
 
         if (body.my_chat_member) {
@@ -342,11 +362,9 @@ export async function POST(req: Request) {
             const displayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
             const chatType = callbackQuery.message.chat.type;
 
-            // ─── Takeover Confirmation Handler ───
             if (data.startsWith('takeover_')) {
                 const code = data.replace('takeover_', '');
 
-                // Admin check for inline button click in groups
                 if (chatType === 'group' || chatType === 'supergroup') {
                     const isAdmin = await isGroupAdmin(chatId, userId);
                     if (!isAdmin) {
@@ -399,7 +417,6 @@ export async function POST(req: Request) {
                     return NextResponse.json({ status: 'no_code' });
                 }
 
-                // ─── Admin Security Logic ───
                 if (chatType === 'group' || chatType === 'supergroup') {
                     if (!userId) return NextResponse.json({ status: 'ignored' });
 
@@ -434,6 +451,6 @@ export async function POST(req: Request) {
 
     } catch (error) {
         console.error("Webhook Error:", error);
-        return NextResponse.json({ status: 'error' }, { status: 500 });
+        return NextResponse.json({ status: 'error_logged_but_ok' }, { status: 200 });
     }
 }
