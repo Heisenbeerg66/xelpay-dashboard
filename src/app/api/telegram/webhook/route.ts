@@ -8,6 +8,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const BOT_TOKEN = process.env.XELPAY_BOT_TOKEN;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com';
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'xelpay_alert_bot';
 
 function generateComplexString(length: number): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -15,7 +16,6 @@ function generateComplexString(length: number): string {
     return Array.from(bytes).map(b => chars[b % chars.length]).join('');
 }
 
-// ─── Utility: Escape HTML to prevent Telegram Parser Crashes ───
 function escapeHTML(text: string | null | undefined): string {
     if (!text) return '';
     return text.toString()
@@ -29,12 +29,22 @@ export async function GET() {
 }
 
 async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
+    if (!BOT_TOKEN) {
+        console.error("❌ XELPAY_BOT_TOKEN is missing!");
+        return;
+    }
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-    await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
-    });
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
+        });
+        const result = await response.json();
+        if (!result.ok) console.error("Telegram API Error:", result);
+    } catch (err) {
+        console.error("Fetch Error in sendTelegramMessage:", err);
+    }
 }
 
 async function editTelegramMessage(chatId: string | number, messageId: number, text: string, replyMarkup?: any) {
@@ -55,16 +65,6 @@ async function answerCallbackQuery(callbackQueryId: string, text: string, showAl
     });
 }
 
-// ─── Dynamic Bot Username Resolver ───
-async function getBotUsername() {
-    if (process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME) {
-        return process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME.replace('@', '');
-    }
-    const { data } = await supabase.from('site_settings').select('value').eq('key_name', 'telegram').single();
-    return data?.value ? data.value.replace('@', '') : 'xelpay_alert_bot';
-}
-
-// ─── Group Admin Check Utility ───
 async function isGroupAdmin(chatId: string | number, userId: string | number): Promise<boolean> {
     try {
         const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${chatId}&user_id=${userId}`;
@@ -77,12 +77,10 @@ async function isGroupAdmin(chatId: string | number, userId: string | number): P
         }
         return false;
     } catch (error) {
-        console.error("Admin Check Error:", error);
         return false;
     }
 }
 
-// ─── Connection & Takeover Logic ───
 async function connectTelegram(
     code: string, 
     chatId: string | number, 
@@ -108,7 +106,6 @@ async function connectTelegram(
     const isOwnedByOtherMerchant = (existingMerchant && existingMerchant.id !== currentMerchantId) || 
                                    (existingBusinesses && existingBusinesses.some(b => b.merchant_id !== currentMerchantId));
 
-    // ─── 1. Ownership & Takeover Handling ───
     if (isOwnedByOtherMerchant) {
         if (!forceTakeover) {
             const otherMerchantId = (existingMerchant && existingMerchant.id !== currentMerchantId) 
@@ -140,7 +137,6 @@ async function connectTelegram(
         }
     }
 
-    // ─── 2. Merchant (Vault) Connection ───
     if (targetMerchant) {
         const newCode = generateComplexString(12);
         await supabase.from('merchants').update({ 
@@ -156,7 +152,6 @@ async function connectTelegram(
         };
     }
 
-    // ─── 3. Business (Workspace) Connection ───
     if (targetBusiness) {
         if (existingMerchant && existingMerchant.id === currentMerchantId && !forceTakeover) {
             return { 
@@ -182,7 +177,6 @@ async function connectTelegram(
     return { text: "❌ <b>Unknown Error Occurred</b>" };
 }
 
-// ─── ডাটাবেস ইভেন্ট চ্যাট আইডি খোঁজার লজিক (Orders) ───
 async function getOrderTargets(merchantId?: string | null, businessId?: string | null) {
     let targets: { chatId: string, accountName: string }[] = [];
 
@@ -204,7 +198,6 @@ async function getOrderTargets(merchantId?: string | null, businessId?: string |
     return targets; 
 }
 
-// ─── ডাটাবেস ইভেন্ট চ্যাট আইডি খোঁজার লজিক (Notifications) ───
 async function getNotificationTargets(merchantId?: string | null, businessId?: string | null) {
     let targets: { chatId: string, accountName: string }[] = [];
 
@@ -252,7 +245,6 @@ async function getNotificationTargets(merchantId?: string | null, businessId?: s
     return targets;
 }
 
-// ─── Supabase Database Webhook Handler ───
 async function handleSupabaseWebhook(body: any) {
     const { type, table, record } = body;
 
@@ -316,27 +308,30 @@ export async function POST(req: Request) {
     try {
         const body = await req.json();
 
-        // ─── Security Check 1: Supabase Webhook Authorization ───
+        // ─── 1. Supabase Webhook Authorization ───
         if (body.type && body.table && body.record) {
             const expectedSupabaseSecret = process.env.SUPABASE_WEBHOOK_SECRET;
             if (expectedSupabaseSecret) {
                 const incomingSecret = req.headers.get('x-supabase-webhook-secret');
                 if (incomingSecret !== expectedSupabaseSecret) {
+                    console.log("❌ Supabase Secret Mismatch!");
                     return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
                 }
             }
             return await handleSupabaseWebhook(body);
         }
 
-        // ─── Security Check 2: Telegram Webhook Authorization ───
+        // ─── 2. Telegram Webhook Authorization ───
         const expectedTelegramSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
         if (expectedTelegramSecret) {
             const incomingTelegramSecret = req.headers.get('x-telegram-bot-api-secret-token');
             if (incomingTelegramSecret !== expectedTelegramSecret) {
+                console.log(`❌ Telegram Secret Mismatch! Expected: ${expectedTelegramSecret}, Got: ${incomingTelegramSecret}`);
                 return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
             }
         }
 
+        // ─── 3. Event Handlers ───
         if (body.my_chat_member) {
             const newStatus = body.my_chat_member.new_chat_member.status;
             if (newStatus === 'left' || newStatus === 'kicked') {
@@ -400,6 +395,7 @@ export async function POST(req: Request) {
         }
 
         if (body.message) {
+            console.log("✅ Received Message Event");
             const chat = body.message.chat;
             const chatId = chat.id;
             const chatType = chat.type;
@@ -411,6 +407,7 @@ export async function POST(req: Request) {
                 const code = parts.length > 1 ? parts[1] : null; 
 
                 if (!code) {
+                    console.log("⚠️ /start called without code in chat:", chatId);
                     if (chatType === 'private') {
                         await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\n<b>ভুল কমান্ড!</b>\nPlease generate a valid connection link from your dashboard.");
                     }
@@ -434,11 +431,11 @@ export async function POST(req: Request) {
                     return NextResponse.json({ status: 'connected_group' });
                 }
 
-                const botUsername = await getBotUsername();
+                console.log(`✅ Sending connection prompt to private chat: ${chatId}`);
                 const replyMarkup = {
                     inline_keyboard: [
                         [{ text: "Connect to THIS Chat ➔", callback_data: `connect_dm_${code}` }],
-                        [{ text: "Add to a GROUP instead ➔", url: `https://t.me/${botUsername}?startgroup=${code}` }]
+                        [{ text: "Add to a GROUP instead ➔", url: `https://t.me/${BOT_USERNAME}?startgroup=${code}` }]
                     ]
                 };
 
@@ -450,7 +447,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ status: 'ignored' });
 
     } catch (error) {
-        console.error("Webhook Error:", error);
+        console.error("Webhook Error Exception:", error);
         return NextResponse.json({ status: 'error_logged_but_ok' }, { status: 200 });
     }
 }
