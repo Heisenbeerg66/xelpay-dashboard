@@ -43,13 +43,19 @@ async function getBotUsername() {
 }
 
 async function connectTelegram(code: string, chatId: string | number, username: string | null, displayName: string | null): Promise<{ text: string, replyMarkup?: any }> {
+    const chatStr = chatId.toString();
+
     const { data: merchantData } = await supabase.from('merchants').select('id').eq('telegram_link_code', code).single();
     if (merchantData) {
+        // Fix: Clear previous identical chat IDs to prevent Unique Constraint silent failures
+        await supabase.from('merchants').update({ telegram_chat_id: null }).eq('telegram_chat_id', chatStr);
+
         await supabase.from('merchants').update({ 
-            telegram_chat_id: chatId.toString(),
+            telegram_chat_id: chatStr,
             telegram_username: username,
             telegram_display_name: displayName
-        }).eq('id', merchantData.id);
+        }).eq('id', merchantData.id).select(); // Added .select() to ensure db mutation completes
+
         return {
             text: `✅ <b>Connection Successful</b>\n<b>সংযোগ সফল হয়েছে</b>\n\n🔹 <b>Account Type:</b> Master Vault\n\nYour master alerts will now be routed here.\nআপনার সব মাস্টার এলার্ট এখন থেকে এই চ্যাটে আসবে।`,
             replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_m_${merchantData.id}` }]] }
@@ -58,12 +64,16 @@ async function connectTelegram(code: string, chatId: string | number, username: 
 
     const { data: businessData } = await supabase.from('businesses').select('id, business_name').eq('telegram_link_code', code).single();
     if (businessData) {
+        // Fix: Clear previous identical chat IDs to prevent Unique Constraint silent failures
+        await supabase.from('businesses').update({ telegram_chat_id: null, is_telegram_enabled: false }).eq('telegram_chat_id', chatStr);
+
         await supabase.from('businesses').update({ 
-            telegram_chat_id: chatId.toString(),
+            telegram_chat_id: chatStr,
             telegram_username: username,
             telegram_display_name: displayName,
             is_telegram_enabled: true
-        }).eq('id', businessData.id);
+        }).eq('id', businessData.id).select(); // Added .select() to ensure db mutation completes
+
         return {
             text: `✅ <b>Connection Successful</b>\n<b>সংযোগ সফল হয়েছে</b>\n\n🔹 <b>Workspace:</b> ${businessData.business_name}\n\nWorkspace alerts will now be routed here.\nএই ওয়ার্কস্পেসের পেমেন্ট এলার্ট এখন থেকে এখানে আসবে।`,
             replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_b_${businessData.id}` }]] }
