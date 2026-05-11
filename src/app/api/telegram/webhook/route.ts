@@ -150,7 +150,7 @@ async function connectTelegram(
     if (targetBusiness) {
         if (existingMerchant && existingMerchant.id === currentMerchantId && !forceTakeover) {
             return { 
-                text: `⚠️ <b>Already in Vault</b>\n\nএই চ্যাটটি অলরেডি আপনার Master Vault-এ যুক্ত আছে।\nনতুন করে কানেক্ট করার প্রয়োজন নেই, দয়া করে ড্যাশবোর্ড থেকে <b>"Import from Vault"</b> বাটনে ক্লিক করুন।` 
+                text: `⚠️ <b>Already in Vault</b>\n\nএই চ্যাটটি অলরেডি আপনার Master Vault-এ যুক্ত আছে।\nনতুন করে কানেক্ট করার প্রয়োজন নেই, দয়া করে ড্যাশবোর্ড থেকে <b>"Import from Vault"</b> বাটনে ক্লিক করুন।` 
             };
         }
 
@@ -164,7 +164,7 @@ async function connectTelegram(
         }).eq('id', targetBusiness.id).select();
 
         return {
-            text: `✅ <b>Workspace Connected</b>\n<b>ওয়ার্কস্পেস সংযোগ সফল</b>${takeoverNotice}\n\n🔹 <b>Workspace:</b> ${escapeHTML(targetBusiness.business_name)}\n\nWorkspace alerts will now be routed here.`,
+            text: `✅ <b>Workspace Connected</b>\n<b>ওয়ার্কস্পেস সংযোগ সফল</b>${takeoverNotice}\n\n🔹 <b>Workspace:</b> ${escapeHTML(targetBusiness.business_name)}\n\nWorkspace alerts will now be routed here.`,
             replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_b_${targetBusiness.id}` }]] }
         };
     }
@@ -414,12 +414,12 @@ export async function POST(req: Request) {
                 }
 
                 if (chatType === 'group' || chatType === 'supergroup') {
-                    // লজিক: যদি Sender Chat থাকে (অ্যাডমিন চ্যানেল হিসেবে মেসেজ দিচ্ছে) বা Anonymous Bot হয়
-                    const isAnonymousAdmin = body.message.sender_chat?.id === chatId || body.message.from?.username === 'GroupAnonymousBot';
+                    // ফিক্সড: যদি Sender Chat (চ্যানেল/অ্যানোনিমাস) থাকে, তবে সে নিশ্চিত এডমিন
+                    const isAnonymousOrChannelAdmin = !!body.message.sender_chat || body.message.from?.username === 'GroupAnonymousBot';
                     
                     let isAdmin = false;
                     
-                    if (isAnonymousAdmin) {
+                    if (isAnonymousOrChannelAdmin) {
                         isAdmin = true; // অটোমেটিক অ্যাডমিন এক্সেস 
                     } else if (userId) {
                         isAdmin = await isGroupAdmin(chatId, userId);
