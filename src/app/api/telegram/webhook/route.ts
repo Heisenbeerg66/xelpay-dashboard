@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+// ⚠️ Note: To fetch emails using admin.getUserById, ensure this is the Service Role Key
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -37,68 +38,155 @@ async function editTelegramMessage(chatId: string | number, messageId: number, t
     });
 }
 
+async function answerCallbackQuery(callbackQueryId: string, text: string, showAlert: boolean = true) {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`;
+    await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callback_query_id: callbackQueryId, text: text, show_alert: showAlert }),
+    });
+}
+
 async function getBotUsername() {
     const { data } = await supabase.from('site_settings').select('value').eq('key_name', 'telegram').single();
     return data?.value ? data.value.replace('@', '') : 'xelpay_alert_bot';
 }
 
-async function connectTelegram(code: string, chatId: string | number, username: string | null, displayName: string | null): Promise<{ text: string, replyMarkup?: any }> {
+// ─── Group Admin Check Utility ───
+async function isGroupAdmin(chatId: string | number, userId: string | number): Promise<boolean> {
+    try {
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${chatId}&user_id=${userId}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.ok && data.result) {
+            const status = data.result.status;
+            return status === 'creator' || status === 'administrator';
+        }
+        return false;
+    } catch (error) {
+        console.error("Admin Check Error:", error);
+        return false;
+    }
+}
+
+// ─── Connection & Takeover Logic ───
+async function connectTelegram(
+    code: string, 
+    chatId: string | number, 
+    username: string | null, 
+    displayName: string | null, 
+    forceTakeover: boolean = false
+): Promise<{ text: string, replyMarkup?: any }> {
     const chatStr = chatId.toString();
 
-    const { data: merchantData } = await supabase.from('merchants').select('id').eq('telegram_link_code', code).single();
-    if (merchantData) {
-        // Fix: Clear previous identical chat IDs to prevent Unique Constraint silent failures
-        await supabase.from('merchants').update({ telegram_chat_id: null }).eq('telegram_chat_id', chatStr);
+    const { data: targetMerchant } = await supabase.from('merchants').select('id').eq('telegram_link_code', code).single();
+    const { data: targetBusiness } = await supabase.from('businesses').select('id, merchant_id, business_name').eq('telegram_link_code', code).single();
 
+    if (!targetMerchant && !targetBusiness) {
+        return { text: "❌ <b>Connection Failed</b>\nলিংকটি মেয়াদোত্তীর্ণ বা ভুল। নতুন করে জেনারেট করুন।" };
+    }
+
+    // TypeScript Fix: Using non-null assertion (!) for targetBusiness since we know it's not null here
+    const currentMerchantId = targetMerchant ? targetMerchant.id : targetBusiness!.merchant_id;
+    let takeoverNotice = '';
+
+    const { data: existingMerchant } = await supabase.from('merchants').select('id').eq('telegram_chat_id', chatStr).single();
+    const { data: existingBusinesses } = await supabase.from('businesses').select('id, merchant_id').eq('telegram_chat_id', chatStr);
+
+    const isOwnedByOtherMerchant = (existingMerchant && existingMerchant.id !== currentMerchantId) || 
+                                   (existingBusinesses && existingBusinesses.some(b => b.merchant_id !== currentMerchantId));
+
+    // ─── 1. Ownership & Takeover Handling ───
+    if (isOwnedByOtherMerchant) {
+        if (!forceTakeover) {
+            // Find who owns it currently to mask their email
+            const otherMerchantId = (existingMerchant && existingMerchant.id !== currentMerchantId) 
+                ? existingMerchant.id 
+                : existingBusinesses?.find(b => b.merchant_id !== currentMerchantId)?.merchant_id;
+            
+            let maskedEmail = 'Another Account';
+            if (otherMerchantId) {
+                // Fetching user email using Admin API
+                const { data: authData } = await supabase.auth.admin.getUserById(otherMerchantId);
+                if (authData?.user?.email) {
+                    const parts = authData.user.email.split('@');
+                    if (parts.length === 2) {
+                        maskedEmail = `${parts[0].substring(0, 2)}***@${parts[1]}`;
+                    }
+                }
+            }
+
+            return {
+                text: `⚠️ <b>Already Connected</b>\n\nThis group/chat is currently connected to another account (<code>${maskedEmail}</code>).\n\nDo you want to disconnect it from that account and take over?`,
+                replyMarkup: {
+                    inline_keyboard: [[{ text: "Confirm Takeover 🔄", callback_data: `takeover_${code}` }]]
+                }
+            };
+        } else {
+            // User confirmed the takeover. Force unlink from previous accounts.
+            const dummyCode = generateComplexString(12);
+            await supabase.from('merchants').update({ telegram_chat_id: null, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
+            await supabase.from('businesses').update({ telegram_chat_id: null, is_telegram_enabled: false, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
+            takeoverNotice = `\n⚠️ <i>Unlinked from previous account.</i>`;
+        }
+    }
+
+    // ─── 2. Merchant (Vault) Connection ───
+    if (targetMerchant) {
+        const newCode = generateComplexString(12);
         await supabase.from('merchants').update({ 
             telegram_chat_id: chatStr,
             telegram_username: username,
-            telegram_display_name: displayName
-        }).eq('id', merchantData.id).select(); // Added .select() to ensure db mutation completes
+            telegram_display_name: displayName,
+            telegram_link_code: newCode 
+        }).eq('id', targetMerchant.id).select();
 
         return {
-            text: `✅ <b>Connection Successful</b>\n<b>সংযোগ সফল হয়েছে</b>\n\n🔹 <b>Account Type:</b> Master Vault\n\nYour master alerts will now be routed here.\nআপনার সব মাস্টার এলার্ট এখন থেকে এই চ্যাটে আসবে।`,
-            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_m_${merchantData.id}` }]] }
+            text: `✅ <b>Master Vault Connected</b>\n<b>মাস্টার ভল্ট সংযোগ সফল</b>${takeoverNotice}\n\nYour master alerts will now be routed here.`,
+            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_m_${targetMerchant.id}` }]] }
         };
     }
 
-    const { data: businessData } = await supabase.from('businesses').select('id, business_name').eq('telegram_link_code', code).single();
-    if (businessData) {
-        // Fix: Clear previous identical chat IDs to prevent Unique Constraint silent failures
-        await supabase.from('businesses').update({ telegram_chat_id: null, is_telegram_enabled: false }).eq('telegram_chat_id', chatStr);
+    // ─── 3. Business (Workspace) Connection ───
+    if (targetBusiness) {
+        // Vault to Business Guidance (Prevents direct duplicate connection logic)
+        if (existingMerchant && existingMerchant.id === currentMerchantId && !forceTakeover) {
+            return { 
+                text: `⚠️ <b>Already in Vault</b>\n\nএই চ্যাটটি অলরেডি আপনার Master Vault-এ যুক্ত আছে।\nনতুন করে কানেক্ট করার প্রয়োজন নেই, দয়া করে ড্যাশবোর্ড থেকে <b>"Import from Vault"</b> বাটনে ক্লিক করুন।` 
+            };
+        }
 
+        const newCode = generateComplexString(12);
         await supabase.from('businesses').update({ 
             telegram_chat_id: chatStr,
             telegram_username: username,
             telegram_display_name: displayName,
+            telegram_link_code: newCode,
             is_telegram_enabled: true
-        }).eq('id', businessData.id).select(); // Added .select() to ensure db mutation completes
+        }).eq('id', targetBusiness.id).select();
 
         return {
-            text: `✅ <b>Connection Successful</b>\n<b>সংযোগ সফল হয়েছে</b>\n\n🔹 <b>Workspace:</b> ${businessData.business_name}\n\nWorkspace alerts will now be routed here.\nএই ওয়ার্কস্পেসের পেমেন্ট এলার্ট এখন থেকে এখানে আসবে।`,
-            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_b_${businessData.id}` }]] }
+            text: `✅ <b>Workspace Connected</b>\n<b>ওয়ার্কস্পেস সংযোগ সফল</b>${takeoverNotice}\n\n🔹 <b>Workspace:</b> ${targetBusiness.business_name}\n\nWorkspace alerts will now be routed here.`,
+            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_b_${targetBusiness.id}` }]] }
         };
     }
 
-    return {
-        text: "❌ <b>Connection Failed</b>\n<b>সংযোগ বিফল</b>\n\nThe connection code has expired or is invalid.\nলিংকটি মেয়াদোত্তীর্ণ বা ভুল।"
-    };
+    return { text: "❌ <b>Unknown Error Occurred</b>" };
 }
 
 // ─── ডাটাবেস ইভেন্ট চ্যাট আইডি খোঁজার লজিক (Orders) ───
 async function getOrderTargets(merchantId?: string | null, businessId?: string | null) {
     let targets: { chatId: string, accountName: string }[] = [];
 
-    // ১. প্রথমে Business ID থাকলে সেই Business এর চ্যাট আইডি নিবে (Priority 1)
     if (businessId) {
         const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
         if (data?.telegram_chat_id && data.is_telegram_enabled) {
             targets.push({ chatId: data.telegram_chat_id, accountName: data.business_name });
-            return targets; // Business এ পেলে সরাসরি রিটার্ন করবে, Master এ যাবে না
+            return targets; 
         }
     }
 
-    // ২. যদি Business এ না থাকে, তবে Master/Merchant এর চ্যাট আইডি নিবে (Priority 2)
     if (merchantId) {
         const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
         if (data?.telegram_chat_id) {
@@ -113,7 +201,6 @@ async function getOrderTargets(merchantId?: string | null, businessId?: string |
 async function getNotificationTargets(merchantId?: string | null, businessId?: string | null) {
     let targets: { chatId: string, accountName: string }[] = [];
 
-    // Universal Notification (কোনো ID না থাকলে)
     if (!merchantId && !businessId) {
         const { data: merchants } = await supabase.from('merchants').select('telegram_chat_id').not('telegram_chat_id', 'is', null);
         const { data: businesses } = await supabase.from('businesses').select('telegram_chat_id').not('telegram_chat_id', 'is', null).eq('is_telegram_enabled', true);
@@ -128,7 +215,6 @@ async function getNotificationTargets(merchantId?: string | null, businessId?: s
         return targets;
     }
 
-    // Targeted Notification
     let bChatId: string | null = null;
     let bAccountName: string = '';
     if (businessId) {
@@ -149,11 +235,9 @@ async function getNotificationTargets(merchantId?: string | null, businessId?: s
         }
     }
 
-    // দুটিতেই থাকলে এবং চ্যাট আইডি একই হলে শুধু একবার পাঠাবে
     if (mChatId && bChatId && mChatId === bChatId) {
         targets.push({ chatId: mChatId, accountName: `${mAccountName} (Vault & Workspace)` });
     } else {
-        // আলাদা হলে বা যেকোনো একটা থাকলে সেগুলোতে পাঠাবে
         if (mChatId) targets.push({ chatId: mChatId, accountName: mAccountName });
         if (bChatId) targets.push({ chatId: bChatId, accountName: bAccountName });
     }
@@ -165,7 +249,6 @@ async function getNotificationTargets(merchantId?: string | null, businessId?: s
 async function handleSupabaseWebhook(body: any) {
     const { type, table, record } = body;
 
-    // ১. Order Paid Event (Premium Design)
     if (table === 'orders' && type === 'UPDATE' && (record.status === 'success' || record.status === 'paid')) {
         const targets = await getOrderTargets(record.merchant_id, record.business_id);
         
@@ -197,7 +280,6 @@ async function handleSupabaseWebhook(body: any) {
         }
     }
 
-    // ২. Notification Event (Universal or Targeted)
     if (table === 'notifications' && type === 'INSERT') {
         const targets = await getNotificationTargets(record.merchant_id, record.business_id);
         
@@ -255,22 +337,40 @@ export async function POST(req: Request) {
             const data = callbackQuery.data;
 
             const fromUser = callbackQuery.from || {};
+            const userId = fromUser.id;
             const username = fromUser.username ? `@${fromUser.username}` : null;
             const displayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
+            const chatType = callbackQuery.message.chat.type;
+
+            // ─── Takeover Confirmation Handler ───
+            if (data.startsWith('takeover_')) {
+                const code = data.replace('takeover_', '');
+
+                // Admin check for inline button click in groups
+                if (chatType === 'group' || chatType === 'supergroup') {
+                    const isAdmin = await isGroupAdmin(chatId, userId);
+                    if (!isAdmin) {
+                        await answerCallbackQuery(callbackQuery.id, "⚠️ Access Denied: Only admins can confirm this takeover.");
+                        return NextResponse.json({ status: 'not_admin' });
+                    }
+                }
+
+                const result = await connectTelegram(code, chatId, username, displayName, true);
+                await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
+                return NextResponse.json({ status: 'success' });
+            }
 
             if (data.startsWith('connect_dm_')) {
                 const code = data.replace('connect_dm_', '');
-                const result = await connectTelegram(code, chatId, username, displayName);
+                const result = await connectTelegram(code, chatId, username, displayName, false);
                 await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
             }
-            // Disconnect Master
             else if (data.startsWith('disconnect_m_')) {
                 const id = data.replace('disconnect_m_', '');
                 const newCode = generateComplexString(12);
                 await supabase.from('merchants').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode }).eq('id', id);
                 await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Master Vault alerts.");
             }
-            // Disconnect Business
             else if (data.startsWith('disconnect_b_')) {
                 const id = data.replace('disconnect_b_', '');
                 const newCode = generateComplexString(12);
@@ -286,6 +386,7 @@ export async function POST(req: Request) {
             const chatId = chat.id;
             const chatType = chat.type;
             const text = body.message.text ? body.message.text.trim() : '';
+            const userId = body.message.from?.id;
 
             if (text.startsWith('/start')) {
                 const parts = text.split(/\s+/);
@@ -298,11 +399,20 @@ export async function POST(req: Request) {
                     return NextResponse.json({ status: 'no_code' });
                 }
 
+                // ─── Admin Security Logic ───
                 if (chatType === 'group' || chatType === 'supergroup') {
+                    if (!userId) return NextResponse.json({ status: 'ignored' });
+
+                    const isAdmin = await isGroupAdmin(chatId, userId);
+                    if (!isAdmin) {
+                        await sendTelegramMessage(chatId, "⚠️ <b>Access Denied</b>\n\nOnly group administrators can connect or configure this bot. Please ask an admin to send the connection command.");
+                        return NextResponse.json({ status: 'not_admin' });
+                    }
+
                     const groupTitle = chat.title || 'Connected Group';
                     const groupUsername = chat.username ? `@${chat.username}` : null;
                     
-                    const result = await connectTelegram(code, chatId, groupUsername, groupTitle);
+                    const result = await connectTelegram(code, chatId, groupUsername, groupTitle, false);
                     await sendTelegramMessage(chatId, result.text, result.replyMarkup);
                     return NextResponse.json({ status: 'connected_group' });
                 }
