@@ -332,83 +332,245 @@ if (response.data.status === 'success') {
             {/* ── WEBHOOK ── */}
             {activeSection === 'webhook' && (
               <div className="space-y-5">
+
+                {/* ── Architecture Overview ── */}
                 <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-                  <h2 className="text-lg font-black text-slate-900 dark:text-white mb-4">Webhook Events</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-5">
-                    XelPay sends a POST request to your webhook URL when a payment event occurs. Always verify the signature to ensure authenticity.
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white mb-1">Webhook Events</h2>
+                  <p className="text-sm text-slate-500 mb-5 leading-relaxed">
+                    When a payment is verified, XelPay dispatches a signed <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-xs font-mono">POST</code> request to your configured Webhook URL. The payload is signed with HMAC-SHA256 using your Webhook Secret — always verify the signature before processing.
                   </p>
 
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Event Payload</h3>
+                  {/* Flow diagram */}
+                  <div className="bg-slate-50 dark:bg-[#0B1120] rounded-2xl p-5 border border-slate-200 dark:border-slate-700">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Delivery Flow</p>
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                      {['Customer Pays', '→', 'XelPay Verifies', '→', 'Webhook Dispatched', '→', 'Your Server Processes', '→', 'Respond 200 OK'].map((s, i) => (
+                        s === '→'
+                          ? <span key={i} className="text-slate-400">{s}</span>
+                          : <span key={i} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-lg text-slate-700 dark:text-slate-300">{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Actual Payload (matches payment-actions.ts) ── */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Event Payload</h3>
+                  <p className="text-xs text-slate-500 mb-4">XelPay sends the following JSON body. The raw body string is what is signed — do NOT parse before verifying.</p>
                   <CodeBlock language="JSON" code={`{
-  "event": "payment.verified",
-  "timestamp": "2026-01-01T12:15:00Z",
-  "data": {
-    "order_id": "INV-12345",
-    "order_ref": "ord_abc123xyz",
-    "amount": 500.00,
-    "currency": "BDT",
-    "status": "success",
-    "method": "bkash",
-    "trx_id": "8N7AB23KC1",
-    "customer_name": "John Doe",
-    "customer_phone": "017XXXXXXXX"
-  }
+  "event": "payment.success",
+  "order_id": "INV-12345",
+  "amount": 500,
+  "trx_id": "8N7AB23KC1",
+  "payment_method": "Bkash"
 }`} />
-                </div>
-
-                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-                  <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4 uppercase tracking-widest">Verify Signature</h3>
-                  <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                    Every webhook request includes an <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded text-xs">X-XelPay-Signature</code> header. Verify it using HMAC-SHA256 with your webhook secret.
-                  </p>
-                  <CodeBlock language="Node.js" code={`const crypto = require('crypto');
-
-function verifyWebhook(rawBody, signature, webhookSecret) {
-  const expected = crypto
-    .createHmac('sha256', webhookSecret)
-    .update(rawBody)
-    .digest('hex');
-  
-  return crypto.timingSafeEqual(
-    Buffer.from(expected),
-    Buffer.from(signature)
-  );
-}
-
-// In your Express route:
-app.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
-  const sig = req.headers['x-xelpay-signature'];
-  
-  if (!verifyWebhook(req.body, sig, process.env.WEBHOOK_SECRET)) {
-    return res.status(400).send('Invalid signature');
-  }
-  
-  const event = JSON.parse(req.body);
-  if (event.event === 'payment.verified') {
-    fulfillOrder(event.data.order_id);
-  }
-  
-  res.json({ received: true });
-});`} />
-                </div>
-
-                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-                  <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4 uppercase tracking-widest">Event Types</h3>
-                  <div className="space-y-3">
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {[
-                      { event: 'payment.verified', color: 'emerald', desc: 'Payment successfully verified and confirmed' },
-                      { event: 'payment.pending', color: 'amber', desc: 'Payment received but awaiting verification' },
-                      { event: 'payment.failed', color: 'red', desc: 'Payment could not be verified' },
-                      { event: 'payment.cancelled', color: 'slate', desc: 'Customer cancelled the payment' },
-                    ].map(e => (
-                      <div key={e.event} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-[#0B1120] rounded-xl border border-slate-200 dark:border-slate-800">
-                        <div className={`w-2 h-2 rounded-full bg-${e.color}-500 shrink-0`} />
-                        <code className="text-xs font-mono font-black text-slate-800 dark:text-slate-200 flex-1">{e.event}</code>
-                        <span className="text-xs text-slate-500 hidden sm:block">{e.desc}</span>
+                      { field: 'event', type: 'string', desc: 'Always "payment.success" on successful verification' },
+                      { field: 'order_id', type: 'string', desc: 'Your original order_id from the create-payment request' },
+                      { field: 'amount', type: 'number', desc: 'Verified payment amount in your business currency' },
+                      { field: 'trx_id', type: 'string', desc: 'Mobile banking / gateway transaction reference ID' },
+                      { field: 'payment_method', type: 'string', desc: 'Human-readable method name (e.g. Bkash, Nagad, Rocket)' },
+                    ].map(f => (
+                      <div key={f.field} className="flex gap-2 p-3 bg-slate-50 dark:bg-[#0B1120] rounded-xl border border-slate-100 dark:border-slate-800">
+                        <div className="shrink-0">
+                          <code className="text-[11px] font-mono font-black text-blue-600 dark:text-blue-400">{f.field}</code>
+                          <span className="ml-2 text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">{f.type}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 leading-relaxed">{f.desc}</p>
                       </div>
                     ))}
                   </div>
                 </div>
+
+                {/* ── Request Headers ── */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Request Headers</h3>
+                  <div className="space-y-2">
+                    {[
+                      { header: 'Content-Type', value: 'application/json', note: 'Always JSON' },
+                      { header: 'X-XelPay-Signature', value: '<hmac_sha256_hex>', note: 'HMAC-SHA256 of raw JSON body using your Webhook Secret' },
+                    ].map(h => (
+                      <div key={h.header} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 p-3 bg-slate-50 dark:bg-[#0B1120] rounded-xl border border-slate-200 dark:border-slate-800">
+                        <code className="text-xs font-mono font-black text-purple-600 dark:text-purple-400 shrink-0 w-56">{h.header}</code>
+                        <code className="text-xs font-mono text-slate-600 dark:text-slate-400 shrink-0">{h.value}</code>
+                        <span className="text-[10px] text-slate-400">{h.note}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── Signature Verification (matches real implementation) ── */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Signature Verification</h3>
+                  <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                    XelPay computes <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded text-purple-600 dark:text-purple-400">HMAC-SHA256(rawBody, webhook_secret)</code> and sends the hex digest in the <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">X-XelPay-Signature</code> header. You must recompute this on your server and compare using a constant-time function to prevent timing attacks.
+                  </p>
+
+                  <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-xl p-3 mb-5 flex gap-2.5">
+                    <span className="text-amber-500 text-base shrink-0">⚠️</span>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold leading-relaxed">
+                      You must use the <strong>raw request body bytes</strong> for signature computation — not a re-serialized JSON object. Parsing and re-stringifying may alter whitespace or key order and will produce a mismatched signature.
+                    </p>
+                  </div>
+
+                  <CodeBlock language="Node.js" code={`// Node.js + Express — Webhook Verification
+const crypto = require('crypto');
+const express = require('express');
+const app = express();
+
+// CRITICAL: Use express.raw() — NOT express.json() — to preserve raw bytes
+app.post('/api/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  const signature = req.headers['x-xelpay-signature'];
+  const webhookSecret = process.env.XELPAY_WEBHOOK_SECRET; // your whsec_... value
+
+  if (!signature || !webhookSecret) {
+    return res.status(400).json({ error: 'Missing signature or secret' });
+  }
+
+  // Step 1: Recompute HMAC-SHA256 over raw body using your Webhook Secret
+  const expectedSig = crypto
+    .createHmac('sha256', webhookSecret)
+    .update(req.body)           // req.body is a Buffer here (raw bytes)
+    .digest('hex');
+
+  // Step 2: Constant-time comparison to prevent timing attacks
+  const isValid = crypto.timingSafeEqual(
+    Buffer.from(signature, 'hex'),
+    Buffer.from(expectedSig, 'hex')
+  );
+
+  if (!isValid) {
+    console.error('Invalid webhook signature — rejecting request');
+    return res.status(400).json({ error: 'Invalid signature' });
+  }
+
+  // Step 3: Safe to process — parse the verified payload
+  const event = JSON.parse(req.body.toString());
+
+  if (event.event === 'payment.success') {
+    // Implement idempotency: check trx_id has not been processed before
+    const alreadyFulfilled = await db.orders.findOne({ trxId: event.trx_id });
+    if (!alreadyFulfilled) {
+      await fulfillOrder(event.order_id, event.trx_id, event.amount);
+    }
+  }
+
+  // Always respond 200 to acknowledge receipt
+  res.json({ received: true });
+});`} />
+
+                  <div className="mt-5">
+                    <CodeBlock language="PHP" code={`<?php
+// PHP — Webhook Verification
+
+$webhookSecret = getenv('XELPAY_WEBHOOK_SECRET'); // your whsec_... value
+
+// Step 1: Read raw body BEFORE any parsing
+$rawBody   = file_get_contents('php://input');
+$signature = $_SERVER['HTTP_X_XELPAY_SIGNATURE'] ?? '';
+
+// Step 2: Recompute HMAC-SHA256
+$expectedSig = hash_hmac('sha256', $rawBody, $webhookSecret);
+
+// Step 3: Constant-time comparison
+if (!hash_equals($expectedSig, $signature)) {
+    http_response_code(400);
+    die(json_encode(['error' => 'Invalid signature']));
+}
+
+// Step 4: Safe to parse
+$event = json_decode($rawBody, true);
+
+if ($event['event'] === 'payment.success') {
+    // Idempotency check before fulfilling
+    $alreadyProcessed = db_query(
+        'SELECT id FROM orders WHERE trx_id = ?',
+        [$event['trx_id']]
+    );
+    if (!$alreadyProcessed) {
+        fulfill_order($event['order_id'], $event['trx_id'], $event['amount']);
+    }
+}
+
+http_response_code(200);
+echo json_encode(['received' => true]);`} />
+                  </div>
+                </div>
+
+                {/* ── Event Types ── */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Event Types</h3>
+                  <div className="space-y-2.5">
+                    {[
+                      { event: 'payment.success', color: 'bg-emerald-500', badge: 'text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/30', desc: 'Payment verified and confirmed by XelPay. Safe to fulfill the order.' },
+                    ].map(e => (
+                      <div key={e.event} className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-[#0B1120] rounded-xl border border-slate-200 dark:border-slate-800">
+                        <div className={`w-2 h-2 rounded-full ${e.color} shrink-0 mt-1.5`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <code className="text-xs font-mono font-black text-slate-800 dark:text-slate-200">{e.event}</code>
+                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${e.badge}`}>Active</span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{e.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="p-3 bg-slate-50 dark:bg-[#0B1120] rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center">
+                      <p className="text-[11px] text-slate-400 font-semibold">Additional events (<code className="font-mono">payment.failed</code>, <code className="font-mono">payment.cancelled</code>, <code className="font-mono">refund.issued</code>) are on the roadmap.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Retry & Failure Handling ── */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Retry & Failure Handling</h3>
+                  <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                    If your endpoint returns a non-2xx response or times out, XelPay logs the failed delivery to an internal <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded font-mono">failed_webhooks</code> queue. Failed deliveries can be retried manually from the admin panel.
+                  </p>
+                  <div className="space-y-2.5">
+                    {[
+                      { icon: '✅', title: 'Successful Delivery', desc: 'Your endpoint returns HTTP 200 within the timeout window. No retry.' },
+                      { icon: '🔄', title: 'Failed Delivery', desc: 'Non-2xx response or timeout. Event is logged to failed_webhooks with the full payload for retry.' },
+                      { icon: '⚠️', title: 'Idempotency Requirement', desc: 'Because retries may occur, your handler must check trx_id uniqueness before fulfilling any order to prevent double-crediting.' },
+                      { icon: '⏱️', title: 'Respond Quickly', desc: 'Return 200 immediately after signature verification. Run order fulfillment asynchronously to avoid timeouts.' },
+                    ].map(item => (
+                      <div key={item.title} className="flex gap-3 p-3.5 bg-slate-50 dark:bg-[#0B1120] rounded-xl border border-slate-200 dark:border-slate-800">
+                        <span className="text-base shrink-0">{item.icon}</span>
+                        <div>
+                          <p className="text-xs font-black text-slate-800 dark:text-slate-200">{item.title}</p>
+                          <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── Security Best Practices ── */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Security Best Practices</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      { icon: '🔐', title: 'Verify every request', desc: 'Never skip signature verification, even in development.' },
+                      { icon: '📦', title: 'Use raw body', desc: 'Read req.body as Buffer/raw bytes before any JSON parsing.' },
+                      { icon: '🧪', title: 'Constant-time compare', desc: 'Use timingSafeEqual / hash_equals to prevent timing attacks.' },
+                      { icon: '🔁', title: 'Implement idempotency', desc: 'Store processed trx_id values. Reject duplicates silently.' },
+                      { icon: '🔒', title: 'Store secret securely', desc: 'Keep your whsec_... in environment variables, never in source code.' },
+                      { icon: '↩️', title: 'Respond 200 fast', desc: 'Acknowledge immediately; run fulfillment in the background.' },
+                      { icon: '🔑', title: 'Rotate if compromised', desc: 'Regenerate the Webhook Secret from Brand Settings → API & Webhooks if leaked.' },
+                      { icon: '🚫', title: 'Reject on mismatch', desc: 'Return HTTP 400 and do not process the payload if signatures differ.' },
+                    ].map(item => (
+                      <div key={item.title} className="flex gap-2.5 p-3 bg-slate-50 dark:bg-[#0B1120] rounded-xl border border-slate-100 dark:border-slate-800">
+                        <span className="text-base shrink-0">{item.icon}</span>
+                        <div>
+                          <p className="text-xs font-black text-slate-800 dark:text-slate-200">{item.title}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               </div>
             )}
 
