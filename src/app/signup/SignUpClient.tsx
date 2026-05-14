@@ -283,9 +283,11 @@ function SignUpContent() {
   const mode = searchParams.get('mode');
   const errorFromUrl = searchParams.get('error');
 
-  // --- NEW: Invitation State ---
+  // Invitation State
   const inviteToken = searchParams.get('invite_token');
   const [isInviteFlow, setIsInviteFlow] = useState(false);
+  // ✅ FIX: invite validate করার সময় loading দেখানোর জন্য
+  const [inviteValidating, setInviteValidating] = useState(!!inviteToken);
 
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -325,26 +327,36 @@ function SignUpContent() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // --- NEW: Verify Invite Token ---
+  // ✅ FIX: Invite token validate করা হচ্ছে API route দিয়ে (service role ব্যবহার করে)
+  // আগে সরাসরি supabase client দিয়ে query করা হতো — কিন্তু RLS policy-তে
+  // `merchant_id = auth.uid()` থাকায় unauthenticated user কিছুই দেখতে পেত না,
+  // ফলে সবসময় "Invalid or expired invitation link" আসত।
   useEffect(() => {
-    if (inviteToken) {
-      const validateInvite = async () => {
-        const { data, error } = await supabase
-          .from('team_invitations')
-          .select('email, status')
-          .eq('token', inviteToken)
-          .single();
+    if (!inviteToken) return;
 
-        if (data && data.status === 'pending') {
+    const validateInvite = async () => {
+      setInviteValidating(true);
+      try {
+        const res = await fetch(`/api/v1/team/validate-invite?token=${encodeURIComponent(inviteToken)}`);
+        const result = await res.json();
+
+        if (res.ok && result.valid) {
           setIsInviteFlow(true);
-          setFormData(prev => ({ ...prev, email: data.email }));
+          setFormData(prev => ({ ...prev, email: result.email }));
         } else {
-          toast.error("Invalid or expired invitation link.");
-          router.push('/signup');
+          toast.error(result.error || 'Invalid or expired invitation link.');
+          // ছোট delay দিয়ে redirect — toast দেখার সময় দিতে
+          setTimeout(() => router.push('/signup'), 2000);
         }
-      };
-      validateInvite();
-    }
+      } catch {
+        toast.error('Failed to validate invitation. Please try again.');
+        setTimeout(() => router.push('/signup'), 2000);
+      } finally {
+        setInviteValidating(false);
+      }
+    };
+
+    validateInvite();
   }, [inviteToken, router]);
 
   useEffect(() => {
@@ -433,7 +445,7 @@ function SignUpContent() {
 
     setLoading(true);
 
-    // --- NEW: Team Invite Registration Flow ---
+    // Team Invite Registration Flow
     if (isInviteFlow) {
       try {
         const res = await fetch('/api/v1/team/accept-invite', {
@@ -462,7 +474,6 @@ function SignUpContent() {
       }
       return;
     }
-    // ------------------------------------------
 
     if (!selectedPlan) { toast.error("Please select a plan."); setLoading(false); return; }
 
@@ -665,6 +676,18 @@ function SignUpContent() {
   );
 
   const isOtpView = viewState === 'otp';
+
+  // ✅ Invite token validate হওয়ার সময় পুরো পেজ লোডিং দেখাবে
+  if (inviteValidating) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 size={32} className="animate-spin text-blue-600 mx-auto mb-3" />
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Validating your invitation…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] font-sans transition-colors duration-300">

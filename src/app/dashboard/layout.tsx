@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import DashboardClient from '@/components/dashboard/DashboardClient';
 import type { Metadata, Viewport } from 'next';
-import { Toaster } from 'sonner'; // 🚀 ফিক্স: Toaster ইম্পোর্ট করা হয়েছে
+import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
   title: { default: 'Dashboard — XelPay', template: '%s — XelPay' },
@@ -11,12 +11,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// 💥 মোবাইলের জুম ইন/আউট চিরতরে বন্ধ করার ম্যাজিক ফিক্স
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false, // এটি আঙুল দিয়ে জুম করা বন্ধ করে দেবে
+  userScalable: false,
 };
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -48,11 +47,56 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .eq('id', user.id)
     .maybeSingle();
 
+  // ✅ FIX: merchant row না থাকলে force-signout করা হতো।
+  // কিন্তু team member user-এর এখন merchants row আছে (accept-invite route-এ insert করা হয়েছে)।
+  // তবুও কোনো edge case-এ না থাকলে force-signout করো।
   if (!merchant) redirect('/auth/force-signout?redirect=/signup');
 
+  // ✅ FIX: Team member হলে তার active_business_id সেট নাও থাকতে পারে।
+  // business_team_members থেকে তার assigned business খুঁজে নিই এবং
+  // merchant-এর active_business_id আপডেট করে দিই।
+  let resolvedMerchant = merchant;
+
+  if (!merchant.active_business_id) {
+    // নিজের business আছে কিনা দেখো
+    const { data: ownBusiness } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('merchant_id', user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (ownBusiness) {
+      // নিজের business আছে — সেটা active করো
+      await supabase
+        .from('merchants')
+        .update({ active_business_id: ownBusiness.id })
+        .eq('id', user.id);
+
+      resolvedMerchant = { ...merchant, active_business_id: ownBusiness.id };
+    } else {
+      // নিজের business নেই — team member কিনা চেক করো
+      const { data: teamMembership } = await supabase
+        .from('business_team_members')
+        .select('business_id, role')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (teamMembership) {
+        // Team member — তার assigned business active করো
+        await supabase
+          .from('merchants')
+          .update({ active_business_id: teamMembership.business_id })
+          .eq('id', user.id);
+
+        resolvedMerchant = { ...merchant, active_business_id: teamMembership.business_id };
+      }
+    }
+  }
+
   return (
-    <DashboardClient merchant={merchant} user={user}>
-      {/* 🚀 ফিক্স: ড্যাশবোর্ডে পপআপ/মেসেজ দেখানোর জন্য Toaster যুক্ত করা হয়েছে */}
+    <DashboardClient merchant={resolvedMerchant} user={user}>
       <Toaster richColors position="top-center" />
       {children}
     </DashboardClient>

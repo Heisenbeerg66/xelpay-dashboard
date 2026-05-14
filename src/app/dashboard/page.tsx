@@ -8,7 +8,8 @@ import {
   DollarSign, TrendingUp, TrendingDown, Minus, ArrowRight, FileText, Loader2,
   CheckCircle, Clock, XCircle, AlertCircle, Eye, Receipt,
   LinkIcon, Building2, RefreshCw, User, Phone, Search,
-  PanelRightClose, Webhook, X, ChevronLeft, ChevronRight
+  PanelRightClose, Webhook, X, ChevronLeft, ChevronRight,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -41,14 +42,16 @@ interface ChartSlot {
   match: (d: Date) => boolean;
 }
 
+type TeamRole = 'admin' | 'developer' | 'support' | 'viewer' | null;
+
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 10;
 
 const getPieColor = (name: string) => {
-  if (name === 'Paid') return '#10b981';    // Emerald
-  if (name === 'Pending') return '#f59e0b'; // Amber
-  if (name === 'Failed') return '#ef4444';  // Red
-  return '#6366f1'; // Indigo
+  if (name === 'Paid') return '#10b981';
+  if (name === 'Pending') return '#f59e0b';
+  if (name === 'Failed') return '#ef4444';
+  return '#6366f1';
 };
 
 const statusConfig = (status: string) => {
@@ -71,6 +74,13 @@ const getMethodTextColor = (method: string | null) => {
 const formatDate = (d: string) => new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 const formatTime = (d: string) => new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
+const ROLE_LABELS: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  admin:     { label: 'Admin',     color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-900/20', border: 'border-violet-200 dark:border-violet-800' },
+  developer: { label: 'Developer', color: 'text-blue-600 dark:text-blue-400',    bg: 'bg-blue-50 dark:bg-blue-900/20',     border: 'border-blue-200 dark:border-blue-800' },
+  support:   { label: 'Support',   color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-200 dark:border-emerald-800' },
+  viewer:    { label: 'Viewer',    color: 'text-slate-500 dark:text-slate-400',   bg: 'bg-slate-100 dark:bg-slate-800',     border: 'border-slate-200 dark:border-slate-700' },
+};
+
 // ─── Component Helpers ────────────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, textClass, borderClass, trend, trendSuffix = '%' }: { icon: any; label: string; value: string; textClass: string; borderClass: string; trend?: number; trendSuffix?: string }) {
   const isPositive = trend && trend > 0;
@@ -89,7 +99,6 @@ function StatCard({ icon: Icon, label, value, textClass, borderClass, trend, tre
         </div>
         <p className={`text-2xl sm:text-[26px] font-black ${textClass} tracking-tight truncate`} title={value}>{value}</p>
       </div>
-      
       <div className="mt-3 h-[22px] flex items-center">
         {trend !== undefined && (
           <div className={`inline-flex items-center gap-1 text-[10px] font-bold ${trendColor} bg-slate-50 dark:bg-slate-800/50 px-2 py-1.5 rounded-lg`}>
@@ -202,7 +211,10 @@ export default function DashboardHome() {
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [activeLinksCount, setActiveLinksCount] = useState(0);
   const [userName, setUserName] = useState('Merchant');
-  
+  // ✅ Team member role tracking
+  const [teamRole, setTeamRole] = useState<TeamRole>(null);
+  const [isTeamMember, setIsTeamMember] = useState(false);
+
   const [drawerOrder, setDrawerOrder] = useState<Order | null>(null);
   const [customerModal, setCustomerModal] = useState<Order | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -264,11 +276,122 @@ export default function DashboardHome() {
   };
 
   useEffect(() => {
-    const load = () => {
-      const id = localStorage.getItem('active_business_id');
-      if (id) { setBusinessId(id); fetchDashboardData(id); }
-      else setLoading(false);
+    const load = async () => {
+      // ✅ FIX: Current user নিয়ে নিই
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const storedId = localStorage.getItem('active_business_id');
+
+      // ✅ FIX: Business ownership verify করো।
+      // localStorage-এ stale বা অন্যের business id থাকতে পারে।
+      if (storedId) {
+        // এই business কি current user-এর নিজের?
+        const { data: ownBiz } = await supabase
+          .from('businesses')
+          .select('id')
+          .eq('id', storedId)
+          .eq('merchant_id', user.id)
+          .maybeSingle();
+
+        if (ownBiz) {
+          // ✅ নিজের business — load করো
+          setIsTeamMember(false);
+          setTeamRole(null);
+          setBusinessId(storedId);
+          fetchDashboardData(storedId);
+          return;
+        }
+
+        // ✅ নিজের business না — team member হিসেবে access আছে কিনা চেক করো
+        const { data: membership } = await supabase
+          .from('business_team_members')
+          .select('business_id, role')
+          .eq('business_id', storedId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (membership) {
+          // ✅ Team member হিসেবে এই business-এ access আছে
+          setIsTeamMember(true);
+          setTeamRole(membership.role as TeamRole);
+          setBusinessId(storedId);
+          fetchDashboardData(storedId);
+          return;
+        }
+
+        // ❌ না owner না team member — stale id clear করো
+        localStorage.removeItem('active_business_id');
+      }
+
+      // localStorage-এ কিছু নেই — merchant-এর active_business_id দেখো
+      const { data: merchantData } = await supabase
+        .from('merchants')
+        .select('active_business_id')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (merchantData?.active_business_id) {
+        // active_business_id verify করো
+        const { data: ownBiz } = await supabase
+          .from('businesses')
+          .select('id')
+          .eq('id', merchantData.active_business_id)
+          .eq('merchant_id', user.id)
+          .maybeSingle();
+
+        if (ownBiz) {
+          localStorage.setItem('active_business_id', ownBiz.id);
+          setIsTeamMember(false);
+          setTeamRole(null);
+          setBusinessId(ownBiz.id);
+          fetchDashboardData(ownBiz.id);
+          return;
+        }
+
+        // Team member হিসেবে এই business-এ আছে কিনা
+        const { data: membership } = await supabase
+          .from('business_team_members')
+          .select('business_id, role')
+          .eq('business_id', merchantData.active_business_id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (membership) {
+          localStorage.setItem('active_business_id', membership.business_id);
+          setIsTeamMember(true);
+          setTeamRole(membership.role as TeamRole);
+          setBusinessId(membership.business_id);
+          fetchDashboardData(membership.business_id);
+          return;
+        }
+      }
+
+      // সর্বশেষ চেষ্টা: team_members থেকে যেকোনো একটি business নিয়ে নিই
+      const { data: anyMembership } = await supabase
+        .from('business_team_members')
+        .select('business_id, role')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (anyMembership) {
+        localStorage.setItem('active_business_id', anyMembership.business_id);
+        setIsTeamMember(true);
+        setTeamRole(anyMembership.role as TeamRole);
+        setBusinessId(anyMembership.business_id);
+        fetchDashboardData(anyMembership.business_id);
+        return;
+      }
+
+      // কোনো business নেই
+      setBusinessId(null);
+      setLoading(false);
     };
+
     load();
     window.addEventListener('businessChanged', load);
     return () => window.removeEventListener('businessChanged', load);
@@ -307,7 +430,7 @@ export default function DashboardHome() {
     }
 
     const prevOrders = allOrders.filter(o => {
-      if (dateFilter === 'all') return false; 
+      if (dateFilter === 'all') return false;
       const d = new Date(o.created_at);
       return d >= prevStart && d < prevEnd;
     });
@@ -322,7 +445,6 @@ export default function DashboardHome() {
 
     const curr = calcValues(displayOrders);
     const prev = calcValues(prevOrders);
-
     const getTrend = (c: number, p: number) => p === 0 ? (c > 0 ? 100 : 0) : ((c - p) / p) * 100;
 
     return {
@@ -406,7 +528,7 @@ export default function DashboardHome() {
   useEffect(() => { setCurrentPage(1); }, [searchTerm, dateFilter]);
 
   const resendWebhook = async (id: string) => {
-    const promise = fetch('/api/resend-webhook', { method: 'POST', body: JSON.stringify({ order_id: id }) }).then(res => { if(!res.ok) throw new Error(); });
+    const promise = fetch('/api/resend-webhook', { method: 'POST', body: JSON.stringify({ order_id: id }) }).then(res => { if (!res.ok) throw new Error(); });
     toast.promise(promise, { loading: 'Resending Webhook...', success: 'Webhook sent successfully!', error: 'Failed to send webhook.' });
   };
 
@@ -429,20 +551,31 @@ export default function DashboardHome() {
   
   return (
     <>
-      {/* 💥 Modals extracted outside of the animated wrapper so they break free 💥 */}
       {drawerOrder && <TransactionDrawer order={drawerOrder} onClose={() => setDrawerOrder(null)} onResend={resendWebhook} />}
       {customerModal && <CustomerModal trx={customerModal} onClose={() => setCustomerModal(null)} />}
 
       <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        {/* ── Header with Welcome & Quick Filters ── */}
+        {/* ── Header with Welcome & Role Badge ── */}
         <div className="flex flex-col xl:flex-row justify-between xl:items-end gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Overview</h1>
-            <p className="text-slate-500 font-bold text-sm mt-1">Welcome back, <span className="text-slate-700 dark:text-slate-300">{userName}</span>! Here's your business summary.</p>
+            <div className="flex items-center gap-2.5 mb-0.5">
+              <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Overview</h1>
+              {/* ✅ Team member role badge */}
+              {isTeamMember && teamRole && ROLE_LABELS[teamRole] && (
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border ${ROLE_LABELS[teamRole].color} ${ROLE_LABELS[teamRole].bg} ${ROLE_LABELS[teamRole].border}`}>
+                  <ShieldCheck size={11} strokeWidth={2.5} />
+                  {ROLE_LABELS[teamRole].label}
+                </span>
+              )}
+            </div>
+            <p className="text-slate-500 font-bold text-sm mt-1">
+              Welcome back, <span className="text-slate-700 dark:text-slate-300">{userName}</span>!{' '}
+              {isTeamMember ? 'You are viewing this workspace as a team member.' : "Here's your business summary."}
+            </p>
           </div>
           
           <div className="flex bg-white dark:bg-[#111827] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm w-full xl:w-auto overflow-x-auto scrollbar-hide">
-            {[ { id: 'today', label: 'Today' }, { id: '7d', label: '7 Days' }, { id: '30d', label: '30 Days' }, { id: 'all', label: 'All Time' } ].map(f => (
+            {[{ id: 'today', label: 'Today' }, { id: '7d', label: '7 Days' }, { id: '30d', label: '30 Days' }, { id: 'all', label: 'All Time' }].map(f => (
               <button key={f.id} onClick={() => setDateFilter(f.id as any)}
                 className={`flex-1 xl:flex-none whitespace-nowrap px-5 py-2.5 text-[13px] font-bold rounded-lg transition-all ${dateFilter === f.id ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
                 {f.label}
@@ -453,7 +586,7 @@ export default function DashboardHome() {
 
         {loading ? <DashboardSkeleton /> : (
           <>
-            {/* ── Stats Cards (Left-Aligned Flow) ── */}
+            {/* ── Stats Cards ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <StatCard icon={DollarSign} label="Revenue" textClass="text-blue-600 dark:text-blue-500" borderClass="border-b-blue-600 dark:border-b-blue-500"
                 value={`৳ ${stats.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`} trend={stats.revTrend} />
@@ -467,9 +600,8 @@ export default function DashboardHome() {
                 value={String(stats.pendingOrders)} trend={stats.pendingTrend} />
             </div>
 
-            {/* ── Charts (Dynamic Area & Premium Donut) ── */}
+            {/* ── Charts ── */}
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-              {/* Revenue Area Chart (3 Columns) */}
               <div className="lg:col-span-3 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col">
                 <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-widest mb-6">Revenue Growth — {getFilterLabel()}</h2>
                 {chartData.barData.every(d => d.revenue === 0) ? (
@@ -495,7 +627,6 @@ export default function DashboardHome() {
                 )}
               </div>
 
-              {/* Premium Donut Chart with Indicators (2 Columns) */}
               <div className="lg:col-span-2 bg-white dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col">
                 <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-widest mb-2">Order Status</h2>
                 {displayOrders.length === 0 ? (
@@ -505,25 +636,21 @@ export default function DashboardHome() {
                     <div className="h-[180px] flex items-center justify-center">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie 
-                            data={chartData.pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" paddingAngle={5} stroke="none" style={{ outline: 'none' }} labelLine={false}
-                          >
+                          <Pie data={chartData.pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} dataKey="value" paddingAngle={5} stroke="none" style={{ outline: 'none' }} labelLine={false}>
                             {chartData.pieData.map((entry, i) => <Cell key={i} fill={getPieColor(entry.name)} style={{ outline: 'none' }} />)}
                           </Pie>
-                          <Tooltip 
-                            contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
-                            itemStyle={{ color: '#fff', fontWeight: 'bold' }} 
-                            cursor={{ fill: 'transparent' }} 
+                          <Tooltip
+                            contentStyle={{ background: '#1e293b', border: 'none', borderRadius: 12, color: '#f8fafc', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                            itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+                            cursor={{ fill: 'transparent' }}
                             formatter={(value: any, name: any, props: any) => {
-                               const data = props?.payload?.payload;
-                               return [`${value} Orders (৳${data?.amount?.toLocaleString('en-IN')})`, name];
+                              const data = props?.payload?.payload;
+                              return [`${value} Orders (৳${data?.amount?.toLocaleString('en-IN')})`, name];
                             }}
                           />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
-                    
-                    {/* Premium Indicator List */}
                     <div className="mt-4 flex flex-col gap-2.5 overflow-y-auto pr-1">
                       {chartData.pieData.map((entry, i) => (
                         <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/60 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/60">
