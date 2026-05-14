@@ -97,7 +97,7 @@ export async function POST(req: Request) {
 
     // ৪. Resend দিয়ে মেইল পাঠানো (Verified Domain ব্যবহার করে)
     const { data, error: sendError } = await resend.emails.send({
-      from: `"${siteName} Team" <team@xelpay.site>`, // 👈 ফিক্স করা হয়েছে: আপনার ভেরিফাইড ডোমেইন
+      from: '${siteName} Team <team@xelpay.site>', // 👈 ফিক্স করা হয়েছে: আপনার ভেরিফাইড ডোমেইন
       to: [email],
       subject: `Invitation to join ${siteName}`,
       html: emailHtml,
