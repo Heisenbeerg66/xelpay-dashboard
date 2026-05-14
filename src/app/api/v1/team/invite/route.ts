@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-// Resend initialization (.env theke API Key nicche)
+// Resend initialization
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const supabaseAdmin = createClient(
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Database e invitation create kora
+    // 1. Database e invitation create kora
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from('team_invitations')
       .insert({
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to create invitation. Maybe already invited?' }, { status: 400 });
     }
 
-    // Invitation link toiri kora
+    // 2. Invitation link toiri kora
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const siteName = process.env.NEXT_PUBLIC_SITE_NAME || 'XelPay';
     const inviteLink = `${baseUrl}/signup?invite_token=${invite.token}`;
@@ -53,33 +53,26 @@ export async function POST(req: Request) {
           <tr>
             <td align="center">
               <div style="max-width: 480px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 16px; padding: 40px 32px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03); border: 1px solid #f1f5f9; text-align: center;">
-                
                 <div style="margin-bottom: 32px;">
                   <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
                     ${siteName === 'XelPay' ? 'Xel<span style="color: #2563eb;">Pay</span>' : siteName}
                   </h1>
                 </div>
-
                 <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 600; color: #0f172a;">Team Invitation</h2>
-                
                 <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #475569;">
                   You have been invited to join the <strong>${siteName}</strong> workspace to collaborate and manage operations.
                 </p>
-
                 <div style="margin-bottom: 32px;">
                   <span style="background-color: #f8fafc; color: #475569; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #e2e8f0;">
                     Role: ${role}
                   </span>
                 </div>
-
                 <div style="margin-bottom: 32px;">
                   <a href="${inviteLink}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; transition: background-color 0.2s;">
                     Accept Invitation
                   </a>
                 </div>
-
                 <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 0 0 24px;">
-
                 <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #94a3b8;">
                   If you were not expecting this invitation, you can safely ignore this email. The link will automatically expire.
                 </p>
@@ -91,24 +84,30 @@ export async function POST(req: Request) {
       </html>
     `;
 
-    // Resend diye mail pathano (Fixed Here)
+    console.log("🚀 Attempting to send email via Resend to:", email);
+
+    // 3. Resend diye mail pathano
     const { data, error: sendError } = await resend.emails.send({
-      from: `"${siteName}" <team@xelpay.site>`, // নামের দুপাশে কোটেশন মার্ক দেওয়া হয়েছে
-      to: [email], // ইমেইলটি অ্যারে হিসেবে পাঠানো হয়েছে
+      from: `"${siteName}" <team@xelpay.site>`, // সতর্কতা: xelpay.site ভেরিফাই করা না থাকলে মেইল যাবে না
+      to: [email],
       subject: `Invitation to join ${siteName}`,
       html: emailHtml,
     });
 
+    // Logging Resend Response
     if (sendError) {
-      console.error("Resend Error Details:", sendError);
-      // এরর মেসেজটি ফ্রন্টএন্ডে পাস করা হলো যাতে আপনি সহজে বুঝতে পারেন কী সমস্যা
-      return NextResponse.json({ error: sendError.message || 'Invitation created but failed to send email.' }, { status: 500 });
+      console.error("❌ Resend API Error:", sendError);
+      return NextResponse.json({ 
+        error: 'Failed to send email via Resend.', 
+        details: sendError.message 
+      }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: "Invitation sent successfully!" });
+    console.log("✅ Resend Success Data:", data);
+    return NextResponse.json({ success: true, message: "Invitation sent successfully!", data });
 
   } catch (error: any) {
-    console.error("Server Error:", error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error("💥 Server Crash Error:", error);
+    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
   }
 }
