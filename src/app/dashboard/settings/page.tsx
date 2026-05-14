@@ -88,7 +88,7 @@ export default function TeamSettingsPage() {
     }
   };
 
-  // --- FIX: সরাসরি API Route কল করা হচ্ছে যাতে মেইল যায় ---
+  // --- FULL FIXED: API ROUTE কল করার মাধ্যমে ইমেইল পাঠানো হচ্ছে ---
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!businessId || !inviteEmail.trim()) return;
@@ -115,7 +115,7 @@ export default function TeamSettingsPage() {
       setIsInviteModalOpen(false);
       setInviteEmail('');
       setInviteRole('viewer');
-      fetchTeamData(businessId);
+      fetchTeamData(businessId); // লিস্ট রিফ্রেশ করা
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -214,11 +214,11 @@ export default function TeamSettingsPage() {
             <form onSubmit={handleSendInvite} className="p-6 space-y-5">
               <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Email Address</label><input type="email" required value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="colleague@company.com" className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 transition-colors" /></div>
               <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Assign Role</label><select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as Role)} className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 transition-colors"><option value="admin">Admin</option><option value="developer">Developer</option><option value="support">Support</option><option value="viewer">Viewer</option></select></div>
-              <button type="submit" disabled={sendingInvite || !inviteEmail.trim()} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black text-sm uppercase rounded-xl flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 transition-all">{sendingInvite ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}{sendingInvite ? 'Sending...' : 'Send Invite Link'}</button>
+              <button type="submit" disabled={sendingInvite || !inviteEmail.trim()} className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black text-sm uppercase rounded-xl flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 transition-all">{sendingInvite ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} {sendingInvite ? 'Sending...' : 'Send Invite Link'}</button>
             </form>
           </div>
         </div>
       )}
     </div>
-  );
+  ); 
 }
