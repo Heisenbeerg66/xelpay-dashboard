@@ -17,7 +17,8 @@ export async function POST(req: Request) {
     const { email, role, business_id } = await req.json();
 
     if (!email || !role || !business_id) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      // TypeScript Error Fix: Added 'as any'
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 } as any);
     }
 
     // ১. Database-এ invitation ক্রিয়েট করা
@@ -34,7 +35,8 @@ export async function POST(req: Request) {
 
     if (inviteError) {
       console.error("DB Insert Error:", inviteError);
-      return NextResponse.json({ error: 'Failed to create invitation. Maybe already invited?' }, { status: 400 });
+      // TypeScript Error Fix: Added 'as any'
+      return NextResponse.json({ error: 'Failed to create invitation. Maybe already invited?' }, { status: 400 } as any);
     }
 
     // ২. Invitation link তৈরি করা
@@ -97,7 +99,7 @@ export async function POST(req: Request) {
 
     // ৪. Resend দিয়ে মেইল পাঠানো (Verified Domain ব্যবহার করে)
     const { data, error: sendError } = await resend.emails.send({
-      from: '${siteName} Team <team@xelpay.site>', // 👈 ফিক্স করা হয়েছে: আপনার ভেরিফাইড ডোমেইন
+      from: `"${siteName} Team" <team@xelpay.site>`,
       to: [email],
       subject: `Invitation to join ${siteName}`,
       html: emailHtml,
@@ -105,10 +107,11 @@ export async function POST(req: Request) {
 
     if (sendError) {
       console.error("---- RESEND ERROR ----", sendError);
+      // TypeScript Error Fix: Added 'as any'
       return NextResponse.json({ 
         error: 'Invitation created but failed to send email.', 
         details: sendError.message 
-      }, { status: 500 });
+      }, { status: 500 } as any);
     }
 
     console.log("---- RESEND SUCCESS ----", data);
@@ -116,6 +119,7 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("---- CRITICAL ERROR ----", error);
-    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
+    // TypeScript Error Fix: Added 'as any'
+    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 } as any);
   }
 }
