@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Users, UserPlus, ShieldCheck, Mail, Loader2, X, Plus,
   Building2, Trash2, RefreshCw, Clock, CheckCircle2,
@@ -40,7 +40,6 @@ const ROLE_CONFIG: Record<Role, {
   color: string;
   bg: string;
   border: string;
-  dot: string;
 }> = {
   admin: {
     label: 'Admin',
@@ -48,7 +47,6 @@ const ROLE_CONFIG: Record<Role, {
     color: 'text-violet-700 dark:text-violet-400',
     bg: 'bg-violet-50 dark:bg-violet-900/20',
     border: 'border-violet-200 dark:border-violet-800',
-    dot: 'bg-violet-500',
   },
   developer: {
     label: 'Developer',
@@ -56,7 +54,6 @@ const ROLE_CONFIG: Record<Role, {
     color: 'text-blue-700 dark:text-blue-400',
     bg: 'bg-blue-50 dark:bg-blue-900/20',
     border: 'border-blue-200 dark:border-blue-800',
-    dot: 'bg-blue-500',
   },
   support: {
     label: 'Support',
@@ -64,7 +61,6 @@ const ROLE_CONFIG: Record<Role, {
     color: 'text-emerald-700 dark:text-emerald-400',
     bg: 'bg-emerald-50 dark:bg-emerald-900/20',
     border: 'border-emerald-200 dark:border-emerald-800',
-    dot: 'bg-emerald-500',
   },
   viewer: {
     label: 'Viewer',
@@ -72,7 +68,6 @@ const ROLE_CONFIG: Record<Role, {
     color: 'text-slate-600 dark:text-slate-400',
     bg: 'bg-slate-100 dark:bg-slate-800',
     border: 'border-slate-200 dark:border-slate-700',
-    dot: 'bg-slate-400',
   },
 };
 
@@ -91,30 +86,21 @@ function RoleBadge({ role }: { role: Role }) {
   );
 }
 
-function getInitials(email: string) {
-  return email.slice(0, 2).toUpperCase();
-}
-
-function getAvatarColor(email: string) {
+function getAvatarColor(str: string) {
   const colors = [
     'bg-violet-500', 'bg-blue-500', 'bg-emerald-500',
     'bg-rose-500', 'bg-amber-500', 'bg-cyan-500', 'bg-pink-500',
   ];
-  const idx = email.charCodeAt(0) % colors.length;
-  return colors[idx];
+  return colors[str.charCodeAt(0) % colors.length];
 }
 
 function canResendInvite(invite: Invitation): { allowed: boolean; reason?: string } {
   const count = invite.resend_count ?? 0;
-  if (count >= MAX_RESENDS) {
-    return { allowed: false, reason: 'Resend limit reached' };
-  }
+  if (count >= MAX_RESENDS) return { allowed: false, reason: 'Limit reached' };
   if (invite.last_resent_at) {
     const hoursLeft = RESEND_COOLDOWN_HOURS -
       (Date.now() - new Date(invite.last_resent_at).getTime()) / (1000 * 60 * 60);
-    if (hoursLeft > 0) {
-      return { allowed: false, reason: `Wait ${Math.ceil(hoursLeft)}h` };
-    }
+    if (hoursLeft > 0) return { allowed: false, reason: `Wait ${Math.ceil(hoursLeft)}h` };
   }
   return { allowed: true };
 }
@@ -127,28 +113,28 @@ export default function TeamSettingsPage() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [resendingId, setResendingId] = useState<string | null>(null);
 
-  // Modal state
+  // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<Role>('viewer');
   const [sendingInvite, setSendingInvite] = useState(false);
 
-  // ── Business listener ──────────────────────────────────────────────────────
-  const loadActiveBusiness = useCallback(() => {
-    const activeId = localStorage.getItem('active_business_id');
-    if (activeId !== businessId) setBusinessId(activeId);
-    else if (!activeId) setLoading(false);
-  }, [businessId]);
-
+  // ── Exact same pattern as devices/page.tsx ────────────────────────────────
   useEffect(() => {
+    const loadActiveBusiness = () => {
+      const activeId = localStorage.getItem('active_business_id');
+      if (activeId) {
+        setBusinessId(activeId);
+        fetchTeamData(activeId);
+      } else {
+        setLoading(false);
+      }
+    };
+
     loadActiveBusiness();
     window.addEventListener('businessChanged', loadActiveBusiness);
     return () => window.removeEventListener('businessChanged', loadActiveBusiness);
-  }, [loadActiveBusiness]);
-
-  useEffect(() => {
-    if (businessId) fetchTeamData(businessId);
-  }, [businessId]);
+  }, []);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchTeamData = async (bizId: string) => {
@@ -157,7 +143,12 @@ export default function TeamSettingsPage() {
       const [{ data: membersData, error: mErr }, { data: invitesData, error: iErr }] =
         await Promise.all([
           supabase.from('business_team_members').select('*').eq('business_id', bizId),
-          supabase.from('team_invitations').select('*').eq('business_id', bizId).eq('status', 'pending'),
+          supabase
+            .from('team_invitations')
+            .select('*')
+            .eq('business_id', bizId)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false }),
         ]);
       if (mErr) throw mErr;
       if (iErr) throw iErr;
@@ -206,10 +197,7 @@ export default function TeamSettingsPage() {
   // ── Resend ─────────────────────────────────────────────────────────────────
   const handleResendInvite = async (invite: Invitation) => {
     const { allowed, reason } = canResendInvite(invite);
-    if (!allowed) {
-      toast.error(reason || 'Cannot resend at this time.');
-      return;
-    }
+    if (!allowed) { toast.error(reason || 'Cannot resend.'); return; }
     setResendingId(invite.id);
     try {
       const response = await fetch('/api/v1/team/invite', {
@@ -222,7 +210,7 @@ export default function TeamSettingsPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Failed to resend');
       toast.success(result.message || 'Invitation resent!');
-      fetchTeamData(businessId!);
+      if (businessId) fetchTeamData(businessId);
     } catch (err: any) {
       toast.error(err.message || 'Something went wrong.');
     } finally {
@@ -262,18 +250,23 @@ export default function TeamSettingsPage() {
     }
   };
 
-  // ─── Loading / No Business ─────────────────────────────────────────────────
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setInviteEmail('');
+    setInviteRole('viewer');
+  };
+
+  // ─── Loading ───────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
-        <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-          <Loader2 className="animate-spin text-blue-500" size={20} />
-        </div>
-        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Loading Team</p>
+        <Loader2 className="animate-spin text-blue-500" size={32} strokeWidth={2.5} />
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Loading Team</p>
       </div>
     );
   }
 
+  // ─── No Business ──────────────────────────────────────────────────────────
   if (!businessId) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center gap-4">
@@ -314,19 +307,16 @@ export default function TeamSettingsPage() {
 
       {/* ── Active Members ────────────────────────────────────────────────── */}
       <section className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-        {/* Section header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-              <ShieldCheck size={14} className="text-slate-500" />
-            </div>
-            <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Active Members
-            </span>
-            <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-black rounded-md">
-              {members.length}
-            </span>
+        <div className="flex items-center gap-2.5 px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+            <ShieldCheck size={14} className="text-slate-500" />
           </div>
+          <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+            Active Members
+          </span>
+          <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-black rounded-md">
+            {members.length}
+          </span>
         </div>
 
         {members.length === 0 ? (
@@ -340,13 +330,16 @@ export default function TeamSettingsPage() {
         ) : (
           <div className="divide-y divide-slate-50 dark:divide-slate-800/60">
             {members.map(member => (
-              <div key={member.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors group">
+              <div
+                key={member.id}
+                className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors group"
+              >
                 <div className="flex items-center gap-3">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0 ${getAvatarColor(member.user_id)}`}>
-                    {getInitials(member.user_id)}
+                    {member.user_id.slice(0, 2).toUpperCase()}
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-tight">
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 leading-tight font-mono text-xs">
                       {member.user_id}
                     </p>
                     <p className="text-[10px] text-slate-400 mt-0.5">
@@ -372,20 +365,18 @@ export default function TeamSettingsPage() {
 
       {/* ── Pending Invitations ───────────────────────────────────────────── */}
       <section className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center">
-              <Clock size={14} className="text-amber-500" />
-            </div>
-            <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-              Pending Invitations
-            </span>
-            {invitations.length > 0 && (
-              <span className="px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[10px] font-black rounded-md border border-amber-200 dark:border-amber-800">
-                {invitations.length}
-              </span>
-            )}
+        <div className="flex items-center gap-2.5 px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center">
+            <Clock size={14} className="text-amber-500" />
           </div>
+          <span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">
+            Pending Invitations
+          </span>
+          {invitations.length > 0 && (
+            <span className="px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[10px] font-black rounded-md border border-amber-200 dark:border-amber-800">
+              {invitations.length}
+            </span>
+          )}
         </div>
 
         {invitations.length === 0 ? (
@@ -398,9 +389,8 @@ export default function TeamSettingsPage() {
             {invitations.map(invite => {
               const resendStatus = canResendInvite(invite);
               const resendCount = invite.resend_count ?? 0;
-              const remainingResends = MAX_RESENDS - resendCount;
+              const remaining = MAX_RESENDS - resendCount;
               const isResending = resendingId === invite.id;
-              const cfg = ROLE_CONFIG[invite.role];
 
               return (
                 <div key={invite.id} className="px-5 py-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
@@ -421,13 +411,12 @@ export default function TeamSettingsPage() {
                               · Expires {new Date(invite.expires_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                             </span>
                           )}
-                          {/* Resend counter */}
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
-                            remainingResends === 0
-                              ? 'bg-red-50 text-red-500 dark:bg-red-900/20'
+                            remaining === 0
+                              ? 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400'
                               : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
                           }`}>
-                            {remainingResends > 0 ? `${remainingResends} resend${remainingResends !== 1 ? 's' : ''} left` : 'No resends left'}
+                            {remaining > 0 ? `${remaining} resend${remaining !== 1 ? 's' : ''} left` : 'No resends left'}
                           </span>
                         </div>
                       </div>
@@ -437,7 +426,6 @@ export default function TeamSettingsPage() {
                     <div className="flex items-center gap-2 shrink-0 pl-12 sm:pl-0">
                       <RoleBadge role={invite.role} />
 
-                      {/* Resend button */}
                       <button
                         onClick={() => handleResendInvite(invite)}
                         disabled={!resendStatus.allowed || isResending}
@@ -452,10 +440,9 @@ export default function TeamSettingsPage() {
                           ? <Loader2 size={11} className="animate-spin" />
                           : <RefreshCw size={11} strokeWidth={2.5} />
                         }
-                        {isResending ? 'Sending...' : resendStatus.reason ?? 'Resend'}
+                        {isResending ? 'Sending...' : (resendStatus.reason ?? 'Resend')}
                       </button>
 
-                      {/* Revoke button */}
                       <button
                         onClick={() => handleRevokeInvite(invite.id)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-100 dark:hover:border-red-900 transition-all"
@@ -502,13 +489,13 @@ export default function TeamSettingsPage() {
       {isModalOpen && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-          onClick={() => { setIsModalOpen(false); setInviteEmail(''); setInviteRole('viewer'); }}
+          onClick={closeModal}
         >
           <div
             className="w-full max-w-md bg-white dark:bg-[#111827] rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
-            {/* Modal header */}
+            {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
@@ -517,16 +504,16 @@ export default function TeamSettingsPage() {
                 <span className="text-sm font-black text-slate-900 dark:text-white">Invite Team Member</span>
               </div>
               <button
-                onClick={() => { setIsModalOpen(false); setInviteEmail(''); setInviteRole('viewer'); }}
+                onClick={closeModal}
                 className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
               >
                 <X size={16} strokeWidth={2.5} />
               </button>
             </div>
 
-            {/* Modal body */}
+            {/* Form */}
             <form onSubmit={handleSendInvite} className="p-5 space-y-4">
-              {/* Email field */}
+              {/* Email */}
               <div>
                 <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">
                   Email Address
@@ -544,7 +531,7 @@ export default function TeamSettingsPage() {
                 </div>
               </div>
 
-              {/* Role field */}
+              {/* Role */}
               <div>
                 <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">
                   Role
@@ -565,36 +552,33 @@ export default function TeamSettingsPage() {
               </div>
 
               {/* Role preview */}
-              <div className={`flex items-start gap-3 p-3.5 rounded-xl border ${ROLE_CONFIG[inviteRole].bg} ${ROLE_CONFIG[inviteRole].border}`}>
-                {(() => {
-                  const cfg = ROLE_CONFIG[inviteRole];
-                  const Icon = cfg.icon;
-                  return (
-                    <>
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center mt-0.5 ${cfg.bg} border ${cfg.border}`}>
-                        <Icon size={13} className={cfg.color} strokeWidth={2.5} />
-                      </div>
-                      <div>
-                        <p className={`text-xs font-black ${cfg.color}`}>{cfg.label}</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          {{
-                            admin: 'Can manage all settings, members, and billing.',
-                            developer: 'Can access API keys, webhooks, and integrations.',
-                            support: 'Can view transactions and respond to customer queries.',
-                            viewer: 'Read-only access to dashboard data.',
-                          }[inviteRole]}
-                        </p>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
+              {(() => {
+                const cfg = ROLE_CONFIG[inviteRole];
+                const Icon = cfg.icon;
+                const roleDesc: Record<Role, string> = {
+                  admin: 'Can manage all settings, members, and billing.',
+                  developer: 'Can access API keys, webhooks, and integrations.',
+                  support: 'Can view transactions and respond to customer queries.',
+                  viewer: 'Read-only access to dashboard data.',
+                };
+                return (
+                  <div className={`flex items-start gap-3 p-3.5 rounded-xl border ${cfg.bg} ${cfg.border}`}>
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${cfg.bg} border ${cfg.border}`}>
+                      <Icon size={13} className={cfg.color} strokeWidth={2.5} />
+                    </div>
+                    <div>
+                      <p className={`text-xs font-black ${cfg.color}`}>{cfg.label}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{roleDesc[inviteRole]}</p>
+                    </div>
+                  </div>
+                );
+              })()}
 
-              {/* Info note */}
+              {/* Info */}
               <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900">
                 <AlertCircle size={13} className="text-blue-500 mt-0.5 shrink-0" />
                 <p className="text-[11px] text-blue-600 dark:text-blue-400">
-                  An invite link will be emailed. You can resend up to <strong>2 times</strong> after 12h cooldown.
+                  An invite link will be emailed. You can resend up to <strong>2 times</strong> with a 12h cooldown.
                 </p>
               </div>
 
