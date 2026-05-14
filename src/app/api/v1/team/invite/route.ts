@@ -17,7 +17,6 @@ export async function POST(req: Request) {
     const { email, role, business_id } = await req.json();
 
     if (!email || !role || !business_id) {
-      // TypeScript Error Fix: Added 'as any'
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 } as any);
     }
 
@@ -35,12 +34,14 @@ export async function POST(req: Request) {
 
     if (inviteError) {
       console.error("DB Insert Error:", inviteError);
-      // TypeScript Error Fix: Added 'as any'
-      return NextResponse.json({ error: 'Failed to create invitation. Maybe already invited?' }, { status: 400 } as any);
+      return NextResponse.json({ 
+        error: 'Failed to create invitation. Maybe already invited?',
+        details: inviteError.message 
+      }, { status: 400 } as any);
     }
 
     // ২. Invitation link তৈরি করা
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://xelpay.site';
     const siteName = process.env.NEXT_PUBLIC_SITE_NAME || 'XelPay';
     const inviteLink = `${baseUrl}/signup?invite_token=${invite.token}`;
 
@@ -56,36 +57,36 @@ export async function POST(req: Request) {
         <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
           <tr>
             <td align="center">
-              <div style="max-width: 480px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 16px; padding: 40px 32px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03); border: 1px solid #f1f5f9; text-align: center;">
+              <div style="max-width: 480px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 20px; padding: 40px 32px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04); border: 1px solid #f1f5f9; text-align: center;">
                 
                 <div style="margin-bottom: 32px;">
-                  <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
+                  <h1 style="margin: 0; font-size: 26px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
                     ${siteName === 'XelPay' ? 'Xel<span style="color: #2563eb;">Pay</span>' : siteName}
                   </h1>
                 </div>
 
-                <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 600; color: #0f172a;">Team Invitation</h2>
+                <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 700; color: #0f172a;">Team Invitation</h2>
                 
                 <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #475569;">
                   You have been invited to join the <strong>${siteName}</strong> workspace to collaborate and manage operations.
                 </p>
 
                 <div style="margin-bottom: 32px;">
-                  <span style="background-color: #f8fafc; color: #475569; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #e2e8f0;">
+                  <div style="display: inline-block; background-color: #f8fafc; color: #475569; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #e2e8f0;">
                     Role: ${role}
-                  </span>
+                  </div>
                 </div>
 
                 <div style="margin-bottom: 32px;">
-                  <a href="${inviteLink}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; transition: background-color 0.2s;">
+                  <a href="${inviteLink}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 32px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 14px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);">
                     Accept Invitation
                   </a>
                 </div>
 
-                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 0 0 24px;">
+                <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 0 0 24px;">
 
-                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #94a3b8;">
-                  If you were not expecting this invitation, you can safely ignore this email. The link will automatically expire.
+                <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #94a3b8;">
+                  If you were not expecting this invitation, you can safely ignore this email. This invite link is secure and unique to you.
                 </p>
               </div>
             </td>
@@ -97,9 +98,9 @@ export async function POST(req: Request) {
 
     console.log(`---- SENDING INVITE TO ${email} ----`);
 
-    // ৪. Resend দিয়ে মেইল পাঠানো (Verified Domain ব্যবহার করে)
+    // ৪. Resend দিয়ে মেইল পাঠানো
     const { data, error: sendError } = await resend.emails.send({
-      from: `"${siteName} Team" <team@xelpay.site>`,
+      from: `${siteName} Team <team@xelpay.site>`,
       to: [email],
       subject: `Invitation to join ${siteName}`,
       html: emailHtml,
@@ -107,7 +108,6 @@ export async function POST(req: Request) {
 
     if (sendError) {
       console.error("---- RESEND ERROR ----", sendError);
-      // TypeScript Error Fix: Added 'as any'
       return NextResponse.json({ 
         error: 'Invitation created but failed to send email.', 
         details: sendError.message 
@@ -119,7 +119,9 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("---- CRITICAL ERROR ----", error);
-    // TypeScript Error Fix: Added 'as any'
-    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 } as any);
+    return NextResponse.json({ 
+      error: 'Internal server error', 
+      details: error.message 
+    }, { status: 500 } as any);
   }
 }
