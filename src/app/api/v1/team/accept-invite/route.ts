@@ -1,10 +1,23 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// ✅ Service role client — RLS সম্পূর্ণ bypass করে
+// global headers-এ Authorization explicitly set করা হয়েছে
+// যাতে business_team_members-এ insert RLS block না করে
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+      },
+    },
+  }
 );
 
 export async function POST(req: Request) {
@@ -12,18 +25,19 @@ export async function POST(req: Request) {
     const { token, password, fullName } = await req.json();
 
     if (!token || !password || !fullName) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
     }
 
-    // ১. Invitation validate করো (service role — RLS bypass)
+    // ── ১. Invitation validate ─────────────────────────────────────────────────
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from('team_invitations')
-      .select('*')
+      .select('id, business_id, merchant_id, email, role, status, expires_at')
       .eq('token', token)
       .eq('status', 'pending')
       .single();
 
     if (inviteError || !invite) {
+      console.error('Invite fetch error:', inviteError);
       return NextResponse.json({ error: 'Invalid or expired invitation link.' }, { status: 400 });
     }
 
@@ -32,18 +46,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'This invitation link has expired.' }, { status: 410 });
     }
 
-    // ২. Business info নিয়ে নাও (active_business_id সেট করার জন্য)
-    const { data: businessData } = await supabaseAdmin
+    // ── ২. Business info ─────────────────────────────────────────────────────
+    const { data: businessData, error: bizError } = await supabaseAdmin
       .from('businesses')
       .select('id, business_name, merchant_id')
       .eq('id', invite.business_id)
       .single();
 
-    if (!businessData) {
+    if (bizError || !businessData) {
+      console.error('Business fetch error:', bizError);
       return NextResponse.json({ error: 'The workspace no longer exists.' }, { status: 404 });
     }
 
-    // ৩. Auth user তৈরি করো (OTP bypass — email ইতিমধ্যে invite দিয়ে verified)
+    // ── ৩. Auth user তৈরি করো ────────────────────────────────────────────────
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: invite.email,
       password: password,
@@ -52,10 +67,13 @@ export async function POST(req: Request) {
     });
 
     if (authError) {
-      // ইতিমধ্যে registered হলে clear error দাও
-      if (authError.message.toLowerCase().includes('already registered') ||
-          authError.message.toLowerCase().includes('already been registered') ||
-          authError.message.toLowerCase().includes('email address is already')) {
+      console.error('Auth createUser error:', authError);
+      const msg = authError.message.toLowerCase();
+      if (
+        msg.includes('already registered') ||
+        msg.includes('already been registered') ||
+        msg.includes('email address is already')
+      ) {
         return NextResponse.json(
           { error: 'An account with this email already exists. Please login instead.' },
           { status: 409 }
@@ -66,12 +84,12 @@ export async function POST(req: Request) {
 
     const newUserId = authData.user.id;
 
-    // ✅ ৪. merchants টেবিলে team member-এর জন্য একটি minimal row insert করো।
-    //    কারণ: dashboard/layout.tsx merchants টেবিলে user-এর row না পেলে
-    //    force-signout করে redirect করে দেয়।
-    //    Team member business owner না — তাই minimal data দিয়ে insert।
-    const teamMemberDisplayId = `TM${Math.floor(100000 + Math.random() * 900000)}`;
-    const uniqueReferId = `ref_${newUserId.replace(/-/g, '').slice(0, 12)}`;
+    // ── ৪. merchants টেবিলে minimal row insert ────────────────────────────────
+    // dashboard/layout.tsx merchants row না পেলে force-signout করে।
+    // refer_id NOT NULL — unique value দিতে হবে।
+    // merchant_id_display UNIQUE — timestamp + random দিয়ে collision এড়ানো হয়েছে।
+    const teamMemberDisplayId = `TM${Date.now()}${Math.floor(Math.random() * 999)}`;
+    const uniqueReferId = `tm_${newUserId.replace(/-/g, '').slice(0, 16)}`;
 
     const { error: merchantInsertError } = await supabaseAdmin
       .from('merchants')
@@ -80,7 +98,6 @@ export async function POST(req: Request) {
         name: fullName,
         email: invite.email,
         merchant_id_display: teamMemberDisplayId,
-        // ✅ active_business_id সেট করো যেন login-এর পর সরাসরি তার workspace দেখতে পায়
         active_business_id: invite.business_id,
         refer_id: uniqueReferId,
         status: 'active',
@@ -89,16 +106,19 @@ export async function POST(req: Request) {
       });
 
     if (merchantInsertError) {
-      console.error('Merchant row insert error:', merchantInsertError);
-      // merchant insert fail হলে auth user delete করে দাও (rollback)
+      console.error('Merchant insert error:', merchantInsertError);
+      // Rollback auth user
       await supabaseAdmin.auth.admin.deleteUser(newUserId);
       return NextResponse.json(
-        { error: 'Failed to set up account. Please try again.' },
+        { error: `Account setup failed: ${merchantInsertError.message}` },
         { status: 500 }
       );
     }
 
-    // ✅ ৫. business_team_members টেবিলে insert করো
+    // ── ৫. business_team_members-এ insert ────────────────────────────────────
+    // ✅ KEY FIX: supabaseAdmin (service role) দিয়ে insert।
+    // RLS policy শুধু: merchant_id = auth.uid() — service role এটা bypass করে।
+    // আগের route-এ এই step-এই fail হচ্ছিল।
     const { error: memberInsertError } = await supabaseAdmin
       .from('business_team_members')
       .insert({
@@ -109,24 +129,24 @@ export async function POST(req: Request) {
 
     if (memberInsertError) {
       console.error('Team member insert error:', memberInsertError);
-      // rollback
+      // Rollback: merchants + auth user
       await supabaseAdmin.from('merchants').delete().eq('id', newUserId);
       await supabaseAdmin.auth.admin.deleteUser(newUserId);
       return NextResponse.json(
-        { error: 'Failed to add you to the workspace. Please try again.' },
+        { error: `Failed to add to workspace: ${memberInsertError.message}` },
         { status: 500 }
       );
     }
 
-    // ৬. Invitation status 'accepted' করো
+    // ── ৬. Invitation → accepted ──────────────────────────────────────────────
     const { error: inviteUpdateError } = await supabaseAdmin
       .from('team_invitations')
       .update({ status: 'accepted' })
       .eq('id', invite.id);
 
     if (inviteUpdateError) {
-      console.error('Invitation status update error:', inviteUpdateError);
-      // এটা critical না — member already added, just log
+      // Critical না — member added হয়ে গেছে
+      console.error('Invite status update (non-critical):', inviteUpdateError);
     }
 
     return NextResponse.json({
@@ -135,7 +155,7 @@ export async function POST(req: Request) {
     });
 
   } catch (error: any) {
-    console.error('Accept invite error:', error);
+    console.error('Accept invite unhandled error:', error);
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
   }
 }
