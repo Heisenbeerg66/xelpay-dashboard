@@ -91,17 +91,18 @@ export async function POST(req: Request) {
       </html>
     `;
 
-    // Resend diye mail pathano
-    const { error: sendError } = await resend.emails.send({
-      from: `${siteName} <team@xelpay.site>`,
-      to: email,
+    // Resend diye mail pathano (Fixed Here)
+    const { data, error: sendError } = await resend.emails.send({
+      from: `"${siteName}" <team@xelpay.site>`, // নামের দুপাশে কোটেশন মার্ক দেওয়া হয়েছে
+      to: [email], // ইমেইলটি অ্যারে হিসেবে পাঠানো হয়েছে
       subject: `Invitation to join ${siteName}`,
       html: emailHtml,
     });
 
     if (sendError) {
-      console.error("Resend Error:", sendError);
-      return NextResponse.json({ error: 'Invitation created but failed to send email.' }, { status: 500 });
+      console.error("Resend Error Details:", sendError);
+      // এরর মেসেজটি ফ্রন্টএন্ডে পাস করা হলো যাতে আপনি সহজে বুঝতে পারেন কী সমস্যা
+      return NextResponse.json({ error: sendError.message || 'Invitation created but failed to send email.' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, message: "Invitation sent successfully!" });

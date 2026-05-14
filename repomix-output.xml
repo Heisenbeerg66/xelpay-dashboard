@@ -369,56 +369,6 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 </file>
 
-<file path="package.json">
-{
-  "name": "xelpay-dashboard",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "@supabase/ssr": "^0.8.0",
-    "@supabase/supabase-js": "^2.101.1",
-    "@vercel/analytics": "^2.0.1",
-    "@vercel/speed-insights": "^2.0.0",
-    "clsx": "^2.1.1",
-    "framer-motion": "^12.38.0",
-    "jspdf": "^4.2.0",
-    "jspdf-autotable": "^5.0.7",
-    "lucide-react": "^0.564.0",
-    "next": "^16.2.6",
-    "next-themes": "^0.4.6",
-    "qrcode.react": "^4.2.0",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "react-google-recaptcha": "^3.1.0",
-    "recharts": "^3.7.0",
-    "resend": "^6.12.3",
-    "sonner": "^2.0.7",
-    "sooner": "^1.1.1",
-    "tailwind-merge": "^3.4.1"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@types/react-google-recaptcha": "^2.1.9",
-    "autoprefixer": "^10.4.24",
-    "babel-plugin-react-compiler": "1.0.0",
-    "eslint": "^4.1.1",
-    "eslint-config-next": "^0.2.4",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.18",
-    "typescript": "^5"
-  }
-}
-</file>
-
 <file path="postcss.config.mjs">
 export default {
   plugins: {
@@ -8734,6 +8684,56 @@ if (process.env.NODE_ENV !== 'production') {
 }
 </file>
 
+<file path="package.json">
+{
+  "name": "xelpay-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.101.1",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
+    "jspdf": "^4.2.0",
+    "jspdf-autotable": "^5.0.7",
+    "lucide-react": "^0.564.0",
+    "next": "^16.2.6",
+    "next-themes": "^0.4.6",
+    "qrcode.react": "^4.2.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-google-recaptcha": "^3.1.0",
+    "recharts": "^3.7.0",
+    "resend": "^6.12.3",
+    "sonner": "^2.0.7",
+    "sooner": "^1.1.1",
+    "tailwind-merge": "^3.4.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/react-google-recaptcha": "^2.1.9",
+    "autoprefixer": "^10.4.24",
+    "babel-plugin-react-compiler": "1.0.0",
+    "eslint": "^4.1.1",
+    "eslint-config-next": "^0.2.4",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5"
+  }
+}
+</file>
+
 <file path="src/app/api/v1/team/accept-invite/route.ts">
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -8791,122 +8791,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, message: 'Account created and linked to workspace' });
 
   } catch (error: any) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-</file>
-
-<file path="src/app/api/v1/team/invite/route.ts">
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
-
-// Resend initialization (.env theke API Key nicche)
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
-
-export async function POST(req: Request) {
-  try {
-    const { email, role, business_id } = await req.json();
-
-    if (!email || !role || !business_id) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    // Database e invitation create kora
-    const { data: invite, error: inviteError } = await supabaseAdmin
-      .from('team_invitations')
-      .insert({
-        business_id,
-        email,
-        role,
-        status: 'pending'
-      })
-      .select('token')
-      .single();
-
-    if (inviteError) {
-      return NextResponse.json({ error: 'Failed to create invitation. Maybe already invited?' }, { status: 400 });
-    }
-
-    // Invitation link toiri kora
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const siteName = process.env.NEXT_PUBLIC_SITE_NAME || 'XelPay';
-    const inviteLink = `${baseUrl}/signup?invite_token=${invite.token}`;
-
-    // Clean, Minimal & Premium HTML Email Template
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      </head>
-      <body style="background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; margin: 0; padding: 40px 20px;">
-        <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-          <tr>
-            <td align="center">
-              <div style="max-width: 480px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 16px; padding: 40px 32px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03); border: 1px solid #f1f5f9; text-align: center;">
-                
-                <div style="margin-bottom: 32px;">
-                  <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
-                    ${siteName === 'XelPay' ? 'Xel<span style="color: #2563eb;">Pay</span>' : siteName}
-                  </h1>
-                </div>
-
-                <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 600; color: #0f172a;">Team Invitation</h2>
-                
-                <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #475569;">
-                  You have been invited to join the <strong>${siteName}</strong> workspace to collaborate and manage operations.
-                </p>
-
-                <div style="margin-bottom: 32px;">
-                  <span style="background-color: #f8fafc; color: #475569; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #e2e8f0;">
-                    Role: ${role}
-                  </span>
-                </div>
-
-                <div style="margin-bottom: 32px;">
-                  <a href="${inviteLink}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; transition: background-color 0.2s;">
-                    Accept Invitation
-                  </a>
-                </div>
-
-                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 0 0 24px;">
-
-                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #94a3b8;">
-                  If you were not expecting this invitation, you can safely ignore this email. The link will automatically expire.
-                </p>
-              </div>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
-
-    // Resend diye mail pathano
-    const { error: sendError } = await resend.emails.send({
-      from: `${siteName} <team@xelpay.site>`,
-      to: email,
-      subject: `Invitation to join ${siteName}`,
-      html: emailHtml,
-    });
-
-    if (sendError) {
-      console.error("Resend Error:", sendError);
-      return NextResponse.json({ error: 'Invitation created but failed to send email.' }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, message: "Invitation sent successfully!" });
-
-  } catch (error: any) {
-    console.error("Server Error:", error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -8971,160 +8855,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <Toaster richColors position="top-center" />
       {children}
     </DashboardClient>
-  );
-}
-</file>
-
-<file path="src/app/dashboard/settings/page.tsx">
-'use client';
-
-import { useState, useEffect } from 'react';
-import { Send, UserPlus, Shield, Trash2, Mail, User } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
-
-export default function SettingsPage() {
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState('viewer');
-  const [loading, setLoading] = useState(false);
-  const [members, setMembers] = useState<any[]>([]);
-  const [businessId, setBusinessId] = useState<string | null>(null);
-
-  // ড্যাশবোর্ড লোড হলে ইউজারের Business ID এবং টিম মেম্বার ফেচ করা
-  useEffect(() => {
-    const fetchTeam = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: business } = await supabase
-        .from('businesses')
-        .select('id')
-        .eq('merchant_id', user.id)
-        .single();
-
-      if (business) {
-        setBusinessId(business.id);
-        const { data: teamData } = await supabase
-          .from('business_team_members')
-          .select('*, user:user_id(email, raw_user_meta_data)')
-          .eq('business_id', business.id);
-        
-        if (teamData) setMembers(teamData);
-      }
-    };
-    fetchTeam();
-  }, []);
-
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!businessId) return toast.error("Business profile not found.");
-
-    setLoading(true);
-    try {
-      const res = await fetch('/api/v1/team/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, role, business_id: businessId })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        toast.success("Invitation sent successfully!");
-        setEmail('');
-      } else {
-        toast.error(data.error || "Failed to send invitation");
-      }
-    } catch (err) {
-      toast.error("Something went wrong");
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8 animate-in fade-in duration-300">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Team Settings</h1>
-        <p className="text-sm text-slate-500 mt-1">Manage your workspace members and their roles.</p>
-      </div>
-
-      {/* Invite Member Section */}
-      <div className="bg-white dark:bg-[#111827] rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 p-8 relative overflow-hidden">
-        <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-600/10 rounded-full blur-3xl"></div>
-        
-        <div className="flex items-center gap-3 mb-6 relative z-10">
-          <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-xl flex items-center justify-center">
-            <UserPlus size={24} />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Add Team Member</h2>
-          </div>
-        </div>
-
-        <form onSubmit={handleInvite} className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
-          <div className="md:col-span-2">
-            <label className="text-[11px] font-black text-slate-500 uppercase ml-1 block mb-1.5">Email Address</label>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <input 
-                type="email" required placeholder="member@company.com" 
-                className="w-full pl-10 pr-4 py-3.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white"
-                value={email} onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[11px] font-black text-slate-500 uppercase ml-1 block mb-1.5">Assign Role</label>
-            <select 
-              value={role} onChange={(e) => setRole(e.target.value)}
-              className="w-full px-4 py-3.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white appearance-none"
-            >
-              <option value="viewer">Viewer (Read-only)</option>
-              <option value="support">Support</option>
-              <option value="developer">Developer</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-
-          <div className="md:col-span-3 pt-2">
-            <button disabled={loading} className="w-full md:w-auto px-8 bg-gradient-to-r from-blue-600 to-blue-700 disabled:opacity-70 text-white py-3.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 transition-all">
-              {loading ? "Sending..." : <><Send size={16} /> Send Invitation</>}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* Active Members List */}
-      <div className="bg-white dark:bg-[#111827] rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 p-8">
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Active Members</h2>
-        
-        <div className="space-y-3">
-          {members.length === 0 ? (
-            <p className="text-sm text-slate-500">No team members added yet.</p>
-          ) : members.map((member, i) => (
-            <div key={i} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-[#0B1120] rounded-xl border border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-full flex items-center justify-center font-bold">
-                  {member.user?.raw_user_meta_data?.full_name?.charAt(0) || <User size={18} />}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{member.user?.raw_user_meta_data?.full_name || 'Unknown'}</p>
-                  <p className="text-xs text-slate-500">{member.user?.email}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="flex items-center gap-1.5 px-3 py-1 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] uppercase font-bold tracking-wider rounded-lg">
-                  <Shield size={12} /> {member.role}
-                </span>
-                <button className="text-red-400 hover:text-red-600 transition-colors p-2 bg-red-50 dark:bg-red-900/10 rounded-lg">
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
 </file>
@@ -10838,6 +10568,123 @@ export default function SignUpClient() {
 }
 </file>
 
+<file path="src/app/api/v1/team/invite/route.ts">
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { Resend } from 'resend';
+
+// Resend initialization (.env theke API Key nicche)
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+);
+
+export async function POST(req: Request) {
+  try {
+    const { email, role, business_id } = await req.json();
+
+    if (!email || !role || !business_id) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Database e invitation create kora
+    const { data: invite, error: inviteError } = await supabaseAdmin
+      .from('team_invitations')
+      .insert({
+        business_id,
+        email,
+        role,
+        status: 'pending'
+      })
+      .select('token')
+      .single();
+
+    if (inviteError) {
+      return NextResponse.json({ error: 'Failed to create invitation. Maybe already invited?' }, { status: 400 });
+    }
+
+    // Invitation link toiri kora
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const siteName = process.env.NEXT_PUBLIC_SITE_NAME || 'XelPay';
+    const inviteLink = `${baseUrl}/signup?invite_token=${invite.token}`;
+
+    // Clean, Minimal & Premium HTML Email Template
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; margin: 0; padding: 40px 20px;">
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+          <tr>
+            <td align="center">
+              <div style="max-width: 480px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 16px; padding: 40px 32px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03); border: 1px solid #f1f5f9; text-align: center;">
+                
+                <div style="margin-bottom: 32px;">
+                  <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px;">
+                    ${siteName === 'XelPay' ? 'Xel<span style="color: #2563eb;">Pay</span>' : siteName}
+                  </h1>
+                </div>
+
+                <h2 style="margin: 0 0 12px; font-size: 18px; font-weight: 600; color: #0f172a;">Team Invitation</h2>
+                
+                <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #475569;">
+                  You have been invited to join the <strong>${siteName}</strong> workspace to collaborate and manage operations.
+                </p>
+
+                <div style="margin-bottom: 32px;">
+                  <span style="background-color: #f8fafc; color: #475569; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #e2e8f0;">
+                    Role: ${role}
+                  </span>
+                </div>
+
+                <div style="margin-bottom: 32px;">
+                  <a href="${inviteLink}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; transition: background-color 0.2s;">
+                    Accept Invitation
+                  </a>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 0 0 24px;">
+
+                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #94a3b8;">
+                  If you were not expecting this invitation, you can safely ignore this email. The link will automatically expire.
+                </p>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    // Resend diye mail pathano (Fixed Here)
+    const { data, error: sendError } = await resend.emails.send({
+      from: `"${siteName}" <team@xelpay.site>`, // নামের দুপাশে কোটেশন মার্ক দেওয়া হয়েছে
+      to: [email], // ইমেইলটি অ্যারে হিসেবে পাঠানো হয়েছে
+      subject: `Invitation to join ${siteName}`,
+      html: emailHtml,
+    });
+
+    if (sendError) {
+      console.error("Resend Error Details:", sendError);
+      // এরর মেসেজটি ফ্রন্টএন্ডে পাস করা হলো যাতে আপনি সহজে বুঝতে পারেন কী সমস্যা
+      return NextResponse.json({ error: sendError.message || 'Invitation created but failed to send email.' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, message: "Invitation sent successfully!" });
+
+  } catch (error: any) {
+    console.error("Server Error:", error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+</file>
+
 <file path="src/app/auth/verify-and-register/route.ts">
 // app/auth/verify-and-register/route.ts
 //
@@ -11784,6 +11631,374 @@ if (status === 'success') {
         </div>
       </div>
     </>
+  );
+}
+</file>
+
+<file path="src/app/dashboard/settings/page.tsx">
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Users, Mail, Shield, Plus, Loader2, X, Trash2,
+  CheckCircle2, Clock, Building2, UserPlus, AlertCircle
+} from 'lucide-react';
+import { toast, Toaster } from 'sonner';
+import { supabase } from '@/lib/supabase'; // আপনার সুপাবেস ক্লায়েন্ট পাথ ঠিক করে নেবেন
+
+// ── Types ─────────────────────────────────────────────────────
+type Role = 'admin' | 'developer' | 'support' | 'viewer';
+
+type TeamMember = {
+  id: string;
+  business_id: string;
+  user_id: string;
+  role: Role;
+  added_at: string;
+  user_email?: string; // Join করে ইমেইল আনা হবে
+};
+
+type Invitation = {
+  id: string;
+  business_id: string;
+  email: string;
+  role: Role;
+  status: 'pending' | 'accepted' | 'revoked';
+  created_at: string;
+};
+
+// ── Main Component ────────────────────────────────────────────
+export default function TeamSettingsPage() {
+  const [businessId, setBusinessId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Data States
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  
+  // Modal States
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<Role>('viewer');
+  const [sendingInvite, setSendingInvite] = useState(false);
+
+  // ১. Business ID লোড করা (আপনার দেওয়া লজিক)
+  const loadActiveBusiness = useCallback(() => {
+    const activeId = localStorage.getItem('active_business_id');
+    if (activeId !== businessId) {
+      setBusinessId(activeId);
+    } else if (!activeId) {
+      setLoading(false);
+    }
+  }, [businessId]);
+
+  useEffect(() => {
+    loadActiveBusiness();
+    window.addEventListener('businessChanged', loadActiveBusiness);
+    return () => window.removeEventListener('businessChanged', loadActiveBusiness);
+  }, [loadActiveBusiness]);
+
+  // ২. Business ID পেলে ডাটা ফেচ করা
+  useEffect(() => {
+    if (businessId) {
+      fetchTeamData(businessId);
+    }
+  }, [businessId]);
+
+  const fetchTeamData = async (bizId: string) => {
+    setLoading(true);
+    try {
+      // Fetch Active Members (Assuming you have a way to get user emails, e.g., via a view or edge function. 
+      // For now, fetching basic member data)
+      const { data: membersData, error: membersError } = await supabase
+        .from('business_team_members')
+        .select('*')
+        .eq('business_id', bizId);
+
+      // Fetch Pending Invitations
+      const { data: invitesData, error: invitesError } = await supabase
+        .from('team_invitations')
+        .select('*')
+        .eq('business_id', bizId)
+        .eq('status', 'pending');
+
+      if (membersError) throw membersError;
+      if (invitesError) throw invitesError;
+
+      setMembers(membersData || []);
+      setInvitations(invitesData || []);
+    } catch (error: any) {
+      toast.error('Failed to load team data: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ৩. ইনভাইটেশন পাঠানো
+  const handleSendInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!businessId || !inviteEmail.trim()) return;
+
+    setSendingInvite(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const merchantId = session?.session?.user?.id;
+
+      const { error } = await supabase.from('team_invitations').insert({
+        business_id: businessId,
+        merchant_id: merchantId,
+        email: inviteEmail.trim().toLowerCase(),
+        role: inviteRole,
+        status: 'pending'
+      });
+
+      if (error) {
+        if (error.code === '23505') toast.error('An invitation for this email already exists.');
+        else throw error;
+      } else {
+        toast.success('Invitation sent successfully!');
+        setIsInviteModalOpen(false);
+        setInviteEmail('');
+        setInviteRole('viewer');
+        fetchTeamData(businessId); // রিফ্রেশ ডাটা
+      }
+    } catch (error: any) {
+      toast.error('Failed to send invite: ' + error.message);
+    } finally {
+      setSendingInvite(false);
+    }
+  };
+
+  // ৪. ইনভাইটেশন ক্যানসেল/রিভোক করা
+  const handleRevokeInvite = async (inviteId: string) => {
+    if (!confirm('Are you sure you want to revoke this invitation?')) return;
+    try {
+      const { error } = await supabase.from('team_invitations').delete().eq('id', inviteId);
+      if (error) throw error;
+      toast.success('Invitation revoked.');
+      setInvitations(prev => prev.filter(inv => inv.id !== inviteId));
+    } catch (error: any) {
+      toast.error('Failed to revoke: ' + error.message);
+    }
+  };
+
+  // ৫. মেম্বার রিমুভ করা
+  const handleRemoveMember = async (memberId: string) => {
+    if (!confirm('Remove this member from the workspace?')) return;
+    try {
+      const { error } = await supabase.from('business_team_members').delete().eq('id', memberId);
+      if (error) throw error;
+      toast.success('Member removed successfully.');
+      setMembers(prev => prev.filter(m => m.id !== memberId));
+    } catch (error: any) {
+      toast.error('Failed to remove member: ' + error.message);
+    }
+  };
+
+  const getRoleBadge = (role: Role) => {
+    const styles = {
+      admin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800',
+      developer: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+      support: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+      viewer: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+    };
+    return (
+      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${styles[role]}`}>
+        {role}
+      </span>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center">
+        <Loader2 className="animate-spin text-blue-500 mb-3" size={36} strokeWidth={2.5} />
+        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Loading Team</p>
+      </div>
+    );
+  }
+
+  if (!businessId) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center animate-in fade-in duration-500">
+        <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
+          <Building2 size={32} className="text-slate-400" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">No Workspace Selected</h2>
+        <p className="text-slate-500 mt-2 font-medium text-sm">Please select a business from the sidebar to manage team settings.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full space-y-8 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <Toaster position="top-center" richColors />
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center">
+              <Users size={20} />
+            </div>
+            Team Management
+          </h1>
+          <p className="text-slate-500 font-bold text-sm mt-1">Manage members, roles, and pending invitations.</p>
+        </div>
+        <button 
+          onClick={() => setIsInviteModalOpen(true)} 
+          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-xl font-black flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-500/20 text-xs uppercase tracking-widest shrink-0"
+        >
+          <UserPlus size={16} strokeWidth={2.5} /> 
+          Invite Member
+        </button>
+      </div>
+
+      <div className="max-w-5xl mx-auto space-y-6">
+        
+        {/* Active Members Section */}
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+          <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3 bg-slate-50/50 dark:bg-slate-900/30">
+            <Shield size={18} className="text-slate-500" />
+            <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Active Members ({members.length})</h2>
+          </div>
+          
+          {members.length === 0 ? (
+            <div className="py-12 text-center text-slate-400">
+              <Users size={32} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm font-bold">No active members in this workspace.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              {members.map(member => (
+                <div key={member.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center font-black">
+                      {(member.user_email || 'U')[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">
+                        {member.user_email || 'User ID: ' + member.user_id.slice(0, 8) + '...'}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">
+                        Joined: {new Date(member.added_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {getRoleBadge(member.role)}
+                    <button 
+                      onClick={() => handleRemoveMember(member.id)}
+                      className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      title="Remove Member"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Pending Invitations Section */}
+        {invitations.length > 0 && (
+          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+            <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3 bg-amber-50/30 dark:bg-amber-900/10">
+              <Clock size={18} className="text-amber-500" />
+              <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Pending Invitations ({invitations.length})</h2>
+            </div>
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              {invitations.map(invite => (
+                <div key={invite.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/30 dark:bg-transparent">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-400">
+                      <Mail size={16} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">{invite.email}</p>
+                      <p className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">
+                        Sent: {new Date(invite.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {getRoleBadge(invite.role)}
+                    <button 
+                      onClick={() => handleRevokeInvite(invite.id)}
+                      className="text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                      Revoke
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Invite Modal */}
+      {isInviteModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white dark:bg-[#111827] rounded-[28px] overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-xl text-blue-600">
+                  <Mail size={18} />
+                </div>
+                <span className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Send Invitation</span>
+              </div>
+              <button 
+                onClick={() => setIsInviteModalOpen(false)} 
+                className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors rounded-xl"
+              >
+                <X size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSendInvite} className="p-6 space-y-5">
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Email Address</label>
+                <input 
+                  type="email" 
+                  required
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  placeholder="colleague@company.com" 
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+              
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Assign Role</label>
+                <select 
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as Role)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors"
+                >
+                  <option value="admin">Admin (Full Access)</option>
+                  <option value="developer">Developer (API & Webhooks)</option>
+                  <option value="support">Support (View & Refund Orders)</option>
+                  <option value="viewer">Viewer (Read Only)</option>
+                </select>
+              </div>
+
+              <div className="pt-2">
+                <button 
+                  type="submit" 
+                  disabled={sendingInvite || !inviteEmail.trim()}
+                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black text-sm uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-500/20"
+                >
+                  {sendingInvite ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                  {sendingInvite ? 'Sending...' : 'Send Invite Link'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 </file>
@@ -12805,740 +13020,6 @@ export async function getTelegramBotUsername() {
     } catch (error: any) {
         return { success: false, message: error.message };
     }
-}
-</file>
-
-<file path="src/app/dashboard/vault/gateways/VaultGatewayManagerUI.tsx">
-/* eslint-disable @typescript-eslint/no-unused-vars */
-'use client';
-
-import { useState, useEffect, useRef } from 'react';
-import {
-    Plus, X, Search, Smartphone, Building2, Globe,
-    ShieldCheck, Trash2, Loader2, Edit, ArrowLeft,
-} from 'lucide-react';
-import { toast, Toaster } from 'sonner';
-import { saveVaultGateway, updateVaultGateway, deleteVaultGateway, getVaultGateways } from '@/lib/vault_actions';
-import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const MOBILE_PROVIDERS = ['bKash', 'Nagad', 'Rocket', 'Upay', 'Cellfin', 'mCash', 'OK Wallet', 'Pathao Pay'];
-
-const BANK_MAPPING: Record<string, string> = {
-    ab:          'AB Bank',
-    agrani:      'Agrani Bank',
-    asia:        'Bank Asia',
-    city:        'City Bank',
-    dhaka:       'Dhaka Bank',
-    dbbl:        'Dutch-Bangla Bank',
-    ebl:         'Eastern Bank (EBL)',
-    ific:        'IFIC Bank',
-    ibbl:      'Islami Bank Limited',
-    jamuna:      'Jamuna Bank',
-    mercantile:  'Mercantile Bank',
-    midland:     'Midland Bank',
-    mtb:         'Mutual Trust Bank (MTB)',
-    national:    'National Bank',
-    ncc:         'NCC Bank',
-    prime:       'Prime Bank',
-    sonali:      'Sonali Bank',
-    scb:         'Standard Chartered',
-    ucb:         'UCB Bank',
-    tb:          'Trust Bank Limited',
-};
-
-const INTL_MAPPING: Record<string, string> = {
-    binance:       'Binance Pay',
-    usdt:          'USDT',
-    paypal:        'PayPal',
-    payeer:        'Payeer',
-    perfect_money: 'Perfect Money',
-    webmoney:      'WebMoney',
-};
-
-const EXCLUDED_BANKS = ['brac', 'pubali'];
-const IMAP_BANKS     = ['ebl', 'scb', 'mtb', 'ific', 'midland', 'dhaka', 'prime', 'asia', 'ucb', 'jamuna', 'city'];
-const SMS_BANKS      = ['ibbl', 'dbbl', 'ab', 'mercantile', 'national', 'ncc', 'sonali', 'agrani', 'tb'];
-
-// ─── Component ────────────────────────────────────────────────────────────────
-
-export default function VaultGatewayManagerUI({ merchantId }: { merchantId: string }) {
-    const router = useRouter();
-
-    const [loading,      setLoading]      = useState(true);
-    const [gateways,     setGateways]     = useState<any[]>([]);
-    const [logos,        setLogos]        = useState<any[]>([]);
-    const [isModalOpen,  setIsModalOpen]  = useState(false);
-    const [activeTab,    setActiveTab]    = useState<'mobile' | 'bank' | 'international'>('mobile');
-    const [isSaving,     setIsSaving]     = useState(false);
-    const [editingId,    setEditingId]    = useState<string | null>(null);
-    const [provider,     setProvider]     = useState('');
-    const [accType,      setAccType]      = useState('personal');
-    const [isCustomName, setIsCustomName] = useState(false);
-
-    const [formData, setFormData] = useState<any>({
-        account_number:  '',
-        account_name:    '',
-        branch:          '',
-        routing_number:  '',
-        min_amount:      '',
-        max_amount:      '',
-        crypto_network:  'trc20',
-        imap_email:      '',
-        imap_password:   '',
-        imap_bank_email: '',
-        api_key:         '',
-        secret_key:      '',
-        display_name:    '',
-    });
-
-    const [searchQuery,    setSearchQuery]    = useState('');
-    const [showDropdown,   setShowDropdown]   = useState(false);
-    const [highlightIndex, setHighlightIndex] = useState(0);
-    const bankDropdownRef = useRef<HTMLDivElement>(null);
-
-    // ── Helpers ────────────────────────────────────────────────────────────────
-
-    const getDisplayName = (slug: string) =>
-        BANK_MAPPING[slug] || INTL_MAPPING[slug] || slug;
-
-    const formatMaskedAccount = (str: string) => {
-        if (!str) return '';
-        if (str.includes('@')) {
-            const [name, domain] = str.split('@');
-            if (name.length <= 3) return `•••@${domain}`;
-            return `${name.slice(0, 3)}••••@${domain}`;
-        }
-        if (str.length > 6) return `${str.slice(0, 3)}••••${str.slice(-3)}`;
-        return str;
-    };
-
-    const getLogo = (provSlug: string): string => {
-        const match = logos.find(
-            (l) => l.method_name?.toLowerCase() === provSlug?.toLowerCase()
-        );
-        return match?.logo_url || 'https://via.placeholder.com/150?text=Logo';
-    };
-
-    const generateDisplayName = (prov: string, type: string, net: string, custom: boolean, currentTab: string) => {
-        if (!custom && prov && !editingId) {
-            let name = getDisplayName(prov);
-            if (currentTab === 'mobile' && type) name = `${name} ${type.charAt(0).toUpperCase() + type.slice(1)}`;
-            else if (currentTab === 'international' && prov === 'usdt') name = `USDT (${net.toUpperCase()})`;
-            setFormData((prev: any) => ({ ...prev, display_name: name }));
-        }
-    };
-
-    const highlightMatch = (text: string, query: string) => {
-        if (!query) return text;
-        const parts = text.split(new RegExp(`(${query})`, 'gi'));
-        return (
-            <span>
-                {parts.map((part, i) =>
-                    part.toLowerCase() === query.toLowerCase()
-                        ? <span key={i} className="text-blue-600 dark:text-blue-400 font-black">{part}</span>
-                        : part
-                )}
-            </span>
-        );
-    };
-
-    const inputClass = [
-        'w-full mt-1.5 p-3.5',
-        'bg-slate-50 dark:bg-[#0B1120]',
-        'border border-slate-200 dark:border-slate-800 rounded-xl',
-        'outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10',
-        'text-slate-900 dark:text-white font-semibold',
-        'placeholder:text-slate-400 placeholder:font-normal',
-        'shadow-sm text-base transition-all',
-    ].join(' ');
-
-    const labelClass = 'text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide';
-    const reqStar    = <span className="text-red-500 text-sm ml-0.5">*</span>;
-
-    // ── Data Fetching ──────────────────────────────────────────────────────────
-
-    const fetchVaultData = async () => {
-        setLoading(true);
-        const [gRes, lRes] = await Promise.all([
-            getVaultGateways(merchantId),
-            supabase.from('payment_logos').select('*'),
-        ]);
-        if (gRes.success) setGateways(gRes.data || []);
-        setLogos(lRes.data || []);
-        setLoading(false);
-    };
-
-    useEffect(() => {
-        fetchVaultData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [merchantId]);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (bankDropdownRef.current && !bankDropdownRef.current.contains(event.target as Node)) {
-                setShowDropdown(false);
-                if (!provider && searchQuery) setSearchQuery('');
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [provider, searchQuery]);
-
-    // ── Form Handlers ──────────────────────────────────────────────────────────
-
-    const resetForm = () => {
-        setEditingId(null);
-        setProvider('');
-        setAccType('personal');
-        setIsCustomName(false);
-        setSearchQuery('');
-        setFormData({
-            account_number: '', account_name: '', branch: '', routing_number: '',
-            min_amount: '', max_amount: '', crypto_network: 'trc20',
-            imap_email: '', imap_password: '', imap_bank_email: '',
-            api_key: '', secret_key: '', display_name: '',
-        });
-    };
-
-    const handleTabSwitch = (tabId: any) => {
-        if (editingId) return;
-        resetForm();
-        setActiveTab(tabId);
-        setFormData((prev: any) => ({
-            ...prev,
-            min_amount: tabId === 'international' ? '1' : (tabId === 'bank' ? '1000' : '10'),
-            max_amount: tabId === 'bank' ? '300000' : (tabId === 'international' ? '' : '50000'),
-        }));
-    };
-
-    const handleProviderChange = (newProviderSlug: string) => {
-        setProvider(newProviderSlug);
-        setSearchQuery('');
-        const newAccType = newProviderSlug === 'Pathao Pay' ? 'personal' : (newProviderSlug === 'Cellfin' ? '' : 'personal');
-        setAccType(newAccType);
-        setIsCustomName(false);
-        setFormData((prev: any) => ({
-            ...prev,
-            account_number: '', account_name: '', branch: '', routing_number: '',
-            imap_email: '', imap_password: '', imap_bank_email: '', api_key: '', secret_key: '',
-        }));
-        generateDisplayName(newProviderSlug, newAccType, formData.crypto_network, false, activeTab);
-    };
-
-    const handleInputChange = (e: any) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-    const handleEdit = (gw: any) => {
-        setEditingId(gw.id);
-        const correctTab = (gw.category?.toLowerCase() || 'mobile') as any;
-        setActiveTab(correctTab);
-
-        let exactProvider = gw.provider.toLowerCase();
-        if (correctTab === 'mobile') {
-            exactProvider = MOBILE_PROVIDERS.find((p) => p.toLowerCase() === exactProvider) || gw.provider;
-        }
-        setProvider(exactProvider);
-
-        const correctAccType = correctTab === 'international'
-            ? (exactProvider === 'usdt' ? '' : (gw.account_type || 'personal'))
-            : (gw.account_type || 'personal');
-        setAccType(correctAccType);
-
-        const dispName = getDisplayName(exactProvider);
-        const suggestions = correctTab === 'mobile'
-            ? [`${dispName} Personal`, 'Send Money', `${dispName} Agent`, 'Cash Out', `${dispName} Merchant`, 'Make Payment', dispName]
-            : correctTab === 'bank'
-                ? [dispName, `${dispName} Payment`]
-                : exactProvider === 'usdt'
-                    ? [`USDT (${gw.account_type?.toUpperCase()})`, 'USDT']
-                    : [dispName];
-
-        setIsCustomName(!suggestions.includes(gw.display_name));
-        setFormData({
-            account_number: gw.account_number || '', account_name: gw.account_name || '',
-            branch: gw.branch || '', routing_number: gw.routing_number || '',
-            min_amount: gw.min_amount || '', max_amount: gw.max_amount || '',
-            crypto_network: correctTab === 'international' && exactProvider === 'usdt' ? gw.account_type : 'trc20',
-            imap_email: gw.imap_email || '', imap_password: '',
-            imap_bank_email: gw.imap_bank_email || '', api_key: '', secret_key: '',
-            display_name: gw.display_name || '',
-        });
-        setIsModalOpen(true);
-    };
-
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!provider) return toast.error('Please select a provider!');
-        if (!formData.display_name) return toast.error('Display Name is required!');
-
-        const minAmt = parseFloat(formData.min_amount) || 0;
-        const maxAmt = formData.max_amount ? parseFloat(formData.max_amount) : null;
-        if (minAmt < 0 || (maxAmt !== null && maxAmt < 0)) return toast.error('Amounts cannot be negative!');
-        if (maxAmt !== null && minAmt > maxAmt) return toast.error('Min amount cannot be greater than Max amount!');
-
-        setIsSaving(true);
-        const payload = { merchant_id: merchantId, category: activeTab, provider, account_type: accType, ...formData };
-        const res = editingId
-            ? await updateVaultGateway(editingId, payload)
-            : await saveVaultGateway(payload);
-
-        if (res.success) {
-            toast.success(`Vault Gateway ${editingId ? 'Updated' : 'Added'}!`);
-            setGateways(editingId ? gateways.map((g) => (g.id === editingId ? res.data : g)) : [res.data, ...gateways]);
-            setIsModalOpen(false);
-            resetForm();
-        } else {
-            toast.error(res.message);
-        }
-        setIsSaving(false);
-    };
-
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this vault gateway?')) return;
-        setGateways(gateways.filter((g) => g.id !== id));
-        await deleteVaultGateway(id);
-        toast.success('Gateway Deleted!');
-    };
-
-    // ── Sub-Renderers ──────────────────────────────────────────────────────────
-
-    const renderDisplayNamePicker = (suggestions: string[]) => (
-        <div className="space-y-3">
-            <div>
-                <label className={labelClass}>Display Name {reqStar}</label>
-                <select required value={isCustomName ? 'custom' : formData.display_name}
-                    onChange={(e) => {
-                        if (e.target.value === 'custom') { setIsCustomName(true); setFormData({ ...formData, display_name: '' }); }
-                        else { setIsCustomName(false); setFormData({ ...formData, display_name: e.target.value }); }
-                    }} className={inputClass}>
-                    <option value="" disabled>-- Select Display Name --</option>
-                    {suggestions.map((s) => (<option key={s} value={s}>{s}</option>))}
-                    <option value="custom">✨ Custom Name (Write your own)</option>
-                </select>
-            </div>
-            {isCustomName && (
-                <div className="animate-in fade-in zoom-in-95">
-                    <input required type="text" name="display_name" onChange={handleInputChange} value={formData.display_name} placeholder="e.g. Pay via Personal Bkash" className={inputClass} />
-                </div>
-            )}
-        </div>
-    );
-
-    const renderMobileInputs = () => {
-        const dispName  = getDisplayName(provider);
-        const needsName = accType === 'agent' || accType === 'merchant' || provider === 'Pathao Pay' || provider === 'Cellfin';
-        const suggestions = provider
-            ? accType === 'personal' ? [`${dispName} Personal`, 'Send Money']
-                : accType === 'agent' ? [`${dispName} Agent`, 'Cash Out']
-                : accType === 'merchant' ? [`${dispName} Merchant`, 'Make Payment']
-                : [dispName]
-            : [];
-
-        return (
-            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2">
-                <div>
-                    <label className={labelClass}>Select Provider {reqStar}</label>
-                    <select value={provider} onChange={(e) => handleProviderChange(e.target.value)} required className={inputClass}>
-                        <option value="">-- Choose Provider --</option>
-                        {MOBILE_PROVIDERS.map((p) => (<option key={p} value={p}>{p}</option>))}
-                    </select>
-                </div>
-
-                {provider && provider !== 'Cellfin' && provider !== 'Pathao Pay' && (
-                    <div className="flex bg-slate-100/80 dark:bg-[#0B1120] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
-                        {['personal', 'agent', 'merchant'].map((type) => (
-                            <button key={type} type="button" onClick={() => { setAccType(type); generateDisplayName(provider, type, formData.crypto_network, isCustomName, 'mobile'); }}
-                                className={`flex-1 py-2.5 text-xs font-bold uppercase rounded-lg transition-all ${accType === type ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'}`}>
-                                {type}
-                            </button>
-                        ))}
-                    </div>
-                )}
-                <div>
-                    <label className={labelClass}>Account / Wallet Number {reqStar}</label>
-                    <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" maxLength={11} placeholder="e.g. 01712345678" className={inputClass} />
-                </div>
-                {needsName && (
-                    <div>
-                        <label className={labelClass}>{provider === 'Cellfin' ? 'Account Name' : accType === 'agent' ? 'Agent Name' : 'Merchant Name'} {reqStar}</label>
-                        <input required name="account_name" onChange={handleInputChange} value={formData.account_name} type="text" placeholder="Enter Name" className={inputClass} />
-                    </div>
-                )}
-                {provider && renderDisplayNamePicker(suggestions)}
-            </div>
-        );
-    };
-
-    const renderBankInputs = () => {
-        const dispName        = getDisplayName(provider);
-        const suggestions     = provider ? [dispName, `${dispName} Payment`] : [];
-        const isIMAPSupported = IMAP_BANKS.includes(provider);
-        const isSMSSupported  = SMS_BANKS.includes(provider);
-        const filteredBanks   = Object.entries(BANK_MAPPING).filter(
-            ([slug, name]) => !EXCLUDED_BANKS.includes(slug) && name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-
-        const handleKeyDown = (e: React.KeyboardEvent) => {
-            if (!showDropdown) return;
-            if (e.key === 'ArrowDown') { e.preventDefault(); setHighlightIndex((prev) => Math.min(prev + 1, filteredBanks.length - 1)); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlightIndex((prev) => Math.max(prev - 1, 0)); }
-            else if (e.key === 'Enter' && filteredBanks[highlightIndex]) { e.preventDefault(); handleProviderChange(filteredBanks[highlightIndex][0]); setShowDropdown(false); }
-        };
-
-        return (
-            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2">
-                <div className="relative" ref={bankDropdownRef}>
-                    <label className={labelClass}>Select Bank {reqStar}</label>
-                    <div className="relative">
-                        <input type="text" required value={provider && !showDropdown ? BANK_MAPPING[provider] : searchQuery}
-                            onFocus={() => { setShowDropdown(true); setHighlightIndex(0); }}
-                            onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true); setHighlightIndex(0); setProvider(''); }}
-                            onKeyDown={handleKeyDown} placeholder="Search Bank..." className={`${inputClass} pr-10`} />
-                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 mt-0.5 text-slate-400" size={18} />
-                    </div>
-                    {showDropdown && (
-                        <div className="absolute z-50 w-full mt-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl max-h-56 overflow-y-auto py-2">
-                            {filteredBanks.length === 0 ? (
-                                <div className="p-3 text-sm text-slate-500 text-center">No banks found</div>
-                            ) : (
-                                filteredBanks.map(([slug, name], index) => (
-                                    <div key={slug} onClick={() => { handleProviderChange(slug); setShowDropdown(false); }} onMouseEnter={() => setHighlightIndex(index)}
-                                        className={`p-3.5 cursor-pointer text-sm font-semibold border-b border-slate-50 dark:border-slate-800/50 last:border-0 transition-colors ${index === highlightIndex ? 'bg-blue-50 dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
-                                        {highlightMatch(name, searchQuery)}
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                <div className="flex bg-slate-100/80 dark:bg-[#0B1120] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
-                    {['personal', 'business'].map((type) => (
-                        <button key={type} type="button" onClick={() => { setAccType(type); generateDisplayName(provider, type, formData.crypto_network, isCustomName, 'bank'); }}
-                            className={`flex-1 py-2.5 text-xs font-bold uppercase rounded-lg transition-all ${accType === type ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'}`}>
-                            {type}
-                        </button>
-                    ))}
-                </div>
-
-                <div>
-                    <label className={labelClass}>Account Name {reqStar}</label>
-                    <input required name="account_name" onChange={handleInputChange} value={formData.account_name} type="text" placeholder={accType === 'personal' ? 'e.g. Md. Rahim' : 'e.g. Xenverse IT'} className={inputClass} />
-                </div>
-                <div>
-                    <label className={labelClass}>Account Number {reqStar}</label>
-                    <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" placeholder="e.g. 102XXXXXXXXX" className={`${inputClass} font-mono`} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className={labelClass}>Branch Name {reqStar}</label>
-                        <input required name="branch" onChange={handleInputChange} value={formData.branch} type="text" placeholder="Gulshan Branch" className={inputClass} />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Routing No {reqStar}</label>
-                        <input required name="routing_number" onChange={handleInputChange} value={formData.routing_number} type="text" maxLength={9} placeholder="123456789" className={`${inputClass} font-mono`} />
-                    </div>
-                </div>
-
-                {provider && renderDisplayNamePicker(suggestions)}
-
-                {isSMSSupported && (
-                    <div className="p-5 bg-emerald-50/80 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 rounded-2xl mt-6 relative overflow-hidden">
-                        <div className="flex gap-3 text-emerald-800 dark:text-emerald-300 relative z-10">
-                            <Smartphone size={24} className="shrink-0 text-emerald-600 dark:text-emerald-500 mt-0.5" />
-                            <p className="text-[13px] font-medium leading-relaxed"><b>SMS অটোমেশন রিকোয়ার্ড:</b> {BANK_MAPPING[provider]} এর পেমেন্ট ভেরিফাই করার জন্য <b>Master Device</b> থেকে SMS Automation চালু থাকতে হবে।</p>
-                        </div>
-                    </div>
-                )}
-
-                {isIMAPSupported && (
-                    <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50/30 dark:from-slate-800 dark:to-slate-800/50 border border-blue-100 dark:border-slate-700 rounded-2xl mt-6 space-y-4">
-                        <div className="flex gap-3 text-blue-900 dark:text-blue-200">
-                            <ShieldCheck size={24} className="shrink-0 text-blue-600 dark:text-blue-400" />
-                            <p className="text-xs font-medium leading-relaxed"><b>IMAP Automation:</b> Enter App Password and alert email.<br /><span className="opacity-70 text-[10px]">(Leave blank when editing if unchanged)</span></p>
-                        </div>
-                        <div>
-                            <label className={labelClass}>Your Email {reqStar}</label>
-                            <input required={!editingId} name="imap_email" onChange={handleInputChange} value={formData.imap_email} type="email" placeholder="you@gmail.com" className={inputClass} />
-                        </div>
-                        <div>
-                            <label className={labelClass}>App Password {editingId ? '' : reqStar}</label>
-                            <input required={!editingId} name="imap_password" onChange={handleInputChange} value={formData.imap_password} type="password" placeholder={editingId ? '•••••••• (Unchanged)' : '••••••••'} className={`${inputClass} font-mono tracking-widest`} />
-                        </div>
-                        <div>
-                            <label className={labelClass}>Bank's Alert Email {reqStar}</label>
-                            <input required={!editingId} name="imap_bank_email" onChange={handleInputChange} value={formData.imap_bank_email} type="email" placeholder="alerts@bank.com" className={inputClass} />
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    const renderIntlInputs = () => {
-        const dispName  = getDisplayName(provider);
-        const suggestions = provider
-            ? provider === 'usdt' ? [`USDT (${formData.crypto_network.toUpperCase()})`, 'USDT'] : [dispName]
-            : [];
-
-        return (
-            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2">
-                <div>
-                    <label className={labelClass}>Select Gateway {reqStar}</label>
-                    <select value={provider} onChange={(e) => handleProviderChange(e.target.value)} required className={inputClass}>
-                        <option value="">-- Choose Crypto/Intl --</option>
-                        {Object.entries(INTL_MAPPING).map(([slug, name]) => (<option key={slug} value={slug}>{name}</option>))}
-                    </select>
-                </div>
-
-                {provider && provider !== 'usdt' && (
-                    <div className="flex bg-slate-100/80 dark:bg-[#0B1120] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
-                        {['personal', 'business'].map((type) => (
-                            <button key={type} type="button" onClick={() => { setAccType(type); generateDisplayName(provider, type, formData.crypto_network, isCustomName, 'international'); }}
-                                className={`flex-1 py-2.5 text-xs font-bold uppercase rounded-lg transition-all ${accType === type ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'}`}>
-                                {type}
-                            </button>
-                        ))}
-                    </div>
-                )}
-
-                {provider === 'usdt' && (
-                    <div className="space-y-5">
-                        <div>
-                            <label className={labelClass}>Select Network {reqStar}</label>
-                            <div className="flex gap-2 mt-2">
-                                {['trc20', 'bep20', 'erc20'].map((net) => (
-                                    <button key={net} type="button" onClick={() => { setFormData({ ...formData, crypto_network: net }); generateDisplayName('usdt', '', net, isCustomName, 'international'); }}
-                                        className={`flex-1 py-3 text-xs font-bold uppercase rounded-xl border transition-all ${formData.crypto_network === net ? 'bg-[#0D47A1] text-white border-[#0D47A1] shadow-md shadow-blue-900/20' : 'bg-white dark:bg-[#0B1120] text-slate-500 dark:text-slate-400 hover:bg-slate-50 border-slate-200 dark:border-slate-800'}`}>
-                                        {net}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div>
-                            <label className={labelClass}>Wallet Address {reqStar}</label>
-                            <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" placeholder={`Enter ${formData.crypto_network.toUpperCase()} Address`} className={`${inputClass} font-mono text-sm`} />
-                        </div>
-                    </div>
-                )}
-
-                {provider === 'binance' && (
-                    <div className="space-y-5">
-                        <div>
-                            <label className={labelClass}>Binance Pay ID / Email {reqStar}</label>
-                            <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" placeholder="Pay ID or Email" className={inputClass} />
-                        </div>
-                        <div>
-                            <label className={labelClass}>Account Name {reqStar}</label>
-                            <input required name="account_name" onChange={handleInputChange} value={formData.account_name} type="text" placeholder="Name on Binance" className={inputClass} />
-                        </div>
-                        <div className="p-5 bg-gradient-to-br from-yellow-50 to-orange-50/30 dark:from-yellow-900/20 dark:to-orange-900/10 border border-yellow-200/60 dark:border-yellow-700/50 rounded-2xl space-y-4">
-                            <p className="text-xs font-medium text-yellow-900 dark:text-yellow-500 flex gap-2"><ShieldCheck size={18} className="shrink-0 text-yellow-600" /><span><b>API Settings:</b> Binance API.<br /><span className="opacity-70 text-[10px]">(Leave blank if unchanged)</span></span></p>
-                            <div>
-                                <label className={labelClass}>API Key {editingId ? '' : reqStar}</label>
-                                <input required={!editingId} name="api_key" onChange={handleInputChange} value={formData.api_key} type="text" placeholder="API Key" className={`${inputClass} font-mono text-xs`} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>Secret Key {editingId ? '' : reqStar}</label>
-                                <input required={!editingId} name="secret_key" onChange={handleInputChange} value={formData.secret_key} type="password" placeholder="••••••••" className={`${inputClass} font-mono tracking-widest`} />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {provider && provider !== 'usdt' && provider !== 'binance' && (
-                    <div className="space-y-5">
-                        <div>
-                            <label className={labelClass}>Account ID / Email {reqStar}</label>
-                            <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" placeholder="e.g. U1234567" className={`${inputClass} font-mono`} />
-                        </div>
-                        <div>
-                            <label className={labelClass}>Account Name {reqStar}</label>
-                            <input required name="account_name" onChange={handleInputChange} value={formData.account_name} type="text" placeholder="Name" className={inputClass} />
-                        </div>
-                        <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50/30 dark:from-slate-800 dark:to-slate-800/50 border border-blue-100 dark:border-slate-700 rounded-2xl space-y-4">
-                            <p className="text-xs font-medium text-blue-900 dark:text-blue-200 flex gap-2"><ShieldCheck size={18} className="shrink-0 text-blue-600 dark:text-blue-400" /><span><b>IMAP Settings:</b><br /><span className="opacity-70 text-[10px]">(Leave blank if unchanged)</span></span></p>
-                            <div>
-                                <label className={labelClass}>Your Email {reqStar}</label>
-                                <input required={!editingId} name="imap_email" onChange={handleInputChange} value={formData.imap_email} type="email" placeholder="you@gmail.com" className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>App Password {editingId ? '' : reqStar}</label>
-                                <input required={!editingId} name="imap_password" onChange={handleInputChange} value={formData.imap_password} type="password" placeholder="••••••••" className={`${inputClass} font-mono tracking-widest`} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>Company Sender Email {reqStar}</label>
-                                <input required={!editingId} name="imap_bank_email" onChange={handleInputChange} value={formData.imap_bank_email} type="email" placeholder="noreply@provider.com" className={inputClass} />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {provider && renderDisplayNamePicker(suggestions)}
-            </div>
-        );
-    };
-
-    if (loading) {
-        return (
-            <div className="min-h-[60vh] flex items-center justify-center">
-                <Loader2 className="animate-spin text-blue-600" size={32} />
-            </div>
-        );
-    }
-
-    return (
-        <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Toaster position="top-center" richColors />
-
-            {/* ── Header ── */}
-            <div className="flex flex-row items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                    <button onClick={() => router.push('/dashboard/vault')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl transition-all text-slate-500">
-                        <ArrowLeft size={20} />
-                    </button>
-                    <div>
-                        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Master Gateways</h1>
-                        <p className="text-slate-500 font-bold text-sm mt-1">Manage your vault receiving methods.</p>
-                    </div>
-                </div>
-                <button onClick={() => { handleTabSwitch('mobile'); setIsModalOpen(true); }}
-                    className="shrink-0 bg-[#0D47A1] dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 text-white px-4 md:px-6 py-2.5 md:py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl shadow-blue-900/20 active:scale-95 text-xs md:text-sm">
-                    <Plus size={18} strokeWidth={3} />
-                    <span className="hidden sm:inline">Add New Gateway</span>
-                    <span className="sm:hidden">Add New</span>
-                </button>
-            </div>
-
-            {/* ── Gateway Cards Grid ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {gateways.map((gw: any) => {
-                    const maskedNumber = formatMaskedAccount(gw.account_number);
-                    const currency     = gw.category === 'international' ? 'USD' : 'BDT';
-                    const displayLimit = gw.max_amount
-                        ? `${gw.min_amount} - ${gw.max_amount} ${currency}`
-                        : `Min: ${gw.min_amount} ${currency} (Unlimited)`;
-
-                    return (
-                        <div key={gw.id} className="relative bg-white dark:bg-[#111827] rounded-[24px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col overflow-hidden z-0">
-                            <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-blue-50/30 dark:to-blue-900/5 pointer-events-none z-[-1]" />
-                            <div className="absolute -right-6 -bottom-6 opacity-5 dark:opacity-10 text-slate-400 dark:text-slate-600 group-hover:scale-110 transition-transform duration-500 pointer-events-none z-[-1]"><ShieldCheck size={140} /></div>
-
-                            <div className="relative mb-5 w-full min-h-[48px] pr-[10px]">
-                                <div className="flex items-center gap-3 w-full overflow-hidden">
-                                    <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center p-2 shrink-0 shadow-sm z-10">
-                                        <img src={getLogo(gw.provider)} alt="logo" className="w-full h-full object-contain" />
-                                    </div>
-                                    <div className="flex-1 min-w-0 z-10">
-                                        <h3 className="text-base font-black text-slate-900 dark:text-white leading-tight flex flex-wrap items-center gap-1.5">
-                                            <span className="truncate capitalize">{getDisplayName(gw.provider)}</span>
-                                            {gw.account_type && (<span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded-[4px] text-[9px] uppercase font-black shrink-0 border border-slate-200 dark:border-slate-700">{gw.account_type}</span>)}
-                                        </h3>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="mb-3 bg-slate-50/80 dark:bg-[#0B1120]/80 p-3 rounded-xl border border-slate-100/50 dark:border-slate-800 z-10">
-                                <p className="text-sm font-mono font-bold text-slate-800 dark:text-slate-200 tracking-wide">{maskedNumber}</p>
-                                {gw.account_name && (<p className="text-xs font-black text-slate-700 dark:text-white mt-1 uppercase tracking-widest">{gw.account_name.toUpperCase()}</p>)}
-                            </div>
-
-                            <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between z-10">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Limits</span>
-                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-0.5">{displayLimit}</span>
-                                </div>
-                                <div className="flex gap-1 shrink-0 ml-2">
-                                    <button onClick={() => handleEdit(gw)} className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer bg-white/50 dark:bg-transparent"><Edit size={16} /></button>
-                                    <button onClick={() => handleDelete(gw.id)} className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer bg-white/50 dark:bg-transparent"><Trash2 size={16} /></button>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
-
-                {gateways.length === 0 && (
-                    <div className="col-span-full py-24 flex flex-col items-center justify-center text-center opacity-60 bg-white dark:bg-[#111827] rounded-[30px] border border-slate-100 dark:border-slate-800 border-dashed">
-                        <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-5"><ShieldCheck size={36} className="text-slate-400" /></div>
-                        <h3 className="text-2xl font-black text-slate-800 dark:text-white">No Gateways Found</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-sm font-medium">You haven't added any vault gateways yet. Click the button above to get started.</p>
-                    </div>
-                )}
-            </div>
-
-            {/* ── Add / Edit Modal ── */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => { setIsModalOpen(false); resetForm(); }}>
-                    <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-[#111827] w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-hidden">
-                        {/* Header */}
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
-                            <h2 className="text-base font-black text-slate-900 dark:text-white">{editingId ? 'Edit Gateway' : 'Add Vault Gateway'}</h2>
-                            <button onClick={() => { setIsModalOpen(false); resetForm(); }} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><X size={18} /></button>
-                        </div>
-
-                        {/* Tab Switcher */}
-                        {!editingId && (
-                            <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
-                                <div className="flex bg-slate-100 dark:bg-[#0B1120] p-1 rounded-xl border border-slate-200 dark:border-slate-800">
-                                    {[
-                                        { id: 'mobile', icon: Smartphone, label: 'Mobile' },
-                                        { id: 'bank', icon: Building2, label: 'Bank' },
-                                        { id: 'international', icon: Globe, label: 'Intl.' },
-                                    ].map((tab) => (
-                                        <button key={tab.id} onClick={() => handleTabSwitch(tab.id)}
-                                            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold uppercase tracking-wide rounded-lg transition-all ${activeTab === tab.id ? 'bg-white dark:bg-[#111827] text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}>
-                                            <tab.icon size={14} /> {tab.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Body */}
-                        <div className="flex-1 overflow-y-auto px-6 py-5 custom-scrollbar">
-                            <form id="vaultGatewayForm" onSubmit={handleSave} className="space-y-5">
-                                {activeTab === 'mobile'        && renderMobileInputs()}
-                                {activeTab === 'bank'          && renderBankInputs()}
-                                {activeTab === 'international' && renderIntlInputs()}
-
-                                {provider && (
-                                    <div className="grid grid-cols-2 gap-4 pt-6 mt-6 border-t border-slate-100 dark:border-slate-800">
-                                        <div>
-                                            <label className={labelClass}>Min ({activeTab === 'international' ? 'USD' : 'BDT'}) {reqStar}</label>
-                                            <input required name="min_amount" onChange={handleInputChange} value={formData.min_amount} type="number" placeholder={activeTab === 'international' ? '1' : activeTab === 'bank' ? '1000' : '10'} className={inputClass} />
-                                        </div>
-                                        <div>
-                                            <label className={labelClass}>Max ({activeTab === 'international' ? 'USD' : 'BDT'}) {activeTab === 'international' ? '' : reqStar}</label>
-                                            <input required={activeTab !== 'international'} name="max_amount" onChange={handleInputChange} value={formData.max_amount} type="number" placeholder={activeTab === 'international' ? 'Unlimited' : activeTab === 'bank' ? '300000' : '50000'} className={inputClass} />
-                                        </div>
-                                    </div>
-                                )}
-                            </form>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3 shrink-0">
-                            <button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">Cancel</button>
-                            <button form="vaultGatewayForm" type="submit" disabled={isSaving || !provider}
-                                className="px-6 py-2.5 bg-[#0D47A1] dark:bg-blue-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-900/20 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                                {isSaving ? <Loader2 className="animate-spin" size={16} /> : <><ShieldCheck size={16} strokeWidth={2.5} />{editingId ? 'Update Gateway' : 'Save Gateway'}</>}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <style jsx global>{`
-                .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
-                .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #CBD5E1; }
-            `}</style>
-        </div>
-    );
 }
 </file>
 
@@ -14607,6 +14088,740 @@ export default function BrandSettings() {
 }
 </file>
 
+<file path="src/app/dashboard/vault/gateways/VaultGatewayManagerUI.tsx">
+/* eslint-disable @typescript-eslint/no-unused-vars */
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import {
+    Plus, X, Search, Smartphone, Building2, Globe,
+    ShieldCheck, Trash2, Loader2, Edit, ArrowLeft,
+} from 'lucide-react';
+import { toast, Toaster } from 'sonner';
+import { saveVaultGateway, updateVaultGateway, deleteVaultGateway, getVaultGateways } from '@/lib/vault_actions';
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const MOBILE_PROVIDERS = ['bKash', 'Nagad', 'Rocket', 'Upay', 'Cellfin', 'mCash', 'OK Wallet', 'Pathao Pay'];
+
+const BANK_MAPPING: Record<string, string> = {
+    ab:          'AB Bank',
+    agrani:      'Agrani Bank',
+    asia:        'Bank Asia',
+    city:        'City Bank',
+    dhaka:       'Dhaka Bank',
+    dbbl:        'Dutch-Bangla Bank',
+    ebl:         'Eastern Bank (EBL)',
+    ific:        'IFIC Bank',
+    ibbl:      'Islami Bank Limited',
+    jamuna:      'Jamuna Bank',
+    mercantile:  'Mercantile Bank',
+    midland:     'Midland Bank',
+    mtb:         'Mutual Trust Bank (MTB)',
+    national:    'National Bank',
+    ncc:         'NCC Bank',
+    prime:       'Prime Bank',
+    sonali:      'Sonali Bank',
+    scb:         'Standard Chartered',
+    ucb:         'UCB Bank',
+    tb:          'Trust Bank Limited',
+};
+
+const INTL_MAPPING: Record<string, string> = {
+    binance:       'Binance Pay',
+    usdt:          'USDT',
+    paypal:        'PayPal',
+    payeer:        'Payeer',
+    perfect_money: 'Perfect Money',
+    webmoney:      'WebMoney',
+};
+
+const EXCLUDED_BANKS = ['brac', 'pubali'];
+const IMAP_BANKS     = ['ebl', 'scb', 'mtb', 'ific', 'midland', 'dhaka', 'prime', 'asia', 'ucb', 'jamuna', 'city'];
+const SMS_BANKS      = ['ibbl', 'dbbl', 'ab', 'mercantile', 'national', 'ncc', 'sonali', 'agrani', 'tb'];
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function VaultGatewayManagerUI({ merchantId }: { merchantId: string }) {
+    const router = useRouter();
+
+    const [loading,      setLoading]      = useState(true);
+    const [gateways,     setGateways]     = useState<any[]>([]);
+    const [logos,        setLogos]        = useState<any[]>([]);
+    const [isModalOpen,  setIsModalOpen]  = useState(false);
+    const [activeTab,    setActiveTab]    = useState<'mobile' | 'bank' | 'international'>('mobile');
+    const [isSaving,     setIsSaving]     = useState(false);
+    const [editingId,    setEditingId]    = useState<string | null>(null);
+    const [provider,     setProvider]     = useState('');
+    const [accType,      setAccType]      = useState('personal');
+    const [isCustomName, setIsCustomName] = useState(false);
+
+    const [formData, setFormData] = useState<any>({
+        account_number:  '',
+        account_name:    '',
+        branch:          '',
+        routing_number:  '',
+        min_amount:      '',
+        max_amount:      '',
+        crypto_network:  'trc20',
+        imap_email:      '',
+        imap_password:   '',
+        imap_bank_email: '',
+        api_key:         '',
+        secret_key:      '',
+        display_name:    '',
+    });
+
+    const [searchQuery,    setSearchQuery]    = useState('');
+    const [showDropdown,   setShowDropdown]   = useState(false);
+    const [highlightIndex, setHighlightIndex] = useState(0);
+    const bankDropdownRef = useRef<HTMLDivElement>(null);
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    const getDisplayName = (slug: string) =>
+        BANK_MAPPING[slug] || INTL_MAPPING[slug] || slug;
+
+    const formatMaskedAccount = (str: string) => {
+        if (!str) return '';
+        if (str.includes('@')) {
+            const [name, domain] = str.split('@');
+            if (name.length <= 3) return `•••@${domain}`;
+            return `${name.slice(0, 3)}••••@${domain}`;
+        }
+        if (str.length > 6) return `${str.slice(0, 3)}••••${str.slice(-3)}`;
+        return str;
+    };
+
+    const getLogo = (provSlug: string): string => {
+        const match = logos.find(
+            (l) => l.method_name?.toLowerCase() === provSlug?.toLowerCase()
+        );
+        return match?.logo_url || 'https://via.placeholder.com/150?text=Logo';
+    };
+
+    const generateDisplayName = (prov: string, type: string, net: string, custom: boolean, currentTab: string) => {
+        if (!custom && prov && !editingId) {
+            let name = getDisplayName(prov);
+            if (currentTab === 'mobile' && type) name = `${name} ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+            else if (currentTab === 'international' && prov === 'usdt') name = `USDT (${net.toUpperCase()})`;
+            setFormData((prev: any) => ({ ...prev, display_name: name }));
+        }
+    };
+
+    const highlightMatch = (text: string, query: string) => {
+        if (!query) return text;
+        const parts = text.split(new RegExp(`(${query})`, 'gi'));
+        return (
+            <span>
+                {parts.map((part, i) =>
+                    part.toLowerCase() === query.toLowerCase()
+                        ? <span key={i} className="text-blue-600 dark:text-blue-400 font-black">{part}</span>
+                        : part
+                )}
+            </span>
+        );
+    };
+
+    const inputClass = [
+        'w-full mt-1.5 p-3.5',
+        'bg-slate-50 dark:bg-[#0B1120]',
+        'border border-slate-200 dark:border-slate-800 rounded-xl',
+        'outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10',
+        'text-slate-900 dark:text-white font-semibold',
+        'placeholder:text-slate-400 placeholder:font-normal',
+        'shadow-sm text-base transition-all',
+    ].join(' ');
+
+    const labelClass = 'text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide';
+    const reqStar    = <span className="text-red-500 text-sm ml-0.5">*</span>;
+
+    // ── Data Fetching ──────────────────────────────────────────────────────────
+
+    const fetchVaultData = async () => {
+        setLoading(true);
+        const [gRes, lRes] = await Promise.all([
+            getVaultGateways(merchantId),
+            supabase.from('payment_logos').select('*'),
+        ]);
+        if (gRes.success) setGateways(gRes.data || []);
+        setLogos(lRes.data || []);
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        fetchVaultData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [merchantId]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (bankDropdownRef.current && !bankDropdownRef.current.contains(event.target as Node)) {
+                setShowDropdown(false);
+                if (!provider && searchQuery) setSearchQuery('');
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [provider, searchQuery]);
+
+    // ── Form Handlers ──────────────────────────────────────────────────────────
+
+    const resetForm = () => {
+        setEditingId(null);
+        setProvider('');
+        setAccType('personal');
+        setIsCustomName(false);
+        setSearchQuery('');
+        setFormData({
+            account_number: '', account_name: '', branch: '', routing_number: '',
+            min_amount: '', max_amount: '', crypto_network: 'trc20',
+            imap_email: '', imap_password: '', imap_bank_email: '',
+            api_key: '', secret_key: '', display_name: '',
+        });
+    };
+
+    const handleTabSwitch = (tabId: any) => {
+        if (editingId) return;
+        resetForm();
+        setActiveTab(tabId);
+        setFormData((prev: any) => ({
+            ...prev,
+            min_amount: tabId === 'international' ? '1' : (tabId === 'bank' ? '1000' : '10'),
+            max_amount: tabId === 'bank' ? '300000' : (tabId === 'international' ? '' : '50000'),
+        }));
+    };
+
+    const handleProviderChange = (newProviderSlug: string) => {
+        setProvider(newProviderSlug);
+        setSearchQuery('');
+        const newAccType = newProviderSlug === 'Pathao Pay' ? 'personal' : (newProviderSlug === 'Cellfin' ? '' : 'personal');
+        setAccType(newAccType);
+        setIsCustomName(false);
+        setFormData((prev: any) => ({
+            ...prev,
+            account_number: '', account_name: '', branch: '', routing_number: '',
+            imap_email: '', imap_password: '', imap_bank_email: '', api_key: '', secret_key: '',
+        }));
+        generateDisplayName(newProviderSlug, newAccType, formData.crypto_network, false, activeTab);
+    };
+
+    const handleInputChange = (e: any) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+    const handleEdit = (gw: any) => {
+        setEditingId(gw.id);
+        const correctTab = (gw.category?.toLowerCase() || 'mobile') as any;
+        setActiveTab(correctTab);
+
+        let exactProvider = gw.provider.toLowerCase();
+        if (correctTab === 'mobile') {
+            exactProvider = MOBILE_PROVIDERS.find((p) => p.toLowerCase() === exactProvider) || gw.provider;
+        }
+        setProvider(exactProvider);
+
+        const correctAccType = correctTab === 'international'
+            ? (exactProvider === 'usdt' ? '' : (gw.account_type || 'personal'))
+            : (gw.account_type || 'personal');
+        setAccType(correctAccType);
+
+        const dispName = getDisplayName(exactProvider);
+        const suggestions = correctTab === 'mobile'
+            ? [`${dispName} Personal`, 'Send Money', `${dispName} Agent`, 'Cash Out', `${dispName} Merchant`, 'Make Payment', dispName]
+            : correctTab === 'bank'
+                ? [dispName, `${dispName} Payment`]
+                : exactProvider === 'usdt'
+                    ? [`USDT (${gw.account_type?.toUpperCase()})`, 'USDT']
+                    : [dispName];
+
+        setIsCustomName(!suggestions.includes(gw.display_name));
+        setFormData({
+            account_number: gw.account_number || '', account_name: gw.account_name || '',
+            branch: gw.branch || '', routing_number: gw.routing_number || '',
+            min_amount: gw.min_amount || '', max_amount: gw.max_amount || '',
+            crypto_network: correctTab === 'international' && exactProvider === 'usdt' ? gw.account_type : 'trc20',
+            imap_email: gw.imap_email || '', imap_password: '',
+            imap_bank_email: gw.imap_bank_email || '', api_key: '', secret_key: '',
+            display_name: gw.display_name || '',
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!provider) return toast.error('Please select a provider!');
+        if (!formData.display_name) return toast.error('Display Name is required!');
+
+        const minAmt = parseFloat(formData.min_amount) || 0;
+        const maxAmt = formData.max_amount ? parseFloat(formData.max_amount) : null;
+        if (minAmt < 0 || (maxAmt !== null && maxAmt < 0)) return toast.error('Amounts cannot be negative!');
+        if (maxAmt !== null && minAmt > maxAmt) return toast.error('Min amount cannot be greater than Max amount!');
+
+        setIsSaving(true);
+        const payload = { merchant_id: merchantId, category: activeTab, provider, account_type: accType, ...formData };
+        const res = editingId
+            ? await updateVaultGateway(editingId, payload)
+            : await saveVaultGateway(payload);
+
+        if (res.success) {
+            toast.success(`Vault Gateway ${editingId ? 'Updated' : 'Added'}!`);
+            setGateways(editingId ? gateways.map((g) => (g.id === editingId ? res.data : g)) : [res.data, ...gateways]);
+            setIsModalOpen(false);
+            resetForm();
+        } else {
+            toast.error(res.message);
+        }
+        setIsSaving(false);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this vault gateway?')) return;
+        setGateways(gateways.filter((g) => g.id !== id));
+        await deleteVaultGateway(id);
+        toast.success('Gateway Deleted!');
+    };
+
+    // ── Sub-Renderers ──────────────────────────────────────────────────────────
+
+    const renderDisplayNamePicker = (suggestions: string[]) => (
+        <div className="space-y-3">
+            <div>
+                <label className={labelClass}>Display Name {reqStar}</label>
+                <select required value={isCustomName ? 'custom' : formData.display_name}
+                    onChange={(e) => {
+                        if (e.target.value === 'custom') { setIsCustomName(true); setFormData({ ...formData, display_name: '' }); }
+                        else { setIsCustomName(false); setFormData({ ...formData, display_name: e.target.value }); }
+                    }} className={inputClass}>
+                    <option value="" disabled>-- Select Display Name --</option>
+                    {suggestions.map((s) => (<option key={s} value={s}>{s}</option>))}
+                    <option value="custom">✨ Custom Name (Write your own)</option>
+                </select>
+            </div>
+            {isCustomName && (
+                <div className="animate-in fade-in zoom-in-95">
+                    <input required type="text" name="display_name" onChange={handleInputChange} value={formData.display_name} placeholder="e.g. Pay via Personal Bkash" className={inputClass} />
+                </div>
+            )}
+        </div>
+    );
+
+    const renderMobileInputs = () => {
+        const dispName  = getDisplayName(provider);
+        const needsName = accType === 'agent' || accType === 'merchant' || provider === 'Pathao Pay' || provider === 'Cellfin';
+        const suggestions = provider
+            ? accType === 'personal' ? [`${dispName} Personal`, 'Send Money']
+                : accType === 'agent' ? [`${dispName} Agent`, 'Cash Out']
+                : accType === 'merchant' ? [`${dispName} Merchant`, 'Make Payment']
+                : [dispName]
+            : [];
+
+        return (
+            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2">
+                <div>
+                    <label className={labelClass}>Select Provider {reqStar}</label>
+                    <select value={provider} onChange={(e) => handleProviderChange(e.target.value)} required className={inputClass}>
+                        <option value="">-- Choose Provider --</option>
+                        {MOBILE_PROVIDERS.map((p) => (<option key={p} value={p}>{p}</option>))}
+                    </select>
+                </div>
+
+                {provider && provider !== 'Cellfin' && provider !== 'Pathao Pay' && (
+                    <div className="flex bg-slate-100/80 dark:bg-[#0B1120] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                        {['personal', 'agent', 'merchant'].map((type) => (
+                            <button key={type} type="button" onClick={() => { setAccType(type); generateDisplayName(provider, type, formData.crypto_network, isCustomName, 'mobile'); }}
+                                className={`flex-1 py-2.5 text-xs font-bold uppercase rounded-lg transition-all ${accType === type ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'}`}>
+                                {type}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                <div>
+                    <label className={labelClass}>Account / Wallet Number {reqStar}</label>
+                    <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" maxLength={11} placeholder="e.g. 01712345678" className={inputClass} />
+                </div>
+                {needsName && (
+                    <div>
+                        <label className={labelClass}>{provider === 'Cellfin' ? 'Account Name' : accType === 'agent' ? 'Agent Name' : 'Merchant Name'} {reqStar}</label>
+                        <input required name="account_name" onChange={handleInputChange} value={formData.account_name} type="text" placeholder="Enter Name" className={inputClass} />
+                    </div>
+                )}
+                {provider && renderDisplayNamePicker(suggestions)}
+            </div>
+        );
+    };
+
+    const renderBankInputs = () => {
+        const dispName        = getDisplayName(provider);
+        const suggestions     = provider ? [dispName, `${dispName} Payment`] : [];
+        const isIMAPSupported = IMAP_BANKS.includes(provider);
+        const isSMSSupported  = SMS_BANKS.includes(provider);
+        const filteredBanks   = Object.entries(BANK_MAPPING).filter(
+            ([slug, name]) => !EXCLUDED_BANKS.includes(slug) && name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        const handleKeyDown = (e: React.KeyboardEvent) => {
+            if (!showDropdown) return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); setHighlightIndex((prev) => Math.min(prev + 1, filteredBanks.length - 1)); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); setHighlightIndex((prev) => Math.max(prev - 1, 0)); }
+            else if (e.key === 'Enter' && filteredBanks[highlightIndex]) { e.preventDefault(); handleProviderChange(filteredBanks[highlightIndex][0]); setShowDropdown(false); }
+        };
+
+        return (
+            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2">
+                <div className="relative" ref={bankDropdownRef}>
+                    <label className={labelClass}>Select Bank {reqStar}</label>
+                    <div className="relative">
+                        <input type="text" required value={provider && !showDropdown ? BANK_MAPPING[provider] : searchQuery}
+                            onFocus={() => { setShowDropdown(true); setHighlightIndex(0); }}
+                            onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true); setHighlightIndex(0); setProvider(''); }}
+                            onKeyDown={handleKeyDown} placeholder="Search Bank..." className={`${inputClass} pr-10`} />
+                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 mt-0.5 text-slate-400" size={18} />
+                    </div>
+                    {showDropdown && (
+                        <div className="absolute z-50 w-full mt-2 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl max-h-56 overflow-y-auto py-2">
+                            {filteredBanks.length === 0 ? (
+                                <div className="p-3 text-sm text-slate-500 text-center">No banks found</div>
+                            ) : (
+                                filteredBanks.map(([slug, name], index) => (
+                                    <div key={slug} onClick={() => { handleProviderChange(slug); setShowDropdown(false); }} onMouseEnter={() => setHighlightIndex(index)}
+                                        className={`p-3.5 cursor-pointer text-sm font-semibold border-b border-slate-50 dark:border-slate-800/50 last:border-0 transition-colors ${index === highlightIndex ? 'bg-blue-50 dark:bg-slate-800 text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+                                        {highlightMatch(name, searchQuery)}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex bg-slate-100/80 dark:bg-[#0B1120] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                    {['personal', 'business'].map((type) => (
+                        <button key={type} type="button" onClick={() => { setAccType(type); generateDisplayName(provider, type, formData.crypto_network, isCustomName, 'bank'); }}
+                            className={`flex-1 py-2.5 text-xs font-bold uppercase rounded-lg transition-all ${accType === type ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'}`}>
+                            {type}
+                        </button>
+                    ))}
+                </div>
+
+                <div>
+                    <label className={labelClass}>Account Name {reqStar}</label>
+                    <input required name="account_name" onChange={handleInputChange} value={formData.account_name} type="text" placeholder={accType === 'personal' ? 'e.g. Md. Rahim' : 'e.g. Xenverse IT'} className={inputClass} />
+                </div>
+                <div>
+                    <label className={labelClass}>Account Number {reqStar}</label>
+                    <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" placeholder="e.g. 102XXXXXXXXX" className={`${inputClass} font-mono`} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className={labelClass}>Branch Name {reqStar}</label>
+                        <input required name="branch" onChange={handleInputChange} value={formData.branch} type="text" placeholder="Gulshan Branch" className={inputClass} />
+                    </div>
+                    <div>
+                        <label className={labelClass}>Routing No {reqStar}</label>
+                        <input required name="routing_number" onChange={handleInputChange} value={formData.routing_number} type="text" maxLength={9} placeholder="123456789" className={`${inputClass} font-mono`} />
+                    </div>
+                </div>
+
+                {provider && renderDisplayNamePicker(suggestions)}
+
+                {isSMSSupported && (
+                    <div className="p-5 bg-emerald-50/80 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 rounded-2xl mt-6 relative overflow-hidden">
+                        <div className="flex gap-3 text-emerald-800 dark:text-emerald-300 relative z-10">
+                            <Smartphone size={24} className="shrink-0 text-emerald-600 dark:text-emerald-500 mt-0.5" />
+                            <p className="text-[13px] font-medium leading-relaxed"><b>SMS অটোমেশন রিকোয়ার্ড:</b> {BANK_MAPPING[provider]} এর পেমেন্ট ভেরিফাই করার জন্য <b>Master Device</b> থেকে SMS Automation চালু থাকতে হবে।</p>
+                        </div>
+                    </div>
+                )}
+
+                {isIMAPSupported && (
+                    <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50/30 dark:from-slate-800 dark:to-slate-800/50 border border-blue-100 dark:border-slate-700 rounded-2xl mt-6 space-y-4">
+                        <div className="flex gap-3 text-blue-900 dark:text-blue-200">
+                            <ShieldCheck size={24} className="shrink-0 text-blue-600 dark:text-blue-400" />
+                            <p className="text-xs font-medium leading-relaxed"><b>IMAP Automation:</b> Enter App Password and alert email.<br /><span className="opacity-70 text-[10px]">(Leave blank when editing if unchanged)</span></p>
+                        </div>
+                        <div>
+                            <label className={labelClass}>Your Email {reqStar}</label>
+                            <input required={!editingId} name="imap_email" onChange={handleInputChange} value={formData.imap_email} type="email" placeholder="you@gmail.com" className={inputClass} />
+                        </div>
+                        <div>
+                            <label className={labelClass}>App Password {editingId ? '' : reqStar}</label>
+                            <input required={!editingId} name="imap_password" onChange={handleInputChange} value={formData.imap_password} type="password" placeholder={editingId ? '•••••••• (Unchanged)' : '••••••••'} className={`${inputClass} font-mono tracking-widest`} />
+                        </div>
+                        <div>
+                            <label className={labelClass}>Bank's Alert Email {reqStar}</label>
+                            <input required={!editingId} name="imap_bank_email" onChange={handleInputChange} value={formData.imap_bank_email} type="email" placeholder="alerts@bank.com" className={inputClass} />
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderIntlInputs = () => {
+        const dispName  = getDisplayName(provider);
+        const suggestions = provider
+            ? provider === 'usdt' ? [`USDT (${formData.crypto_network.toUpperCase()})`, 'USDT'] : [dispName]
+            : [];
+
+        return (
+            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2">
+                <div>
+                    <label className={labelClass}>Select Gateway {reqStar}</label>
+                    <select value={provider} onChange={(e) => handleProviderChange(e.target.value)} required className={inputClass}>
+                        <option value="">-- Choose Crypto/Intl --</option>
+                        {Object.entries(INTL_MAPPING).map(([slug, name]) => (<option key={slug} value={slug}>{name}</option>))}
+                    </select>
+                </div>
+
+                {provider && provider !== 'usdt' && (
+                    <div className="flex bg-slate-100/80 dark:bg-[#0B1120] p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                        {['personal', 'business'].map((type) => (
+                            <button key={type} type="button" onClick={() => { setAccType(type); generateDisplayName(provider, type, formData.crypto_network, isCustomName, 'international'); }}
+                                className={`flex-1 py-2.5 text-xs font-bold uppercase rounded-lg transition-all ${accType === type ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'}`}>
+                                {type}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {provider === 'usdt' && (
+                    <div className="space-y-5">
+                        <div>
+                            <label className={labelClass}>Select Network {reqStar}</label>
+                            <div className="flex gap-2 mt-2">
+                                {['trc20', 'bep20', 'erc20'].map((net) => (
+                                    <button key={net} type="button" onClick={() => { setFormData({ ...formData, crypto_network: net }); generateDisplayName('usdt', '', net, isCustomName, 'international'); }}
+                                        className={`flex-1 py-3 text-xs font-bold uppercase rounded-xl border transition-all ${formData.crypto_network === net ? 'bg-[#0D47A1] text-white border-[#0D47A1] shadow-md shadow-blue-900/20' : 'bg-white dark:bg-[#0B1120] text-slate-500 dark:text-slate-400 hover:bg-slate-50 border-slate-200 dark:border-slate-800'}`}>
+                                        {net}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <label className={labelClass}>Wallet Address {reqStar}</label>
+                            <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" placeholder={`Enter ${formData.crypto_network.toUpperCase()} Address`} className={`${inputClass} font-mono text-sm`} />
+                        </div>
+                    </div>
+                )}
+
+                {provider === 'binance' && (
+                    <div className="space-y-5">
+                        <div>
+                            <label className={labelClass}>Binance Pay ID / Email {reqStar}</label>
+                            <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" placeholder="Pay ID or Email" className={inputClass} />
+                        </div>
+                        <div>
+                            <label className={labelClass}>Account Name {reqStar}</label>
+                            <input required name="account_name" onChange={handleInputChange} value={formData.account_name} type="text" placeholder="Name on Binance" className={inputClass} />
+                        </div>
+                        <div className="p-5 bg-gradient-to-br from-yellow-50 to-orange-50/30 dark:from-yellow-900/20 dark:to-orange-900/10 border border-yellow-200/60 dark:border-yellow-700/50 rounded-2xl space-y-4">
+                            <p className="text-xs font-medium text-yellow-900 dark:text-yellow-500 flex gap-2"><ShieldCheck size={18} className="shrink-0 text-yellow-600" /><span><b>API Settings:</b> Binance API.<br /><span className="opacity-70 text-[10px]">(Leave blank if unchanged)</span></span></p>
+                            <div>
+                                <label className={labelClass}>API Key {editingId ? '' : reqStar}</label>
+                                <input required={!editingId} name="api_key" onChange={handleInputChange} value={formData.api_key} type="text" placeholder="API Key" className={`${inputClass} font-mono text-xs`} />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Secret Key {editingId ? '' : reqStar}</label>
+                                <input required={!editingId} name="secret_key" onChange={handleInputChange} value={formData.secret_key} type="password" placeholder="••••••••" className={`${inputClass} font-mono tracking-widest`} />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {provider && provider !== 'usdt' && provider !== 'binance' && (
+                    <div className="space-y-5">
+                        <div>
+                            <label className={labelClass}>Account ID / Email {reqStar}</label>
+                            <input required name="account_number" onChange={handleInputChange} value={formData.account_number} type="text" placeholder="e.g. U1234567" className={`${inputClass} font-mono`} />
+                        </div>
+                        <div>
+                            <label className={labelClass}>Account Name {reqStar}</label>
+                            <input required name="account_name" onChange={handleInputChange} value={formData.account_name} type="text" placeholder="Name" className={inputClass} />
+                        </div>
+                        <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50/30 dark:from-slate-800 dark:to-slate-800/50 border border-blue-100 dark:border-slate-700 rounded-2xl space-y-4">
+                            <p className="text-xs font-medium text-blue-900 dark:text-blue-200 flex gap-2"><ShieldCheck size={18} className="shrink-0 text-blue-600 dark:text-blue-400" /><span><b>IMAP Settings:</b><br /><span className="opacity-70 text-[10px]">(Leave blank if unchanged)</span></span></p>
+                            <div>
+                                <label className={labelClass}>Your Email {reqStar}</label>
+                                <input required={!editingId} name="imap_email" onChange={handleInputChange} value={formData.imap_email} type="email" placeholder="you@gmail.com" className={inputClass} />
+                            </div>
+                            <div>
+                                <label className={labelClass}>App Password {editingId ? '' : reqStar}</label>
+                                <input required={!editingId} name="imap_password" onChange={handleInputChange} value={formData.imap_password} type="password" placeholder="••••••••" className={`${inputClass} font-mono tracking-widest`} />
+                            </div>
+                            <div>
+                                <label className={labelClass}>Company Sender Email {reqStar}</label>
+                                <input required={!editingId} name="imap_bank_email" onChange={handleInputChange} value={formData.imap_bank_email} type="email" placeholder="noreply@provider.com" className={inputClass} />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {provider && renderDisplayNamePicker(suggestions)}
+            </div>
+        );
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-[60vh] flex items-center justify-center">
+                <Loader2 className="animate-spin text-blue-600" size={32} />
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <Toaster position="top-center" richColors />
+
+            {/* ── Header ── */}
+            <div className="flex flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                    <button onClick={() => router.push('/dashboard/vault')} className="p-2 -ml-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl transition-all text-slate-500">
+                        <ArrowLeft size={20} />
+                    </button>
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Master Gateways</h1>
+                        <p className="text-slate-500 font-bold text-sm mt-1">Manage your vault receiving methods.</p>
+                    </div>
+                </div>
+                <button onClick={() => { handleTabSwitch('mobile'); setIsModalOpen(true); }}
+                    className="shrink-0 bg-[#0D47A1] dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 text-white px-4 md:px-6 py-2.5 md:py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl shadow-blue-900/20 active:scale-95 text-xs md:text-sm">
+                    <Plus size={18} strokeWidth={3} />
+                    <span className="hidden sm:inline">Add New Gateway</span>
+                    <span className="sm:hidden">Add New</span>
+                </button>
+            </div>
+
+            {/* ── Gateway Cards Grid ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {gateways.map((gw: any) => {
+                    const maskedNumber = formatMaskedAccount(gw.account_number);
+                    const currency     = gw.category === 'international' ? 'USD' : 'BDT';
+                    const displayLimit = gw.max_amount
+                        ? `${gw.min_amount} - ${gw.max_amount} ${currency}`
+                        : `Min: ${gw.min_amount} ${currency} (Unlimited)`;
+
+                    return (
+                        <div key={gw.id} className="relative bg-white dark:bg-[#111827] rounded-[24px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col overflow-hidden z-0">
+                            <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-blue-50/30 dark:to-blue-900/5 pointer-events-none z-[-1]" />
+                            <div className="absolute -right-6 -bottom-6 opacity-5 dark:opacity-10 text-slate-400 dark:text-slate-600 group-hover:scale-110 transition-transform duration-500 pointer-events-none z-[-1]"><ShieldCheck size={140} /></div>
+
+                            <div className="relative mb-5 w-full min-h-[48px] pr-[10px]">
+                                <div className="flex items-center gap-3 w-full overflow-hidden">
+                                    <div className="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex items-center justify-center p-2 shrink-0 shadow-sm z-10">
+                                        <img src={getLogo(gw.provider)} alt="logo" className="w-full h-full object-contain" />
+                                    </div>
+                                    <div className="flex-1 min-w-0 z-10">
+                                        <h3 className="text-base font-black text-slate-900 dark:text-white leading-tight flex flex-wrap items-center gap-1.5">
+                                            <span className="truncate capitalize">{getDisplayName(gw.provider)}</span>
+                                            {gw.account_type && (<span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded-[4px] text-[9px] uppercase font-black shrink-0 border border-slate-200 dark:border-slate-700">{gw.account_type}</span>)}
+                                        </h3>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mb-3 bg-slate-50/80 dark:bg-[#0B1120]/80 p-3 rounded-xl border border-slate-100/50 dark:border-slate-800 z-10">
+                                <p className="text-sm font-mono font-bold text-slate-800 dark:text-slate-200 tracking-wide">{maskedNumber}</p>
+                                {gw.account_name && (<p className="text-xs font-black text-slate-700 dark:text-white mt-1 uppercase tracking-widest">{gw.account_name.toUpperCase()}</p>)}
+                            </div>
+
+                            <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between z-10">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Limits</span>
+                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-0.5">{displayLimit}</span>
+                                </div>
+                                <div className="flex gap-1 shrink-0 ml-2">
+                                    <button onClick={() => handleEdit(gw)} className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer bg-white/50 dark:bg-transparent"><Edit size={16} /></button>
+                                    <button onClick={() => handleDelete(gw.id)} className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer bg-white/50 dark:bg-transparent"><Trash2 size={16} /></button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+
+                {gateways.length === 0 && (
+                    <div className="col-span-full py-24 flex flex-col items-center justify-center text-center opacity-60 bg-white dark:bg-[#111827] rounded-[30px] border border-slate-100 dark:border-slate-800 border-dashed">
+                        <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-5"><ShieldCheck size={36} className="text-slate-400" /></div>
+                        <h3 className="text-2xl font-black text-slate-800 dark:text-white">No Gateways Found</h3>
+                        <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-sm font-medium">You haven't added any vault gateways yet. Click the button above to get started.</p>
+                    </div>
+                )}
+            </div>
+
+            {/* ── Add / Edit Modal ── */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => { setIsModalOpen(false); resetForm(); }}>
+                    <div onClick={(e) => e.stopPropagation()} className="bg-white dark:bg-[#111827] w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-hidden">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                            <h2 className="text-base font-black text-slate-900 dark:text-white">{editingId ? 'Edit Gateway' : 'Add Vault Gateway'}</h2>
+                            <button onClick={() => { setIsModalOpen(false); resetForm(); }} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"><X size={18} /></button>
+                        </div>
+
+                        {/* Tab Switcher */}
+                        {!editingId && (
+                            <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                                <div className="flex bg-slate-100 dark:bg-[#0B1120] p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+                                    {[
+                                        { id: 'mobile', icon: Smartphone, label: 'Mobile' },
+                                        { id: 'bank', icon: Building2, label: 'Bank' },
+                                        { id: 'international', icon: Globe, label: 'Intl.' },
+                                    ].map((tab) => (
+                                        <button key={tab.id} onClick={() => handleTabSwitch(tab.id)}
+                                            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold uppercase tracking-wide rounded-lg transition-all ${activeTab === tab.id ? 'bg-white dark:bg-[#111827] text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}`}>
+                                            <tab.icon size={14} /> {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto px-6 py-5 custom-scrollbar">
+                            <form id="vaultGatewayForm" onSubmit={handleSave} className="space-y-5">
+                                {activeTab === 'mobile'        && renderMobileInputs()}
+                                {activeTab === 'bank'          && renderBankInputs()}
+                                {activeTab === 'international' && renderIntlInputs()}
+
+                                {provider && (
+                                    <div className="grid grid-cols-2 gap-4 pt-6 mt-6 border-t border-slate-100 dark:border-slate-800">
+                                        <div>
+                                            <label className={labelClass}>Min ({activeTab === 'international' ? 'USD' : 'BDT'}) {reqStar}</label>
+                                            <input required name="min_amount" onChange={handleInputChange} value={formData.min_amount} type="number" placeholder={activeTab === 'international' ? '1' : activeTab === 'bank' ? '1000' : '10'} className={inputClass} />
+                                        </div>
+                                        <div>
+                                            <label className={labelClass}>Max ({activeTab === 'international' ? 'USD' : 'BDT'}) {activeTab === 'international' ? '' : reqStar}</label>
+                                            <input required={activeTab !== 'international'} name="max_amount" onChange={handleInputChange} value={formData.max_amount} type="number" placeholder={activeTab === 'international' ? 'Unlimited' : activeTab === 'bank' ? '300000' : '50000'} className={inputClass} />
+                                        </div>
+                                    </div>
+                                )}
+                            </form>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3 shrink-0">
+                            <button type="button" onClick={() => { setIsModalOpen(false); resetForm(); }} className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">Cancel</button>
+                            <button form="vaultGatewayForm" type="submit" disabled={isSaving || !provider}
+                                className="px-6 py-2.5 bg-[#0D47A1] dark:bg-blue-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-900/20 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isSaving ? <Loader2 className="animate-spin" size={16} /> : <><ShieldCheck size={16} strokeWidth={2.5} />{editingId ? 'Update Gateway' : 'Save Gateway'}</>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <style jsx global>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
+                .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #CBD5E1; }
+            `}</style>
+        </div>
+    );
+}
+</file>
+
 <file path="src/app/dashboard/reports/page.tsx">
 'use client';
 
@@ -15057,6 +15272,505 @@ export default function ReportsPage() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/dashboard/business/new/page.tsx">
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Building2, Globe, Smartphone, ShoppingBag, LayoutGrid, Mail, Phone, DollarSign, BadgeDollarSign, ShieldCheck, Copy, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { toast, Toaster } from 'sonner';
+import { autoVerifyBusiness, checkDuplicateWebsite, verifyDomain, verifyDomainOwnership } from '@/lib/verify-business';
+
+// ── Inline utility — do NOT import this from a 'use server' file ──────────────
+function generateVerifyCode(): string {
+  return `xp-verify-${Math.random().toString(36).substring(2, 15)}`;
+}
+
+type Step = 'form' | 'domain_verify' | 'duplicate_modal' | 'ownership_verify';
+
+export default function NewBusiness() {
+  const [loading, setLoading] = useState(false);
+  const [fetchingPlan, setFetchingPlan] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [step, setStep] = useState<Step>('form');
+
+  const [planData, setPlanData] = useState<any>(null);
+  const [businessCount, setBusinessCount] = useState(0);
+
+  const [verifyCode, setVerifyCode] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [ownershipMethod, setOwnershipMethod] = useState<'meta' | 'txt'>('meta');
+  const [duplicateInfo, setDuplicateInfo] = useState<{ existingBusinessId?: string } | null>(null);
+  const [pendingBusinessId, setPendingBusinessId] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState({
+    businessName: '',
+    businessType: 'Website',
+    websiteUrl: '',
+    supportEmail: '',
+    supportPhone: '',
+    currency: 'BDT',
+    exchangeRate: '',
+  });
+
+  useEffect(() => {
+    async function loadInitialData() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: merchant } = await supabase.from('merchants').select('plan_id').eq('id', user.id).single();
+          if (merchant?.plan_id) {
+            const { data: plan } = await supabase.from('plans').select('business_limit, allowed_method').eq('id', merchant.plan_id).single();
+            setPlanData(plan || { business_limit: 1, allowed_method: {} });
+          } else {
+            setPlanData({ business_limit: 1, allowed_method: {} });
+          }
+          const { count } = await supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('merchant_id', user.id);
+          setBusinessCount(count || 0);
+        }
+      } catch {
+        setPlanData({ business_limit: 1, allowed_method: {} });
+      } finally {
+        setFetchingPlan(false);
+      }
+    }
+    loadInitialData();
+  }, []);
+
+  const businessLimit = planData?.business_limit ?? 1;
+  const isLimitReached = businessCount >= businessLimit;
+
+  const getLinkConfig = () => {
+    switch (formData.businessType) {
+      case 'Mobile App': return { label: 'App URL (Play/App Store)', icon: Smartphone, placeholder: 'https://play.google.com/...' };
+      case 'F Commerce': return { label: 'Facebook Page Link', icon: ShoppingBag, placeholder: 'https://facebook.com/yourpage' };
+      default: return { label: 'Website URL', icon: Globe, placeholder: 'https://yourwebsite.com' };
+    }
+  };
+  const linkConfig = getLinkConfig();
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isLimitReached) { toast.error(`Your plan allows max ${businessLimit} business(es). Please upgrade.`); return; }
+    setLoading(true);
+    setErrorMessage('');
+    try {
+      const needsDuplicateCheck = formData.businessType === 'Website' || formData.businessType === 'Mobile App';
+      if (needsDuplicateCheck && formData.websiteUrl) {
+        const dupeResult = await checkDuplicateWebsite(formData.websiteUrl);
+        if (dupeResult.isDuplicate) {
+          setDuplicateInfo({ existingBusinessId: dupeResult.existingBusinessId });
+          setStep('duplicate_modal');
+          setLoading(false);
+          return;
+        }
+      }
+      if (formData.businessType === 'Website' && formData.websiteUrl) {
+        const code = generateVerifyCode();
+        setVerifyCode(code);
+        setStep('domain_verify');
+        setLoading(false);
+        return;
+      }
+      await submitBusiness();
+    } catch (error: any) {
+      const errMsg = error.message || 'Failed to create workspace.';
+      toast.error(errMsg);
+      setErrorMessage(`Error: ${errMsg}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createPendingBusiness = async (): Promise<string> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Unauthorized');
+    const publicKey = `xp_pub_${crypto.randomUUID().replace(/-/g, '')}`;
+    const secretKey = `xp_sec_${crypto.randomUUID().replace(/-/g, '')}${crypto.randomUUID().replace(/-/g, '')}`;
+    const code = verifyCode || generateVerifyCode();
+    const { data, error } = await supabase.from('businesses').insert({
+      merchant_id: user.id,
+      business_name: formData.businessName,
+      business_type: formData.businessType,
+      website_url: formData.websiteUrl || null,
+      support_email: formData.supportEmail || null,
+      support_phone: formData.supportPhone || null,
+      currency: formData.currency,
+      exchange_rate: formData.exchangeRate ? parseFloat(formData.exchangeRate) : null,
+      public_key: publicKey,
+      secret_key: secretKey,
+      domain_verify_code: code,
+      status: 'pending',
+    }).select().single();
+    if (error) throw new Error(error.message);
+    return data.id;
+  };
+
+  const handleVerifyAndSubmit = async () => {
+    if (!formData.websiteUrl || !verifyCode) return;
+    setVerifying(true);
+    try {
+      let bizId = pendingBusinessId;
+      if (!bizId) { bizId = await createPendingBusiness(); setPendingBusinessId(bizId); }
+      const result = await verifyDomain(bizId, formData.websiteUrl, verifyCode);
+      if (result.success) {
+        autoVerifyBusiness(bizId, formData.websiteUrl);
+        toast.success('Domain verified! Business submitted successfully.');
+        window.dispatchEvent(new Event('businessChanged'));
+        setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Verification failed.');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleOwnershipVerify = async () => {
+    if (!formData.websiteUrl || !verifyCode) return;
+    setVerifying(true);
+    try {
+      let bizId = pendingBusinessId;
+      if (!bizId) { bizId = await createPendingBusiness(); setPendingBusinessId(bizId); }
+      const result = await verifyDomainOwnership(bizId, formData.websiteUrl, verifyCode, ownershipMethod);
+      if (result.success) {
+        autoVerifyBusiness(bizId, formData.websiteUrl);
+        toast.success('Ownership verified! Business submitted.');
+        window.dispatchEvent(new Event('businessChanged'));
+        setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Verification failed.');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const submitBusiness = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Unauthorized');
+    const publicKey = `xp_pub_${crypto.randomUUID().replace(/-/g, '')}`;
+    const secretKey = `xp_sec_${crypto.randomUUID().replace(/-/g, '')}${crypto.randomUUID().replace(/-/g, '')}`;
+    const { data: newBusiness, error } = await supabase.from('businesses').insert({
+      merchant_id: user.id,
+      business_name: formData.businessName,
+      business_type: formData.businessType,
+      website_url: formData.websiteUrl || null,
+      support_email: formData.supportEmail || null,
+      support_phone: formData.supportPhone || null,
+      currency: formData.currency,
+      exchange_rate: formData.exchangeRate ? parseFloat(formData.exchangeRate) : null,
+      public_key: publicKey,
+      secret_key: secretKey,
+      domain_verify_code: generateVerifyCode(),
+      status: 'pending',
+    }).select().single();
+    if (error) throw new Error(error.message);
+    toast.success('Business submitted! Verification is in progress.');
+    setErrorMessage('');
+    window.dispatchEvent(new Event('businessChanged'));
+    if (formData.businessType === 'F Commerce' && formData.websiteUrl) {
+      autoVerifyBusiness(newBusiness.id, formData.websiteUrl);
+    }
+    setTimeout(() => { window.location.href = '/dashboard'; }, 2000);
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => toast.success('Copied!')).catch(() => toast.error('Failed to copy'));
+  };
+
+  if (fetchingPlan) return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <Loader2 className="animate-spin text-blue-600" size={32} />
+    </div>
+  );
+
+  // ── Domain Verify Step ────────────────────────────────────────────────────
+  if (step === 'domain_verify') {
+    const metaTag = `<meta name="xelpay-verification" content="${verifyCode}" />`;
+    return (
+      <div className="max-w-2xl mx-auto pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <Toaster position="top-center" richColors />
+        <div className="mb-6">
+          <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">Verify Your Website</h1>
+          <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-1">Prove ownership of <span className="font-semibold text-blue-600">{formData.websiteUrl}</span></p>
+        </div>
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 px-6 py-8 text-white text-center">
+            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/20">
+              <ShieldCheck size={32} />
+            </div>
+            <h2 className="text-xl font-black uppercase tracking-tight">Domain Ownership Verification</h2>
+            <p className="text-blue-100 text-sm mt-1.5">Required before your business can be activated</p>
+          </div>
+          <div className="p-6 space-y-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 bg-blue-600 text-white text-xs font-black rounded-full flex items-center justify-center shrink-0">1</span>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Add this tag inside <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded text-xs">&lt;head&gt;</code>:</p>
+              </div>
+              <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl p-4 font-mono text-xs text-slate-700 dark:text-slate-300 break-all flex items-start justify-between gap-3">
+                <span>{metaTag}</span>
+                <button onClick={() => copyToClipboard(metaTag)} className="shrink-0 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg hover:text-blue-600 transition-colors"><Copy size={14} /></button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 bg-blue-600 text-white text-xs font-black rounded-full flex items-center justify-center shrink-0">2</span>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Publish changes, clear cache, then click Verify below.</p>
+            </div>
+            <div className="p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl text-xs text-amber-700 dark:text-amber-400 font-medium">
+              ⚠️ Make sure the meta tag is publicly accessible and your website is live.
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button onClick={handleVerifyAndSubmit} disabled={verifying} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 disabled:opacity-60">
+                {verifying ? <><Loader2 size={16} className="animate-spin" /> Verifying...</> : <><ShieldCheck size={16} /> Verify & Submit</>}
+              </button>
+              <button onClick={() => setStep('form')} className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                ← Back
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Duplicate Modal Step ──────────────────────────────────────────────────
+  if (step === 'duplicate_modal') {
+    return (
+      <div className="max-w-2xl mx-auto pb-8 animate-in fade-in zoom-in-95 duration-300">
+        <Toaster position="top-center" richColors />
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+          <div className="bg-gradient-to-br from-amber-500 to-orange-600 px-6 py-8 text-white text-center">
+            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/20">
+              <AlertTriangle size={32} />
+            </div>
+            <h2 className="text-xl font-black uppercase tracking-tight">Domain Already Registered</h2>
+            <p className="text-amber-100 text-sm mt-1.5">This domain is already associated with an existing account.</p>
+          </div>
+          <div className="p-6 space-y-5">
+            <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-400">
+              <p>The domain <span className="font-semibold text-slate-900 dark:text-white">{formData.websiteUrl}</span> is already registered. If you own it, you can verify ownership to proceed.</p>
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={() => { const code = generateVerifyCode(); setVerifyCode(code); setStep('ownership_verify'); }}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95"
+              >
+                <ShieldCheck size={18} /> Verify Ownership
+              </button>
+              <button
+                onClick={() => { setStep('form'); setDuplicateInfo(null); }}
+                className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 py-4 rounded-xl font-bold text-sm transition-all"
+              >
+                Cancel — Use a Different Website
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Ownership Verify Step ─────────────────────────────────────────────────
+  if (step === 'ownership_verify') {
+    const metaTag = `<meta name="xelpay-verification" content="${verifyCode}" />`;
+    const txtRecord = `xelpay-verification=${verifyCode}`;
+    return (
+      <div className="max-w-2xl mx-auto pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <Toaster position="top-center" richColors />
+        <div className="mb-6">
+          <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">Prove Domain Ownership</h1>
+          <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-1">Verify <span className="font-semibold text-blue-600">{formData.websiteUrl}</span></p>
+        </div>
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+          <div className="flex border-b border-slate-200 dark:border-slate-800">
+            {(['meta', 'txt'] as const).map((m) => (
+              <button key={m} onClick={() => setOwnershipMethod(m)}
+                className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-colors ${ownershipMethod === m ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+                {m === 'meta' ? '🏷️ HTML Meta Tag' : '📡 DNS TXT Record'}
+              </button>
+            ))}
+          </div>
+          <div className="p-6 space-y-5">
+            {ownershipMethod === 'meta' ? (
+              <div className="space-y-3">
+                <p className="text-sm text-slate-600 dark:text-slate-400">Add this inside <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">&lt;head&gt;</code>:</p>
+                <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl p-4 font-mono text-xs text-slate-700 dark:text-slate-300 break-all flex items-start justify-between gap-3">
+                  <span>{metaTag}</span>
+                  <button onClick={() => copyToClipboard(metaTag)} className="shrink-0 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg hover:text-blue-600"><Copy size={14} /></button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-slate-600 dark:text-slate-400">Add a DNS <strong>TXT record</strong>:</p>
+                <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-xs font-mono space-y-2">
+                  <div className="flex justify-between"><span className="text-slate-500">Type:</span><span className="font-bold text-slate-900 dark:text-white">TXT</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Name:</span><span className="font-bold text-slate-900 dark:text-white">@</span></div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0"><span className="text-slate-500">Value: </span><span className="text-blue-600 font-bold break-all">{txtRecord}</span></div>
+                    <button onClick={() => copyToClipboard(txtRecord)} className="shrink-0 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg hover:text-blue-600"><Copy size={14} /></button>
+                  </div>
+                </div>
+                <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg p-2">⏱️ DNS changes may take up to 48 hours to propagate.</p>
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button onClick={handleOwnershipVerify} disabled={verifying} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 disabled:opacity-60">
+                {verifying ? <><Loader2 size={16} className="animate-spin" /> Verifying...</> : <><CheckCircle2 size={16} /> Verify Ownership</>}
+              </button>
+              <button onClick={() => { setStep('form'); setDuplicateInfo(null); setPendingBusinessId(null); }} className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+                ← Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main Form ─────────────────────────────────────────────────────────────
+  return (
+    <div className="max-w-2xl mx-auto pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <Toaster position="top-center" richColors />
+
+      <div className="mb-8">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 rounded-full mb-4">
+          <Building2 size={13} className="text-blue-600" />
+          <span className="text-[11px] font-black uppercase tracking-widest text-blue-600">New Workspace</span>
+        </div>
+        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+          Create Your<br />Business Workspace
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium">Fill in your business details to get started with XelPay.</p>
+      </div>
+
+      {isLimitReached && (
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl flex items-start gap-3">
+          <AlertTriangle size={18} className="text-red-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-red-700 dark:text-red-400">Business Limit Reached</p>
+            <p className="text-xs text-red-600 dark:text-red-500 mt-0.5">Your plan allows max {businessLimit} business workspace(s). Please upgrade.</p>
+          </div>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl text-xs text-red-600 dark:text-red-400 font-medium">{errorMessage}</div>
+      )}
+
+      <form onSubmit={handleFormSubmit} className="space-y-5">
+
+        {/* Basic Info */}
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
+          <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800">Basic Information</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">Business Name <span className="text-red-500">*</span></label>
+              <div className="relative group">
+                <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
+                <input required type="text" placeholder="Easy Earn" value={formData.businessName}
+                  onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all placeholder:text-slate-400" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">Business Type <span className="text-red-500">*</span></label>
+              <div className="relative group">
+                <LayoutGrid className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
+                <select required value={formData.businessType}
+                  onChange={(e) => setFormData({ ...formData, businessType: e.target.value, websiteUrl: '' })}
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all appearance-none">
+                  <option value="Website">Website</option>
+                  <option value="Mobile App">Mobile App</option>
+                  <option value="F Commerce">F Commerce</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">{linkConfig.label} <span className="text-red-500">*</span></label>
+            <div className="relative group">
+              <linkConfig.icon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
+              <input required type="url" placeholder={linkConfig.placeholder} value={formData.websiteUrl}
+                onChange={(e) => setFormData({ ...formData, websiteUrl: e.target.value })}
+                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all placeholder:text-slate-400" />
+            </div>
+            {formData.businessType === 'Website' && (
+              <p className="text-[11px] text-blue-600 dark:text-blue-400 font-medium ml-1">🔒 Website ownership verification required before submission.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Contact Info */}
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
+          <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800">Contact & Support</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Support Email</label>
+              <div className="relative group">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
+                <input type="email" placeholder="support@mybusiness.com" value={formData.supportEmail}
+                  onChange={(e) => setFormData({ ...formData, supportEmail: e.target.value })}
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all placeholder:text-slate-400" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Support Phone</label>
+              <div className="relative group">
+                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
+                <input type="tel" placeholder="+880 1700 000000" value={formData.supportPhone}
+                  onChange={(e) => setFormData({ ...formData, supportPhone: e.target.value })}
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all placeholder:text-slate-400" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Currency */}
+        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
+          <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800">Currency Settings</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">Currency <span className="text-red-500">*</span></label>
+              <div className="relative group">
+                <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
+                <select required value={formData.currency} onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all appearance-none">
+                  <option value="BDT">BDT — Bangladeshi Taka</option>
+                  <option value="USD">USD — US Dollar</option>
+                </select>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">USD → BDT Rate <span className="text-red-500">*</span></label>
+              <div className="relative group">
+                <BadgeDollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
+                <input required type="number" step="0.01" min="1" placeholder="e.g. 110" value={formData.exchangeRate}
+                  onChange={(e) => setFormData({ ...formData, exchangeRate: e.target.value })}
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all placeholder:text-slate-400" />
+              </div>
+              <p className="text-[11px] text-slate-400 ml-1">How many BDT equals 1 USD (e.g. 110)</p>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" disabled={loading || isLimitReached}
+          className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+          {loading
+            ? <><Loader2 size={18} className="animate-spin" /> Processing...</>
+            : <><Building2 size={18} /> {formData.businessType === 'Website' ? 'Continue to Verification →' : 'Create Workspace'}</>}
+        </button>
+      </form>
     </div>
   );
 }
@@ -16719,505 +17433,6 @@ export default function Header({ merchant, setSidebarOpen }: any) {
         </div>
       </div>
     </header>
-  );
-}
-</file>
-
-<file path="src/app/dashboard/business/new/page.tsx">
-'use client';
-
-import { useState, useEffect } from 'react';
-import { Building2, Globe, Smartphone, ShoppingBag, LayoutGrid, Mail, Phone, DollarSign, BadgeDollarSign, ShieldCheck, Copy, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { toast, Toaster } from 'sonner';
-import { autoVerifyBusiness, checkDuplicateWebsite, verifyDomain, verifyDomainOwnership } from '@/lib/verify-business';
-
-// ── Inline utility — do NOT import this from a 'use server' file ──────────────
-function generateVerifyCode(): string {
-  return `xp-verify-${Math.random().toString(36).substring(2, 15)}`;
-}
-
-type Step = 'form' | 'domain_verify' | 'duplicate_modal' | 'ownership_verify';
-
-export default function NewBusiness() {
-  const [loading, setLoading] = useState(false);
-  const [fetchingPlan, setFetchingPlan] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [step, setStep] = useState<Step>('form');
-
-  const [planData, setPlanData] = useState<any>(null);
-  const [businessCount, setBusinessCount] = useState(0);
-
-  const [verifyCode, setVerifyCode] = useState('');
-  const [verifying, setVerifying] = useState(false);
-  const [ownershipMethod, setOwnershipMethod] = useState<'meta' | 'txt'>('meta');
-  const [duplicateInfo, setDuplicateInfo] = useState<{ existingBusinessId?: string } | null>(null);
-  const [pendingBusinessId, setPendingBusinessId] = useState<string | null>(null);
-
-  const [formData, setFormData] = useState({
-    businessName: '',
-    businessType: 'Website',
-    websiteUrl: '',
-    supportEmail: '',
-    supportPhone: '',
-    currency: 'BDT',
-    exchangeRate: '',
-  });
-
-  useEffect(() => {
-    async function loadInitialData() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: merchant } = await supabase.from('merchants').select('plan_id').eq('id', user.id).single();
-          if (merchant?.plan_id) {
-            const { data: plan } = await supabase.from('plans').select('business_limit, allowed_method').eq('id', merchant.plan_id).single();
-            setPlanData(plan || { business_limit: 1, allowed_method: {} });
-          } else {
-            setPlanData({ business_limit: 1, allowed_method: {} });
-          }
-          const { count } = await supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('merchant_id', user.id);
-          setBusinessCount(count || 0);
-        }
-      } catch {
-        setPlanData({ business_limit: 1, allowed_method: {} });
-      } finally {
-        setFetchingPlan(false);
-      }
-    }
-    loadInitialData();
-  }, []);
-
-  const businessLimit = planData?.business_limit ?? 1;
-  const isLimitReached = businessCount >= businessLimit;
-
-  const getLinkConfig = () => {
-    switch (formData.businessType) {
-      case 'Mobile App': return { label: 'App URL (Play/App Store)', icon: Smartphone, placeholder: 'https://play.google.com/...' };
-      case 'F Commerce': return { label: 'Facebook Page Link', icon: ShoppingBag, placeholder: 'https://facebook.com/yourpage' };
-      default: return { label: 'Website URL', icon: Globe, placeholder: 'https://yourwebsite.com' };
-    }
-  };
-  const linkConfig = getLinkConfig();
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isLimitReached) { toast.error(`Your plan allows max ${businessLimit} business(es). Please upgrade.`); return; }
-    setLoading(true);
-    setErrorMessage('');
-    try {
-      const needsDuplicateCheck = formData.businessType === 'Website' || formData.businessType === 'Mobile App';
-      if (needsDuplicateCheck && formData.websiteUrl) {
-        const dupeResult = await checkDuplicateWebsite(formData.websiteUrl);
-        if (dupeResult.isDuplicate) {
-          setDuplicateInfo({ existingBusinessId: dupeResult.existingBusinessId });
-          setStep('duplicate_modal');
-          setLoading(false);
-          return;
-        }
-      }
-      if (formData.businessType === 'Website' && formData.websiteUrl) {
-        const code = generateVerifyCode();
-        setVerifyCode(code);
-        setStep('domain_verify');
-        setLoading(false);
-        return;
-      }
-      await submitBusiness();
-    } catch (error: any) {
-      const errMsg = error.message || 'Failed to create workspace.';
-      toast.error(errMsg);
-      setErrorMessage(`Error: ${errMsg}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createPendingBusiness = async (): Promise<string> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Unauthorized');
-    const publicKey = `xp_pub_${crypto.randomUUID().replace(/-/g, '')}`;
-    const secretKey = `xp_sec_${crypto.randomUUID().replace(/-/g, '')}${crypto.randomUUID().replace(/-/g, '')}`;
-    const code = verifyCode || generateVerifyCode();
-    const { data, error } = await supabase.from('businesses').insert({
-      merchant_id: user.id,
-      business_name: formData.businessName,
-      business_type: formData.businessType,
-      website_url: formData.websiteUrl || null,
-      support_email: formData.supportEmail || null,
-      support_phone: formData.supportPhone || null,
-      currency: formData.currency,
-      exchange_rate: formData.exchangeRate ? parseFloat(formData.exchangeRate) : null,
-      public_key: publicKey,
-      secret_key: secretKey,
-      domain_verify_code: code,
-      status: 'pending',
-    }).select().single();
-    if (error) throw new Error(error.message);
-    return data.id;
-  };
-
-  const handleVerifyAndSubmit = async () => {
-    if (!formData.websiteUrl || !verifyCode) return;
-    setVerifying(true);
-    try {
-      let bizId = pendingBusinessId;
-      if (!bizId) { bizId = await createPendingBusiness(); setPendingBusinessId(bizId); }
-      const result = await verifyDomain(bizId, formData.websiteUrl, verifyCode);
-      if (result.success) {
-        autoVerifyBusiness(bizId, formData.websiteUrl);
-        toast.success('Domain verified! Business submitted successfully.');
-        window.dispatchEvent(new Event('businessChanged'));
-        setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
-      } else {
-        toast.error(result.message);
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Verification failed.');
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-  const handleOwnershipVerify = async () => {
-    if (!formData.websiteUrl || !verifyCode) return;
-    setVerifying(true);
-    try {
-      let bizId = pendingBusinessId;
-      if (!bizId) { bizId = await createPendingBusiness(); setPendingBusinessId(bizId); }
-      const result = await verifyDomainOwnership(bizId, formData.websiteUrl, verifyCode, ownershipMethod);
-      if (result.success) {
-        autoVerifyBusiness(bizId, formData.websiteUrl);
-        toast.success('Ownership verified! Business submitted.');
-        window.dispatchEvent(new Event('businessChanged'));
-        setTimeout(() => { window.location.href = '/dashboard'; }, 1500);
-      } else {
-        toast.error(result.message);
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Verification failed.');
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-  const submitBusiness = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Unauthorized');
-    const publicKey = `xp_pub_${crypto.randomUUID().replace(/-/g, '')}`;
-    const secretKey = `xp_sec_${crypto.randomUUID().replace(/-/g, '')}${crypto.randomUUID().replace(/-/g, '')}`;
-    const { data: newBusiness, error } = await supabase.from('businesses').insert({
-      merchant_id: user.id,
-      business_name: formData.businessName,
-      business_type: formData.businessType,
-      website_url: formData.websiteUrl || null,
-      support_email: formData.supportEmail || null,
-      support_phone: formData.supportPhone || null,
-      currency: formData.currency,
-      exchange_rate: formData.exchangeRate ? parseFloat(formData.exchangeRate) : null,
-      public_key: publicKey,
-      secret_key: secretKey,
-      domain_verify_code: generateVerifyCode(),
-      status: 'pending',
-    }).select().single();
-    if (error) throw new Error(error.message);
-    toast.success('Business submitted! Verification is in progress.');
-    setErrorMessage('');
-    window.dispatchEvent(new Event('businessChanged'));
-    if (formData.businessType === 'F Commerce' && formData.websiteUrl) {
-      autoVerifyBusiness(newBusiness.id, formData.websiteUrl);
-    }
-    setTimeout(() => { window.location.href = '/dashboard'; }, 2000);
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text).then(() => toast.success('Copied!')).catch(() => toast.error('Failed to copy'));
-  };
-
-  if (fetchingPlan) return (
-    <div className="min-h-[60vh] flex items-center justify-center">
-      <Loader2 className="animate-spin text-blue-600" size={32} />
-    </div>
-  );
-
-  // ── Domain Verify Step ────────────────────────────────────────────────────
-  if (step === 'domain_verify') {
-    const metaTag = `<meta name="xelpay-verification" content="${verifyCode}" />`;
-    return (
-      <div className="max-w-2xl mx-auto pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <Toaster position="top-center" richColors />
-        <div className="mb-6">
-          <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">Verify Your Website</h1>
-          <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-1">Prove ownership of <span className="font-semibold text-blue-600">{formData.websiteUrl}</span></p>
-        </div>
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 px-6 py-8 text-white text-center">
-            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/20">
-              <ShieldCheck size={32} />
-            </div>
-            <h2 className="text-xl font-black uppercase tracking-tight">Domain Ownership Verification</h2>
-            <p className="text-blue-100 text-sm mt-1.5">Required before your business can be activated</p>
-          </div>
-          <div className="p-6 space-y-6">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="w-6 h-6 bg-blue-600 text-white text-xs font-black rounded-full flex items-center justify-center shrink-0">1</span>
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Add this tag inside <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded text-xs">&lt;head&gt;</code>:</p>
-              </div>
-              <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl p-4 font-mono text-xs text-slate-700 dark:text-slate-300 break-all flex items-start justify-between gap-3">
-                <span>{metaTag}</span>
-                <button onClick={() => copyToClipboard(metaTag)} className="shrink-0 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg hover:text-blue-600 transition-colors"><Copy size={14} /></button>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 bg-blue-600 text-white text-xs font-black rounded-full flex items-center justify-center shrink-0">2</span>
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">Publish changes, clear cache, then click Verify below.</p>
-            </div>
-            <div className="p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-xl text-xs text-amber-700 dark:text-amber-400 font-medium">
-              ⚠️ Make sure the meta tag is publicly accessible and your website is live.
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button onClick={handleVerifyAndSubmit} disabled={verifying} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 disabled:opacity-60">
-                {verifying ? <><Loader2 size={16} className="animate-spin" /> Verifying...</> : <><ShieldCheck size={16} /> Verify & Submit</>}
-              </button>
-              <button onClick={() => setStep('form')} className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
-                ← Back
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Duplicate Modal Step ──────────────────────────────────────────────────
-  if (step === 'duplicate_modal') {
-    return (
-      <div className="max-w-2xl mx-auto pb-8 animate-in fade-in zoom-in-95 duration-300">
-        <Toaster position="top-center" richColors />
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="bg-gradient-to-br from-amber-500 to-orange-600 px-6 py-8 text-white text-center">
-            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/20">
-              <AlertTriangle size={32} />
-            </div>
-            <h2 className="text-xl font-black uppercase tracking-tight">Domain Already Registered</h2>
-            <p className="text-amber-100 text-sm mt-1.5">This domain is already associated with an existing account.</p>
-          </div>
-          <div className="p-6 space-y-5">
-            <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm text-slate-600 dark:text-slate-400">
-              <p>The domain <span className="font-semibold text-slate-900 dark:text-white">{formData.websiteUrl}</span> is already registered. If you own it, you can verify ownership to proceed.</p>
-            </div>
-            <div className="space-y-3">
-              <button
-                onClick={() => { const code = generateVerifyCode(); setVerifyCode(code); setStep('ownership_verify'); }}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-black text-sm flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95"
-              >
-                <ShieldCheck size={18} /> Verify Ownership
-              </button>
-              <button
-                onClick={() => { setStep('form'); setDuplicateInfo(null); }}
-                className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 py-4 rounded-xl font-bold text-sm transition-all"
-              >
-                Cancel — Use a Different Website
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Ownership Verify Step ─────────────────────────────────────────────────
-  if (step === 'ownership_verify') {
-    const metaTag = `<meta name="xelpay-verification" content="${verifyCode}" />`;
-    const txtRecord = `xelpay-verification=${verifyCode}`;
-    return (
-      <div className="max-w-2xl mx-auto pb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <Toaster position="top-center" richColors />
-        <div className="mb-6">
-          <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">Prove Domain Ownership</h1>
-          <p className="text-[13px] text-slate-500 dark:text-slate-400 mt-1">Verify <span className="font-semibold text-blue-600">{formData.websiteUrl}</span></p>
-        </div>
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-          <div className="flex border-b border-slate-200 dark:border-slate-800">
-            {(['meta', 'txt'] as const).map((m) => (
-              <button key={m} onClick={() => setOwnershipMethod(m)}
-                className={`flex-1 py-4 text-xs font-black uppercase tracking-widest transition-colors ${ownershipMethod === m ? 'bg-blue-600 text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
-                {m === 'meta' ? '🏷️ HTML Meta Tag' : '📡 DNS TXT Record'}
-              </button>
-            ))}
-          </div>
-          <div className="p-6 space-y-5">
-            {ownershipMethod === 'meta' ? (
-              <div className="space-y-3">
-                <p className="text-sm text-slate-600 dark:text-slate-400">Add this inside <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">&lt;head&gt;</code>:</p>
-                <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl p-4 font-mono text-xs text-slate-700 dark:text-slate-300 break-all flex items-start justify-between gap-3">
-                  <span>{metaTag}</span>
-                  <button onClick={() => copyToClipboard(metaTag)} className="shrink-0 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg hover:text-blue-600"><Copy size={14} /></button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-slate-600 dark:text-slate-400">Add a DNS <strong>TXT record</strong>:</p>
-                <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-xs font-mono space-y-2">
-                  <div className="flex justify-between"><span className="text-slate-500">Type:</span><span className="font-bold text-slate-900 dark:text-white">TXT</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">Name:</span><span className="font-bold text-slate-900 dark:text-white">@</span></div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 min-w-0"><span className="text-slate-500">Value: </span><span className="text-blue-600 font-bold break-all">{txtRecord}</span></div>
-                    <button onClick={() => copyToClipboard(txtRecord)} className="shrink-0 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg hover:text-blue-600"><Copy size={14} /></button>
-                  </div>
-                </div>
-                <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg p-2">⏱️ DNS changes may take up to 48 hours to propagate.</p>
-              </div>
-            )}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button onClick={handleOwnershipVerify} disabled={verifying} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 disabled:opacity-60">
-                {verifying ? <><Loader2 size={16} className="animate-spin" /> Verifying...</> : <><CheckCircle2 size={16} /> Verify Ownership</>}
-              </button>
-              <button onClick={() => { setStep('form'); setDuplicateInfo(null); setPendingBusinessId(null); }} className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
-                ← Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Main Form ─────────────────────────────────────────────────────────────
-  return (
-    <div className="max-w-2xl mx-auto pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <Toaster position="top-center" richColors />
-
-      <div className="mb-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 rounded-full mb-4">
-          <Building2 size={13} className="text-blue-600" />
-          <span className="text-[11px] font-black uppercase tracking-widest text-blue-600">New Workspace</span>
-        </div>
-        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-          Create Your<br />Business Workspace
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 font-medium">Fill in your business details to get started with XelPay.</p>
-      </div>
-
-      {isLimitReached && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl flex items-start gap-3">
-          <AlertTriangle size={18} className="text-red-500 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-bold text-red-700 dark:text-red-400">Business Limit Reached</p>
-            <p className="text-xs text-red-600 dark:text-red-500 mt-0.5">Your plan allows max {businessLimit} business workspace(s). Please upgrade.</p>
-          </div>
-        </div>
-      )}
-
-      {errorMessage && (
-        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-xl text-xs text-red-600 dark:text-red-400 font-medium">{errorMessage}</div>
-      )}
-
-      <form onSubmit={handleFormSubmit} className="space-y-5">
-
-        {/* Basic Info */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
-          <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800">Basic Information</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">Business Name <span className="text-red-500">*</span></label>
-              <div className="relative group">
-                <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
-                <input required type="text" placeholder="Easy Earn" value={formData.businessName}
-                  onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all placeholder:text-slate-400" />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">Business Type <span className="text-red-500">*</span></label>
-              <div className="relative group">
-                <LayoutGrid className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
-                <select required value={formData.businessType}
-                  onChange={(e) => setFormData({ ...formData, businessType: e.target.value, websiteUrl: '' })}
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all appearance-none">
-                  <option value="Website">Website</option>
-                  <option value="Mobile App">Mobile App</option>
-                  <option value="F Commerce">F Commerce</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">{linkConfig.label} <span className="text-red-500">*</span></label>
-            <div className="relative group">
-              <linkConfig.icon className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
-              <input required type="url" placeholder={linkConfig.placeholder} value={formData.websiteUrl}
-                onChange={(e) => setFormData({ ...formData, websiteUrl: e.target.value })}
-                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all placeholder:text-slate-400" />
-            </div>
-            {formData.businessType === 'Website' && (
-              <p className="text-[11px] text-blue-600 dark:text-blue-400 font-medium ml-1">🔒 Website ownership verification required before submission.</p>
-            )}
-          </div>
-        </div>
-
-        {/* Contact Info */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
-          <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800">Contact & Support</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Support Email</label>
-              <div className="relative group">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
-                <input type="email" placeholder="support@mybusiness.com" value={formData.supportEmail}
-                  onChange={(e) => setFormData({ ...formData, supportEmail: e.target.value })}
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all placeholder:text-slate-400" />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Support Phone</label>
-              <div className="relative group">
-                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
-                <input type="tel" placeholder="+880 1700 000000" value={formData.supportPhone}
-                  onChange={(e) => setFormData({ ...formData, supportPhone: e.target.value })}
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all placeholder:text-slate-400" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Currency */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-sm space-y-4">
-          <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800">Currency Settings</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">Currency <span className="text-red-500">*</span></label>
-              <div className="relative group">
-                <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
-                <select required value={formData.currency} onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all appearance-none">
-                  <option value="BDT">BDT — Bangladeshi Taka</option>
-                  <option value="USD">USD — US Dollar</option>
-                </select>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">USD → BDT Rate <span className="text-red-500">*</span></label>
-              <div className="relative group">
-                <BadgeDollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={15} />
-                <input required type="number" step="0.01" min="1" placeholder="e.g. 110" value={formData.exchangeRate}
-                  onChange={(e) => setFormData({ ...formData, exchangeRate: e.target.value })}
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 text-sm font-medium text-slate-900 dark:text-white transition-all placeholder:text-slate-400" />
-              </div>
-              <p className="text-[11px] text-slate-400 ml-1">How many BDT equals 1 USD (e.g. 110)</p>
-            </div>
-          </div>
-        </div>
-
-        <button type="submit" disabled={loading || isLimitReached}
-          className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-          {loading
-            ? <><Loader2 size={18} className="animate-spin" /> Processing...</>
-            : <><Building2 size={18} /> {formData.businessType === 'Website' ? 'Continue to Verification →' : 'Create Workspace'}</>}
-        </button>
-      </form>
-    </div>
   );
 }
 </file>
