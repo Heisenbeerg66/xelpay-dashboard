@@ -25,7 +25,8 @@ const menuItems = [
   { name: 'Reports', icon: LineChart, path: '/dashboard/reports' },
   { name: 'SMS Data', icon: MessageSquare, path: '/dashboard/sms' },
   { name: 'Customers', icon: Users, path: '/dashboard/customers' },
-  { name: 'Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions' },
+  { name: 'System Settings', icon: Settings, path: '/dashboard/settings' },
+  { name: 'Billing & Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions' },
   { name: 'API & Plugins', icon: Code, path: '/dashboard/api' },
   { name: 'Support', icon: Headphones, path: '/dashboard/support' },
 ];
@@ -187,13 +188,6 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
             <p className="text-[10px] text-slate-500 font-medium truncate">{merchant?.email || ''}</p>
           </div>
         </div>
-        <Link
-          href="/dashboard/settings"
-          onClick={() => setIsOpen(false)}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800 rounded-xl transition-colors mb-1"
-        >
-          <Settings size={14} className="text-slate-400" /> Settings
-        </Link>
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-900/20 rounded-xl transition-colors"

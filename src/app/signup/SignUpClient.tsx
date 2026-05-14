@@ -148,27 +148,22 @@ const SuccessModal = ({ isOpen, merchantId, onClose }: any) => {
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="bg-white dark:bg-[#111827] w-full max-w-sm rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-        {/* Top accent bar */}
         <div className="h-1 w-full bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600" />
         <div className="p-8 text-center">
-          {/* Icon */}
           <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <CheckCircle size={28} className="text-blue-600 dark:text-blue-400" strokeWidth={1.75} />
           </div>
-          {/* Title */}
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1 tracking-tight">
             Registration Successful
           </h3>
           <p className="text-slate-400 dark:text-slate-500 text-sm mb-6 leading-relaxed">
             Your merchant account has been created and verified successfully.
           </p>
-          {/* Merchant ID */}
           <div className="bg-slate-50 dark:bg-[#0B1120] rounded-xl p-4 mb-6 border border-slate-100 dark:border-slate-800">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1.5">Merchant ID</p>
             <p className="text-2xl font-black text-blue-600 dark:text-blue-400 tracking-widest">#{merchantId}</p>
             <p className="text-[10px] text-slate-400 mt-1.5">Save this ID — you'll need it for support</p>
           </div>
-          {/* CTA */}
           <button
             onClick={onClose}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2"
@@ -181,7 +176,6 @@ const SuccessModal = ({ isOpen, merchantId, onClose }: any) => {
   );
 };
 
-// ─── OTP INPUT VIEW ──────────────────────────────────────────────────────────
 const OtpView = ({
   email,
   otp,
@@ -236,7 +230,6 @@ const OtpView = ({
         We sent a 6-digit code to <b className="text-slate-700 dark:text-slate-300">{email}</b>. Enter it below to complete signup.
       </p>
 
-      {/* OTP Digit Inputs */}
       <div className="flex gap-2.5 justify-center mb-7" onPaste={handlePaste}>
         {Array.from({ length: 6 }).map((_, i) => (
           <input
@@ -290,6 +283,10 @@ function SignUpContent() {
   const mode = searchParams.get('mode');
   const errorFromUrl = searchParams.get('error');
 
+  // --- NEW: Invitation State ---
+  const inviteToken = searchParams.get('invite_token');
+  const [isInviteFlow, setIsInviteFlow] = useState(false);
+
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -319,25 +316,36 @@ function SignUpContent() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<any>(null);
 
-  // ─── OTP Flow State ───────────────────────────────────────────────────────
   const [viewState, setViewState] = useState<'form' | 'otp'>('form');
   const [otp, setOtp] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
-  // Store pending signup data so we can call registerMerchant after OTP succeeds
   const pendingSignup = useRef<{
-    userId: string;
-    email: string;
-    fullName: string;
-    phone: string;
-    address: string;
-    referCode: string | null;
-    planId: string | null;
-    planPrice: number;
-    merchantDisplayId: string;
-    password: string;
+    userId: string; email: string; fullName: string; phone: string; address: string; referCode: string | null; planId: string | null; planPrice: number; merchantDisplayId: string; password: string;
   } | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
+
+  // --- NEW: Verify Invite Token ---
+  useEffect(() => {
+    if (inviteToken) {
+      const validateInvite = async () => {
+        const { data, error } = await supabase
+          .from('team_invitations')
+          .select('email, status')
+          .eq('token', inviteToken)
+          .single();
+
+        if (data && data.status === 'pending') {
+          setIsInviteFlow(true);
+          setFormData(prev => ({ ...prev, email: data.email }));
+        } else {
+          toast.error("Invalid or expired invitation link.");
+          router.push('/signup');
+        }
+      };
+      validateInvite();
+    }
+  }, [inviteToken, router]);
 
   useEffect(() => {
     if (errorFromUrl === 'email_exists') {
@@ -373,7 +381,6 @@ function SignUpContent() {
     fetchLinks();
   }, []);
 
-  // Resend cooldown countdown
   useEffect(() => {
     if (resendCooldown > 0) {
       const t = setInterval(() => setResendCooldown(c => c - 1), 1000);
@@ -381,7 +388,6 @@ function SignUpContent() {
     }
   }, [resendCooldown]);
 
-  // Auto-fill referral code from URL param
   useEffect(() => {
     if (refCodeFromUrl) {
       setFormData(prev => ({ ...prev, referCode: refCodeFromUrl }));
@@ -410,7 +416,6 @@ function SignUpContent() {
     return /^(?=.*[A-Z])(?=.*\d)[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]{8,}$/.test(pw);
   };
 
-  // ─── STEP 1: Submit form → signUp → show OTP view ────────────────────────
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -425,23 +430,53 @@ function SignUpContent() {
       return;
     }
     if (formData.password !== formData.confirmPassword) { toast.error("Passwords do not match."); return; }
-    if (!selectedPlan) { toast.error("Please select a plan."); return; }
 
     setLoading(true);
+
+    // --- NEW: Team Invite Registration Flow ---
+    if (isInviteFlow) {
+      try {
+        const res = await fetch('/api/v1/team/accept-invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: inviteToken,
+            fullName: formData.fullName,
+            password: formData.password
+          })
+        });
+        const result = await res.json();
+        
+        if (res.ok) {
+          toast.success("Account created successfully! Redirecting to login...");
+          setTimeout(() => router.push('/login'), 2000);
+        } else {
+          toast.error(result.error || "Failed to create account.");
+          setLoading(false);
+          recaptchaRef.current?.reset();
+          setCaptchaToken(null);
+        }
+      } catch (err) {
+        toast.error("An unexpected error occurred.");
+        setLoading(false);
+      }
+      return;
+    }
+    // ------------------------------------------
+
+    if (!selectedPlan) { toast.error("Please select a plan."); setLoading(false); return; }
+
     const fullPhone = `${countryCode}${formData.phone.replace(/\s/g, '')}`;
     const generatedMerchantId = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // ── Attempt signUp ──
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
       options: {
         data: { full_name: formData.fullName, merchant_id: generatedMerchantId },
-        // No emailRedirectTo — Supabase sends 6-digit OTP when auth is set to OTP mode
       }
     });
 
-    // ── Ghost User Handling ──────────────────────────────────────────────────
     if (authError) {
       const errMsg = authError.message.toLowerCase();
       const isAlreadyRegistered =
@@ -450,7 +485,6 @@ function SignUpContent() {
         errMsg.includes('email address is already registered');
 
       if (isAlreadyRegistered) {
-        // Check if a merchants record exists (completed signup before)
         const { data: existingMerchant } = await supabase
           .from('merchants')
           .select('id')
@@ -464,7 +498,6 @@ function SignUpContent() {
           setCaptchaToken(null);
           return;
         } else {
-          // Ghost user — abandoned signup. Resend OTP silently.
           const { error: resendError } = await supabase.auth.resend({
             type: 'signup',
             email: formData.email,
@@ -478,7 +511,7 @@ function SignUpContent() {
           }
 
           pendingSignup.current = {
-            userId: '', // will be populated after OTP verification
+            userId: '',
             email: formData.email,
             fullName: formData.fullName,
             phone: fullPhone,
@@ -505,7 +538,6 @@ function SignUpContent() {
       return;
     }
 
-    // ── Normal signUp success — store pending data and show OTP ──
     if (authData.user) {
       pendingSignup.current = {
         userId: authData.user.id,
@@ -528,7 +560,6 @@ function SignUpContent() {
     setLoading(false);
   };
 
-  // ─── RESEND OTP ───────────────────────────────────────────────────────────
   const handleResendOtp = async () => {
     if (!pendingSignup.current) return;
     setLoading(true);
@@ -545,7 +576,6 @@ function SignUpContent() {
     setLoading(false);
   };
 
-  // ─── AUTO-VERIFY: trigger as soon as user enters all 6 digits ───────────
   const isVerifyingRef = useRef(false);
   useEffect(() => {
     if (viewState === 'otp' && otp.length === 6 && !loading && pendingSignup.current && !isVerifyingRef.current) {
@@ -553,10 +583,8 @@ function SignUpContent() {
       handleVerifyOtp();
     }
     if (otp.length < 6) isVerifyingRef.current = false;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otp, viewState]);
 
-  // ─── STEP 2: Verify OTP + Register Merchant — single server round-trip ────
   const handleVerifyOtp = async () => {
     if (!pendingSignup.current || otp.length < 6) return;
     setLoading(true);
@@ -599,14 +627,13 @@ function SignUpContent() {
     setLoading(false);
   };
 
-  // ─── Success modal close → hard redirect ─────────────────────────────────
   const handleSuccessClose = () => {
     window.location.href = nextUrl;
   };
 
   const selectedColors = getPlanColors(selectedPlan?.tag || null);
 
-  const inputClass = "w-full px-4 py-3.5 bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm text-slate-900 dark:text-white placeholder:text-slate-400";
+  const inputClass = "w-full px-4 py-3.5 bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm text-slate-900 dark:text-white placeholder:text-slate-400 disabled:opacity-60 disabled:cursor-not-allowed";
   const labelClass = "text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-0.5 mb-1 block";
 
   const generatePassword = () => {
@@ -637,16 +664,13 @@ function SignUpContent() {
     ) : <div className="w-9 h-9" />
   );
 
-  // OTP view active — hide sidebar plan card and show OTP card centered
   const isOtpView = viewState === 'otp';
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] font-sans transition-colors duration-300">
       <Toaster position="top-center" richColors />
 
-      {/* ── HEADER ── */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-        {/* Desktop header */}
         <div className="hidden md:flex items-center h-16 px-8 justify-between max-w-7xl mx-auto w-full">
           <Link href="/" className="flex items-center gap-1">
             <span className="text-2xl font-black text-blue-600 tracking-tighter">X</span>
@@ -663,7 +687,6 @@ function SignUpContent() {
           </div>
         </div>
 
-        {/* Mobile header — no icons on nav links, clean alignment */}
         <div className="flex md:hidden items-center h-16 px-4 justify-between max-w-7xl mx-auto w-full">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
@@ -672,126 +695,103 @@ function SignUpContent() {
           >
             {menuOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
-
-          {/* Center logo on mobile */}
           <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
             <span className="text-xl font-black text-blue-600 tracking-tighter">X</span>
             <span className="text-lg font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
           </Link>
-
           <ThemeToggle />
         </div>
 
-        {/* Mobile dropdown menu — no icons, clean text */}
         {menuOpen && (
           <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0d1526] animate-in slide-in-from-top-2 duration-200">
             <div className="px-4 py-3 flex flex-col gap-1 max-w-7xl mx-auto w-full">
-              <Link href="/" onClick={() => setMenuOpen(false)}
-                className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
-                Home
-              </Link>
-              <Link href="/info/contact" onClick={() => setMenuOpen(false)}
-                className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
-                Help
-              </Link>
-              <Link href="/#pricing" onClick={() => setMenuOpen(false)}
-                className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
-                Pricing
-              </Link>
-              <Link href="/login" onClick={() => setMenuOpen(false)}
-                className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
-                Login
-              </Link>
+              <Link href="/" onClick={() => setMenuOpen(false)} className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">Home</Link>
+              <Link href="/info/contact" onClick={() => setMenuOpen(false)} className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">Help</Link>
+              <Link href="/#pricing" onClick={() => setMenuOpen(false)} className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">Pricing</Link>
+              <Link href="/login" onClick={() => setMenuOpen(false)} className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">Login</Link>
             </div>
           </div>
         )}
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-8 md:py-12 md:px-8">
-
-        {/* OTP view — centered card, sidebar hidden */}
         {isOtpView ? (
           <div className="flex items-center justify-center">
             <div className="w-full max-w-md bg-white dark:bg-[#111827] rounded-2xl p-8 md:p-10 shadow-sm border border-slate-200 dark:border-slate-800">
-              <OtpView
-                email={formData.email}
-                otp={otp}
-                setOtp={setOtp}
-                onVerify={handleVerifyOtp}
-                onResend={handleResendOtp}
-                onBack={() => { setViewState('form'); setOtp(''); }}
-                loading={loading}
-                resendCooldown={resendCooldown}
-              />
+              <OtpView email={formData.email} otp={otp} setOtp={setOtp} onVerify={handleVerifyOtp} onResend={handleResendOtp} onBack={() => { setViewState('form'); setOtp(''); }} loading={loading} resendCooldown={resendCooldown} />
             </div>
           </div>
         ) : (
-          /* Normal form view — two-column layout */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
 
-            {/* ── Sidebar Plan Card ── */}
-            <div className="lg:col-span-4 lg:sticky lg:top-24">
-              <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 md:p-7 shadow-sm border border-slate-200 dark:border-slate-800">
-
-                {mode === 'demo' && (
-                  <div className="bg-yellow-400 text-yellow-900 text-[10px] font-semibold px-4 py-1.5 rounded-lg uppercase tracking-widest mb-4 text-center animate-pulse">
-                    Demo Mode Active
-                  </div>
-                )}
-
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Your Plan</h3>
-                  <button onClick={() => setShowPlanSwitcher(true)}
-                    className="text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 px-3 py-1.5 rounded-full uppercase hover:bg-blue-600 hover:text-white transition-all">
-                    Change Plan
-                  </button>
-                </div>
-
-                {selectedPlan ? (
-                  <div className={`p-4 bg-slate-50 dark:bg-[#0B1120] rounded-xl border-2 ${selectedColors.border} relative`}>
-                    {selectedPlan.tag && (
-                      <span className={`inline-flex items-center gap-1 bg-gradient-to-r ${selectedColors.badge} ${selectedColors.badgeText} text-[9px] font-semibold px-3 py-1 rounded-full uppercase tracking-widest mb-3`}>
-                        <span>{selectedPlan.tag.split(':')[0].match(/^\p{Emoji}/u)?.[0] || '✦'}</span>
-                        <span>{selectedPlan.tag.split(':')[0].replace(/^\p{Emoji}\s*/u, '')}</span>
-                      </span>
-                    )}
-                    <h4 className="text-base font-semibold text-slate-900 dark:text-white">{selectedPlan.name}</h4>
-                    <div className="mt-1 mb-3 flex items-baseline gap-1">
-                      <span className={`text-2xl font-bold ${selectedColors.price}`}>
-                        {selectedPlan.price === 0 ? 'Free' : `৳${selectedPlan.price}`}
-                      </span>
-                      <span className="text-[10px] text-slate-400 uppercase">/month</span>
+            {/* Sidebar Plan Card - Hidden during Invite Flow */}
+            {!isInviteFlow && (
+              <div className="lg:col-span-4 lg:sticky lg:top-24">
+                <div className="bg-white dark:bg-[#111827] rounded-2xl p-5 md:p-7 shadow-sm border border-slate-200 dark:border-slate-800">
+                  {mode === 'demo' && (
+                    <div className="bg-yellow-400 text-yellow-900 text-[10px] font-semibold px-4 py-1.5 rounded-lg uppercase tracking-widest mb-4 text-center animate-pulse">
+                      Demo Mode Active
                     </div>
-                    <ul className="space-y-1.5">
-                      <li className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
-                        <CheckCircle size={12} className={`${selectedColors.check} shrink-0 mt-0.5`} />
-                        {(selectedPlan.transaction_limit_monthly ?? 100) === 0
-                          ? 'Unlimited transactions / month'
-                          : `${(selectedPlan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`}
-                      </li>
-                      {(Array.isArray(selectedPlan.features) ? selectedPlan.features : []).slice(0, 3).map((f: string, i: number) => (
-                        <li key={i} className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
-                          <CheckCircle size={12} className={`${selectedColors.check} shrink-0 mt-0.5`} /> {f}
-                        </li>
-                      ))}
-                      {selectedPlan.price === 0 && (
-                        <li className="flex items-start gap-2 text-xs text-green-600 dark:text-green-400">
-                          <CheckCircle size={12} className="shrink-0 mt-0.5" /> No payment required
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-                ) : (
-                  <div className="h-28 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
-                )}
-              </div>
-            </div>
+                  )}
 
-            {/* ── Signup Form ── */}
-            <div className="lg:col-span-8 bg-white dark:bg-[#111827] rounded-2xl p-5 md:p-10 shadow-sm border border-slate-200 dark:border-slate-800">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Your Plan</h3>
+                    <button onClick={() => setShowPlanSwitcher(true)}
+                      className="text-[10px] font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-600 px-3 py-1.5 rounded-full uppercase hover:bg-blue-600 hover:text-white transition-all">
+                      Change Plan
+                    </button>
+                  </div>
+
+                  {selectedPlan ? (
+                    <div className={`p-4 bg-slate-50 dark:bg-[#0B1120] rounded-xl border-2 ${selectedColors.border} relative`}>
+                      {selectedPlan.tag && (
+                        <span className={`inline-flex items-center gap-1 bg-gradient-to-r ${selectedColors.badge} ${selectedColors.badgeText} text-[9px] font-semibold px-3 py-1 rounded-full uppercase tracking-widest mb-3`}>
+                          <span>{selectedPlan.tag.split(':')[0].match(/^\p{Emoji}/u)?.[0] || '✦'}</span>
+                          <span>{selectedPlan.tag.split(':')[0].replace(/^\p{Emoji}\s*/u, '')}</span>
+                        </span>
+                      )}
+                      <h4 className="text-base font-semibold text-slate-900 dark:text-white">{selectedPlan.name}</h4>
+                      <div className="mt-1 mb-3 flex items-baseline gap-1">
+                        <span className={`text-2xl font-bold ${selectedColors.price}`}>
+                          {selectedPlan.price === 0 ? 'Free' : `৳${selectedPlan.price}`}
+                        </span>
+                        <span className="text-[10px] text-slate-400 uppercase">/month</span>
+                      </div>
+                      <ul className="space-y-1.5">
+                        <li className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
+                          <CheckCircle size={12} className={`${selectedColors.check} shrink-0 mt-0.5`} />
+                          {(selectedPlan.transaction_limit_monthly ?? 100) === 0
+                            ? 'Unlimited transactions / month'
+                            : `${(selectedPlan.transaction_limit_monthly ?? 100).toLocaleString()} transactions / month`}
+                        </li>
+                        {(Array.isArray(selectedPlan.features) ? selectedPlan.features : []).slice(0, 3).map((f: string, i: number) => (
+                          <li key={i} className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
+                            <CheckCircle size={12} className={`${selectedColors.check} shrink-0 mt-0.5`} /> {f}
+                          </li>
+                        ))}
+                        {selectedPlan.price === 0 && (
+                          <li className="flex items-start gap-2 text-xs text-green-600 dark:text-green-400">
+                            <CheckCircle size={12} className="shrink-0 mt-0.5" /> No payment required
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div className="h-28 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Signup Form - Centered & Expanded during Invite Flow */}
+            <div className={`${isInviteFlow ? 'lg:col-span-12 max-w-2xl mx-auto w-full' : 'lg:col-span-8'} bg-white dark:bg-[#111827] rounded-2xl p-5 md:p-10 shadow-sm border border-slate-200 dark:border-slate-800`}>
               <div className="mb-7">
-                <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Create Account</h2>
-                <p className="text-slate-400 mt-1.5 text-sm">Enter your details to get started with XelPay.</p>
+                <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+                  {isInviteFlow ? 'Join Team Workspace' : 'Create Account'}
+                </h2>
+                <p className="text-slate-400 mt-1.5 text-sm">
+                  {isInviteFlow ? 'Complete your profile to accept the invitation.' : 'Enter your details to get started with XelPay.'}
+                </p>
               </div>
 
               <form onSubmit={handleSignUp} className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
@@ -805,27 +805,29 @@ function SignUpContent() {
                   </div>
                 </div>
 
-                <div>
-                  <label className={labelClass}>Phone <span className="text-red-400">*</span></label>
-                  <div className="flex gap-2">
-                    <select value={countryCode} onChange={e => setCountryCode(e.target.value)}
-                      className="px-3 py-3.5 bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-blue-500 shrink-0">
-                      <option value="+880">🇧🇩 +880</option>
-                      <option value="+1">🇺🇸 +1</option>
-                      <option value="+44">🇬🇧 +44</option>
-                      <option value="+91">🇮🇳 +91</option>
-                    </select>
-                    <input required type="tel" className={inputClass} placeholder="1XXXXXXXXX"
-                      onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                {!isInviteFlow && (
+                  <div>
+                    <label className={labelClass}>Phone <span className="text-red-400">*</span></label>
+                    <div className="flex gap-2">
+                      <select value={countryCode} onChange={e => setCountryCode(e.target.value)}
+                        className="px-3 py-3.5 bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-300 outline-none focus:border-blue-500 shrink-0">
+                        <option value="+880">🇧🇩 +880</option>
+                        <option value="+1">🇺🇸 +1</option>
+                        <option value="+44">🇬🇧 +44</option>
+                        <option value="+91">🇮🇳 +91</option>
+                      </select>
+                      <input required type="tel" className={inputClass} placeholder="1XXXXXXXXX"
+                        onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div>
+                <div className={isInviteFlow ? "md:col-span-2" : ""}>
                   <label className={labelClass}>Email <span className="text-red-400">*</span></label>
                   <div className="relative">
                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                     <input required type="email" name="email" autoComplete="username" className={`${inputClass} pl-10`} placeholder="admin@example.com"
-                      value={formData.email}
+                      value={formData.email} disabled={isInviteFlow}
                       onChange={e => setFormData({ ...formData, email: e.target.value })} />
                   </div>
                 </div>
@@ -869,25 +871,29 @@ function SignUpContent() {
                   )}
                 </div>
 
-                <div>
-                  <label className={labelClass}>City / Address <span className="text-red-400">*</span></label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input required className={`${inputClass} pl-10`} placeholder="Dhaka, Bangladesh"
-                      onChange={e => setFormData({ ...formData, address: e.target.value })} />
-                  </div>
-                </div>
+                {!isInviteFlow && (
+                  <>
+                    <div>
+                      <label className={labelClass}>City / Address <span className="text-red-400">*</span></label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input required className={`${inputClass} pl-10`} placeholder="Dhaka, Bangladesh"
+                          onChange={e => setFormData({ ...formData, address: e.target.value })} />
+                      </div>
+                    </div>
 
-                <div>
-                  <label className={labelClass}>Referral Code <span className="text-slate-400 normal-case tracking-normal">(optional)</span></label>
-                  <div className="relative">
-                    <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input type="text" value={formData.referCode}
-                      className={`${inputClass} pl-10 uppercase tracking-widest font-medium`}
-                      placeholder="XEL-XXXXXX"
-                      onChange={e => setFormData({ ...formData, referCode: e.target.value })} />
-                  </div>
-                </div>
+                    <div>
+                      <label className={labelClass}>Referral Code <span className="text-slate-400 normal-case tracking-normal">(optional)</span></label>
+                      <div className="relative">
+                        <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input type="text" value={formData.referCode}
+                          className={`${inputClass} pl-10 uppercase tracking-widest font-medium`}
+                          placeholder="XEL-XXXXXX"
+                          onChange={e => setFormData({ ...formData, referCode: e.target.value })} />
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <div className="md:col-span-2 flex justify-center">
                   {mounted && (
@@ -910,12 +916,12 @@ function SignUpContent() {
                 </div>
 
                 <div className="md:col-span-2 pt-1">
-                  <button disabled={loading || !selectedPlan}
+                  <button disabled={loading || (!selectedPlan && !isInviteFlow)}
                     className="w-full bg-blue-600 disabled:bg-blue-400 text-white py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2.5">
                     {loading ? (
-                      <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Sending OTP...</>
+                      <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> {isInviteFlow ? 'Processing...' : 'Sending OTP...'}</>
                     ) : (
-                      <>Create Account <ArrowRight size={16} /></>
+                      <>{isInviteFlow ? 'Accept Invitation' : 'Create Account'} <ArrowRight size={16} /></>
                     )}
                   </button>
                 </div>
@@ -935,7 +941,7 @@ function SignUpContent() {
       <SuccessModal isOpen={showSuccess} merchantId={tempMerchantId} onClose={handleSuccessClose} />
       <ErrorModal isOpen={errorModal.show} message={errorModal.message} onClose={() => setErrorModal({ show: false, message: '' })} />
 
-      {/* ── Plan Switcher Modal ── */}
+      {/* Plan Switcher Modal */}
       {showPlanSwitcher && (
         <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white dark:bg-[#111827] w-full md:max-w-5xl md:rounded-2xl rounded-t-2xl p-5 md:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 relative overflow-hidden max-h-[92vh] overflow-y-auto">
