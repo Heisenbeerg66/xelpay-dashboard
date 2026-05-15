@@ -2,34 +2,49 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   LayoutDashboard, Receipt, MessageSquare, Wallet, Link as LinkIcon,
   Settings, LineChart, Send, Users, Code, Headphones, LogOut,
   ChevronDown, Building2, Plus, Check, Loader2, PlusCircle, ServerCog, Smartphone, CreditCard,
-  Vault
+  ShieldCheck,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
-const menuItems = [
-  { name: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-  { name: 'Global Vault', icon: ServerCog, path: '/dashboard/vault' },
-  { name: 'New Business', icon: PlusCircle, path: '/dashboard/business/new' },
-  { name: 'Brand Settings', icon: Settings, path: '/dashboard/brand' },
-  { name: 'Transactions', icon: Receipt, path: '/dashboard/transactions' },
-  { name: 'Gateway Manager', icon: Wallet, path: '/dashboard/gateways' },
-  { name: 'Devices Manager', icon: Smartphone, path: '/dashboard/devices' },
-  { name: 'Telegram Alerts', icon: Send, path: '/dashboard/telegram' },
-  { name: 'Payment Links', icon: LinkIcon, path: '/dashboard/links' },
-  { name: 'Reports', icon: LineChart, path: '/dashboard/reports' },
-  { name: 'SMS Data', icon: MessageSquare, path: '/dashboard/sms' },
-  { name: 'Customers', icon: Users, path: '/dashboard/customers' },
-  { name: 'System Settings', icon: Settings, path: '/dashboard/settings' },
-  { name: 'Billing & Subscriptions', icon: CreditCard, path: '/dashboard/subscriptions' },
-  { name: 'API & Plugins', icon: Code, path: '/dashboard/api' },
-  { name: 'Support', icon: Headphones, path: '/dashboard/support' },
+// ─── Role-based menu config ──────────────────────────────────────────────────
+// viewer/support = read-only অ্যাক্সেস
+// developer = API/webhooks দেখতে পারে
+// admin = সব দেখতে পারে (owner এর মতো)
+// owner = সব + vault + new business
+
+type UserRole = 'owner' | 'admin' | 'developer' | 'support' | 'viewer';
+
+const ALL_MENU_ITEMS = [
+  { name: 'Dashboard',            icon: LayoutDashboard, path: '/dashboard',              roles: ['owner','admin','developer','support','viewer'] },
+  { name: 'Global Vault',         icon: ServerCog,       path: '/dashboard/vault',         roles: ['owner'] },
+  { name: 'New Business',         icon: PlusCircle,      path: '/dashboard/business/new',  roles: ['owner'] },
+  { name: 'Brand Settings',       icon: Settings,        path: '/dashboard/brand',          roles: ['owner','admin'] },
+  { name: 'Transactions',         icon: Receipt,         path: '/dashboard/transactions',   roles: ['owner','admin','developer','support','viewer'] },
+  { name: 'Gateway Manager',      icon: Wallet,          path: '/dashboard/gateways',       roles: ['owner','admin'] },
+  { name: 'Devices Manager',      icon: Smartphone,      path: '/dashboard/devices',        roles: ['owner','admin'] },
+  { name: 'Telegram Alerts',      icon: Send,            path: '/dashboard/telegram',       roles: ['owner','admin'] },
+  { name: 'Payment Links',        icon: LinkIcon,        path: '/dashboard/links',          roles: ['owner','admin','developer','support','viewer'] },
+  { name: 'Reports',              icon: LineChart,       path: '/dashboard/reports',        roles: ['owner','admin','developer','support','viewer'] },
+  { name: 'SMS Data',             icon: MessageSquare,   path: '/dashboard/sms',            roles: ['owner','admin','support','viewer'] },
+  { name: 'Customers',            icon: Users,           path: '/dashboard/customers',      roles: ['owner','admin','support','viewer'] },
+  { name: 'System Settings',      icon: Settings,        path: '/dashboard/settings',       roles: ['owner','admin'] },
+  { name: 'Billing & Subscriptions', icon: CreditCard,  path: '/dashboard/subscriptions',  roles: ['owner'] },
+  { name: 'API & Plugins',        icon: Code,            path: '/dashboard/api',            roles: ['owner','admin','developer'] },
+  { name: 'Support',              icon: Headphones,      path: '/dashboard/support',        roles: ['owner','admin','developer','support','viewer'] },
 ];
+
+const ROLE_BADGE: Record<string, { label: string; color: string; bg: string }> = {
+  admin:     { label: 'Admin',     color: 'text-violet-400', bg: 'bg-violet-500/20' },
+  developer: { label: 'Developer', color: 'text-blue-400',   bg: 'bg-blue-500/20' },
+  support:   { label: 'Support',   color: 'text-emerald-400',bg: 'bg-emerald-500/20' },
+  viewer:    { label: 'Viewer',    color: 'text-slate-400',  bg: 'bg-slate-500/20' },
+};
 
 export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
   const pathname = usePathname();
@@ -39,26 +54,70 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
   const [activeBusiness, setActiveBusiness] = useState<any>(null);
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [userRole, setUserRole] = useState<UserRole>('owner');
   const switcherRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchBusinesses = async () => {
-      const { data } = await supabase
-        .from('businesses')
-        .select('*')
-        .eq('merchant_id', merchant.id)
-        .order('created_at', { ascending: true });
-      if (data && data.length > 0) {
-        setBusinesses(data);
-        const savedBizId = localStorage.getItem('active_business_id');
-        const savedBiz = data.find((b: any) => b.id === savedBizId) || data[0];
-        setActiveBusiness(savedBiz);
-        localStorage.setItem('active_business_id', savedBiz.id);
+      setIsLoading(true);
+
+      // ✅ FIX: Team member কিনা check করো
+      if (merchant.is_team_member) {
+        // Team member — শুধু তার assigned businesses দেখাবে
+        const { data: memberships } = await supabase
+          .from('business_team_members')
+          .select('business_id, role, businesses(id, business_name, logo_url, slug)')
+          .eq('user_id', merchant.id);
+
+        if (memberships && memberships.length > 0) {
+          const assignedBusinesses = memberships
+            .map((m: any) => m.businesses)
+            .filter(Boolean);
+
+          setBusinesses(assignedBusinesses);
+
+          // Active business set করো
+          const savedBizId = localStorage.getItem('active_business_id');
+          const active = assignedBusinesses.find((b: any) => b.id === savedBizId)
+            || assignedBusinesses[0];
+
+          if (active) {
+            setActiveBusiness(active);
+            localStorage.setItem('active_business_id', active.id);
+          }
+
+          // Role নিয়ে নাও (active business-এর জন্য)
+          const currentMembership = memberships.find(
+            (m: any) => m.business_id === (active?.id || assignedBusinesses[0]?.id)
+          );
+          if (currentMembership) {
+            setUserRole(currentMembership.role as UserRole);
+          }
+        }
+      } else {
+        // ✅ Regular merchant — নিজের businesses দেখাবে
+        const { data } = await supabase
+          .from('businesses')
+          .select('*')
+          .eq('merchant_id', merchant.id)
+          .order('created_at', { ascending: true });
+
+        if (data && data.length > 0) {
+          setBusinesses(data);
+          const savedBizId = localStorage.getItem('active_business_id');
+          const savedBiz = data.find((b: any) => b.id === savedBizId) || data[0];
+          setActiveBusiness(savedBiz);
+          localStorage.setItem('active_business_id', savedBiz.id);
+        }
+
+        setUserRole('owner');
       }
+
       setIsLoading(false);
     };
+
     fetchBusinesses();
-  }, [merchant.id]);
+  }, [merchant.id, merchant.is_team_member]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -74,6 +133,18 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
     setActiveBusiness(biz);
     localStorage.setItem('active_business_id', biz.id);
     setIsSwitcherOpen(false);
+
+    // Team member হলে role update করো
+    if (merchant.is_team_member) {
+      const { data: membership } = await supabase
+        .from('business_team_members')
+        .select('role')
+        .eq('user_id', merchant.id)
+        .eq('business_id', biz.id)
+        .maybeSingle();
+      if (membership) setUserRole(membership.role as UserRole);
+    }
+
     toast.loading(`Switching to ${biz.business_name}...`, { id: 'switch' });
     await supabase.from('merchants').update({ active_business_id: biz.id }).eq('id', merchant.id);
     window.dispatchEvent(new Event('businessChanged'));
@@ -86,6 +157,13 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
     window.location.href = '/login';
   };
 
+  // Role-based menu filter
+  const visibleMenuItems = ALL_MENU_ITEMS.filter(item =>
+    item.roles.includes(userRole)
+  );
+
+  const roleBadge = userRole !== 'owner' ? ROLE_BADGE[userRole] : null;
+
   return (
     <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#0B1120] border-r border-slate-800/80 flex flex-col transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
 
@@ -95,14 +173,21 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
           <span className="text-2xl font-black text-blue-500 tracking-tighter">X</span>
           <span className="text-xl font-bold text-white tracking-tight -ml-0.5">elPay</span>
         </Link>
+        {/* Role badge for team members */}
+        {roleBadge && (
+          <span className={`ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold ${roleBadge.color} ${roleBadge.bg}`}>
+            <ShieldCheck size={9} />
+            {roleBadge.label}
+          </span>
+        )}
       </div>
 
       {/* ── Business Switcher ── */}
       <div className="px-4 pt-4 pb-3 border-b border-slate-800/80 shrink-0" ref={switcherRef}>
         <div className="relative">
           <button
-            onClick={() => setIsSwitcherOpen(v => !v)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 rounded-xl transition-all"
+            onClick={() => businesses.length > 1 && setIsSwitcherOpen(v => !v)}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 bg-slate-800/60 border border-slate-700/50 rounded-xl transition-all ${businesses.length > 1 ? 'hover:bg-slate-800 cursor-pointer' : 'cursor-default'}`}
           >
             <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0">
               {activeBusiness?.logo_url
@@ -111,15 +196,22 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
             </div>
             <div className="flex-1 min-w-0 text-left">
               <p className="text-xs font-black text-white truncate">{activeBusiness?.business_name || 'Select Business'}</p>
+              {merchant.is_team_member && (
+                <p className="text-[9px] text-slate-500 font-medium mt-0.5">Team workspace</p>
+              )}
             </div>
             {isLoading
               ? <Loader2 size={14} className="text-slate-500 animate-spin shrink-0" />
-              : <ChevronDown size={14} className={`text-slate-400 shrink-0 transition-transform duration-200 ${isSwitcherOpen ? 'rotate-180' : ''}`} />}
+              : businesses.length > 1
+                ? <ChevronDown size={14} className={`text-slate-400 shrink-0 transition-transform duration-200 ${isSwitcherOpen ? 'rotate-180' : ''}`} />
+                : null}
           </button>
 
           {isSwitcherOpen && (
             <div className="absolute top-full left-0 w-full mt-2 bg-[#111827] border border-slate-800 rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200 max-h-64 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              <div className="px-3 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">Your Businesses</div>
+              <div className="px-3 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                {merchant.is_team_member ? 'Your Workspaces' : 'Your Businesses'}
+              </div>
               {businesses.length === 0 ? (
                 <div className="px-4 py-3 text-sm font-medium text-slate-400">No business found.</div>
               ) : (
@@ -137,24 +229,29 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
                   </button>
                 ))
               )}
-              <div className="h-px bg-slate-800 my-2" />
-              <Link
-                href="/dashboard/business/new"
-                onClick={() => { setIsSwitcherOpen(false); setIsOpen(false); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-slate-400 hover:bg-[#0B1120] hover:text-blue-500 transition-colors"
-              >
-                <div className="w-6 h-6 rounded-md border border-dashed border-slate-600 flex items-center justify-center"><Plus size={14} /></div>
-                Create New Business
-              </Link>
+              {/* Owner-এর জন্য নতুন business create */}
+              {!merchant.is_team_member && (
+                <>
+                  <div className="h-px bg-slate-800 my-2" />
+                  <Link
+                    href="/dashboard/business/new"
+                    onClick={() => { setIsSwitcherOpen(false); setIsOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-slate-400 hover:bg-[#0B1120] hover:text-blue-500 transition-colors"
+                  >
+                    <div className="w-6 h-6 rounded-md border border-dashed border-slate-600 flex items-center justify-center"><Plus size={14} /></div>
+                    Create New Business
+                  </Link>
+                </>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Navigation ── */}
+      {/* ── Navigation (Role-filtered) ── */}
       <div className="flex-1 overflow-y-auto p-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="space-y-1">
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const isActive = item.path === '/dashboard'
               ? pathname === item.path
               : pathname === item.path || pathname.startsWith(`${item.path}/`);
