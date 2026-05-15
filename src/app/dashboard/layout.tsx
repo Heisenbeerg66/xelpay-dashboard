@@ -21,7 +21,6 @@ export const viewport: Viewport = {
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
 
-  // Fast check — middleware already handled this
   if (cookieStore.get('auth_session')?.value !== 'authenticated') {
     redirect('/login');
   }
@@ -45,20 +44,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .from('merchants')
     .select('*')
     .eq('id', user.id)
-    .maybeSingle();
+    .single();
 
-  // ✅ FIX: merchant row না থাকলে force-signout করা হতো।
-  // কিন্তু team member user-এর এখন merchants row আছে (accept-invite route-এ insert করা হয়েছে)।
-  // তবুও কোনো edge case-এ না থাকলে force-signout করো।
-  if (!merchant) redirect('/auth/force-signout?redirect=/signup');
+  if (!merchant) redirect('/login');
 
-  // ✅ FIX: Team member হলে তার active_business_id সেট নাও থাকতে পারে।
-  // business_team_members থেকে তার assigned business খুঁজে নিই এবং
-  // merchant-এর active_business_id আপডেট করে দিই।
-  let resolvedMerchant = merchant;
+  // ড্যাশবোর্ড এবং সাইডবারের জন্য রোল সেট করা (ডিফল্ট owner)
+  let resolvedMerchant = { ...merchant, team_role: 'owner' };
 
   if (!merchant.active_business_id) {
-    // নিজের business আছে কিনা দেখো
     const { data: ownBusiness } = await supabase
       .from('businesses')
       .select('id')
@@ -67,15 +60,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
       .maybeSingle();
 
     if (ownBusiness) {
-      // নিজের business আছে — সেটা active করো
-      await supabase
-        .from('merchants')
-        .update({ active_business_id: ownBusiness.id })
-        .eq('id', user.id);
-
-      resolvedMerchant = { ...merchant, active_business_id: ownBusiness.id };
+      await supabase.from('merchants').update({ active_business_id: ownBusiness.id }).eq('id', user.id);
+      resolvedMerchant = { ...merchant, active_business_id: ownBusiness.id, team_role: 'owner' };
     } else {
-      // নিজের business নেই — team member কিনা চেক করো
       const { data: teamMembership } = await supabase
         .from('business_team_members')
         .select('business_id, role')
@@ -84,20 +71,27 @@ export default async function DashboardLayout({ children }: { children: React.Re
         .maybeSingle();
 
       if (teamMembership) {
-        // Team member — তার assigned business active করো
-        await supabase
-          .from('merchants')
-          .update({ active_business_id: teamMembership.business_id })
-          .eq('id', user.id);
-
-        resolvedMerchant = { ...merchant, active_business_id: teamMembership.business_id };
+        await supabase.from('merchants').update({ active_business_id: teamMembership.business_id }).eq('id', user.id);
+        resolvedMerchant = { ...merchant, active_business_id: teamMembership.business_id, team_role: teamMembership.role };
       }
+    }
+  } else {
+    // যদি অলরেডি active_business_id থাকে, তবে সেই বিজনেসে ইউজারের রোল কী তা চেক করা
+    const { data: membership } = await supabase
+      .from('business_team_members')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('business_id', merchant.active_business_id)
+      .maybeSingle();
+    
+    if (membership) {
+      resolvedMerchant.team_role = membership.role;
     }
   }
 
   return (
-    <DashboardClient merchant={resolvedMerchant} user={user}>
-      <Toaster richColors position="top-center" />
+    <DashboardClient merchant={resolvedMerchant}>
+      <Toaster position="top-right" richColors />
       {children}
     </DashboardClient>
   );
