@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 });
     }
 
-    // 1. Invitation validate
+    // ── ১. Invitation validate ─────────────────────────────────────────────
     const { data: invite, error: inviteError } = await supabaseAdmin
       .from('team_invitations')
       .select('id, business_id, merchant_id, email, role, status, expires_at')
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Business exist check
+    // ── ২. Business exist check ───────────────────────────────────────────
     const { data: business, error: bizError } = await supabaseAdmin
       .from('businesses')
       .select('id, business_name')
@@ -74,11 +74,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'The workspace no longer exists.' }, { status: 404 });
     }
 
-    // 3. Auth user create
+    // ── ৩. Auth user create ────────────────────────────────────────────────
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: invite.email,
       password,
-      email_confirm: true,
+      email_confirm: true,   // invite দিয়ে email verified — OTP bypass
       user_metadata: { full_name: fullName },
     });
 
@@ -100,7 +100,12 @@ export async function POST(req: Request) {
 
     newUserId = authData.user.id;
 
-    // 4. merchants table insert — auth.ts registerMerchant pattern follow করা হয়েছে
+    // ── ৪. merchants table insert ─────────────────────────────────────────
+    // ✅ is_team_member: true — Sidebar এটা দিয়ে team member চেনে।
+    //    না থাকলে Sidebar merchant_id দিয়ে নিজের business খুঁজবে,
+    //    team member-এর নিজের business নেই তাই empty দেখাবে।
+    // ✅ active_business_id: invite.business_id — login-এর পর সরাসরি
+    //    ঐ workspace দেখাবে, আলাদা lookup লাগবে না।
     const merchantDisplayId = generate6DigitID();
     const referId = `XEL-TM-${merchantDisplayId}`;
 
@@ -124,13 +129,15 @@ export async function POST(req: Request) {
         affiliate_wallet: 0,
         is_demo: false,
         is_email_verified: true,
+        is_team_member: true,                   // ✅ KEY: team member flag
+        active_business_id: invite.business_id, // ✅ KEY: login-এর পর সরাসরি workspace
         telegram_link_code: generateRandomString(12),
         device_connection_key: generateRandomString(24),
-        active_business_id: invite.business_id,
       });
 
     if (merchantInsertError) {
       console.error('[accept-invite] Merchant insert error:', merchantInsertError);
+      // Rollback: auth user delete করো
       await supabaseAdmin.auth.admin.deleteUser(newUserId);
       newUserId = null;
       return NextResponse.json(
@@ -141,7 +148,9 @@ export async function POST(req: Request) {
 
     merchantInserted = true;
 
-    // 5. business_team_members insert
+    // ── ৫. business_team_members insert ──────────────────────────────────
+    // Service role → RLS bypass। trigger_increment_team fire হবে।
+    // (migration_v2.sql চালানো থাকলে team_member_count column আছে)
     const { error: memberInsertError } = await supabaseAdmin
       .from('business_team_members')
       .insert({
@@ -152,6 +161,7 @@ export async function POST(req: Request) {
 
     if (memberInsertError) {
       console.error('[accept-invite] Team member insert error:', memberInsertError);
+      // Rollback: merchants + auth delete
       await supabaseAdmin.from('merchants').delete().eq('id', newUserId);
       await supabaseAdmin.auth.admin.deleteUser(newUserId);
       newUserId = null;
@@ -162,13 +172,14 @@ export async function POST(req: Request) {
       );
     }
 
-    // 6. Invitation accepted
+    // ── ৬. Invitation → accepted ──────────────────────────────────────────
     const { error: inviteUpdateError } = await supabaseAdmin
       .from('team_invitations')
       .update({ status: 'accepted' })
       .eq('id', invite.id);
 
     if (inviteUpdateError) {
+      // Non-critical — member already added
       console.error('[accept-invite] Invite status update (non-critical):', inviteUpdateError);
     }
 
@@ -180,6 +191,7 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error('[accept-invite] Unhandled error:', error);
 
+    // Cleanup on unexpected error
     if (newUserId) {
       try {
         if (merchantInserted) {
