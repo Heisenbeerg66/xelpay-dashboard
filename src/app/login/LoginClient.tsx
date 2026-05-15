@@ -36,7 +36,10 @@ const SuspendedModal = ({ isOpen, telegramLink, onClose }: any) => {
           >
             <Send size={15} /> Contact Support
           </button>
-          <button onClick={onClose} className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+          <button
+            onClick={onClose}
+            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+          >
             Close
           </button>
         </div>
@@ -65,7 +68,10 @@ const PendingModal = ({ isOpen, telegramLink, onClose }: any) => {
           >
             <Send size={15} /> Contact Support
           </button>
-          <button onClick={onClose} className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+          <button
+            onClick={onClose}
+            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+          >
             Close
           </button>
         </div>
@@ -74,7 +80,7 @@ const PendingModal = ({ isOpen, telegramLink, onClose }: any) => {
   );
 };
 
-// ─── NO ACCOUNT MODAL ────────────────────────────────────────────────────────
+// ─── NO ACCOUNT MODAL (Google OAuth — no merchant record) ────────────────────
 const NoAccountModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   if (!isOpen) return null;
   return (
@@ -89,10 +95,16 @@ const NoAccountModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           Please create an account or try a different login method.
         </p>
         <div className="flex flex-col gap-2.5">
-          <Link href="/signup" className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-all">
+          <Link
+            href="/signup"
+            className="w-full bg-blue-600 text-white py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-700 transition-all"
+          >
             <UserPlus size={15} /> Create An Account
           </Link>
-          <button onClick={onClose} className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+          <button
+            onClick={onClose}
+            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-3 rounded-xl text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+          >
             Try Again
           </button>
         </div>
@@ -142,11 +154,14 @@ function LoginContent() {
   const [otpLoginEnabled, setOtpLoginEnabled] = useState(false);
   const [otpSettingLoaded, setOtpSettingLoaded] = useState(false);
 
+  // OTP login flow state
   const [viewState, setViewState] = useState<'form' | 'otp_input'>('form');
   const [otpEmail, setOtpEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [otpCooldown, setOtpCooldown] = useState(0);
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Guard to prevent double-fire of auto-verify
   const isVerifyingRef = useRef(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -159,6 +174,7 @@ function LoginContent() {
     return () => window.removeEventListener('pageshow', handlePageShow);
   }, []);
 
+  // OTP login setting load
   useEffect(() => {
     const loadOtpSetting = async () => {
       try {
@@ -177,6 +193,7 @@ function LoginContent() {
     loadOtpSetting();
   }, []);
 
+  // ─── AUTO-VERIFY: fire as soon as the 6th OTP digit is entered ───────────
   useEffect(() => {
     if (viewState === 'otp_input' && otp.length === 6 && !loading && !isVerifyingRef.current) {
       isVerifyingRef.current = true;
@@ -195,17 +212,26 @@ function LoginContent() {
     if (settings?.value) setTelegramLink(settings.value);
   };
 
+  // ── error param থেকে modal দেখাও ──────────────────────────────────────────
   const errorParam = searchParams.get('error');
   useEffect(() => {
     if (!errorParam) return;
-    if (errorParam === 'no_account') setShowNoAccountModal(true);
-    else if (errorParam === 'suspended' || errorParam === 'ban') fetchTelegramLink().then(() => setShowSuspendedModal(true));
-    else if (errorParam === 'pending') fetchTelegramLink().then(() => setShowPendingModal(true));
-    else if (errorParam === 'exchange_failed') toast.error('Login failed. Please try again.');
-    else if (errorParam === 'db_error') toast.error('Something went wrong. Please try again.');
-    else if (errorParam === 'invalid_tx') toast.error('Security check failed. Please try again.');
+    if (errorParam === 'no_account') {
+      setShowNoAccountModal(true);
+    } else if (errorParam === 'suspended' || errorParam === 'ban') {
+      fetchTelegramLink().then(() => setShowSuspendedModal(true));
+    } else if (errorParam === 'pending') {
+      fetchTelegramLink().then(() => setShowPendingModal(true));
+    } else if (errorParam === 'exchange_failed') {
+      toast.error('Login failed. Please try again.');
+    } else if (errorParam === 'db_error') {
+      toast.error('Something went wrong. Please try again.');
+    } else if (errorParam === 'invalid_tx') {
+      toast.error('Security check failed. Please try again.');
+    }
   }, [errorParam]);
 
+  // Demo mode
   useEffect(() => {
     if (mode === 'demo') {
       sessionStorage.setItem('xelpay_demo_mode', 'true');
@@ -216,6 +242,7 @@ function LoginContent() {
             .select('value')
             .eq('key_name', 'demo_credentials')
             .maybeSingle();
+
           if (data?.value) {
             const parsed = JSON.parse(data.value);
             if (parsed?.email) setEmail(parsed.email);
@@ -247,21 +274,23 @@ function LoginContent() {
     sessionStorage.removeItem('xelpay_fp_cooldown_end');
   };
 
-  // ✅ FIX: Login-এর পর active_business_id resolve করে localStorage-এ set করো
-  // আগের code-এ merchant select-এ is_team_member ছিল না তাই team member
-  // identify হচ্ছিল না এবং business পাচ্ছিল না
+  // ✅ FIX: Login-এর পর active business localStorage-এ set করো
+  // দুটো case handle করা হচ্ছে:
+  //   1. Team member (is_team_member=true) → business_team_members থেকে business নাও
+  //   2. Regular merchant → নিজের businesses থেকে first business নাও
+  // এটা না করলে Sidebar loading-এ আটকে যায়, business দেখায় না
   const setActiveBusinessForUser = async (userId: string, merchantData: {
     active_business_id?: string | null;
     is_team_member?: boolean | null;
   }) => {
     try {
-      // ── Case 1: active_business_id আগে থেকে DB-তে আছে ─────────────────
+      // ── Case 1: active_business_id আগে থেকে DB-তে set আছে ──────────────
       if (merchantData.active_business_id) {
         localStorage.setItem('active_business_id', merchantData.active_business_id);
         return;
       }
 
-      // ── Case 2: Team member — business_team_members থেকে নিয়ে নাও ────
+      // ── Case 2: Team member ───────────────────────────────────────────────
       if (merchantData.is_team_member) {
         const { data: membership } = await supabase
           .from('business_team_members')
@@ -272,7 +301,7 @@ function LoginContent() {
 
         if (membership?.business_id) {
           localStorage.setItem('active_business_id', membership.business_id);
-          // ✅ DB-তেও persist করো যেন পরের login-এ আর query না লাগে
+          // DB-তেও persist করো — পরের login-এ Case 1-এ যাবে
           await supabase
             .from('merchants')
             .update({ active_business_id: membership.business_id })
@@ -281,7 +310,7 @@ function LoginContent() {
         return;
       }
 
-      // ── Case 3: Regular merchant — নিজের first business ─────────────────
+      // ── Case 3: Regular merchant ──────────────────────────────────────────
       const { data: business } = await supabase
         .from('businesses')
         .select('id')
@@ -306,8 +335,8 @@ function LoginContent() {
   // ── Merchant check & redirect ─────────────────────────────────────────────
   const checkMerchantAndRedirect = async (userId: string, emailConfirmedAt: string | null) => {
     try {
-      // ✅ FIX: status + is_demo + is_team_member + active_business_id — সব একসাথে select
-      // আগে শুধু status ও is_demo ছিল, তাই setActiveBusinessForUser কাজ করছিল না
+      // ✅ FIX: is_team_member ও active_business_id-ও select করতে হবে
+      // আগে শুধু 'status, is_demo' ছিল — তাই setActiveBusinessForUser কাজ করছিল না
       const { data: merchant } = await supabase
         .from('merchants')
         .select('status, is_demo, is_team_member, active_business_id')
@@ -342,14 +371,15 @@ function LoginContent() {
         try { await syncEmailVerified(userId); } catch (_) {}
       }
 
-      // ✅ redirect করার আগে active_business_id localStorage-এ set করো
-      // এতে Sidebar ঠিকমতো business load করতে পারবে — loading-এ আটকাবে না
+      // ✅ redirect-এর আগে active_business_id localStorage-এ set করো
       await setActiveBusinessForUser(userId, {
         active_business_id: merchant?.active_business_id,
         is_team_member: merchant?.is_team_member,
       });
 
-      // Full page reload — middleware session cookie ঠিকমতো set হওয়ার জন্য
+      // window.location.href ব্যবহার করা হচ্ছে কারণ এটা full page reload করে।
+      // এতে middleware নতুন request-এ Supabase session detect করে
+      // auth_session HttpOnly cookie সঠিকভাবে set করতে পারে।
       window.location.href = nextUrl;
     } catch {
       window.location.href = nextUrl;
@@ -510,9 +540,6 @@ function LoginContent() {
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B1120] font-sans transition-colors duration-300 flex flex-col">
       <Toaster position="top-center" richColors />
 
-      {/* DEMO BANNER */}
-      {mode === 'demo' && <DemoBanner />}
-
       {/* HEADER */}
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-[#0B1120]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
         <div className="hidden md:flex items-center h-16 px-8 justify-between max-w-7xl mx-auto w-full">
@@ -527,243 +554,279 @@ function LoginContent() {
               <button
                 onClick={() => setTheme(isDark ? 'light' : 'dark')}
                 className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50 hover:scale-110 transition-all"
+                aria-label="Toggle theme"
               >
                 {isDark ? <Sun size={17} /> : <Moon size={17} />}
               </button>
             )}
-            <Link href="/signup" className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-all">
-              Sign Up Free
-            </Link>
           </div>
         </div>
 
-        {/* Mobile Header */}
+        {/* Mobile Header — original layout */}
         <div className="flex md:hidden items-center h-16 px-4 justify-between max-w-7xl mx-auto w-full">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-all"
           >
             {menuOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
-          <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
-            <span className="text-xl font-black text-blue-600 tracking-tighter">X</span>
-            <span className="text-lg font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
-          </Link>
-          {mounted && (
-            <button
-              onClick={() => setTheme(isDark ? 'light' : 'dark')}
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50"
-            >
-              {isDark ? <Sun size={17} /> : <Moon size={17} />}
-            </button>
-          )}
+          <div className="flex items-center justify-end flex-1">
+            {mounted && (
+              <button
+                onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-amber-400 border border-blue-100 dark:border-blue-800/50 hover:scale-110 transition-all"
+                aria-label="Toggle theme"
+              >
+                {isDark ? <Sun size={17} /> : <Moon size={17} />}
+              </button>
+            )}
+          </div>
         </div>
 
         {menuOpen && (
           <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0d1526] animate-in slide-in-from-top-2 duration-200">
             <div className="px-4 py-3 flex flex-col gap-1 max-w-7xl mx-auto w-full">
-              <Link href="/" onClick={() => setMenuOpen(false)} className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">Home</Link>
-              <Link href="/info/contact" onClick={() => setMenuOpen(false)} className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">Support</Link>
-              <Link href="/signup" onClick={() => setMenuOpen(false)} className="px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">Sign Up</Link>
+              <Link href="/" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
+                <Home size={15} /> Home
+              </Link>
+              <Link href="/info/contact" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 transition-all">
+                <HelpCircle size={15} /> Support
+              </Link>
             </div>
           </div>
         )}
       </header>
 
       {/* MAIN */}
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md">
-          <div className="bg-white dark:bg-[#111827] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="flex-1 flex items-center justify-center p-4 py-10">
+        <div className="w-full max-w-md md:max-w-2xl bg-white dark:bg-[#111827] rounded-2xl md:rounded-3xl shadow-sm md:shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
 
-            {viewState === 'otp_input' ? (
-              /* OTP INPUT VIEW */
-              <div className="p-8 md:p-10">
-                <button
-                  onClick={() => { setViewState('form'); setOtp(''); isVerifyingRef.current = false; }}
-                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-blue-600 mb-6 transition-colors"
-                >
-                  <ArrowLeft size={14} /> Back to login
-                </button>
-                <div className="text-center mb-7">
-                  <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                    <ShieldCheck size={28} className="text-blue-600" />
-                  </div>
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-1">Check your inbox</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    We sent a 6-digit OTP to <b className="text-slate-700 dark:text-slate-300">{otpEmail}</b>
-                  </p>
-                </div>
+          {mode === 'demo' && <DemoBanner />}
 
-                <div className="flex gap-2.5 justify-center mb-6" onPaste={handleOtpPaste}>
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <input
-                      key={i}
-                      ref={el => { otpInputRefs.current[i] = el; }}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={otp[i] || ''}
-                      onChange={e => handleOtpChange(i, e.target.value)}
-                      onKeyDown={e => handleOtpKeyDown(i, e)}
-                      className="w-11 text-center text-lg font-bold bg-white dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-900 dark:text-white py-3"
-                    />
+          <div className="flex flex-col md:flex-row md:items-stretch">
+
+            {/* ── Left Blue Sidebar (desktop only) ── */}
+            <div className="hidden md:flex flex-col justify-between bg-blue-600 rounded-l-3xl p-10 min-w-[200px] text-white">
+              <Link href="/" className="flex items-center gap-1.5 text-white/70 hover:text-white text-xs transition-colors">
+                <ArrowLeft size={14} /> Home
+              </Link>
+              <div className="flex flex-col items-center">
+                <Link href="/" className="inline-flex items-center gap-1 mb-5">
+                  <span className="text-4xl font-black text-white tracking-tighter">X</span>
+                  <span className="text-3xl font-semibold text-white tracking-tight -ml-0.5 opacity-90">elPay</span>
+                </Link>
+                <p className="text-sm opacity-80 text-center leading-relaxed">Secure merchant payment automation</p>
+                <div className="mt-7 flex flex-col gap-3 w-full">
+                  {['99.9% Uptime', 'Bank-grade security', '24/7 support'].map(s => (
+                    <div key={s} className="flex items-center gap-2 text-xs opacity-70">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-300" /> {s}
+                    </div>
                   ))}
                 </div>
-
-                <button
-                  disabled={loading || otp.length < 6}
-                  onClick={handleVerifyOtp}
-                  className="w-full bg-blue-600 disabled:bg-blue-400 text-white py-3.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-600/25 mb-3 transition-all"
-                >
-                  {loading
-                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    : <><ShieldCheck size={16} /> Verify & Sign In</>
-                  }
-                </button>
-
-                <button
-                  disabled={otpCooldown > 0 || loading}
-                  onClick={handleResendOtp}
-                  className="w-full flex items-center justify-center gap-1.5 text-sm text-slate-400 hover:text-blue-600 transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw size={13} />
-                  {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : 'Resend OTP'}
-                </button>
               </div>
-            ) : (
-              /* LOGIN FORM VIEW */
-              <div className="p-8 md:p-10">
-                <div className="mb-7">
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Welcome back</h1>
-                  <p className="text-slate-400 mt-1 text-sm">Sign in to your XelPay dashboard</p>
+              <div className="text-[10px] text-white/40 text-center">© {new Date().getFullYear()} XelPay</div>
+            </div>
+
+            {/* ── Right Form Area ── */}
+            <div className="flex-1 p-6 md:p-10 flex flex-col justify-center">
+
+              {/* Mobile logo */}
+              <div className="md:hidden flex justify-center mb-6">
+                <Link href="/" className="inline-flex items-center gap-1">
+                  <span className="text-3xl font-black text-blue-600 tracking-tighter">X</span>
+                  <span className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight -ml-0.5">elPay</span>
+                </Link>
+              </div>
+
+              {/* ── OTP INPUT VIEW ── */}
+              {viewState === 'otp_input' ? (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-400 text-center">
+                  <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                    <ShieldCheck size={32} className="text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Enter Your OTP</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-7 leading-relaxed">
+                    We sent a 6-digit code to{' '}
+                    <b className="text-slate-700 dark:text-slate-300">{otpEmail}</b>.
+                  </p>
+
+                  <div className="flex gap-2.5 justify-center mb-7" onPaste={handleOtpPaste}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <input
+                        key={i}
+                        ref={el => { otpInputRefs.current[i] = el; }}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={otp[i] || ''}
+                        onChange={e => handleOtpChange(i, e.target.value)}
+                        onKeyDown={e => handleOtpKeyDown(i, e)}
+                        className="w-11 h-13 text-center text-lg font-bold bg-white dark:bg-[#0B1120] border-2 border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-900 dark:text-white py-3"
+                      />
+                    ))}
+                  </div>
+
+                  <button
+                    disabled={loading || otp.length < 6}
+                    onClick={handleVerifyOtp}
+                    className="w-full bg-blue-600 disabled:bg-blue-400 text-white py-3.5 rounded-xl font-medium text-sm shadow-lg shadow-blue-600/25 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2.5 mb-3"
+                  >
+                    {loading
+                      ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Verifying...</>
+                      : <><ShieldCheck size={16} /> Sign In</>
+                    }
+                  </button>
+
+                  <button
+                    disabled={otpCooldown > 0 || loading}
+                    onClick={handleResendOtp}
+                    className="w-full flex items-center justify-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 transition-colors disabled:opacity-50 mb-5"
+                  >
+                    <RefreshCw size={13} />
+                    {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : 'Resend OTP'}
+                  </button>
+
+                  <button
+                    onClick={() => { setViewState('form'); setOtp(''); }}
+                    className="flex items-center justify-center gap-1.5 mx-auto text-xs text-slate-400 hover:text-blue-600 uppercase tracking-widest font-bold transition-colors"
+                  >
+                    <ArrowLeft size={14} /> Back to Login
+                  </button>
                 </div>
 
-                {/* OTP / Password toggle */}
-                {otpSettingLoaded && otpLoginEnabled && (
-                  <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-5">
-                    <button
-                      type="button"
-                      onClick={() => setLoginMethod('password')}
-                      className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${loginMethod === 'password' ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
-                    >
-                      <Lock size={13} /> With Password
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLoginMethod('otp')}
-                      className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${loginMethod === 'otp' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
-                    >
-                      <Sparkles size={13} /> With OTP
-                    </button>
-                  </div>
-                )}
+              /* ── MAIN FORM ── */
+              ) : (
+                <>
+                  <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-5 text-center md:text-left">
+                    Welcome Back
+                  </h2>
 
-                {(!otpLoginEnabled || loginMethod === 'password') ? (
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div>
-                      <label className={labelClass}>Email <span className="text-red-400">*</span></label>
-                      <div className="relative">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input required type="email" name="email" autoComplete="username" placeholder="admin@xelpay.com" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
-                      </div>
+                  {otpSettingLoaded && otpLoginEnabled && (
+                    <div className="flex bg-slate-100 dark:bg-[#0B1120] p-1 rounded-xl mb-6 border border-slate-200 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setLoginMethod('password')}
+                        className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${loginMethod === 'password' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                      >
+                        With Password
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setLoginMethod('otp')}
+                        className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all ${loginMethod === 'otp' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                      >
+                        <Sparkles size={13} className="inline mr-1" /> With OTP
+                      </button>
                     </div>
-                    <div>
-                      <label className={labelClass}>Password <span className="text-red-400">*</span></label>
-                      <div className="relative">
-                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input required type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className={`${inputClass} pr-11`} />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
-                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <label className="flex items-center gap-2 cursor-pointer select-none">
-                        <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 rounded border-slate-300 accent-blue-600" />
-                        <span className="text-xs text-slate-500 dark:text-slate-400">Remember me</span>
-                      </label>
-                      <Link href={`/forgot-password${mode === 'demo' ? '?mode=demo' : ''}`} onClick={clearForgotSession} className="text-xs text-blue-600 hover:underline">
-                        Forgot Password?
-                      </Link>
-                    </div>
-                    <div className="flex justify-center pt-2">
-                      {mounted && (
-                        <ReCAPTCHA
-                          ref={recaptchaRef}
-                          sitekey={RECAPTCHA_SITE_KEY}
-                          onChange={token => setCaptchaToken(token)}
-                          onExpired={() => setCaptchaToken(null)}
-                          theme={isDark ? 'dark' : 'light'}
-                        />
-                      )}
-                    </div>
-                    <button disabled={loading} type="submit" className="w-full bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-lg shadow-blue-600/25 h-[50px]">
-                      {loading
-                        ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        : <>Sign In <LogIn size={15} className="ml-1.5" /></>
-                      }
-                    </button>
-                  </form>
-                ) : (
-                  <form onSubmit={handleSendOtp} className="space-y-4">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
-                      Enter your email and we'll send you a 6-digit OTP to log in instantly — no password needed.
-                    </p>
-                    <div>
-                      <label className={labelClass}>Email <span className="text-red-400">*</span></label>
-                      <div className="relative">
-                        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input required type="email" name="email" autoComplete="username" placeholder="admin@xelpay.com" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
-                      </div>
-                    </div>
-                    <div className="flex justify-center pt-2">
-                      {mounted && (
-                        <ReCAPTCHA
-                          ref={recaptchaRef}
-                          sitekey={RECAPTCHA_SITE_KEY}
-                          onChange={token => setCaptchaToken(token)}
-                          onExpired={() => setCaptchaToken(null)}
-                          theme={isDark ? 'dark' : 'light'}
-                        />
-                      )}
-                    </div>
-                    <button disabled={loading} type="submit" className="w-full bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-lg shadow-blue-600/25 h-[50px]">
-                      {loading
-                        ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        : <>Send OTP <Send size={15} className="ml-1.5" /></>
-                      }
-                    </button>
-                  </form>
-                )}
+                  )}
 
-                {mode !== 'demo' && (
-                  <>
-                    <div className="relative my-5 text-center">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+                  {(!otpLoginEnabled || loginMethod === 'password') ? (
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <div>
+                        <label className={labelClass}>Email <span className="text-red-400">*</span></label>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                          <input required type="email" name="email" autoComplete="username" placeholder="admin@xelpay.com" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
+                        </div>
                       </div>
-                      <span className="relative px-4 bg-white dark:bg-[#111827] text-[10px] text-slate-400 uppercase tracking-widest">Or</span>
-                    </div>
-                    <button
-                      onClick={handleGoogleLogin}
-                      disabled={googleLoading}
-                      className="w-full bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 py-3.5 rounded-xl text-sm text-slate-700 dark:text-slate-200 flex items-center justify-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
-                    >
-                      {googleLoading
-                        ? <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-                        : <><img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="google" /> Sign in with Google</>
-                      }
-                    </button>
-                    <p className="mt-5 text-center text-slate-400 text-sm">
-                      New to XelPay?{' '}
-                      <Link href="/signup" onClick={clearForgotSession} className="text-blue-600 font-medium hover:underline">
-                        Create Account
-                      </Link>
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
+                      <div>
+                        <label className={labelClass}>Password <span className="text-red-400">*</span></label>
+                        <div className="relative">
+                          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                          <input required type={showPassword ? 'text' : 'password'} name="password" autoComplete="current-password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className={`${inputClass} pr-11`} />
+                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors">
+                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 rounded border-slate-300 accent-blue-600" />
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Remember me</span>
+                        </label>
+                        <Link href={`/forgot-password${mode === 'demo' ? '?mode=demo' : ''}`} onClick={clearForgotSession} className="text-xs text-blue-600 hover:underline">
+                          Forgot Password?
+                        </Link>
+                      </div>
+                      <div className="flex justify-center pt-2">
+                        {mounted && (
+                          <ReCAPTCHA
+                            ref={recaptchaRef}
+                            sitekey={RECAPTCHA_SITE_KEY}
+                            onChange={token => setCaptchaToken(token)}
+                            onExpired={() => setCaptchaToken(null)}
+                            theme={isDark ? 'dark' : 'light'}
+                          />
+                        )}
+                      </div>
+                      <button disabled={loading} type="submit" className="w-full bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-lg shadow-blue-600/25 h-[50px]">
+                        {loading
+                          ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          : <>Sign In <LogIn size={15} className="ml-1.5" /></>
+                        }
+                      </button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleSendOtp} className="space-y-4">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                        Enter your email and we'll send you a 6-digit OTP to log in instantly — no password needed.
+                      </p>
+                      <div>
+                        <label className={labelClass}>Email <span className="text-red-400">*</span></label>
+                        <div className="relative">
+                          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                          <input required type="email" name="email" autoComplete="username" placeholder="admin@xelpay.com" value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
+                        </div>
+                      </div>
+                      <div className="flex justify-center pt-2">
+                        {mounted && (
+                          <ReCAPTCHA
+                            ref={recaptchaRef}
+                            sitekey={RECAPTCHA_SITE_KEY}
+                            onChange={token => setCaptchaToken(token)}
+                            onExpired={() => setCaptchaToken(null)}
+                            theme={isDark ? 'dark' : 'light'}
+                          />
+                        )}
+                      </div>
+                      <button disabled={loading} type="submit" className="w-full bg-blue-600 disabled:bg-blue-500 text-white py-3.5 rounded-xl font-medium text-sm hover:-translate-y-0.5 transition-all flex items-center justify-center shadow-lg shadow-blue-600/25 h-[50px]">
+                        {loading
+                          ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          : <>Send OTP <Send size={15} className="ml-1.5" /></>
+                        }
+                      </button>
+                    </form>
+                  )}
+
+                  {mode !== 'demo' && (
+                    <>
+                      <div className="relative my-5 text-center">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-slate-200 dark:border-slate-700" />
+                        </div>
+                        <span className="relative px-4 bg-white dark:bg-[#111827] text-[10px] text-slate-400 uppercase tracking-widest">Or</span>
+                      </div>
+                      <button
+                        onClick={handleGoogleLogin}
+                        disabled={googleLoading}
+                        className="w-full bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-700 py-3.5 rounded-xl text-sm text-slate-700 dark:text-slate-200 flex items-center justify-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                      >
+                        {googleLoading
+                          ? <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                          : <><img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="google" /> Sign in with Google</>
+                        }
+                      </button>
+                      <p className="mt-5 text-center text-slate-400 text-sm">
+                        New to XelPay?{' '}
+                        <Link href="/signup" onClick={clearForgotSession} className="text-blue-600 font-medium hover:underline">
+                          Create Account
+                        </Link>
+                      </p>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
