@@ -127,6 +127,16 @@ src/components/dashboard/LogoButton.tsx
 src/components/dashboard/Sidebar.tsx
 src/components/sidebar.tsx
 src/components/SocialAuth.tsx
+src/components/ui/badge.tsx
+src/components/ui/button.tsx
+src/components/ui/card.tsx
+src/components/ui/input.tsx
+src/components/ui/label.tsx
+src/components/ui/progress.tsx
+src/components/ui/radio-group.tsx
+src/components/ui/separator.tsx
+src/components/ui/table.tsx
+src/components/ui/utils.tsx
 src/lib/auth.ts
 src/lib/business_actions.ts
 src/lib/gateway_actions.ts
@@ -2947,45 +2957,6 @@ function ForgotPasswordContent() {
 
 export default function ForgotPassword() {
   return <Suspense fallback={null}><ForgotPasswordContent /></Suspense>;
-}
-</file>
-
-<file path="src/app/globals.css">
-@import "tailwindcss";
-
-/* ✅ Tailwind v4 Manual Dark Mode Config (এটি না থাকলে বাটন কাজ করবে না) */
-@variant dark (&:is(.dark *));
-
-@theme {
-  /* আপনার কোডে ব্যবহৃত ব্লু থিম সেটআপ */
-  --color-blue-50: #eff6ff;
-  --color-blue-100: #dbeafe;
-  --color-blue-600: #2563eb;
-  --color-blue-700: #1d4ed8;
-
-  /* ডার্ক মোডের স্লেট থিম */
-  --color-slate-900: #0f172a;
-  --color-slate-950: #020617;
-}
-
-@layer base {
-  :root {
-    --background: #ffffff;
-    --foreground: #0f172a;
-  }
-
-  .dark {
-    --background: #0B1120; /* প্রিমিয়াম নেভি ব্ল্যাক */
-    --foreground: #f8fafc;
-  }
-
-  body {
-    @apply bg-[var(--background)] text-[var(--foreground)] antialiased transition-colors duration-300;
-  }
-
-  html {
-    scroll-behavior: smooth;
-  }
 }
 </file>
 
@@ -7861,56 +7832,6 @@ if (process.env.NODE_ENV !== 'production') {
 }
 </file>
 
-<file path="package.json">
-{
-  "name": "xelpay-dashboard",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "@supabase/ssr": "^0.8.0",
-    "@supabase/supabase-js": "^2.101.1",
-    "@vercel/analytics": "^2.0.1",
-    "@vercel/speed-insights": "^2.0.0",
-    "clsx": "^2.1.1",
-    "framer-motion": "^12.38.0",
-    "jspdf": "^4.2.0",
-    "jspdf-autotable": "^5.0.7",
-    "lucide-react": "^0.564.0",
-    "next": "^16.2.6",
-    "next-themes": "^0.4.6",
-    "qrcode.react": "^4.2.0",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "react-google-recaptcha": "^3.1.0",
-    "recharts": "^3.7.0",
-    "resend": "^6.12.3",
-    "sonner": "^2.0.7",
-    "sooner": "^1.1.1",
-    "tailwind-merge": "^3.4.1"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@types/react-google-recaptcha": "^2.1.9",
-    "autoprefixer": "^10.4.24",
-    "babel-plugin-react-compiler": "1.0.0",
-    "eslint": "^4.1.1",
-    "eslint-config-next": "^0.2.4",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.18",
-    "typescript": "^5"
-  }
-}
-</file>
-
 <file path="src/app/api/v1/team/remove-member/route.ts">
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -9419,6 +9340,86 @@ export default function SupportPage() {
 }
 </file>
 
+<file path="src/app/globals.css">
+@import "tailwindcss";
+
+/* ✅ Tailwind v4 Manual Dark Mode Config (এটি না থাকলে বাটন কাজ করবে না) */
+@variant dark (&:is(.dark *));
+
+@theme {
+  /* আপনার কোডে ব্যবহৃত ব্লু থিম সেটআপ */
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+  --color-blue-50: #eff6ff;
+  --color-blue-100: #dbeafe;
+  --color-blue-600: #2563eb;
+  --color-blue-700: #1d4ed8;
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+
+  /* ডার্ক মোডের স্লেট থিম */
+  --color-slate-900: #0f172a;
+  --color-slate-950: #020617;
+}
+
+@layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #0f172a;
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+    --popover: #ffffff;
+    --popover-foreground: #0f172a;
+    --primary: #2563eb; /* Blue 600 */
+    --primary-foreground: #ffffff;
+    --secondary: #f1f5f9;
+    --secondary-foreground: #0f172a;
+    --muted: #f8fafc;
+    --muted-foreground: #64748b;
+    --accent: #f1f5f9;
+    --accent-foreground: #0f172a;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    --ring: #2563eb;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: #0B1120; /* প্রিমিয়াম নেভি ব্ল্যাক */
+    --foreground: #f8fafc;
+    --card: #0f172a;
+    --card-foreground: #f8fafc;
+    --popover: #0f172a;
+    --popover-foreground: #f8fafc;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --secondary: #1e293b;
+    --secondary-foreground: #f8fafc;
+    --muted: #0f172a;
+    --muted-foreground: #94a3b8;
+    --accent: #1e293b;
+    --accent-foreground: #f8fafc;
+    --destructive: #7f1d1d;
+    --destructive-foreground: #f8fafc;
+    --border: #1e293b;
+    --input: #1e293b;
+    --ring: #3b82f6;
+  }
+
+  body {
+    @apply bg-[var(--background)] text-[var(--foreground)] antialiased transition-colors duration-300;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+</file>
+
 <file path="src/app/layout.tsx">
 // PATH: /app/layout.tsx
 import type { Metadata } from "next";
@@ -9648,6 +9649,295 @@ export default async function LandingPage() {
       initialSettings={settingsMap}
     />
   );
+}
+</file>
+
+<file path="src/components/ui/badge.tsx">
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "./utils";
+
+const badgeVariants = cva(
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  {
+    variants: {
+      variant: {
+        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        outline: "text-foreground",
+      },
+    },
+    defaultVariants: { variant: "default" },
+  }
+);
+
+export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
+
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
+}
+export { Badge, badgeVariants };
+</file>
+
+<file path="src/components/ui/button.tsx">
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "./utils";
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 rounded-md px-3",
+        lg: "h-11 rounded-md px-8",
+        icon: "h-10 w-10",
+      },
+    },
+    defaultVariants: { variant: "default", size: "default" },
+  }
+);
+
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({ className, variant, size, asChild = false, ...props }, ref) => {
+  const Comp = asChild ? Slot : "button";
+  return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
+});
+Button.displayName = "Button";
+export { Button, buttonVariants };
+</file>
+
+<file path="src/components/ui/card.tsx">
+import * as React from "react";
+import { cn } from "./utils";
+
+const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("rounded-xl border bg-card text-card-foreground shadow-sm", className)} {...props} />
+));
+Card.displayName = "Card";
+
+const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("flex flex-col space-y-1.5 p-6", className)} {...props} />
+));
+CardHeader.displayName = "CardHeader";
+
+const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(({ className, ...props }, ref) => (
+  <h3 ref={ref} className={cn("font-semibold leading-none tracking-tight", className)} {...props} />
+));
+CardTitle.displayName = "CardTitle";
+
+const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(({ className, ...props }, ref) => (
+  <p ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props} />
+));
+CardDescription.displayName = "CardDescription";
+
+const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+));
+CardContent.displayName = "CardContent";
+
+export { Card, CardHeader, CardTitle, CardDescription, CardContent };
+</file>
+
+<file path="src/components/ui/input.tsx">
+import * as React from "react";
+import { cn } from "./utils";
+
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(({ className, type, ...props }, ref) => {
+  return (
+    <input type={type} className={cn("flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50", className)} ref={ref} {...props} />
+  );
+});
+Input.displayName = "Input";
+export { Input };
+</file>
+
+<file path="src/components/ui/label.tsx">
+"use client";
+import * as React from "react";
+import * as LabelPrimitive from "@radix-ui/react-label";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "./utils";
+
+const labelVariants = cva("text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70");
+
+const Label = React.forwardRef<React.ElementRef<typeof LabelPrimitive.Root>, React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> & VariantProps<typeof labelVariants>>(({ className, ...props }, ref) => (
+  <LabelPrimitive.Root ref={ref} className={cn(labelVariants(), className)} {...props} />
+));
+Label.displayName = LabelPrimitive.Root.displayName;
+export { Label };
+</file>
+
+<file path="src/components/ui/progress.tsx">
+"use client";
+import * as React from "react";
+import * as ProgressPrimitive from "@radix-ui/react-progress";
+import { cn } from "./utils";
+
+const Progress = React.forwardRef<React.ElementRef<typeof ProgressPrimitive.Root>, React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>>(({ className, value, ...props }, ref) => (
+  <ProgressPrimitive.Root ref={ref} className={cn("relative h-2 w-full overflow-hidden rounded-full bg-secondary", className)} {...props}>
+    <ProgressPrimitive.Indicator className="h-full w-full flex-1 bg-primary transition-all" style={{ transform: `translateX(-${100 - (value || 0)}%)` }} />
+  </ProgressPrimitive.Root>
+));
+Progress.displayName = ProgressPrimitive.Root.displayName;
+export { Progress };
+</file>
+
+<file path="src/components/ui/radio-group.tsx">
+"use client";
+import * as React from "react";
+import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
+import { Circle } from "lucide-react";
+import { cn } from "./utils";
+
+const RadioGroup = React.forwardRef<React.ElementRef<typeof RadioGroupPrimitive.Root>, React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>>(({ className, ...props }, ref) => {
+  return <RadioGroupPrimitive.Root className={cn("grid gap-2", className)} {...props} ref={ref} />;
+});
+RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
+
+const RadioGroupItem = React.forwardRef<React.ElementRef<typeof RadioGroupPrimitive.Item>, React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>>(({ className, ...props }, ref) => {
+  return (
+    <RadioGroupPrimitive.Item ref={ref} className={cn("aspect-square h-4 w-4 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50", className)} {...props}>
+      <RadioGroupPrimitive.Indicator className="flex items-center justify-center">
+        <Circle className="h-2.5 w-2.5 fill-current text-current" />
+      </RadioGroupPrimitive.Indicator>
+    </RadioGroupPrimitive.Item>
+  );
+});
+RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName;
+export { RadioGroup, RadioGroupItem };
+</file>
+
+<file path="src/components/ui/separator.tsx">
+"use client";
+import * as React from "react";
+import * as SeparatorPrimitive from "@radix-ui/react-separator";
+import { cn } from "./utils";
+
+const Separator = React.forwardRef<React.ElementRef<typeof SeparatorPrimitive.Root>, React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root>>(({ className, orientation = "horizontal", decorative = true, ...props }, ref) => (
+  <SeparatorPrimitive.Root ref={ref} decorative={decorative} orientation={orientation} className={cn("shrink-0 bg-border", orientation === "horizontal" ? "h-[1px] w-full" : "h-full w-[1px]", className)} {...props} />
+));
+Separator.displayName = SeparatorPrimitive.Root.displayName;
+export { Separator };
+</file>
+
+<file path="src/components/ui/table.tsx">
+import * as React from "react";
+import { cn } from "./utils";
+
+const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(({ className, ...props }, ref) => (
+  <div className="relative w-full overflow-auto">
+    <table ref={ref} className={cn("w-full caption-bottom text-sm", className)} {...props} />
+  </div>
+));
+Table.displayName = "Table";
+
+const TableHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(({ className, ...props }, ref) => (
+  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+));
+TableHeader.displayName = "TableHeader";
+
+const TableBody = React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>(({ className, ...props }, ref) => (
+  <tbody ref={ref} className={cn("[&_tr:last-child]:border-0", className)} {...props} />
+));
+TableBody.displayName = "TableBody";
+
+const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTMLTableRowElement>>(({ className, ...props }, ref) => (
+  <tr ref={ref} className={cn("border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted", className)} {...props} />
+));
+TableRow.displayName = "TableRow";
+
+const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<HTMLTableCellElement>>(({ className, ...props }, ref) => (
+  <th ref={ref} className={cn("h-10 px-4 text-left align-middle font-medium text-muted-foreground", className)} {...props} />
+));
+TableHead.displayName = "TableHead";
+
+const TableCell = React.forwardRef<HTMLTableCellElement, React.TdHTMLAttributes<HTMLTableCellElement>>(({ className, ...props }, ref) => (
+  <td ref={ref} className={cn("p-4 align-middle", className)} {...props} />
+));
+TableCell.displayName = "TableCell";
+
+export { Table, TableHeader, TableBody, TableHead, TableRow, TableCell };
+</file>
+
+<file path="src/components/ui/utils.tsx">
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "xelpay-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-progress": "^1.1.8",
+    "@radix-ui/react-radio-group": "^1.3.8",
+    "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.101.1",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
+    "jspdf": "^4.2.0",
+    "jspdf-autotable": "^5.0.7",
+    "lucide-react": "^0.564.0",
+    "next": "^16.2.6",
+    "next-themes": "^0.4.6",
+    "qrcode.react": "^4.2.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-google-recaptcha": "^3.1.0",
+    "recharts": "^3.7.0",
+    "resend": "^6.12.3",
+    "sonner": "^2.0.7",
+    "sooner": "^1.1.1",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/react-google-recaptcha": "^2.1.9",
+    "autoprefixer": "^10.4.24",
+    "babel-plugin-react-compiler": "1.0.0",
+    "eslint": "^4.1.1",
+    "eslint-config-next": "^0.2.4",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5"
+  }
 }
 </file>
 
@@ -19081,531 +19371,6 @@ export default function GlobalVaultPage() {
 }
 </file>
 
-<file path="src/app/dashboard/subscriptions/page.tsx">
-'use client';
-
-import { useState, useEffect, useCallback } from 'react';
-import {
-  CreditCard, CheckCircle, Clock, AlertTriangle, Loader2, X, ChevronRight, 
-  Shield, Zap, RefreshCw, History, Package, BadgeCheck, ChevronLeft, Copy, Info
-} from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { toast, Toaster } from 'sonner';
-
-// ── Types ─────────────────────────────────────────────────────
-type Plan = {
-  id: string; name: string; price: number; yearly_price: number | null;
-  serial: number; tag: string | null; features: any; transaction_limit_monthly: number;
-  business_limit: number; allowed_method: any; is_team_allowed: boolean;
-  allowed_team_members: number; device_limit: number; allowed_telegram_group: boolean;
-  is_custom_bot_allowed: boolean;
-};
-
-type Subscription = {
-  id: string; plan_id: string; billing_cycle: string; amount_paid: number;
-  status: string; started_at: string; expires_at: string | null;
-  payment_method: string | null; payment_reference: string | null;
-};
-
-type AdminGateway = {
-  id: string; provider: string; provider_name: string; account_number: string;
-  account_type: string; branch_name: string | null;
-};
-
-type PaymentLogo = { method_name: string; logo_url: string; method_color: string | null };
-
-type AdminOrder = {
-  id: string; order_no: string; amount: number; billing_cycle: string;
-  payment_method: string; payment_reference: string; status: string;
-  created_at: string; plan_id: string; sender_number: string | null;
-};
-
-type Merchant = {
-  id: string;
-  plan_id: string;
-  business_count: number;
-  transaction_count: number;
-  team_member_count: number;
-  device_count: number;
-};
-
-// ── Helpers ───────────────────────────────────────────────────
-const fmtBDT = (n: number) => `৳${n.toLocaleString('en-IN')}`;
-const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-const daysLeft = (exp: string | null) => {
-  if (!exp) return null;
-  const diff = new Date(exp).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / 86400000));
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  active: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800',
-  pending: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
-  expired: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800',
-  cancelled: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
-};
-
-const METHOD_ICONS: Record<string, string> = {
-  bkash: '💜', nagad: '🟠', rocket: '🟣', upay: '🟡', bank: '🏦',
-};
-
-// Theme Generator for Tags (e.g. Free:blue)
-const getColorTheme = (colorName: string) => {
-  const themes: Record<string, any> = {
-    blue: { border: 'border-blue-500', bg: 'bg-blue-600', text: 'text-blue-600', hover: 'hover:bg-blue-700', lightBg: 'bg-blue-50' },
-    emerald: { border: 'border-emerald-500', bg: 'bg-emerald-600', text: 'text-emerald-600', hover: 'hover:bg-emerald-700', lightBg: 'bg-emerald-50' },
-    purple: { border: 'border-purple-500', bg: 'bg-purple-600', text: 'text-purple-600', hover: 'hover:bg-purple-700', lightBg: 'bg-purple-50' },
-    amber: { border: 'border-amber-500', bg: 'bg-amber-500', text: 'text-amber-600', hover: 'hover:bg-amber-600', lightBg: 'bg-amber-50' },
-    slate: { border: 'border-slate-500', bg: 'bg-slate-800', text: 'text-slate-700', hover: 'hover:bg-slate-900', lightBg: 'bg-slate-100' }
-  };
-  return themes[colorName?.toLowerCase()] || themes.blue;
-};
-
-// ── Progress Bar Component ────────────────────────────────────
-function UsageBar({ label, used = 0, limit = 0 }: { label: string, used: number, limit: number }) {
-  const isUnlimited = limit === 0;
-  const percentage = isUnlimited ? 0 : Math.min(100, (used / limit) * 100);
-  const displayLimit = isUnlimited ? 'Unlimited' : limit.toLocaleString();
-  const displayUsed = used.toLocaleString();
-
-  // Color logic based on usage
-  let barColor = 'bg-blue-600';
-  if (percentage >= 90) barColor = 'bg-red-500';
-  else if (percentage >= 75) barColor = 'bg-amber-500';
-
-  return (
-    <div className="mb-4 last:mb-0">
-      <div className="flex justify-between items-end mb-1.5">
-        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{label}</span>
-        <span className="text-xs font-medium text-slate-500">
-          {displayUsed} / {displayLimit} {!isUnlimited && `(${Math.round(percentage)}%)`}
-        </span>
-      </div>
-      <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-        {!isUnlimited ? (
-          <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${percentage}%` }} />
-        ) : (
-          <div className="h-full rounded-full bg-emerald-500 w-full opacity-30" />
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Checkout Modal (Kept Unchanged Functionally) ──────────────
-function CheckoutModal({
-  plan, billing, price, adminGateways, paymentLogos, merchant, onClose, onSuccess
-}: any) {
-  const [step, setStep] = useState<'methods' | 'checkout' | 'pending'>('methods');
-  const [selectedGateway, setSelectedGateway] = useState<AdminGateway | null>(null);
-  const [trxId, setTrxId] = useState('');
-  const [senderNumber, setSenderNumber] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  const getLogoUrl = (provider: string) => {
-    const found = paymentLogos.find((l: any) => l.method_name.toLowerCase() === provider.toLowerCase() || l.method_name.toLowerCase() === provider.toLowerCase().replace(/\s/g, ''));
-    return found?.logo_url || null;
-  };
-
-  const handleSubmit = async () => {
-    if (!selectedGateway) return;
-    if (!trxId.trim()) { toast.error('Transaction ID is required.'); return; }
-    if (selectedGateway.account_type !== 'corporate' && !senderNumber.trim()) { toast.error('Sender number is required.'); return; }
-    
-    setSubmitting(true);
-    try {
-      const now = new Date();
-      const expiresAt = billing === 'yearly' ? new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000) : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      const orderNo = `ADM-${Date.now().toString(36).toUpperCase()}`;
-
-      const { data: newSub, error: subError } = await supabase.from('merchant_subscriptions').insert({
-        merchant_id: merchant.id, plan_id: plan.id, billing_cycle: billing, amount_paid: price,
-        currency: 'BDT', status: 'pending', started_at: now.toISOString(), expires_at: expiresAt.toISOString(),
-        next_billing_at: expiresAt.toISOString(), payment_method: selectedGateway.provider, payment_reference: trxId.trim(),
-      }).select('*').single();
-
-      if (subError) throw subError;
-
-      await supabase.from('admin_orders').insert({
-        merchant_id: merchant.id, plan_id: plan.id, subscription_id: newSub?.id, order_no: orderNo,
-        amount: price, currency: 'BDT', billing_cycle: billing, payment_method: selectedGateway.provider,
-        payment_reference: trxId.trim(), gateway_used: selectedGateway.provider, status: 'pending',
-        sender_number: senderNumber.trim() || null, notes: `Gateway: ${selectedGateway.provider_name} | Account: ${selectedGateway.account_number}`,
-      });
-
-      setStep('pending');
-      if (newSub) onSuccess(newSub, plan);
-    } catch (e: any) {
-      toast.error('Submission failed: ' + e.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-[#111827] w-full max-w-md sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden">
-        {/* Modal Header */}
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {step === 'checkout' && (
-              <button onClick={() => setStep('methods')} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                <ChevronLeft size={18} className="text-slate-600 dark:text-slate-400" />
-              </button>
-            )}
-            <div>
-              <h3 className="text-base font-black text-slate-900 dark:text-white">
-                {step === 'methods' ? 'Choose Payment Method' : step === 'checkout' ? 'Complete Payment' : 'Payment Submitted'}
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">{plan.name} — {fmtBDT(price)} / {billing === 'yearly' ? 'year' : 'month'}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-            <X size={18} className="text-slate-500" />
-          </button>
-        </div>
-
-        {/* Modal Body */}
-        <div className="p-6 max-h-[70vh] overflow-y-auto">
-          {step === 'methods' && (
-            <div className="space-y-3">
-              {adminGateways.map((gw: any) => {
-                const logoUrl = getLogoUrl(gw.provider);
-                return (
-                  <button key={gw.id} onClick={() => { setSelectedGateway(gw); setStep('checkout'); }}
-                    className="w-full flex items-center gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-2xl hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group text-left">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 overflow-hidden border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
-                      {logoUrl ? <img src={logoUrl} alt={gw.provider_name} className="w-10 h-10 object-contain" /> : <span className="text-2xl">{METHOD_ICONS[gw.provider] || '💳'}</span>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black text-slate-900 dark:text-white">{gw.provider_name}</p>
-                      <p className="text-xs text-slate-500 truncate">{gw.account_number}</p>
-                    </div>
-                    <ChevronRight size={16} className="text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" />
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {step === 'checkout' && selectedGateway && (
-            <div className="space-y-5">
-              <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-5 text-white text-center">
-                <p className="text-xs font-bold opacity-80 uppercase tracking-widest mb-1">Amount to Pay</p>
-                <p className="text-4xl font-black">{fmtBDT(price)}</p>
-              </div>
-              <div className="bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Send Payment To</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white flex items-center justify-center overflow-hidden shrink-0">
-                    <span className="text-xl">{METHOD_ICONS[selectedGateway.provider] || '💳'}</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-slate-900 dark:text-white">{selectedGateway.provider_name}</p>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-mono text-slate-700 dark:text-slate-300">{selectedGateway.account_number}</p>
-                      <button onClick={() => { navigator.clipboard.writeText(selectedGateway.account_number); toast.success('Copied!'); }} className="text-slate-400 hover:text-blue-600">
-                        <Copy size={13} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-4">
-                {selectedGateway.account_type !== 'corporate' && (
-                  <div>
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Sender Number *</label>
-                    <input type="tel" value={senderNumber} onChange={e => setSenderNumber(e.target.value)} placeholder="01XXXXXXXXX" className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500" />
-                  </div>
-                )}
-                <div>
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5">Transaction ID *</label>
-                  <input type="text" value={trxId} onChange={e => setTrxId(e.target.value)} placeholder="e.g. 8N7AB23KC1" className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-mono font-bold focus:outline-none focus:border-blue-500" />
-                </div>
-              </div>
-              <button onClick={handleSubmit} disabled={submitting || !trxId.trim()} className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black text-sm rounded-2xl transition-all flex items-center justify-center gap-2">
-                {submitting ? <><Loader2 size={16} className="animate-spin" /> Submitting...</> : <><Shield size={16} /> Submit Payment</>}
-              </button>
-            </div>
-          )}
-
-          {step === 'pending' && (
-            <div className="text-center py-6">
-              <div className="w-16 h-16 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto mb-4"><Clock size={28} className="text-amber-500" /></div>
-              <h3 className="text-lg font-black text-slate-900 dark:text-white">Payment Submitted!</h3>
-              <p className="text-sm text-slate-500 mt-2">Under review. Activated within 24 hours.</p>
-              <button onClick={onClose} className="mt-5 w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl">Back to Plans</button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Plan Card ─────────────────────────────────────────────────
-function PlanCard({ plan, billing, yearlyDiscount, isCurrentPlan, canDowngrade, onSelect, isFreePlan }: any) {
-  const monthlyPrice = plan.price ?? 0;
-  const yearlyPrice = plan.yearly_price ?? Math.round(monthlyPrice * 12 * (1 - yearlyDiscount / 100));
-  const price = billing === 'yearly' ? yearlyPrice : monthlyPrice;
-
-  // Parse tag e.g. "Popular:blue" -> label: "Popular", color: "blue"
-  const tagParts = plan.tag ? plan.tag.split(':') : [];
-  const tagLabel = tagParts[0] || null;
-  const tagColor = tagParts[1] || 'blue';
-  const theme = getColorTheme(tagColor);
-
-  const methods = Array.isArray(plan.allowed_method) ? plan.allowed_method : ['mobile'];
-  const methodLabels: Record<string, string> = { mobile: 'Mobile Banking', bank: 'Bank Transfer', crypto: 'Crypto', international: 'International' };
-
-  return (
-    <div className={`relative bg-white dark:bg-[#111827] border-2 rounded-[24px] p-6 flex flex-col transition-all duration-300
-      ${isCurrentPlan 
-        ? `border-blue-500 ring-4 ring-blue-500/10 shadow-xl shadow-blue-500/10 scale-[1.02]` 
-        : tagLabel ? theme.border : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'}`}>
-      
-      {/* Tag Badge on Border */}
-      {tagLabel && (
-        <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${theme.bg} text-white shadow-md`}>
-          {tagLabel}
-        </div>
-      )}
-
-      {/* Plan Header */}
-      <div className="mb-6 text-center mt-2">
-        <h3 className="text-xl font-bold text-slate-900 dark:text-white">{plan.name}</h3>
-        <div className="flex items-baseline justify-center gap-1 mt-3">
-          <span className={`text-4xl font-black ${isCurrentPlan ? 'text-blue-600' : theme.text}`}>{fmtBDT(price)}</span>
-          <span className="text-sm font-medium text-slate-500">/ {billing === 'yearly' ? 'yr' : 'mo'}</span>
-        </div>
-      </div>
-
-      {/* Features */}
-      <div className="flex-1 space-y-3.5 mb-8">
-        <FeatureRow theme={theme} label={plan.transaction_limit_monthly === 0 ? 'Unlimited transactions' : `${plan.transaction_limit_monthly.toLocaleString()} transactions/mo`} />
-        <FeatureRow theme={theme} label={`${plan.business_limit} business${plan.business_limit > 1 ? 'es' : ''}`} />
-        {plan.is_team_allowed && <FeatureRow theme={theme} label={`Team up to ${plan.allowed_team_members} members`} />}
-        <FeatureRow theme={theme} label={`${plan.device_limit} device${plan.device_limit > 1 ? 's' : ''}`} />
-        {methods.map((m: string) => <FeatureRow key={m} theme={theme} label={methodLabels[m] || m} />)}
-        {plan.allowed_telegram_group && <FeatureRow theme={theme} label="Telegram group alerts" />}
-        {plan.is_custom_bot_allowed && <FeatureRow theme={theme} label="Custom Telegram bot" />}
-      </div>
-
-      {/* Action Button */}
-      {isCurrentPlan ? (
-        <button className="w-full py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-sm font-bold cursor-default">
-          Current Plan
-        </button>
-      ) : isFreePlan ? (
-        <button className={`w-full py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-sm font-bold cursor-default`}>
-          Free Tier
-        </button>
-      ) : canDowngrade ? (
-        <button onClick={onSelect} className="w-full py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-all">
-          Downgrade
-        </button>
-      ) : (
-        <button onClick={onSelect} className={`w-full py-3.5 ${theme.bg} hover:opacity-90 text-white rounded-xl text-sm font-black transition-all shadow-lg`}>
-          Select Plan
-        </button>
-      )}
-    </div>
-  );
-}
-
-function FeatureRow({ label, theme }: { label: string, theme: any }) {
-  return (
-    <div className="flex items-start gap-3">
-      <CheckCircle size={18} className={`${theme.text} mt-0.5 shrink-0`} />
-      <span className="text-sm font-medium text-slate-600 dark:text-slate-300 leading-snug">{label}</span>
-    </div>
-  );
-}
-
-// ── Main Page ─────────────────────────────────────────────────
-export default function SubscriptionsPage() {
-  const [loading, setLoading] = useState(true);
-  const [merchant, setMerchant] = useState<Merchant | null>(null);
-  const [allPlans, setAllPlans] = useState<Plan[]>([]);
-  const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [orderHistory, setOrderHistory] = useState<AdminOrder[]>([]);
-  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
-  const [yearlyDiscount, setYearlyDiscount] = useState(20);
-  const [adminGateways, setAdminGateways] = useState<AdminGateway[]>([]);
-  const [paymentLogos, setPaymentLogos] = useState<PaymentLogo[]>([]);
-  const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const [plansRes, merchantRes, subRes, settingsRes, gatewaysRes, ordersRes, logosRes] = await Promise.all([
-        supabase.from('plans').select('*').order('serial', { ascending: true }),
-        supabase.from('merchants').select('*').eq('id', user.id).single(),
-        supabase.from('merchant_subscriptions').select('*').eq('merchant_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('site_settings').select('key_name, value').eq('key_name', 'subscription_discount_yearly').maybeSingle(),
-        supabase.from('admin_gateways').select('*').eq('status', 'active'),
-        supabase.from('admin_orders').select('*').eq('merchant_id', user.id).order('created_at', { ascending: false }).limit(20),
-        supabase.from('payment_logos').select('*'),
-      ]);
-
-      setMerchant(merchantRes.data);
-      setAllPlans(plansRes.data || []);
-      setSubscription(subRes.data || null);
-      setAdminGateways(gatewaysRes.data || []);
-      setOrderHistory(ordersRes.data || []);
-      setPaymentLogos(logosRes.data || []);
-      if (settingsRes.data?.value) setYearlyDiscount(parseInt(settingsRes.data.value) || 20);
-
-      const activePlanId = subRes.data?.plan_id || merchantRes.data?.plan_id;
-      if (activePlanId && plansRes.data) {
-        setCurrentPlan(plansRes.data.find((p: Plan) => p.id === activePlanId) || null);
-      }
-    } catch (e: any) { toast.error('Failed to load: ' + e.message); } 
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const days = daysLeft(subscription?.expires_at || null);
-  const isActive = subscription?.status === 'active';
-  const canDowngradeDays = days !== null && days <= 3;
-
-  if (loading) return (
-    <div className="min-h-[60vh] flex items-center justify-center">
-      <Loader2 size={36} className="animate-spin text-blue-600" />
-    </div>
-  );
-
-  return (
-    <>
-      <Toaster position="top-center" richColors />
-      {checkoutPlan && merchant && (
-        <CheckoutModal plan={checkoutPlan} billing={billing} price={billing === 'yearly' ? (checkoutPlan.yearly_price ?? Math.round((checkoutPlan.price ?? 0) * 12 * (1 - yearlyDiscount / 100))) : (checkoutPlan.price ?? 0)} adminGateways={adminGateways} paymentLogos={paymentLogos} merchant={merchant} onClose={() => setCheckoutPlan(null)} onSuccess={load} />
-      )}
-
-      <div className="max-w-6xl mx-auto space-y-8 pb-10">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
-            <CreditCard size={24} className="text-blue-600" />
-            Billing & Subscription
-          </h1>
-          <p className="text-sm font-medium text-slate-500 mt-1">Manage your usage, current plan, and payment methods.</p>
-        </div>
-
-        {/* Current Plan & Usage Dashboard */}
-        <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            {/* Left Box: Active Plan Status */}
-            <div className="border border-blue-200 dark:border-blue-900/50 rounded-2xl p-6 bg-blue-50/50 dark:bg-blue-900/10">
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <p className="text-sm font-bold text-slate-500 mb-1">Current Plan</p>
-                  <h2 className="text-2xl font-black text-slate-900 dark:text-white">{currentPlan?.name || 'Free Tier'}</h2>
-                </div>
-                {isActive ? (
-                  <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-black tracking-widest uppercase">Active</span>
-                ) : (
-                  <span className="px-3 py-1 bg-slate-200 text-slate-600 rounded-full text-xs font-black tracking-widest uppercase">Free / Expired</span>
-                )}
-              </div>
-              
-              <div className="space-y-2 mb-6">
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                  <span className="font-bold text-slate-900 dark:text-slate-200">Renewal Date:</span> {fmtDate(subscription?.expires_at || null)}
-                </p>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
-                  <span className="font-bold text-slate-900 dark:text-slate-200">Amount Paid:</span> {fmtBDT(subscription?.amount_paid || 0)}
-                </p>
-              </div>
-
-              {canDowngradeDays && (
-                <div className="flex items-start gap-2 text-amber-600 bg-amber-50 p-3 rounded-xl text-xs font-bold">
-                   <Info size={16} /> Downgrade is available since you are within 3 days of expiry.
-                </div>
-              )}
-            </div>
-
-            {/* Right Box: Usage Limits */}
-            <div className="p-2">
-              <h3 className="text-base font-black text-slate-900 dark:text-white mb-5 border-b pb-2 border-slate-100 dark:border-slate-800">Usage Overview</h3>
-              {currentPlan && merchant ? (
-                <>
-                  <UsageBar label="Monthly Transactions" used={merchant.transaction_count} limit={currentPlan.transaction_limit_monthly} />
-                  <UsageBar label="Businesses Used" used={merchant.business_count} limit={currentPlan.business_limit} />
-                  <UsageBar label="Team Members" used={merchant.team_member_count} limit={currentPlan.allowed_team_members} />
-                  <UsageBar label="Devices Connected" used={merchant.device_count} limit={currentPlan.device_limit} />
-                </>
-              ) : (
-                <p className="text-sm text-slate-500 font-medium">Please select a plan to view usage limits.</p>
-              )}
-            </div>
-
-          </div>
-        </div>
-
-        {/* Pricing Table Options */}
-        <div className="pt-4">
-          <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-            <h2 className="text-xl font-black text-slate-900 dark:text-white">Change or Upgrade Plan</h2>
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-              <button onClick={() => setBilling('monthly')} className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${billing === 'monthly' ? 'bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white' : 'text-slate-500'}`}>
-                Monthly
-              </button>
-              <button onClick={() => setBilling('yearly')} className={`px-5 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${billing === 'yearly' ? 'bg-white dark:bg-slate-700 shadow text-slate-900 dark:text-white' : 'text-slate-500'}`}>
-                Yearly <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Save {yearlyDiscount}%</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {allPlans.map(plan => {
-              const isCurrent = currentPlan?.id === plan.id && isActive;
-              const isDowngrade = plan.serial < (currentPlan?.serial ?? 0);
-              const isFree = (plan.price ?? 0) === 0;
-              return (
-                <PlanCard key={plan.id} plan={plan} billing={billing} yearlyDiscount={yearlyDiscount} isCurrentPlan={isCurrent} canDowngrade={isDowngrade && canDowngradeDays} isFreePlan={isFree} onSelect={() => !isFree && setCheckoutPlan(plan)} />
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Billing History */}
-        <div className="pt-8">
-          <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6">Billing History</h2>
-          <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
-            {orderHistory.length === 0 ? (
-              <div className="py-12 text-center text-slate-400"><History size={32} className="mx-auto mb-3 opacity-50" /><p className="text-sm font-bold">No history available</p></div>
-            ) : (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {orderHistory.map(order => (
-                  <div key={order.id} className="px-6 py-4 flex justify-between items-center hover:bg-slate-50 transition-colors">
-                    <div>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">{order.order_no}</p>
-                      <p className="text-xs text-slate-500 font-medium">{fmtDate(order.created_at)} • {order.billing_cycle === 'yearly' ? 'Annual' : 'Monthly'}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-black text-slate-900 dark:text-white">{fmtBDT(order.amount)}</p>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${STATUS_COLORS[order.status] || ''}`}>{order.status}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-      </div>
-    </>
-  );
-}
-</file>
-
 <file path="src/app/dashboard/settings/page.tsx">
 'use client';
 
@@ -20212,6 +19977,594 @@ export default function TeamSettingsPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/dashboard/subscriptions/page.tsx">
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import {
+  CreditCard, CheckCircle, Clock, Loader2, ChevronRight, 
+  Shield, Copy, Info, ArrowLeft, History, Lock
+} from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { toast, Toaster } from 'sonner';
+
+// Shadcn / Repomix UI Components 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+
+// ── Types ─────────────────────────────────────────────────────
+type Plan = {
+  id: string; name: string; price: number; yearly_price: number | null;
+  serial: number; tag: string | null; features: any; transaction_limit_monthly: number;
+  business_limit: number; allowed_method: any; is_team_allowed: boolean;
+  allowed_team_members: number; device_limit: number; allowed_telegram_group: boolean;
+  is_custom_bot_allowed: boolean;
+};
+
+type Subscription = {
+  id: string; plan_id: string; billing_cycle: string; amount_paid: number;
+  status: string; started_at: string; expires_at: string | null;
+  payment_method: string | null; payment_reference: string | null;
+};
+
+type AdminGateway = {
+  id: string; provider: string; provider_name: string; account_number: string;
+  account_type: string; branch_name: string | null;
+};
+
+type PaymentLogo = { method_name: string; logo_url: string; method_color: string | null };
+
+type AdminOrder = {
+  id: string; order_no: string; amount: number; billing_cycle: string;
+  payment_method: string; payment_reference: string; status: string;
+  created_at: string; plan_id: string; sender_number: string | null;
+};
+
+type Merchant = {
+  id: string; plan_id: string; business_count: number;
+  transaction_count: number; team_member_count: number; device_count: number;
+};
+
+// ── Helpers ───────────────────────────────────────────────────
+const fmtBDT = (n: number) => `৳${n.toLocaleString('en-IN')}`;
+const fmtDate = (d: string | null) => d ?
+  new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+const daysLeft = (exp: string | null) => {
+  if (!exp) return null;
+  const diff = new Date(exp).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diff / 86400000));
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  active: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800',
+  pending: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
+  expired: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800',
+  cancelled: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
+};
+
+const METHOD_ICONS: Record<string, string> = {
+  bkash: '💜', nagad: '🟠', rocket: '🟣', upay: '🟡', bank: '🏦',
+};
+
+const getColorTheme = (colorName: string) => {
+  const themes: Record<string, any> = {
+    blue: { border: 'border-blue-500', bg: 'bg-blue-600', text: 'text-blue-600', hover: 'hover:bg-blue-700', lightBg: 'bg-blue-50' },
+    emerald: { border: 'border-emerald-500', bg: 'bg-emerald-600', text: 'text-emerald-600', hover: 'hover:bg-emerald-700', lightBg: 'bg-emerald-50' },
+    purple: { border: 'border-purple-500', bg: 'bg-purple-600', text: 'text-purple-600', hover: 'hover:bg-purple-700', lightBg: 'bg-purple-50' },
+    amber: { border: 'border-amber-500', bg: 'bg-amber-500', text: 'text-amber-600', hover: 'hover:bg-amber-600', lightBg: 'bg-amber-50' },
+    slate: { border: 'border-slate-500', bg: 'bg-slate-800', text: 'text-slate-700', hover: 'hover:bg-slate-900', lightBg: 'bg-slate-100' }
+  };
+  return themes[colorName?.toLowerCase()] || themes.blue;
+};
+
+// ── Progress Bar UI Component ─────────────────────────────────
+function CustomUsageBar({ label, used = 0, limit = 0 }: { label: string, used: number, limit: number }) {
+  const isUnlimited = limit === 0;
+  const percentage = isUnlimited ? 0 : Math.min(100, (used / limit) * 100);
+  const displayLimit = isUnlimited ? 'Unlimited' : limit.toLocaleString();
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-muted-foreground font-medium">{label}</span>
+        <span className="font-bold">
+          {used.toLocaleString()} / {displayLimit} {!isUnlimited && `(${Math.round(percentage)}%)`}
+        </span>
+      </div>
+      <Progress value={isUnlimited ? 100 : percentage} className={isUnlimited ? "opacity-40" : ""} />
+    </div>
+  );
+}
+
+// ── Main Layout ───────────────────────────────────────────────
+export default function SubscriptionsPage() {
+  const [loading, setLoading] = useState(true);
+  const [merchant, setMerchant] = useState<Merchant | null>(null);
+  const [allPlans, setAllPlans] = useState<Plan[]>([]);
+  const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [orderHistory, setOrderHistory] = useState<AdminOrder[]>([]);
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
+  const [yearlyDiscount, setYearlyDiscount] = useState(20);
+  const [adminGateways, setAdminGateways] = useState<AdminGateway[]>([]);
+  const [paymentLogos, setPaymentLogos] = useState<PaymentLogo[]>([]);
+
+  // Working View State (Repomix System)
+  const [currentView, setCurrentView] = useState<"billing" | "checkout" | "pending_view">("billing");
+  const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
+  const [checkoutPrice, setCheckoutPrice] = useState<number>(0);
+
+  // Checkout Form States
+  const [selectedGateway, setSelectedGateway] = useState<AdminGateway | null>(null);
+  const [trxId, setTrxId] = useState('');
+  const [senderNumber, setSenderNumber] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const [plansRes, merchantRes, subRes, settingsRes, gatewaysRes, ordersRes, logosRes] = await Promise.all([
+        supabase.from('plans').select('*').order('serial', { ascending: true }),
+        supabase.from('merchants').select('*').eq('id', user.id).single(),
+        supabase.from('merchant_subscriptions').select('*').eq('merchant_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('site_settings').select('key_name, value').eq('key_name', 'subscription_discount_yearly').maybeSingle(),
+        supabase.from('admin_gateways').select('*').eq('status', 'active'),
+        supabase.from('admin_orders').select('*').eq('merchant_id', user.id).order('created_at', { ascending: false }).limit(20),
+        supabase.from('payment_logos').select('*'),
+      ]);
+
+      setMerchant(merchantRes.data);
+      setAllPlans(plansRes.data || []);
+      setSubscription(subRes.data || null);
+      setAdminGateways(gatewaysRes.data || []);
+      setOrderHistory(ordersRes.data || []);
+      setPaymentLogos(logosRes.data || []);
+      if (settingsRes.data?.value) setYearlyDiscount(parseInt(settingsRes.data.value) || 20);
+      
+      const activePlanId = subRes.data?.plan_id || merchantRes.data?.plan_id;
+      if (activePlanId && plansRes.data) {
+        setCurrentPlan(plansRes.data.find((p: Plan) => p.id === activePlanId) || null);
+      }
+    } catch (e: any) { 
+      toast.error('Failed to load: ' + e.message);
+    } finally { 
+      setLoading(false); 
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const getLogoUrl = (provider: string) => {
+    const found = paymentLogos.find((l: any) => l.method_name.toLowerCase() === provider.toLowerCase() || l.method_name.toLowerCase() === provider.toLowerCase().replace(/\s/g, ''));
+    return found?.logo_url || null;
+  };
+
+  const handleSelectPlan = (plan: Plan) => {
+    const price = billing === 'yearly' 
+      ? (plan.yearly_price ?? Math.round((plan.price ?? 0) * 12 * (1 - yearlyDiscount / 100))) 
+      : (plan.price ?? 0);
+    
+    setCheckoutPlan(plan);
+    setCheckoutPrice(price);
+    setSelectedGateway(null);
+    setTrxId('');
+    setSenderNumber('');
+    setCurrentView("checkout");
+  };
+
+  const handlePaymentSubmit = async () => {
+    if (!selectedGateway || !checkoutPlan || !merchant) return;
+    if (!trxId.trim()) { toast.error('Transaction ID is required.'); return; }
+    if (selectedGateway.account_type !== 'corporate' && !senderNumber.trim()) { 
+      toast.error('Sender number is required.'); 
+      return; 
+    }
+    
+    setSubmitting(true);
+    try {
+      const now = new Date();
+      const expiresAt = billing === 'yearly' ?
+        new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000) : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const orderNo = `ADM-${Date.now().toString(36).toUpperCase()}`;
+
+      const { data: newSub, error: subError } = await supabase.from('merchant_subscriptions').insert({
+        merchant_id: merchant.id, plan_id: checkoutPlan.id, billing_cycle: billing, amount_paid: checkoutPrice,
+        currency: 'BDT', status: 'pending', started_at: now.toISOString(), expires_at: expiresAt.toISOString(),
+        next_billing_at: expiresAt.toISOString(), payment_method: selectedGateway.provider, payment_reference: trxId.trim(),
+      }).select('*').single();
+      
+      if (subError) throw subError;
+
+      await supabase.from('admin_orders').insert({
+        merchant_id: merchant.id, plan_id: checkoutPlan.id, subscription_id: newSub?.id, order_no: orderNo,
+        amount: checkoutPrice, currency: 'BDT', billing_cycle: billing, payment_method: selectedGateway.provider,
+        payment_reference: trxId.trim(), gateway_used: selectedGateway.provider, status: 'pending',
+        sender_number: senderNumber.trim() || null, notes: `Gateway: ${selectedGateway.provider_name} | Account: ${selectedGateway.account_number}`,
+      });
+
+      setCurrentView("pending_view");
+      load();
+    } catch (e: any) {
+      toast.error('Submission failed: ' + e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const days = daysLeft(subscription?.expires_at || null);
+  const isActive = subscription?.status === 'active';
+  const canDowngradeDays = days !== null && days <= 3;
+
+  if (loading) return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <Loader2 size={36} className="animate-spin text-primary" />
+    </div>
+  );
+
+  // ── VIEW: SECURE CHECKOUT (Repomix Interface Style + Android Style Selection) ───
+  if (currentView === "checkout" && checkoutPlan) {
+    const localProviders = ['bkash', 'nagad', 'rocket', 'upay'];
+    const bdLocalGateways = adminGateways.filter(g => localProviders.includes(g.provider.toLowerCase()));
+    const globalGateways = adminGateways.filter(g => !localProviders.includes(g.provider.toLowerCase()));
+
+    return (
+      <div className="min-h-screen p-6">
+        <div className="max-w-6xl mx-auto">
+          <Button variant="ghost" onClick={() => setCurrentView("billing")} className="mb-6 -ml-4">
+            <ArrowLeft className="size-4 mr-2" /> Back to Billing
+          </Button>
+
+          <div className="grid lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Secure Checkout</CardTitle>
+                  <CardDescription>Complete your purchase securely. All transactions are encrypted.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  
+                  {/* Android Style Selection List */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Lock className="size-4 text-muted-foreground" />
+                      <Label className="text-base">Select Payment Provider</Label>
+                    </div>
+
+                    <RadioGroup 
+                      value={selectedGateway?.id || ""} 
+                      onValueChange={(id) => setSelectedGateway(adminGateways.find(g => g.id === id) || null)}
+                    >
+                      {bdLocalGateways.length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                            Local Mobile Wallet
+                            <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">Popular</Badge>
+                          </h4>
+                          {bdLocalGateways.map((gw) => {
+                            const logoUrl = getLogoUrl(gw.provider);
+                            const isSelected = selectedGateway?.id === gw.id;
+                            return (
+                              <label key={gw.id} className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all hover:border-primary/50 ${isSelected ? "border-primary bg-primary/5" : "border-border"}`}>
+                                <RadioGroupItem value={gw.id} id={gw.id} />
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center border bg-card overflow-hidden shrink-0">
+                                  {logoUrl ? <img src={logoUrl} alt={gw.provider_name} className="w-8 h-8 object-contain" /> : <span className="text-xl">{METHOD_ICONS[gw.provider] || '💳'}</span>}
+                                </div>
+                                <div className="flex-1">
+                                  <p className="font-bold text-sm">{gw.provider_name}</p>
+                                  <p className="text-xs text-muted-foreground capitalize">{gw.account_type} Account</p>
+                                </div>
+                                {isSelected && <CheckCircle className="size-5 text-primary" />}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {globalGateways.length > 0 && (
+                        <div className="space-y-3 pt-2">
+                          <h4 className="text-sm font-medium text-muted-foreground">Global/Bank Payment Methods</h4>
+                          {globalGateways.map((gw) => {
+                            const isSelected = selectedGateway?.id === gw.id;
+                            return (
+                              <label key={gw.id} className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all hover:border-primary/50 ${isSelected ? "border-primary bg-primary/5" : "border-border"}`}>
+                                <RadioGroupItem value={gw.id} id={gw.id} />
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center border bg-card shrink-0">
+                                  <span className="text-xl">{METHOD_ICONS[gw.provider] || '🏦'}</span>
+                                </div>
+                                <div className="flex-1">
+                                  <p className="font-bold text-sm">{gw.provider_name}</p>
+                                  <p className="text-xs text-muted-foreground capitalize">{gw.account_type}</p>
+                                </div>
+                                {isSelected && <CheckCircle className="size-5 text-primary" />}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </RadioGroup>
+                  </div>
+
+                  {/* Payment Details Input Fields */}
+                  {selectedGateway && (
+                    <div className="space-y-4 p-5 bg-muted/50 rounded-xl border border-dashed">
+                      <div className="flex justify-between items-start border-b pb-3 mb-2">
+                        <div>
+                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Send Payment To</p>
+                          <p className="text-base font-black mt-0.5">{selectedGateway.provider_name} ({selectedGateway.account_type})</p>
+                          <p className="text-base font-mono font-bold text-primary tracking-wide mt-1">{selectedGateway.account_number}</p>
+                        </div>
+                        <Button size="sm" variant="outline" className="h-8" onClick={() => { navigator.clipboard.writeText(selectedGateway.account_number); toast.success('Account number copied!'); }}>
+                          <Copy className="size-3.5 mr-1" /> Copy
+                        </Button>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4 pt-2">
+                        {selectedGateway.account_type !== 'corporate' && (
+                          <div className="space-y-2">
+                            <Label htmlFor="senderNum">Sender Wallet Number *</Label>
+                            <Input id="senderNum" type="tel" placeholder="e.g. 01XXXXXXXXX" value={senderNumber} onChange={e => setSenderNumber(e.target.value)} />
+                          </div>
+                        )}
+                        <div className="space-y-2">
+                          <Label htmlFor="transactionId">Transaction ID / Reference *</Label>
+                          <Input id="transactionId" placeholder="e.g. 8N7AB23KC1" className="font-mono uppercase font-bold" value={trxId} onChange={e => setTrxId(e.target.value)} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5"><Shield className="size-3.5" /> <span>SSL Encrypted Payment</span></div>
+                <Separator orientation="vertical" className="h-4" />
+                <div className="flex items-center gap-1.5"><Lock className="size-3.5" /> <span>Secured Verification</span></div>
+              </div>
+            </div>
+
+            {/* Order Invoice Sidebar */}
+            <div className="lg:col-span-1">
+              <Card className="sticky top-6 border-primary/20 shadow-md">
+                <CardHeader><CardTitle>Order Summary</CardTitle></CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Plan Selected</span><span className="font-bold">{checkoutPlan.name}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Billing Cycle</span><span className="font-medium capitalize">{billing}</span></div>
+                    <Separator />
+                    <div className="flex justify-between text-base font-black"><span>Total Amount</span><span>{fmtBDT(checkoutPrice)}</span></div>
+                  </div>
+
+                  <Button className="w-full h-11 text-white font-bold" size="lg" disabled={submitting || !selectedGateway || !trxId.trim()} onClick={handlePaymentSubmit}>
+                    {submitting ? <><Loader2 className="size-4 mr-2 animate-spin" /> Verifying...</> : <><Shield className="size-4 mr-2" /> Submit Verification</>}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── VIEW: PENDING SCREEN (Repomix Interface Style) ───────────
+  if (currentView === "pending_view") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <Card className="w-full max-w-md text-center p-6 rounded-3xl shadow-xl border-primary/20">
+          <CardContent className="pt-6 space-y-5">
+            <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto">
+              <Clock size={32} className="text-amber-500" />
+            </div>
+            <h3 className="text-xl font-black">Payment Verification Submitted!</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">Your transaction is currently under manual audit. The premium dashboard features will activate within 24 hours.</p>
+            <Button className="w-full" onClick={() => setCurrentView("billing")}>Return to Dashboard</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ── VIEW: MAIN BILLING DASHBOARD (Repomix Layout Grid) ────────
+  return (
+    <div className="min-h-screen p-6">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <Toaster position="top-center" richColors />
+        
+        {/* Header */}
+        <div className="space-y-1">
+          <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
+            <CreditCard className="size-6 text-primary" /> Billing & Subscription
+          </h1>
+          <p className="text-muted-foreground text-sm">Manage your operational metrics, live plan, and localized transaction receipts.</p>
+        </div>
+
+        {/* Current Plan Status & Live Metrics Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-1 border-primary/20 bg-gradient-to-br from-card to-primary/5 shadow-sm">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Active Plan</p>
+                <Badge variant={isActive ? "default" : "secondary"}>
+                  {isActive ? "Active" : "Free / Expired"}
+                </Badge>
+              </div>
+              <CardTitle className="text-2xl font-black pt-2">{currentPlan?.name || 'Free Tier'}</CardTitle>
+              <CardDescription className="text-xs pt-1">Renewal Date: {fmtDate(subscription?.expires_at || null)}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="pt-2">
+                <span className="text-3xl font-black">{fmtBDT(subscription?.amount_paid || 0)}</span>
+                <span className="text-xs text-muted-foreground font-medium ml-1">Paid this cycle</span>
+              </div>
+              {canDowngradeDays && (
+                <div className="flex items-start gap-2 text-amber-700 bg-amber-500/10 p-3 rounded-xl text-xs font-semibold border border-amber-500/20">
+                  <Info size={14} className="shrink-0 mt-0.5" /> <span>Downgrade is active as your subscription expires within 3 days.</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Usage Metrics */}
+          <Card className="lg:col-span-2 shadow-sm">
+            <CardHeader className="pb-3"><CardTitle className="text-base font-black">Live Usage Overview</CardTitle></CardHeader>
+            <CardContent className="grid md:grid-cols-2 gap-5 pt-1">
+              {currentPlan && merchant ? (
+                <>
+                  <CustomUsageBar label="Monthly Transactions" used={merchant.transaction_count} limit={currentPlan.transaction_limit_monthly} />
+                  <CustomUsageBar label="Businesses Created" used={merchant.business_count} limit={currentPlan.business_limit} />
+                  <CustomUsageBar label="Team Management" used={merchant.team_member_count} limit={currentPlan.allowed_team_members} />
+                  <CustomUsageBar label="Active Hardware Devices" used={merchant.device_count} limit={currentPlan.device_limit} />
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground col-span-2">Select an tier plan structure below to view account metrics.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Upgrade / Pricing Strategy Grid */}
+        <div className="space-y-6 pt-2">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-xl font-black">Upgrade or Modify Plan Structure</h2>
+              <p className="text-muted-foreground text-xs">Scale your workspace boundaries instantly with localized mobile billing nodes.</p>
+            </div>
+
+            {/* Cycle Toggle Layout */}
+            <div className="flex bg-muted p-1 rounded-lg border shrink-0">
+              <button onClick={() => setBilling('monthly')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${billing === 'monthly' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                Monthly
+              </button>
+              <button onClick={() => setBilling('yearly')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${billing === 'yearly' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                Yearly <Badge className="bg-primary/20 text-primary text-[9px] px-1.5 py-0 border-0">Save {yearlyDiscount}%</Badge>
+              </button>
+            </div>
+          </div>
+
+          {/* Pricing Grid */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {allPlans.map(plan => {
+              const isCurrentPlan = currentPlan?.id === plan.id && isActive;
+              const isDowngrade = plan.serial < (currentPlan?.serial ?? 0);
+              const isFreePlan = (plan.price ?? 0) === 0;
+
+              const monthlyPrice = plan.price ?? 0;
+              const yearlyPrice = plan.yearly_price ?? Math.round(monthlyPrice * 12 * (1 - yearlyDiscount / 100));
+              const targetedPrice = billing === 'yearly' ? yearlyPrice : monthlyPrice;
+
+              const tagParts = plan.tag ? plan.tag.split(':') : [];
+              const tagLabel = tagParts[0] || null;
+              const theme = getColorTheme(tagParts[1] || 'blue');
+              const methods = Array.isArray(plan.allowed_method) ? plan.allowed_method : ['mobile'];
+              const methodLabels: Record<string, string> = { mobile: 'Mobile Wallets', bank: 'Bank Transfer', crypto: 'Crypto Terminal' };
+
+              return (
+                <Card key={plan.id} className={`relative flex flex-col justify-between rounded-3xl overflow-hidden transition-all duration-300 ${isCurrentPlan ? "border-2 border-primary shadow-lg scale-[1.01]" : tagLabel ? `border-2 ${theme.border}` : "border-border"}`}>
+                  {tagLabel && (
+                    <div className={`absolute -top-0 left-1/2 -translate-x-1/2 px-3 py-1 rounded-b-xl text-[9px] font-black uppercase tracking-wider ${theme.bg} text-white shadow-sm`}>
+                      {tagLabel}
+                    </div>
+                  )}
+
+                  <CardHeader className="text-center pt-8">
+                    <CardTitle className="text-lg font-bold">{plan.name}</CardTitle>
+                    <div className="pt-3 flex items-baseline justify-center gap-1">
+                      <span className={`text-3xl font-black ${isCurrentPlan ? "text-primary" : theme.text}`}>{fmtBDT(targetedPrice)}</span>
+                      <span className="text-xs text-muted-foreground font-medium">/{billing === 'yearly' ? 'yr' : 'mo'}</span>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-6 flex-1 flex flex-col justify-between">
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-center gap-2 text-xs font-medium"><CheckCircle size={14} className={theme.text} /> <span>{plan.transaction_limit_monthly === 0 ? 'Unlimited transactions' : `${plan.transaction_limit_monthly.toLocaleString()} Tx/Month`}</span></div>
+                      <div className="flex items-center gap-2 text-xs font-medium"><CheckCircle size={14} className={theme.text} /> <span>{plan.business_limit} Registered Workspaces</span></div>
+                      {plan.is_team_allowed && <div className="flex items-center gap-2 text-xs font-medium"><CheckCircle size={14} className={theme.text} /> <span>Up to {plan.allowed_team_members} Corporate Seats</span></div>}
+                      <div className="flex items-center gap-2 text-xs font-medium"><CheckCircle size={14} className={theme.text} /> <span>{plan.device_limit} Allowed Sync Devices</span></div>
+                      {plan.allowed_telegram_group && <div className="flex items-center gap-2 text-xs font-medium"><CheckCircle size={14} className={theme.text} /> <span>Telegram Broadcast Nodes</span></div>}
+                      {plan.is_custom_bot_allowed && <div className="flex items-center gap-2 text-xs font-medium"><CheckCircle size={14} className={theme.text} /> <span>Custom API Bot Integration</span></div>}
+                      {methods.map((m: string) => <div key={m} className="flex items-center gap-2 text-xs font-medium"><CheckCircle size={14} className={theme.text} /> <span>{methodLabels[m] || m} Allowed</span></div>)}
+                    </div>
+
+                    <div className="pt-4">
+                      {isCurrentPlan ? (
+                        <Button className="w-full h-10 font-bold" variant="secondary" disabled>Current Active Plan</Button>
+                      ) : isFreePlan ? (
+                        <Button className="w-full h-10 font-bold" variant="outline" disabled>Default Workspace Tier</Button>
+                      ) : (isDowngrade && !canDowngradeDays) ? (
+                        <Button className="w-full h-10" variant="outline" disabled>Downgrade Locked</Button>
+                      ) : (
+                        <Button className={`w-full h-10 font-bold text-white shadow-sm ${theme.bg} ${theme.hover}`} onClick={() => handleSelectPlan(plan)}>
+                          {isDowngrade ? 'Downgrade Account' : 'Upgrade Plan'}
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Localized Invoicing Billing History List */}
+        <Card className="rounded-2xl shadow-sm overflow-hidden">
+          <CardHeader>
+            <CardTitle className="text-base font-black flex items-center gap-2"><History className="size-4" /> Account Ledger / Billing History</CardTitle>
+            <CardDescription>Track and review verified network invoices generated by your account workspace.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            {orderHistory.length === 0 ? (
+              <div className="py-12 text-center text-muted-foreground space-y-2">
+                <History size={32} className="mx-auto opacity-30" />
+                <p className="text-sm font-bold">No verified statement instances available</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    <TableHead className="pl-6">Invoice Token</TableHead>
+                    <TableHead>Created Date</TableHead>
+                    <TableHead>Terms</TableHead>
+                    <TableHead>Settlement Amount</TableHead>
+                    <TableHead className="pr-6 text-right">Verification State</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {orderHistory.map((order) => (
+                    <TableRow key={order.id} className="transition-all">
+                      <TableCell className="font-mono text-xs font-bold pl-6 text-primary">{order.order_no}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs font-medium">{fmtDate(order.created_at)}</TableCell>
+                      <TableCell className="capitalize text-xs font-semibold">{order.billing_cycle} Cycle</TableCell>
+                      <TableCell className="font-bold text-xs">{fmtBDT(order.amount)}</TableCell>
+                      <TableCell className="pr-6 text-right">
+                        <Badge variant="outline" className={`text-[10px] font-black uppercase tracking-wider ${STATUS_COLORS[order.status] || ''}`}>
+                          {order.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+      </div>
     </div>
   );
 }
