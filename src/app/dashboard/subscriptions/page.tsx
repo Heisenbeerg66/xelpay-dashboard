@@ -3,18 +3,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   CreditCard, CheckCircle, Clock, Loader2, ArrowLeft, 
-  Shield, Copy, Info, History, Lock, Crown, Download, CheckCircle2, ChevronRight
+  Shield, Copy, Info, History, Lock, Crown, Download, CheckCircle2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast, Toaster } from 'sonner';
 import { downloadInvoice } from '@/lib/pdfGenerator';
 
-// ── Types ──
+// ── Types (Strictly matched with your SQL Schema) ──
 type Plan = { id: string; name: string; price: number; yearly_price: number | null; serial: number; tag: string | null; transaction_limit_monthly: number; business_limit: number; allowed_method: any; is_team_allowed: boolean; allowed_team_members: number; device_limit: number; allowed_telegram_group: boolean; is_custom_bot_allowed: boolean; };
 type Subscription = { id: string; plan_id: string; billing_cycle: string; amount_paid: number; status: string; expires_at: string | null; };
 type AdminGateway = { id: string; provider: string; provider_name: string; account_number: string; account_type: string; };
 type AdminOrder = { id: string; order_no: string; amount: number; billing_cycle: string; payment_method: string; payment_reference: string; status: string; created_at: string; };
-type Merchant = { id: string; plan_id: string; business_count: number; transaction_count: number; team_member_count: number; device_count: number; business_name?: string; email?: string; };
+type Merchant = { id: string; plan_id: string; business_count: number; transaction_count: number; team_member_count: number; device_count: number; };
 
 const fmtBDT = (n: number) => `৳${n.toLocaleString('en-IN')}`;
 const fmtDate = (d: string | null) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -44,9 +44,9 @@ function CustomUsageBar({ label, used = 0, limit = 0 }: { label: string, used: n
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
-        <span className="text-slate-500 dark:text-slate-400 font-bold">{label}</span>
+        <span className="text-slate-600 dark:text-slate-400 font-bold">{label}</span>
         <span className="font-bold text-slate-900 dark:text-white">
-          {displayUsed} / {displayLimit} {!isUnlimited && <span className="text-slate-400 text-xs ml-1 font-medium">({Math.round(percentage)}%)</span>}
+          {displayUsed} / {displayLimit} {!isUnlimited && <span className="text-slate-400 dark:text-slate-500 text-xs ml-1 font-medium">({Math.round(percentage)}%)</span>}
         </span>
       </div>
       <div className={`h-2.5 w-full rounded-full overflow-hidden ${isUnlimited ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
@@ -62,6 +62,7 @@ function CustomUsageBar({ label, used = 0, limit = 0 }: { label: string, used: n
 
 export default function SubscriptionsPage() {
   const [loading, setLoading] = useState(true);
+  const [authUser, setAuthUser] = useState<any>(null);
   const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [allPlans, setAllPlans] = useState<Plan[]>([]);
   const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
@@ -82,68 +83,100 @@ export default function SubscriptionsPage() {
   const [trxId, setTrxId] = useState('');
   const [senderNumber, setSenderNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [discountAmount, setDiscountAmount] = useState(0);
 
+  // Load Data
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setAuthUser(user);
 
+      // Strictly fetching ONLY actual columns based on your SQL
       const [plansRes, merchantRes, subRes, gatewaysRes, ordersRes, logosRes] = await Promise.all([
         supabase.from('plans').select('*').order('serial', { ascending: true }),
-        supabase.from('merchants').select('*, business_name, email').eq('id', user.id).single(),
+        supabase.from('merchants').select('*').eq('id', user.id).single(),
         supabase.from('merchant_subscriptions').select('*').eq('merchant_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
         supabase.from('admin_gateways').select('*').eq('status', 'active'),
         supabase.from('admin_orders').select('*').eq('merchant_id', user.id).order('created_at', { ascending: false }),
         supabase.from('payment_logos').select('*'),
       ]);
 
-      setMerchant(merchantRes.data);
-      setAllPlans(plansRes.data || []);
-      setSubscription(subRes.data || null);
-      setAdminGateways(gatewaysRes.data || []);
-      setOrderHistory(ordersRes.data || []);
-      setPaymentLogos(logosRes.data || []);
+      if (merchantRes.data) setMerchant(merchantRes.data);
+      if (plansRes.data) setAllPlans(plansRes.data);
+      if (subRes.data) setSubscription(subRes.data);
+      if (gatewaysRes.data) setAdminGateways(gatewaysRes.data);
+      if (ordersRes.data) setOrderHistory(ordersRes.data);
+      if (logosRes.data) setPaymentLogos(logosRes.data);
       
       const activePlanId = subRes.data?.plan_id || merchantRes.data?.plan_id;
       if (activePlanId && plansRes.data) setCurrentPlan(plansRes.data.find((p: Plan) => p.id === activePlanId) || null);
-    } catch (e: any) { toast.error('Failed to load data'); } 
-    finally { setLoading(false); }
+    } catch (e: any) { 
+      toast.error('Failed to load data. Please refresh.'); 
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Mobile Hardware Back Button Handling (popstate)
+  useEffect(() => {
+    const handlePopState = () => {
+      if (currentView !== 'billing') {
+        setCurrentView('billing');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentView]);
+
+  const switchView = (view: any) => {
+    if (view !== 'billing') {
+      window.history.pushState({ page: view }, '');
+    } else {
+      window.history.pushState(null, '', window.location.pathname);
+    }
+    setCurrentView(view);
+  };
 
   const handleSelectPlan = (plan: Plan) => {
     const price = billing === 'yearly' ? (plan.yearly_price ?? Math.round((plan.price ?? 0) * 12 * 0.8)) : (plan.price ?? 0);
     setCheckoutPlan(plan);
     setCheckoutPrice(price);
-    setSelectedGateway(null); setTrxId(''); setSenderNumber(''); setDiscountAmount(0);
-    setCurrentView("checkout");
+    setSelectedGateway(null); setTrxId(''); setSenderNumber('');
+    switchView("checkout");
   };
 
-  // ── SECURE API VERIFICATION ──
+  // ── SECURE API VERIFICATION (Connects to your admin_sms_data logic) ──
   const handlePaymentSubmit = async () => {
-    if (!selectedGateway || !checkoutPlan || !merchant) return;
-    if (!trxId.trim()) { toast.error("Transaction ID is required."); return; }
-    if (selectedGateway.account_type !== 'corporate' && !senderNumber.trim()) { toast.error("Sender number is required."); return; }
+    if (!merchant || !checkoutPlan) { toast.error("Data missing. Please refresh."); return; }
+    if (!selectedGateway) { toast.error("Please select a payment provider."); return; }
+    if (!trxId.trim()) { toast.error("Transaction ID is required!"); return; }
+    if (selectedGateway.account_type !== 'corporate' && !senderNumber.trim()) { toast.error("Sender Number is required!"); return; }
     
     setSubmitting(true);
 
     try {
-      // ✅ Update kora v1 endpoint
+      // Calling your API v1 route
       const response = await fetch('/api/v1/verify-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          merchant, plan: checkoutPlan, gateway: selectedGateway, trxId, senderNumber, amount: checkoutPrice, billingCycle: billing, discountAmount
+          merchant: merchant, 
+          plan: checkoutPlan, 
+          gateway: selectedGateway, 
+          trxId, 
+          senderNumber, 
+          amount: checkoutPrice, 
+          billingCycle: billing, 
+          discountAmount: 0,
+          userEmail: authUser?.email // Passing Auth Email for Invoice
         })
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        toast.error(data.error || "Payment verification failed!");
+        toast.error(data.error || "Verification failed! Please check your details.");
         setSubmitting(false);
         return;
       }
@@ -152,15 +185,15 @@ export default function SubscriptionsPage() {
       
       if (data.status === 'paid' || data.status === 'active') {
         toast.success("Payment Verified! Plan Activated.");
-        setCurrentView("success_view");
+        switchView("success_view");
       } else {
         toast.success("Order Placed. Pending manual verification.");
-        setCurrentView("pending_view");
+        switchView("pending_view");
       }
       
-      load();
+      load(); // Reload to update UI
     } catch (e: any) {
-      toast.error('Network error during submission.');
+      toast.error('Network error during submission. Try again.');
     } finally {
       setSubmitting(false);
     }
@@ -175,25 +208,25 @@ export default function SubscriptionsPage() {
   if (currentView === "success_view" && successOrder) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center animate-in zoom-in-95 duration-500 p-4">
-        <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-3xl p-8 shadow-2xl border border-slate-200 dark:border-slate-800">
+        <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-3xl p-8 shadow-xl border border-slate-200 dark:border-slate-800">
           <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 size={40} className="text-emerald-600 dark:text-emerald-400" />
           </div>
           <h3 className="text-2xl font-black text-center text-slate-900 dark:text-white mb-2">Payment Successful</h3>
           <p className="text-center text-slate-500 dark:text-slate-400 text-sm mb-6">Your plan has been activated instantly.</p>
           
-          <div className="bg-slate-50 dark:bg-[#0B1120] rounded-2xl p-5 mb-8 border border-slate-100 dark:border-slate-800 space-y-3">
-            <div className="flex justify-between text-sm"><span className="text-slate-500">Order No</span><span className="font-bold text-slate-900 dark:text-white">{successOrder.order_no}</span></div>
-            <div className="flex justify-between text-sm"><span className="text-slate-500">Plan</span><span className="font-bold text-slate-900 dark:text-white">{checkoutPlan?.name}</span></div>
-            <div className="flex justify-between text-sm"><span className="text-slate-500">Amount Paid</span><span className="font-black text-blue-600">{fmtBDT(successOrder.amount)}</span></div>
-            <div className="flex justify-between text-sm"><span className="text-slate-500">Transaction ID</span><span className="font-mono text-slate-900 dark:text-white">{successOrder.payment_reference}</span></div>
+          <div className="bg-slate-50 dark:bg-[#0B1120] rounded-2xl p-5 mb-8 border border-slate-200 dark:border-slate-800 space-y-3">
+            <div className="flex justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Order No</span><span className="font-bold text-slate-900 dark:text-white">{successOrder.order_no}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Plan</span><span className="font-bold text-slate-900 dark:text-white">{checkoutPlan?.name}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Amount Paid</span><span className="font-black text-blue-600 dark:text-blue-400">{fmtBDT(successOrder.amount)}</span></div>
+            <div className="flex justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Transaction ID</span><span className="font-mono text-slate-900 dark:text-white">{successOrder.payment_reference}</span></div>
           </div>
 
           <div className="space-y-3">
-            <button onClick={() => downloadInvoice(successOrder, merchant)} className="w-full bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 py-3.5 rounded-xl font-bold text-sm hover:bg-blue-100 transition-all flex items-center justify-center gap-2">
+            <button onClick={() => downloadInvoice(successOrder, { ...merchant, email: authUser?.email })} className="w-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 py-3.5 rounded-xl font-bold text-sm hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all flex items-center justify-center gap-2">
               <Download size={18} /> Download Invoice
             </button>
-            <button onClick={() => setCurrentView("billing")} className="w-full bg-blue-600 text-white shadow-lg shadow-blue-600/30 py-3.5 rounded-xl font-bold text-sm hover:bg-blue-700 transition-all">
+            <button onClick={() => switchView("billing")} className="w-full bg-blue-600 text-white shadow-lg shadow-blue-600/30 py-3.5 rounded-xl font-bold text-sm hover:bg-blue-700 transition-all">
               Manage Subscription
             </button>
           </div>
@@ -202,7 +235,7 @@ export default function SubscriptionsPage() {
     );
   }
 
-  // ── CHECKOUT VIEW (Fixed Mobile Overflow) ──
+  // ── CHECKOUT VIEW (50/50 Grid & Dark Mode Inputs Fixed) ──
   if (currentView === "checkout" && checkoutPlan) {
     const localProviders = ['bkash', 'nagad', 'rocket', 'upay'];
     const bdLocalGateways = adminGateways.filter(g => localProviders.includes(g.provider.toLowerCase()));
@@ -210,13 +243,16 @@ export default function SubscriptionsPage() {
 
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 p-2 md:p-0 max-w-6xl mx-auto">
-        <button onClick={() => setCurrentView("billing")} className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-blue-600 mb-6 transition-colors">
+        <button onClick={() => switchView("billing")} className="flex items-center gap-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 mb-6 transition-colors">
           <ArrowLeft size={16} /> Back to Billing
         </button>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white dark:bg-[#111827] rounded-3xl p-5 md:p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
+        {/* 50/50 Layout for Desktop */}
+        <div className="grid lg:grid-cols-2 gap-8">
+          
+          {/* Left Side: Methods */}
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-[#111827] rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Secure Checkout</h2>
               
               <div className="space-y-4 mt-6">
@@ -225,16 +261,16 @@ export default function SubscriptionsPage() {
                     const isSelected = selectedGateway?.id === gw.id;
                     const logoUrl = paymentLogos.find(l => l.method_name.toLowerCase() === gw.provider.toLowerCase())?.logo_url;
                     return (
-                      <div key={gw.id} onClick={() => setSelectedGateway(gw)} className={`flex items-center gap-3 md:gap-4 p-4 rounded-2xl cursor-pointer transition-all border-2 ${isSelected ? "border-blue-600 bg-blue-50 dark:bg-blue-900/10 shadow-sm" : "border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827]"}`}>
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? 'border-blue-600' : 'border-slate-300'}`}>
+                      <div key={gw.id} onClick={() => setSelectedGateway(gw)} className={`flex items-center gap-3 md:gap-4 p-4 rounded-2xl cursor-pointer transition-all border-2 ${isSelected ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20 shadow-sm" : "border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827]"}`}>
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? 'border-blue-600' : 'border-slate-300 dark:border-slate-600'}`}>
                           {isSelected && <div className="w-2.5 h-2.5 bg-blue-600 rounded-full" />}
                         </div>
-                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center bg-slate-50 dark:bg-[#0B1120] border border-slate-100 shrink-0">
-                          {logoUrl ? <img src={logoUrl} alt="" className="w-7 h-7 md:w-8 md:h-8 object-contain" /> : <span className="text-xl">💳</span>}
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 dark:bg-[#0B1120] border border-slate-100 dark:border-slate-800 shrink-0">
+                          {logoUrl ? <img src={logoUrl} alt="" className="w-8 h-8 object-contain" /> : <span className="text-xl">💳</span>}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm md:text-base text-slate-900 dark:text-white truncate">{gw.provider_name}</p>
-                          <p className="text-[11px] md:text-xs text-slate-500 capitalize truncate">{gw.account_type} Account</p>
+                          <p className="font-bold text-base text-slate-900 dark:text-white truncate">{gw.provider_name}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 capitalize truncate">{gw.account_type} Account</p>
                         </div>
                       </div>
                     );
@@ -243,18 +279,18 @@ export default function SubscriptionsPage() {
 
                 {globalGateways.length > 0 && (
                    <div className="space-y-3 mt-6">
-                      <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest mb-2">Bank / Global Payment</h4>
+                      <h4 className="text-sm font-bold text-slate-700 dark:text-slate-400 uppercase tracking-widest mb-2">Bank / Global Payment</h4>
                       {globalGateways.map((gw) => {
                         const isSelected = selectedGateway?.id === gw.id;
                         return (
-                          <div key={gw.id} onClick={() => setSelectedGateway(gw)} className={`flex items-center gap-3 md:gap-4 p-4 rounded-2xl cursor-pointer transition-all border-2 ${isSelected ? "border-blue-600 bg-blue-50 dark:bg-blue-900/10" : "border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827]"}`}>
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? 'border-blue-600' : 'border-slate-300'}`}>
+                          <div key={gw.id} onClick={() => setSelectedGateway(gw)} className={`flex items-center gap-3 md:gap-4 p-4 rounded-2xl cursor-pointer transition-all border-2 ${isSelected ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20" : "border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827]"}`}>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? 'border-blue-600' : 'border-slate-300 dark:border-slate-600'}`}>
                               {isSelected && <div className="w-2.5 h-2.5 bg-blue-600 rounded-full" />}
                             </div>
-                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center bg-slate-50 dark:bg-[#0B1120] border border-slate-100 shrink-0"><span className="text-xl">🏦</span></div>
+                            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 dark:bg-[#0B1120] border border-slate-100 dark:border-slate-800 shrink-0"><span className="text-xl">🏦</span></div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-bold text-sm md:text-base text-slate-900 dark:text-white truncate">{gw.provider_name}</p>
-                              <p className="text-[11px] md:text-xs text-slate-500 capitalize truncate">{gw.account_type}</p>
+                              <p className="font-bold text-base text-slate-900 dark:text-white truncate">{gw.provider_name}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 capitalize truncate">{gw.account_type}</p>
                             </div>
                           </div>
                         );
@@ -263,27 +299,28 @@ export default function SubscriptionsPage() {
                 )}
               </div>
 
+              {/* Verified Input Fields (Dark Mode Handled Perfectly) */}
               {selectedGateway && (
                 <div className="mt-8 space-y-4 p-5 md:p-6 bg-slate-50 dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in">
                   <div className="flex justify-between items-start border-b border-slate-200 dark:border-slate-800 pb-4 mb-4">
                     <div className="min-w-0 pr-2">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Send Payment To</p>
+                      <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Send Payment To</p>
                       <p className="text-sm md:text-lg font-bold text-slate-900 dark:text-white mt-1 truncate">{selectedGateway.provider_name}</p>
-                      <p className="text-lg md:text-2xl font-mono font-black text-blue-600 tracking-wide mt-1 truncate">{selectedGateway.account_number}</p>
+                      <p className="text-lg md:text-2xl font-mono font-black text-blue-600 dark:text-blue-400 tracking-wide mt-1 truncate">{selectedGateway.account_number}</p>
                     </div>
-                    <button onClick={() => { navigator.clipboard.writeText(selectedGateway.account_number); toast.success('Copied!'); }} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold shrink-0">Copy</button>
+                    <button onClick={() => { navigator.clipboard.writeText(selectedGateway.account_number); toast.success('Copied!'); }} className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 shrink-0 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">Copy</button>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4 pt-2">
                     {selectedGateway.account_type !== 'corporate' && (
                       <div className="space-y-2">
-                        <label className="text-[11px] font-black text-slate-500 uppercase">Sender Number *</label>
-                        <input type="tel" value={senderNumber} onChange={e => setSenderNumber(e.target.value)} placeholder="01XXXXXXXXX" className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-500" />
+                        <label className="text-[11px] font-black text-slate-600 dark:text-slate-400 uppercase">Sender Number *</label>
+                        <input type="tel" value={senderNumber} onChange={e => setSenderNumber(e.target.value)} placeholder="e.g. 01XXXXXXXXX" className="w-full px-4 py-3 bg-white dark:bg-[#111827] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 dark:focus:border-blue-500" />
                       </div>
                     )}
                     <div className="space-y-2">
-                      <label className="text-[11px] font-black text-slate-500 uppercase">Transaction ID *</label>
-                      <input value={trxId} onChange={e => setTrxId(e.target.value)} placeholder="TRX..." className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-blue-500 font-mono uppercase" />
+                      <label className="text-[11px] font-black text-slate-600 dark:text-slate-400 uppercase">Transaction ID *</label>
+                      <input value={trxId} onChange={e => setTrxId(e.target.value)} placeholder="e.g. 8N7AB23KC1" className="w-full px-4 py-3 bg-white dark:bg-[#111827] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 dark:focus:border-blue-500 font-mono uppercase" />
                     </div>
                   </div>
                 </div>
@@ -291,19 +328,20 @@ export default function SubscriptionsPage() {
             </div>
           </div>
 
+          {/* Right Side: Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-[#111827] rounded-3xl p-6 border border-slate-200 shadow-sm sticky top-24">
-              <h3 className="text-sm font-bold uppercase tracking-widest mb-6">Order Summary</h3>
+            <div className="bg-white dark:bg-[#111827] rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm sticky top-24">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-widest mb-6">Order Summary</h3>
               <div className="space-y-4 mb-6">
-                <div className="flex justify-between text-sm"><span className="text-slate-500">Plan</span><span className="font-bold">{checkoutPlan.name}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-slate-500">Subtotal</span><span className="font-bold">{fmtBDT(checkoutPrice)}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Plan</span><span className="font-bold text-slate-900 dark:text-white">{checkoutPlan.name}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Subtotal</span><span className="font-bold text-slate-900 dark:text-white">{fmtBDT(checkoutPrice)}</span></div>
               </div>
-              <div className="h-px bg-slate-100 w-full mb-6" />
+              <div className="h-px bg-slate-100 dark:bg-slate-800 w-full mb-6" />
               <div className="flex items-center justify-between mb-8">
-                <span className="text-base font-bold">Total Pay</span>
-                <span className="text-2xl font-black text-blue-600">{fmtBDT(checkoutPrice)}</span>
+                <span className="text-base font-bold text-slate-900 dark:text-white">Total Pay</span>
+                <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{fmtBDT(checkoutPrice)}</span>
               </div>
-              <button onClick={handlePaymentSubmit} disabled={submitting || !selectedGateway || !trxId.trim()} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-sm hover:bg-blue-700 flex justify-center items-center gap-2 disabled:opacity-50">
+              <button onClick={handlePaymentSubmit} disabled={submitting || !selectedGateway || !trxId.trim()} className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-sm hover:bg-blue-700 flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                 {submitting ? <Loader2 className="animate-spin size-4" /> : <Shield className="size-4" />} Verify & Purchase
               </button>
             </div>
@@ -312,16 +350,15 @@ export default function SubscriptionsPage() {
       </div>
     );
   }
-
-  // ── VIEW: PENDING SCREEN ───────────
+    // ── VIEW: PENDING SCREEN ───────────
   if (currentView === "pending_view") {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center animate-in zoom-in-95 duration-500">
+      <div className="min-h-[70vh] flex items-center justify-center animate-in zoom-in-95 duration-500 p-4">
         <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-3xl p-8 text-center shadow-xl border border-slate-200 dark:border-slate-800">
           <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto mb-6"><Clock size={40} className="text-amber-500" /></div>
           <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Verification Pending</h3>
           <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-8">Your transaction is under review and will be activated shortly.</p>
-          <button onClick={() => setCurrentView("billing")} className="w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-3.5 rounded-xl font-bold hover:bg-slate-200 transition-all">Return to Dashboard</button>
+          <button onClick={() => switchView("billing")} className="w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-3.5 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">Return to Dashboard</button>
         </div>
       </div>
     );
@@ -333,16 +370,16 @@ export default function SubscriptionsPage() {
       <Toaster position="top-center" richColors />
         
       <div>
-        <h1 className="text-2xl md:text-3xl font-black flex items-center gap-3"><CreditCard className="text-blue-600" /> Billing & Subscription</h1>
+        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3"><CreditCard className="text-blue-600" /> Billing & Subscription</h1>
       </div>
 
-      <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-200 shadow-sm">
+      <div className="bg-white dark:bg-[#111827] rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
           <div>
-            <h2 className="text-xl font-bold flex items-center gap-2 mb-1"><Crown className="size-5 text-blue-600" /> Current Plan: {currentPlan?.name || 'Free Tier'}</h2>
-            <p className="text-sm text-slate-500">Renews on <span className="font-bold">{fmtDate(subscription?.expires_at || null)}</span></p>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1"><Crown className="size-5 text-blue-600" /> Current Plan: {currentPlan?.name || 'Free Tier'}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Renews on <span className="font-bold text-slate-700 dark:text-slate-300">{fmtDate(subscription?.expires_at || null)}</span></p>
           </div>
-          <div className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest ${isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+          <div className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest ${isActive ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"}`}>
             {isActive ? "Active" : "Free / Expired"}
           </div>
         </div>
@@ -350,7 +387,7 @@ export default function SubscriptionsPage() {
         <div className="grid md:grid-cols-3 gap-8">
           <div className="md:col-span-1 border-r border-slate-100 dark:border-slate-800 pr-8">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Paid This Cycle</p>
-            <span className="text-4xl font-black text-blue-600">{fmtBDT(subscription?.amount_paid || 0)}</span>
+            <span className="text-4xl font-black text-blue-600 dark:text-blue-400">{fmtBDT(subscription?.amount_paid || 0)}</span>
           </div>
           <div className="md:col-span-2">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 uppercase tracking-widest">Live Usage Overview</h3>
@@ -363,7 +400,7 @@ export default function SubscriptionsPage() {
                   <CustomUsageBar label="Devices" used={merchant.device_count} limit={currentPlan.device_limit} />
                 </>
               ) : (
-                <p className="text-sm text-slate-500">Select a plan to view usage limits.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Data not available for your current plan.</p>
               )}
             </div>
           </div>
@@ -378,15 +415,20 @@ export default function SubscriptionsPage() {
           const targetedPrice = billing === 'yearly' ? (plan.yearly_price ?? Math.round((plan.price ?? 0) * 12 * 0.8)) : (plan.price ?? 0);
 
           return (
-            <div key={plan.id} className={`relative flex flex-col justify-between p-8 rounded-3xl transition-all border-2 bg-white ${isCurrentPlan ? 'border-blue-600 shadow-xl' : theme.border}`}>
+            <div key={plan.id} className={`relative flex flex-col justify-between p-8 rounded-3xl transition-all border-2 bg-white dark:bg-[#111827] ${isCurrentPlan ? 'border-blue-600 shadow-xl' : theme.border}`}>
+              {plan.tag && (
+                <div className={`absolute -top-3 left-1/2 -translate-x-1/2 ${theme.bg} text-white px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-md`}>
+                  {plan.tag.split(':')[0]}
+                </div>
+              )}
               <div className="text-center pt-4 mb-6">
-                <h3 className="text-lg font-bold mb-3">{plan.name}</h3>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-3">{plan.name}</h3>
                 <div className="flex items-baseline justify-center gap-1">
                   <span className={`text-4xl font-black ${isCurrentPlan ? 'text-blue-600' : theme.text}`}>{fmtBDT(targetedPrice)}</span>
                   <span className="text-sm font-medium text-slate-400">/{billing === 'yearly' ? 'yr' : 'mo'}</span>
                 </div>
               </div>
-              <button className={`w-full py-3.5 rounded-xl font-black text-sm text-white shadow-lg ${isCurrentPlan ? 'bg-slate-300 cursor-not-allowed' : theme.bg}`} onClick={() => !isCurrentPlan && handleSelectPlan(plan)}>
+              <button className={`w-full py-3.5 rounded-xl font-black text-sm text-white shadow-lg ${isCurrentPlan ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed shadow-none' : theme.bg}`} onClick={() => !isCurrentPlan && handleSelectPlan(plan)}>
                 {isCurrentPlan ? 'Current Plan' : 'Select Plan'}
               </button>
             </div>
@@ -395,27 +437,27 @@ export default function SubscriptionsPage() {
       </div>
 
       {/* History Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-100"><h2 className="text-xl font-bold flex items-center gap-2"><History className="size-5 text-blue-600" /> Payment History</h2></div>
+      <div className="bg-white dark:bg-[#111827] rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800"><h2 className="text-xl font-bold flex items-center gap-2 text-slate-900 dark:text-white"><History className="size-5 text-blue-600" /> Payment History</h2></div>
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-[600px]">
-            <thead className="bg-slate-50 text-[10px] font-bold text-slate-500 uppercase">
+            <thead className="bg-slate-50 dark:bg-[#0B1120] text-[10px] font-bold text-slate-500 uppercase">
               <tr><th className="px-6 py-4">Invoice ID</th><th className="px-6 py-4">Amount</th><th className="px-6 py-4 text-center">Status</th><th className="px-6 py-4 text-right">Action</th></tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {orderHistory.map((order) => {
                  const orderIsActive = ['paid', 'active', 'verified'].includes(order.status.toLowerCase());
                  return (
-                  <tr key={order.id} className="hover:bg-slate-50">
+                  <tr key={order.id} className="hover:bg-slate-50 dark:hover:bg-[#0B1120]/50 text-slate-900 dark:text-white">
                     <td className="px-6 py-4 font-mono text-sm font-bold">{order.order_no}</td>
-                    <td className="px-6 py-4 text-sm font-black text-blue-600">{fmtBDT(order.amount)}</td>
+                    <td className="px-6 py-4 text-sm font-black text-blue-600 dark:text-blue-400">{fmtBDT(order.amount)}</td>
                     <td className="px-6 py-4 text-center">
-                      <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-md ${orderIsActive ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-md ${orderIsActive ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'}`}>
                         {order.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button onClick={() => downloadInvoice(order, merchant)} className="inline-flex gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-bold text-blue-600 hover:bg-blue-50">
+                      <button onClick={() => downloadInvoice(order, { ...merchant, email: authUser?.email })} className="inline-flex gap-1.5 px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20">
                         <Download size={14} /> PDF
                       </button>
                     </td>
