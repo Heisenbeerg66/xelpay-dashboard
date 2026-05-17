@@ -2,37 +2,25 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-// Resend API ইনিশিয়ালাইজেশন
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Supabase ক্লায়েন্ট ইনিশিয়ালাইজেশন (Server-side)
+// ✅ FIX 1: Service Role Key ব্যবহার করা হয়েছে যাতে RLS ব্লক না করে
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // <-- এটি ব্যবহার করতে হবে
 );
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    
-    const { 
-      merchant, 
-      plan, 
-      gateway, 
-      trxId, 
-      senderNumber, 
-      amount, 
-      billingCycle, 
-      discountAmount, 
-      userEmail 
-    } = body;
+    const { merchant, plan, gateway, trxId, senderNumber, amount, billingCycle, discountAmount, userEmail } = body;
 
     const finalAmount = amount - (discountAmount || 0);
-    let paymentStatus = 'pending'; // admin_orders এর জন্য
-    let subStatus = 'pending';     // merchant_subscriptions এর জন্য
+    let paymentStatus = 'pending'; 
+    let subStatus = 'pending';     
     const orderNo = `ADM-${Date.now().toString(36).toUpperCase()}`;
 
-    // ১. ডুপ্লিকেট ট্রানজেকশন আইডি চেক (admin_orders টেবিল থেকে)
+    // ১. ডুপ্লিকেট ট্রানজেকশন আইডি চেক
     const { data: duplicateOrder } = await supabase
       .from('admin_orders')
       .select('id')
@@ -43,7 +31,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Transaction ID already used! (ডুপ্লিকেট পেমেন্ট)" }, { status: 400 });
     }
 
-    // ২. SMS Data Verify (admin_sms_data টেবিল থেকে)
+    // ২. SMS Data Verify
     const { data: smsData } = await supabase
       .from('admin_sms_data')
       .select('*')
@@ -51,20 +39,17 @@ export async function POST(req: Request) {
       .single();
 
     if (smsData) {
-      // যদি আগে থেকেই used হয়ে থাকে
       if (smsData.is_used) {
         return NextResponse.json({ error: "This Transaction ID is already claimed!" }, { status: 400 });
       }
-      // যদি পেমেন্ট অ্যামাউন্ট প্ল্যানের দামের চেয়ে কম হয়
       if (Number(smsData.amount) < finalAmount) {
-        return NextResponse.json({ error: `Transaction amount ${smsData.amount} BDT is less than required ${finalAmount} BDT!` }, { status: 400 });
+        return NextResponse.json({ error: `Amount ${smsData.amount} BDT is less than required ${finalAmount} BDT!` }, { status: 400 });
       }
-      // কর্পোরেট না হলে সেন্ডার নাম্বার চেক করবে
       if (gateway.account_type !== 'corporate' && smsData.sender_number && !smsData.sender_number.includes(senderNumber.trim())) {
         return NextResponse.json({ error: "Sender number doesn't match our records!" }, { status: 400 });
       }
 
-      // 🟢 Verification Success: admin_sms_data টেবিলে is_used = true করে দাও
+      // Verification Success
       const { error: smsUpdateError } = await supabase
         .from('admin_sms_data')
         .update({ is_used: true })
@@ -91,11 +76,15 @@ export async function POST(req: Request) {
       status: subStatus, 
       started_at: now.toISOString(), 
       expires_at: expiresAt.toISOString(),
+      next_billing_at: expiresAt.toISOString(), // ✅ FIX 2: Missing Column Add করা হয়েছে
       payment_method: gateway.provider, 
       payment_reference: trxId.trim(),
     }).select('*').single();
 
-    if (subError) throw new Error("Failed to create subscription record.");
+    if (subError) {
+      console.error("Subscription Error: ", subError);
+      throw new Error(`Sub Error: ${subError.message}`); // এক্স্যাক্ট ডাটাবেস এরর দেখাবে
+    }
 
     // ৪. Insert into admin_orders
     const { data: newOrder, error: orderError } = await supabase.from('admin_orders').insert({
@@ -113,14 +102,15 @@ export async function POST(req: Request) {
       sender_number: senderNumber.trim() || null
     }).select('*').single();
 
-    if (orderError) throw new Error("Failed to create order record.");
+    if (orderError) {
+      console.error("Order Error: ", orderError);
+      throw new Error(`Order Error: ${orderError.message}`);
+    }
 
-    // ৫. Update Merchant's Active Plan & Send Email (যদি পেমেন্ট সাকসেস হয়)
+    // ৫. Update Merchant & Send Email
     if (paymentStatus === 'paid') {
-      // Update merchant table
       await supabase.from('merchants').update({ plan_id: plan.id }).eq('id', merchant.id);
 
-      // ৬. Send Professional Email using Resend
       if (userEmail) {
         const emailHtml = `
           <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-w: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
@@ -165,14 +155,9 @@ export async function POST(req: Request) {
                 <a href="https://xelpay.site/subscriptions" style="background-color: #2563eb; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">Go to Dashboard</a>
               </div>
             </div>
-            
-            <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
-              <p style="margin: 0; color: #94a3b8; font-size: 12px;">© ${new Date().getFullYear()} XelPay. All rights reserved.</p>
-            </div>
           </div>
         `;
 
-        // Send Email
         await resend.emails.send({
           from: 'XelPay Billing <billing@xelpay.site>',
           to: userEmail,
@@ -182,7 +167,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Return final response to Frontend
     return NextResponse.json({ success: true, order: newOrder, status: paymentStatus });
     
   } catch (error: any) {
