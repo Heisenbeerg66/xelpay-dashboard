@@ -19982,1296 +19982,6 @@ export default function TeamSettingsPage() {
 }
 </file>
 
-<file path="src/app/dashboard/subscriptions/page.tsx">
-'use client';
-
-import { useState, useEffect, useCallback } from 'react';
-import {
-  CreditCard, CheckCircle, Clock, Loader2, ChevronRight, 
-  Shield, Copy, Info, ArrowLeft, History, Lock
-} from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { toast, Toaster } from 'sonner';
-
-// Shadcn / Repomix UI Components 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-
-// ── Types ─────────────────────────────────────────────────────
-type Plan = {
-  id: string; name: string; price: number; yearly_price: number | null;
-  serial: number; tag: string | null; features: any; transaction_limit_monthly: number;
-  business_limit: number; allowed_method: any; is_team_allowed: boolean;
-  allowed_team_members: number; device_limit: number; allowed_telegram_group: boolean;
-  is_custom_bot_allowed: boolean;
-};
-
-type Subscription = {
-  id: string; plan_id: string; billing_cycle: string; amount_paid: number;
-  status: string; started_at: string; expires_at: string | null;
-  payment_method: string | null; payment_reference: string | null;
-};
-
-type AdminGateway = {
-  id: string; provider: string; provider_name: string; account_number: string;
-  account_type: string; branch_name: string | null;
-};
-
-type PaymentLogo = { method_name: string; logo_url: string; method_color: string | null };
-
-type AdminOrder = {
-  id: string; order_no: string; amount: number; billing_cycle: string;
-  payment_method: string; payment_reference: string; status: string;
-  created_at: string; plan_id: string; sender_number: string | null;
-};
-
-type Merchant = {
-  id: string; plan_id: string; business_count: number;
-  transaction_count: number; team_member_count: number; device_count: number;
-};
-
-// ── Helpers ───────────────────────────────────────────────────
-const fmtBDT = (n: number) => `৳${n.toLocaleString('en-IN')}`;
-const fmtDate = (d: string | null) => d ?
-  new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-
-const daysLeft = (exp: string | null) => {
-  if (!exp) return null;
-  const diff = new Date(exp).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / 86400000));
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  active: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800',
-  pending: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
-  expired: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800',
-  cancelled: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
-};
-
-const METHOD_ICONS: Record<string, string> = {
-  bkash: '💜', nagad: '🟠', rocket: '🟣', upay: '🟡', bank: '🏦',
-};
-
-const getColorTheme = (colorName: string) => {
-  const themes: Record<string, any> = {
-    blue: { border: 'border-blue-500', bg: 'bg-blue-600', text: 'text-blue-600', hover: 'hover:bg-blue-700', lightBg: 'bg-blue-50' },
-    emerald: { border: 'border-emerald-500', bg: 'bg-emerald-600', text: 'text-emerald-600', hover: 'hover:bg-emerald-700', lightBg: 'bg-emerald-50' },
-    purple: { border: 'border-purple-500', bg: 'bg-purple-600', text: 'text-purple-600', hover: 'hover:bg-purple-700', lightBg: 'bg-purple-50' },
-    amber: { border: 'border-amber-500', bg: 'bg-amber-500', text: 'text-amber-600', hover: 'hover:bg-amber-600', lightBg: 'bg-amber-50' },
-    slate: { border: 'border-slate-500', bg: 'bg-slate-800', text: 'text-slate-700', hover: 'hover:bg-slate-900', lightBg: 'bg-slate-100' }
-  };
-  return themes[colorName?.toLowerCase()] || themes.blue;
-};
-
-// ── Progress Bar UI Component ─────────────────────────────────
-function CustomUsageBar({ label, used = 0, limit = 0 }: { label: string, used: number, limit: number }) {
-  const isUnlimited = limit === 0;
-  const percentage = isUnlimited ? 0 : Math.min(100, (used / limit) * 100);
-  const displayLimit = isUnlimited ? 'Unlimited' : limit.toLocaleString();
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-muted-foreground font-medium">{label}</span>
-        <span className="font-bold">
-          {used.toLocaleString()} / {displayLimit} {!isUnlimited && `(${Math.round(percentage)}%)`}
-        </span>
-      </div>
-      <Progress value={isUnlimited ? 100 : percentage} className={isUnlimited ? "opacity-40" : ""} />
-    </div>
-  );
-}
-
-// ── Main Layout ───────────────────────────────────────────────
-export default function SubscriptionsPage() {
-  const [loading, setLoading] = useState(true);
-  const [merchant, setMerchant] = useState<Merchant | null>(null);
-  const [allPlans, setAllPlans] = useState<Plan[]>([]);
-  const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [orderHistory, setOrderHistory] = useState<AdminOrder[]>([]);
-  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
-  const [yearlyDiscount, setYearlyDiscount] = useState(20);
-  const [adminGateways, setAdminGateways] = useState<AdminGateway[]>([]);
-  const [paymentLogos, setPaymentLogos] = useState<PaymentLogo[]>([]);
-
-  // Working View State (Repomix System)
-  const [currentView, setCurrentView] = useState<"billing" | "checkout" | "pending_view">("billing");
-  const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
-  const [checkoutPrice, setCheckoutPrice] = useState<number>(0);
-
-  // Checkout Form States
-  const [selectedGateway, setSelectedGateway] = useState<AdminGateway | null>(null);
-  const [trxId, setTrxId] = useState('');
-  const [senderNumber, setSenderNumber] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const [plansRes, merchantRes, subRes, settingsRes, gatewaysRes, ordersRes, logosRes] = await Promise.all([
-        supabase.from('plans').select('*').order('serial', { ascending: true }),
-        supabase.from('merchants').select('*').eq('id', user.id).single(),
-        supabase.from('merchant_subscriptions').select('*').eq('merchant_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('site_settings').select('key_name, value').eq('key_name', 'subscription_discount_yearly').maybeSingle(),
-        supabase.from('admin_gateways').select('*').eq('status', 'active'),
-        supabase.from('admin_orders').select('*').eq('merchant_id', user.id).order('created_at', { ascending: false }).limit(20),
-        supabase.from('payment_logos').select('*'),
-      ]);
-
-      setMerchant(merchantRes.data);
-      setAllPlans(plansRes.data || []);
-      setSubscription(subRes.data || null);
-      setAdminGateways(gatewaysRes.data || []);
-      setOrderHistory(ordersRes.data || []);
-      setPaymentLogos(logosRes.data || []);
-      if (settingsRes.data?.value) setYearlyDiscount(parseInt(settingsRes.data.value) || 20);
-      
-      const activePlanId = subRes.data?.plan_id || merchantRes.data?.plan_id;
-      if (activePlanId && plansRes.data) {
-        setCurrentPlan(plansRes.data.find((p: Plan) => p.id === activePlanId) || null);
-      }
-    } catch (e: any) { 
-      toast.error('Failed to load: ' + e.message);
-    } finally { 
-      setLoading(false); 
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  const getLogoUrl = (provider: string) => {
-    const found = paymentLogos.find((l: any) => l.method_name.toLowerCase() === provider.toLowerCase() || l.method_name.toLowerCase() === provider.toLowerCase().replace(/\s/g, ''));
-    return found?.logo_url || null;
-  };
-
-  const handleSelectPlan = (plan: Plan) => {
-    const price = billing === 'yearly' 
-      ? (plan.yearly_price ?? Math.round((plan.price ?? 0) * 12 * (1 - yearlyDiscount / 100))) 
-      : (plan.price ?? 0);
-    
-    setCheckoutPlan(plan);
-    setCheckoutPrice(price);
-    setSelectedGateway(null);
-    setTrxId('');
-    setSenderNumber('');
-    setCurrentView("checkout");
-  };
-
-  const handlePaymentSubmit = async () => {
-    if (!selectedGateway || !checkoutPlan || !merchant) return;
-    if (!trxId.trim()) { toast.error('Transaction ID is required.'); return; }
-    if (selectedGateway.account_type !== 'corporate' && !senderNumber.trim()) { 
-      toast.error('Sender number is required.'); 
-      return; 
-    }
-    
-    setSubmitting(true);
-    try {
-      const now = new Date();
-      const expiresAt = billing === 'yearly' ?
-        new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000) : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      const orderNo = `ADM-${Date.now().toString(36).toUpperCase()}`;
-
-      const { data: newSub, error: subError } = await supabase.from('merchant_subscriptions').insert({
-        merchant_id: merchant.id, plan_id: checkoutPlan.id, billing_cycle: billing, amount_paid: checkoutPrice,
-        currency: 'BDT', status: 'pending', started_at: now.toISOString(), expires_at: expiresAt.toISOString(),
-        next_billing_at: expiresAt.toISOString(), payment_method: selectedGateway.provider, payment_reference: trxId.trim(),
-      }).select('*').single();
-      
-      if (subError) throw subError;
-
-      await supabase.from('admin_orders').insert({
-        merchant_id: merchant.id, plan_id: checkoutPlan.id, subscription_id: newSub?.id, order_no: orderNo,
-        amount: checkoutPrice, currency: 'BDT', billing_cycle: billing, payment_method: selectedGateway.provider,
-        payment_reference: trxId.trim(), gateway_used: selectedGateway.provider, status: 'pending',
-        sender_number: senderNumber.trim() || null, notes: `Gateway: ${selectedGateway.provider_name} | Account: ${selectedGateway.account_number}`,
-      });
-
-      setCurrentView("pending_view");
-      load();
-    } catch (e: any) {
-      toast.error('Submission failed: ' + e.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const days = daysLeft(subscription?.expires_at || null);
-  const isActive = subscription?.status === 'active';
-  const canDowngradeDays = days !== null && days <= 3;
-
-  if (loading) return (
-    <div className="min-h-[60vh] flex items-center justify-center">
-      <Loader2 size={36} className="animate-spin text-primary" />
-    </div>
-  );
-
-  // ── VIEW: SECURE CHECKOUT (Repomix Interface Style + Android Style Selection) ───
-  if (currentView === "checkout" && checkoutPlan) {
-    const localProviders = ['bkash', 'nagad', 'rocket', 'upay'];
-    const bdLocalGateways = adminGateways.filter(g => localProviders.includes(g.provider.toLowerCase()));
-    const globalGateways = adminGateways.filter(g => !localProviders.includes(g.provider.toLowerCase()));
-
-    return (
-      <div className="min-h-screen p-6">
-        <div className="max-w-6xl mx-auto">
-          <Button variant="ghost" onClick={() => setCurrentView("billing")} className="mb-6 -ml-4">
-            <ArrowLeft className="size-4 mr-2" /> Back to Billing
-          </Button>
-
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Secure Checkout</CardTitle>
-                  <CardDescription>Complete your purchase securely. All transactions are encrypted.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  
-                  {/* Android Style Selection List */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Lock className="size-4 text-muted-foreground" />
-                      <Label className="text-base">Select Payment Provider</Label>
-                    </div>
-
-                    <RadioGroup 
-                      value={selectedGateway?.id || ""} 
-                      onValueChange={(id) => setSelectedGateway(adminGateways.find(g => g.id === id) || null)}
-                    >
-                      {bdLocalGateways.length > 0 && (
-                        <div className="space-y-3">
-                          <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                            Local Mobile Wallet
-                            <Badge variant="secondary" className="text-xs bg-primary/10 text-primary">Popular</Badge>
-                          </h4>
-                          {bdLocalGateways.map((gw) => {
-                            const logoUrl = getLogoUrl(gw.provider);
-                            const isSelected = selectedGateway?.id === gw.id;
-                            return (
-                              <label key={gw.id} className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all hover:border-primary/50 ${isSelected ? "border-primary bg-primary/5" : "border-border"}`}>
-                                <RadioGroupItem value={gw.id} id={gw.id} />
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center border bg-card overflow-hidden shrink-0">
-                                  {logoUrl ? <img src={logoUrl} alt={gw.provider_name} className="w-8 h-8 object-contain" /> : <span className="text-xl">{METHOD_ICONS[gw.provider] || '💳'}</span>}
-                                </div>
-                                <div className="flex-1">
-                                  <p className="font-bold text-sm">{gw.provider_name}</p>
-                                  <p className="text-xs text-muted-foreground capitalize">{gw.account_type} Account</p>
-                                </div>
-                                {isSelected && <CheckCircle className="size-5 text-primary" />}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {globalGateways.length > 0 && (
-                        <div className="space-y-3 pt-2">
-                          <h4 className="text-sm font-medium text-muted-foreground">Global/Bank Payment Methods</h4>
-                          {globalGateways.map((gw) => {
-                            const isSelected = selectedGateway?.id === gw.id;
-                            return (
-                              <label key={gw.id} className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-all hover:border-primary/50 ${isSelected ? "border-primary bg-primary/5" : "border-border"}`}>
-                                <RadioGroupItem value={gw.id} id={gw.id} />
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center border bg-card shrink-0">
-                                  <span className="text-xl">{METHOD_ICONS[gw.provider] || '🏦'}</span>
-                                </div>
-                                <div className="flex-1">
-                                  <p className="font-bold text-sm">{gw.provider_name}</p>
-                                  <p className="text-xs text-muted-foreground capitalize">{gw.account_type}</p>
-                                </div>
-                                {isSelected && <CheckCircle className="size-5 text-primary" />}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </RadioGroup>
-                  </div>
-
-                  {/* Payment Details Input Fields */}
-                  {selectedGateway && (
-                    <div className="space-y-4 p-5 bg-muted/50 rounded-xl border border-dashed">
-                      <div className="flex justify-between items-start border-b pb-3 mb-2">
-                        <div>
-                          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Send Payment To</p>
-                          <p className="text-base font-black mt-0.5">{selectedGateway.provider_name} ({selectedGateway.account_type})</p>
-                          <p className="text-base font-mono font-bold text-primary tracking-wide mt-1">{selectedGateway.account_number}</p>
-                        </div>
-                        <Button size="sm" variant="outline" className="h-8" onClick={() => { navigator.clipboard.writeText(selectedGateway.account_number); toast.success('Account number copied!'); }}>
-                          <Copy className="size-3.5 mr-1" /> Copy
-                        </Button>
-                      </div>
-
-                      <div className="grid md:grid-cols-2 gap-4 pt-2">
-                        {selectedGateway.account_type !== 'corporate' && (
-                          <div className="space-y-2">
-                            <Label htmlFor="senderNum">Sender Wallet Number *</Label>
-                            <Input id="senderNum" type="tel" placeholder="e.g. 01XXXXXXXXX" value={senderNumber} onChange={e => setSenderNumber(e.target.value)} />
-                          </div>
-                        )}
-                        <div className="space-y-2">
-                          <Label htmlFor="transactionId">Transaction ID / Reference *</Label>
-                          <Input id="transactionId" placeholder="e.g. 8N7AB23KC1" className="font-mono uppercase font-bold" value={trxId} onChange={e => setTrxId(e.target.value)} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1.5"><Shield className="size-3.5" /> <span>SSL Encrypted Payment</span></div>
-                <Separator orientation="vertical" className="h-4" />
-                <div className="flex items-center gap-1.5"><Lock className="size-3.5" /> <span>Secured Verification</span></div>
-              </div>
-            </div>
-
-            {/* Order Invoice Sidebar */}
-            <div className="lg:col-span-1">
-              <Card className="sticky top-6 border-primary/20 shadow-md">
-                <CardHeader><CardTitle>Order Summary</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between"><span className="text-muted-foreground">Plan Selected</span><span className="font-bold">{checkoutPlan.name}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Billing Cycle</span><span className="font-medium capitalize">{billing}</span></div>
-                    <Separator />
-                    <div className="flex justify-between text-base font-black"><span>Total Amount</span><span>{fmtBDT(checkoutPrice)}</span></div>
-                  </div>
-
-                  <Button className="w-full h-11 text-white font-bold" size="lg" disabled={submitting || !selectedGateway || !trxId.trim()} onClick={handlePaymentSubmit}>
-                    {submitting ? <><Loader2 className="size-4 mr-2 animate-spin" /> Verifying...</> : <><Shield className="size-4 mr-2" /> Submit Verification</>}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── VIEW: PENDING SCREEN (Repomix Interface Style) ───────────
-  if (currentView === "pending_view") {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <Card className="w-full max-w-md text-center p-6 rounded-3xl shadow-xl border-primary/20">
-          <CardContent className="pt-6 space-y-5">
-            <div className="w-16 h-16 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto">
-              <Clock size={32} className="text-amber-500" />
-            </div>
-            <h3 className="text-xl font-black">Payment Verification Submitted!</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">Your transaction is currently under manual audit. The premium dashboard features will activate within 24 hours.</p>
-            <Button className="w-full" onClick={() => setCurrentView("billing")}>Return to Dashboard</Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // ── VIEW: MAIN BILLING DASHBOARD (Repomix Layout Grid) ────────
-  return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <Toaster position="top-center" richColors />
-        
-        {/* Header */}
-        <div className="space-y-1">
-          <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-            <CreditCard className="size-6 text-primary" /> Billing & Subscription
-          </h1>
-          <p className="text-muted-foreground text-sm">Manage your operational metrics, live plan, and localized transaction receipts.</p>
-        </div>
-
-        {/* Current Plan Status & Live Metrics Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-1 border-primary/20 bg-gradient-to-br from-card to-primary/5 shadow-sm">
-            <CardHeader className="pb-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Active Plan</p>
-                <Badge variant={isActive ? "default" : "secondary"}>
-                  {isActive ? "Active" : "Free / Expired"}
-                </Badge>
-              </div>
-              <CardTitle className="text-2xl font-black pt-2">{currentPlan?.name || 'Free Tier'}</CardTitle>
-              <CardDescription className="text-xs pt-1">Renewal Date: {fmtDate(subscription?.expires_at || null)}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="pt-2">
-                <span className="text-3xl font-black">{fmtBDT(subscription?.amount_paid || 0)}</span>
-                <span className="text-xs text-muted-foreground font-medium ml-1">Paid this cycle</span>
-              </div>
-              {canDowngradeDays && (
-                <div className="flex items-start gap-2 text-amber-700 bg-amber-500/10 p-3 rounded-xl text-xs font-semibold border border-amber-500/20">
-                  <Info size={14} className="shrink-0 mt-0.5" /> <span>Downgrade is active as your subscription expires within 3 days.</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Usage Metrics */}
-          <Card className="lg:col-span-2 shadow-sm">
-            <CardHeader className="pb-3"><CardTitle className="text-base font-black">Live Usage Overview</CardTitle></CardHeader>
-            <CardContent className="grid md:grid-cols-2 gap-5 pt-1">
-              {currentPlan && merchant ? (
-                <>
-                  <CustomUsageBar label="Monthly Transactions" used={merchant.transaction_count} limit={currentPlan.transaction_limit_monthly} />
-                  <CustomUsageBar label="Businesses Created" used={merchant.business_count} limit={currentPlan.business_limit} />
-                  <CustomUsageBar label="Team Management" used={merchant.team_member_count} limit={currentPlan.allowed_team_members} />
-                  <CustomUsageBar label="Active Hardware Devices" used={merchant.device_count} limit={currentPlan.device_limit} />
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground col-span-2">Select an tier plan structure below to view account metrics.</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Upgrade / Pricing Strategy Grid */}
-        <div className="space-y-6 pt-2">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h2 className="text-xl font-black">Upgrade or Modify Plan Structure</h2>
-              <p className="text-muted-foreground text-xs">Scale your workspace boundaries instantly with localized mobile billing nodes.</p>
-            </div>
-
-            {/* Cycle Toggle Layout */}
-            <div className="flex bg-muted p-1 rounded-lg border shrink-0">
-              <button onClick={() => setBilling('monthly')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${billing === 'monthly' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                Monthly
-              </button>
-              <button onClick={() => setBilling('yearly')} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${billing === 'yearly' ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                Yearly <Badge className="bg-primary/20 text-primary text-[9px] px-1.5 py-0 border-0">Save {yearlyDiscount}%</Badge>
-              </button>
-            </div>
-          </div>
-
-          {/* Pricing Grid */}
-          <div className="grid md:grid-cols-3 gap-6">
-            {allPlans.map(plan => {
-              const isCurrentPlan = currentPlan?.id === plan.id && isActive;
-              const isDowngrade = plan.serial < (currentPlan?.serial ?? 0);
-              const isFreePlan = (plan.price ?? 0) === 0;
-
-              const monthlyPrice = plan.price ?? 0;
-              const yearlyPrice = plan.yearly_price ?? Math.round(monthlyPrice * 12 * (1 - yearlyDiscount / 100));
-              const targetedPrice = billing === 'yearly' ? yearlyPrice : monthlyPrice;
-
-              const tagParts = plan.tag ? plan.tag.split(':') : [];
-              const tagLabel = tagParts[0] || null;
-              const theme = getColorTheme(tagParts[1] || 'blue');
-              const methods = Array.isArray(plan.allowed_method) ? plan.allowed_method : ['mobile'];
-              const methodLabels: Record<string, string> = { mobile: 'Mobile Wallets', bank: 'Bank Transfer', crypto: 'Crypto Terminal' };
-
-              return (
-                <Card key={plan.id} className={`relative flex flex-col justify-between rounded-3xl overflow-hidden transition-all duration-300 ${isCurrentPlan ? "border-2 border-primary shadow-lg scale-[1.01]" : tagLabel ? `border-2 ${theme.border}` : "border-border"}`}>
-                  {tagLabel && (
-                    <div className={`absolute -top-0 left-1/2 -translate-x-1/2 px-3 py-1 rounded-b-xl text-[9px] font-black uppercase tracking-wider ${theme.bg} text-white shadow-sm`}>
-                      {tagLabel}
-                    </div>
-                  )}
-
-                  <CardHeader className="text-center pt-8">
-                    <CardTitle className="text-lg font-bold">{plan.name}</CardTitle>
-                    <div className="pt-3 flex items-baseline justify-center gap-1">
-                      <span className={`text-3xl font-black ${isCurrentPlan ? "text-primary" : theme.text}`}>{fmtBDT(targetedPrice)}</span>
-                      <span className="text-xs text-muted-foreground font-medium">/{billing === 'yearly' ? 'yr' : 'mo'}</span>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-6 flex-1 flex flex-col justify-between">
-                    <div className="space-y-3 pt-2">
-                      <div className="flex items-center gap-2 text-xs font-medium"><CheckCircle size={14} className={theme.text} /> <span>{plan.transaction_limit_monthly === 0 ? 'Unlimited transactions' : `${plan.transaction_limit_monthly.toLocaleString()} Tx/Month`}</span></div>
-                      <div className="flex items-center gap-2 text-xs font-medium"><CheckCircle size={14} className={theme.text} /> <span>{plan.business_limit} Registered Workspaces</span></div>
-                      {plan.is_team_allowed && <div className="flex items-center gap-2 text-xs font-medium"><CheckCircle size={14} className={theme.text} /> <span>Up to {plan.allowed_team_members} Corporate Seats</span></div>}
-                      <div className="flex items-center gap-2 text-xs font-medium"><CheckCircle size={14} className={theme.text} /> <span>{plan.device_limit} Allowed Sync Devices</span></div>
-                      {plan.allowed_telegram_group && <div className="flex items-center gap-2 text-xs font-medium"><CheckCircle size={14} className={theme.text} /> <span>Telegram Broadcast Nodes</span></div>}
-                      {plan.is_custom_bot_allowed && <div className="flex items-center gap-2 text-xs font-medium"><CheckCircle size={14} className={theme.text} /> <span>Custom API Bot Integration</span></div>}
-                      {methods.map((m: string) => <div key={m} className="flex items-center gap-2 text-xs font-medium"><CheckCircle size={14} className={theme.text} /> <span>{methodLabels[m] || m} Allowed</span></div>)}
-                    </div>
-
-                    <div className="pt-4">
-                      {isCurrentPlan ? (
-                        <Button className="w-full h-10 font-bold" variant="secondary" disabled>Current Active Plan</Button>
-                      ) : isFreePlan ? (
-                        <Button className="w-full h-10 font-bold" variant="outline" disabled>Default Workspace Tier</Button>
-                      ) : (isDowngrade && !canDowngradeDays) ? (
-                        <Button className="w-full h-10" variant="outline" disabled>Downgrade Locked</Button>
-                      ) : (
-                        <Button className={`w-full h-10 font-bold text-white shadow-sm ${theme.bg} ${theme.hover}`} onClick={() => handleSelectPlan(plan)}>
-                          {isDowngrade ? 'Downgrade Account' : 'Upgrade Plan'}
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Localized Invoicing Billing History List */}
-        <Card className="rounded-2xl shadow-sm overflow-hidden">
-          <CardHeader>
-            <CardTitle className="text-base font-black flex items-center gap-2"><History className="size-4" /> Account Ledger / Billing History</CardTitle>
-            <CardDescription>Track and review verified network invoices generated by your account workspace.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            {orderHistory.length === 0 ? (
-              <div className="py-12 text-center text-muted-foreground space-y-2">
-                <History size={32} className="mx-auto opacity-30" />
-                <p className="text-sm font-bold">No verified statement instances available</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader className="bg-muted/50">
-                  <TableRow>
-                    <TableHead className="pl-6">Invoice Token</TableHead>
-                    <TableHead>Created Date</TableHead>
-                    <TableHead>Terms</TableHead>
-                    <TableHead>Settlement Amount</TableHead>
-                    <TableHead className="pr-6 text-right">Verification State</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orderHistory.map((order) => (
-                    <TableRow key={order.id} className="transition-all">
-                      <TableCell className="font-mono text-xs font-bold pl-6 text-primary">{order.order_no}</TableCell>
-                      <TableCell className="text-muted-foreground text-xs font-medium">{fmtDate(order.created_at)}</TableCell>
-                      <TableCell className="capitalize text-xs font-semibold">{order.billing_cycle} Cycle</TableCell>
-                      <TableCell className="font-bold text-xs">{fmtBDT(order.amount)}</TableCell>
-                      <TableCell className="pr-6 text-right">
-                        <Badge variant="outline" className={`text-[10px] font-black uppercase tracking-wider ${STATUS_COLORS[order.status] || ''}`}>
-                          {order.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-      </div>
-    </div>
-  );
-}
-</file>
-
-<file path="src/components/dashboard/Sidebar.tsx">
-'use client';
-
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
-import {
-  LayoutDashboard, Receipt, MessageSquare, Wallet, Link as LinkIcon,
-  Settings, LineChart, Send, Users, Code, Headphones, LogOut,
-  ChevronDown, Building2, Plus, Check, Loader2, PlusCircle,
-  ServerCog, Smartphone, CreditCard, ShieldCheck,
-} from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
-
-type UserRole = 'owner' | 'admin' | 'developer' | 'support' | 'viewer';
-
-// Role-based menu — যে role-এ যে menu দেখা যাবে
-const ALL_MENU_ITEMS = [
-  { name: 'Dashboard',              icon: LayoutDashboard, path: '/dashboard',             roles: ['owner','admin','developer','support','viewer'] },
-  { name: 'Global Vault',           icon: ServerCog,       path: '/dashboard/vault',        roles: ['owner'] },
-  { name: 'New Business',           icon: PlusCircle,      path: '/dashboard/business/new', roles: ['owner'] },
-  { name: 'Brand Settings',         icon: Settings,        path: '/dashboard/brand',         roles: ['owner','admin'] },
-  { name: 'Transactions',           icon: Receipt,         path: '/dashboard/transactions',  roles: ['owner','admin','developer','support','viewer'] },
-  { name: 'Gateway Manager',        icon: Wallet,          path: '/dashboard/gateways',      roles: ['owner','admin'] },
-  { name: 'Devices Manager',        icon: Smartphone,      path: '/dashboard/devices',       roles: ['owner','admin'] },
-  { name: 'Telegram Alerts',        icon: Send,            path: '/dashboard/telegram',      roles: ['owner','admin'] },
-  { name: 'Payment Links',          icon: LinkIcon,        path: '/dashboard/links',         roles: ['owner','admin','developer','support','viewer'] },
-  { name: 'Reports',                icon: LineChart,       path: '/dashboard/reports',       roles: ['owner','admin','developer','support','viewer'] },
-  { name: 'SMS Data',               icon: MessageSquare,   path: '/dashboard/sms',           roles: ['owner','admin','support','viewer'] },
-  { name: 'Customers',              icon: Users,           path: '/dashboard/customers',     roles: ['owner','admin','support','viewer'] },
-  { name: 'System Settings',        icon: Settings,        path: '/dashboard/settings',      roles: ['owner','admin'] },
-  { name: 'Billing & Subscriptions',icon: CreditCard,      path: '/dashboard/subscriptions', roles: ['owner'] },
-  { name: 'API & Plugins',          icon: Code,            path: '/dashboard/api',           roles: ['owner','admin','developer'] },
-  { name: 'Support',                icon: Headphones,      path: '/dashboard/support',       roles: ['owner','admin','developer','support','viewer'] },
-];
-
-const ROLE_BADGE: Record<string, { label: string; color: string; bg: string }> = {
-  admin:     { label: 'Admin',     color: 'text-violet-400', bg: 'bg-violet-500/20' },
-  developer: { label: 'Developer', color: 'text-blue-400',   bg: 'bg-blue-500/20' },
-  support:   { label: 'Support',   color: 'text-emerald-400',bg: 'bg-emerald-500/20' },
-  viewer:    { label: 'Viewer',    color: 'text-slate-400',  bg: 'bg-slate-500/20' },
-};
-
-export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
-  const pathname = usePathname();
-  const router = useRouter();
-
-  const [businesses, setBusinesses] = useState<any[]>([]);
-  const [activeBusiness, setActiveBusiness] = useState<any>(null);
-  const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [userRole, setUserRole] = useState<UserRole>('owner');
-  const switcherRef = useRef<HTMLDivElement>(null);
-
-  // ✅ Realtime subscription — role update হলে instantly sidebar refresh হবে
-  useEffect(() => {
-    if (!merchant?.id) return;
-
-    const channel = supabase
-      .channel(`team-role-${merchant.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'business_team_members',
-          filter: `user_id=eq.${merchant.id}`,
-        },
-        (payload: any) => {
-          // Role update হলে নতুন role set করো — no logout needed
-          if (payload.new?.role) {
-            setUserRole(payload.new.role as UserRole);
-            toast.success(`Your role has been updated to ${payload.new.role}`);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [merchant?.id]);
-
-  // ✅ Business load
-  useEffect(() => {
-    if (!merchant?.id) return;
-    loadBusinesses();
-  }, [merchant?.id, merchant?.is_team_member]);
-
-  const loadBusinesses = async () => {
-    setIsLoading(true);
-    try {
-      if (merchant.is_team_member) {
-        // ✅ Team member — business_team_members থেকে assigned businesses নিয়ে নাও
-        const { data: memberships } = await supabase
-          .from('business_team_members')
-          .select('business_id, role, businesses(id, business_name, logo_url, slug)')
-          .eq('user_id', merchant.id);
-
-        if (memberships && memberships.length > 0) {
-          const assignedBusinesses = memberships
-            .map((m: any) => m.businesses)
-            .filter(Boolean);
-
-          setBusinesses(assignedBusinesses);
-
-          // Active business determine করো
-          const savedBizId = localStorage.getItem('active_business_id');
-          const active = assignedBusinesses.find((b: any) => b.id === savedBizId)
-            || assignedBusinesses[0];
-
-          if (active) {
-            setActiveBusiness(active);
-            localStorage.setItem('active_business_id', active.id);
-
-            // Role নিয়ে নাও active business-এর জন্য
-            const membership = memberships.find((m: any) => m.business_id === active.id);
-            if (membership?.role) setUserRole(membership.role as UserRole);
-          }
-        }
-      } else {
-        // ✅ Regular merchant — নিজের businesses
-        const { data } = await supabase
-          .from('businesses')
-          .select('id, business_name, logo_url, slug')
-          .eq('merchant_id', merchant.id)
-          .order('created_at', { ascending: true });
-
-        if (data && data.length > 0) {
-          setBusinesses(data);
-          const savedBizId = localStorage.getItem('active_business_id');
-          const saved = data.find((b: any) => b.id === savedBizId) || data[0];
-          setActiveBusiness(saved);
-          localStorage.setItem('active_business_id', saved.id);
-        }
-        setUserRole('owner');
-      }
-    } catch (e) {
-      console.error('Sidebar loadBusinesses error:', e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (switcherRef.current && !switcherRef.current.contains(event.target as Node)) {
-        setIsSwitcherOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // businessChanged event-এ reload
-  useEffect(() => {
-    const handle = () => loadBusinesses();
-    window.addEventListener('businessChanged', handle);
-    return () => window.removeEventListener('businessChanged', handle);
-  }, [merchant?.id]);
-
-  const handleBusinessChange = async (biz: any) => {
-    setActiveBusiness(biz);
-    localStorage.setItem('active_business_id', biz.id);
-    setIsSwitcherOpen(false);
-
-    // Team member হলে role update করো for new business
-    if (merchant.is_team_member) {
-      const { data: membership } = await supabase
-        .from('business_team_members')
-        .select('role')
-        .eq('user_id', merchant.id)
-        .eq('business_id', biz.id)
-        .maybeSingle();
-      if (membership?.role) setUserRole(membership.role as UserRole);
-    }
-
-    toast.loading(`Switching to ${biz.business_name}...`, { id: 'switch' });
-    await supabase.from('merchants').update({ active_business_id: biz.id }).eq('id', merchant.id);
-    window.dispatchEvent(new Event('businessChanged'));
-    router.refresh();
-    toast.success(`Switched to ${biz.business_name}`, { id: 'switch' });
-  };
-
-  const handleLogout = async () => {
-    localStorage.removeItem('active_business_id');
-    await supabase.auth.signOut();
-    window.location.href = '/login';
-  };
-
-  const visibleMenuItems = ALL_MENU_ITEMS.filter(item => item.roles.includes(userRole));
-  const roleBadge = userRole !== 'owner' ? ROLE_BADGE[userRole] : null;
-  const canAddBusiness = !merchant.is_team_member;
-
-  return (
-    <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#0B1120] border-r border-slate-800/80 flex flex-col transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-
-      {/* ── Logo ── */}
-      <div className="flex items-center h-[72px] px-5 border-b border-slate-800/80 shrink-0">
-        <Link href="/dashboard" className="flex items-center gap-1">
-          <span className="text-2xl font-black text-blue-500 tracking-tighter">X</span>
-          <span className="text-xl font-bold text-white tracking-tight -ml-0.5">elPay</span>
-        </Link>
-        {roleBadge && (
-          <span className={`ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold ${roleBadge.color} ${roleBadge.bg}`}>
-            <ShieldCheck size={9} />{roleBadge.label}
-          </span>
-        )}
-      </div>
-
-      {/* ── Business Switcher ── */}
-      <div className="px-4 pt-4 pb-3 border-b border-slate-800/80 shrink-0" ref={switcherRef}>
-        <div className="relative">
-          {/* Main button — সবসময় clickable, dropdown toggle করে */}
-          <button
-            onClick={() => setIsSwitcherOpen(v => !v)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 rounded-xl transition-all"
-          >
-            <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0">
-              {activeBusiness?.logo_url
-                ? <img src={activeBusiness.logo_url} className="w-full h-full rounded-lg object-cover" alt="" />
-                : <Building2 size={14} className="text-blue-400" />}
-            </div>
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-xs font-black text-white truncate">
-                {isLoading ? 'Loading...' : (activeBusiness?.business_name || 'Select Business')}
-              </p>
-              {merchant.is_team_member && (
-                <p className="text-[9px] text-slate-500 font-medium mt-0.5">Team workspace</p>
-              )}
-            </div>
-            {isLoading
-              ? <Loader2 size={14} className="text-slate-500 animate-spin shrink-0" />
-              : <ChevronDown size={14} className={`text-slate-400 shrink-0 transition-transform duration-200 ${isSwitcherOpen ? 'rotate-180' : ''}`} />
-            }
-          </button>
-
-          {/* ✅ Dropdown — businesses list + add new */}
-          {isSwitcherOpen && (
-            <div className="absolute top-full left-0 w-full mt-2 bg-[#111827] border border-slate-800 rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200 max-h-72 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-
-              <div className="px-3 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                {merchant.is_team_member ? 'Your Workspaces' : 'Your Businesses'}
-              </div>
-
-              {isLoading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 size={16} className="animate-spin text-slate-500" />
-                </div>
-              ) : businesses.length === 0 ? (
-                <div className="px-4 py-3 text-sm font-medium text-slate-400">
-                  {merchant.is_team_member ? 'No workspaces found.' : 'No business found.'}
-                </div>
-              ) : (
-                businesses.map((biz) => (
-                  <button
-                    key={biz.id}
-                    onClick={() => handleBusinessChange(biz)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#0B1120] transition-colors group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-md bg-slate-800 flex items-center justify-center text-slate-400 shrink-0">
-                        {biz.logo_url
-                          ? <img src={biz.logo_url} className="w-full h-full object-cover rounded-md" alt="" />
-                          : <Building2 size={12} />}
-                      </div>
-                      <span className={`text-sm font-bold truncate max-w-[140px] ${activeBusiness?.id === biz.id ? 'text-blue-500' : 'text-slate-300 group-hover:text-white'}`}>
-                        {biz.business_name}
-                      </span>
-                    </div>
-                    {activeBusiness?.id === biz.id && <Check size={16} className="text-blue-500 shrink-0" />}
-                  </button>
-                ))
-              )}
-
-              {/* ✅ Add new business — only for owners */}
-              {canAddBusiness && (
-                <>
-                  <div className="h-px bg-slate-800 my-2" />
-                  <Link
-                    href="/dashboard/business/new"
-                    onClick={() => { setIsSwitcherOpen(false); setIsOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-slate-400 hover:bg-[#0B1120] hover:text-blue-500 transition-colors"
-                  >
-                    <div className="w-6 h-6 rounded-md border border-dashed border-slate-600 flex items-center justify-center shrink-0">
-                      <Plus size={14} />
-                    </div>
-                    Create New Business
-                  </Link>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Navigation ── */}
-      <div className="flex-1 overflow-y-auto p-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <div className="space-y-1">
-          {visibleMenuItems.map((item) => {
-            const isActive = item.path === '/dashboard'
-              ? pathname === item.path
-              : pathname === item.path || pathname.startsWith(`${item.path}/`);
-            return (
-              <Link
-                key={item.name}
-                href={item.path}
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-sm transition-all group ${
-                  isActive
-                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
-                }`}
-              >
-                <item.icon size={16} strokeWidth={2} className={`${isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
-                {item.name}
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── Footer ── */}
-      <div className="p-4 border-t border-slate-800/80 shrink-0">
-        <div className="flex items-center gap-3 px-3 py-2 mb-3">
-          <div className="w-8 h-8 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-xs font-black text-blue-400 shrink-0">
-            {merchant?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'M'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-black text-white truncate">{merchant?.name || 'Merchant'}</p>
-            <p className="text-[10px] text-slate-500 font-medium truncate">{merchant?.email || ''}</p>
-          </div>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-900/20 rounded-xl transition-colors"
-        >
-          <LogOut size={14} /> Sign Out
-        </button>
-      </div>
-    </aside>
-  );
-}
-</file>
-
-<file path="src/app/dashboard/devices/page.tsx">
-'use client';
-
-import { useState, useEffect } from 'react';
-import {
-  Smartphone, Download, Battery, Cpu, Copy, Loader2, X, RefreshCw,
-  Trash2, Key, Eye, EyeOff, CheckCircle2, DownloadCloud, Wifi, Clock, Info
-} from 'lucide-react';
-import { toast, Toaster } from 'sonner';
-import { QRCodeSVG } from 'qrcode.react';
-import {
-  getBusinessSettings, generateBusinessDeviceKey, getBusinessConnectedDevice,
-  deleteBusinessDevice, importVaultDeviceToBusiness, getVaultDataForImport
-} from '@/lib/business_actions';
-import { getAppDownloadLinks } from '@/lib/vault_actions';
-
-function maskKey(key: string): string {
-  if (!key || key.length <= 8) return key;
-  const show = 4;
-  return key.slice(0, show) + '•'.repeat(Math.max(key.length - show * 2, 4)) + key.slice(-show);
-}
-
-// PlayStore অরিজিনাল আইকন যুক্ত করা হলো
-const PlayStoreIcon = () => (
-  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3 20.5V3.5C3 2.91 3.34 2.39 3.86 2.15L14.74 12L3.86 21.85C3.34 21.61 3 21.09 3 20.5Z" fill="#00E676"/>
-    <path d="M14.74 12L17.5 9.42L20.4 11.05C21.2 11.5 21.2 12.5 20.4 12.95L17.5 14.58L14.74 12Z" fill="#FFC107"/>
-    <path d="M3.86 2.15C4.05 2.06 4.27 2 4.5 2C4.83 2 5.14 2.1 5.4 2.25L17.5 9.42L14.74 12L3.86 2.15Z" fill="#FF3D00"/>
-    <path d="M3.86 21.85L14.74 12L17.5 14.58L5.4 21.75C5.14 21.9 4.83 22 4.5 22C4.27 22 4.05 21.94 3.86 21.85Z" fill="#F50057"/>
-  </svg>
-);
-
-export default function BusinessDevicesPage() {
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [showKey, setShowKey] = useState(false);
-  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
-  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-
-  const [businessId, setBusinessId] = useState<string | null>(null);
-  const [businessData, setBusinessData] = useState<any>(null);
-  const [activeDevice, setActiveDevice] = useState<any>(null);
-  const [downloadLinks, setDownloadLinks] = useState({ play_store: '', direct_apk: '' });
-  const [vaultData, setVaultData] = useState<any>(null);
-
-  useEffect(() => {
-    const loadActiveBusiness = () => {
-      const activeId = localStorage.getItem('active_business_id');
-      if (activeId) { setBusinessId(activeId); fetchBusinessData(activeId); }
-      else { setLoading(false); }
-    };
-    loadActiveBusiness();
-    window.addEventListener('businessChanged', loadActiveBusiness);
-    return () => window.removeEventListener('businessChanged', loadActiveBusiness);
-  }, []);
-
-  const fetchBusinessData = async (id: string) => {
-    setLoading(true);
-    const [bizRes, deviceRes, linksRes] = await Promise.all([
-      getBusinessSettings(id),
-      getBusinessConnectedDevice(id),
-      getAppDownloadLinks()
-    ]);
-    if (bizRes.success) setBusinessData(bizRes.data);
-    if (deviceRes.success && deviceRes.data) setActiveDevice(deviceRes.data);
-    if (linksRes.success) setDownloadLinks(linksRes.links);
-    setLoading(false);
-  };
-
-  const handleGenerateKey = async () => {
-    if (!businessId) return;
-    setGenerating(true);
-    const res = await generateBusinessDeviceKey(businessId);
-    if (res.success) {
-      setBusinessData((prev: any) => ({ ...prev, device_connection_key: res.key }));
-      toast.success('New key generated!');
-    } else toast.error('Failed to generate key.');
-    setGenerating(false);
-  };
-
-  const handleOpenManualModal = async () => {
-    setIsManualModalOpen(true);
-    if (!businessData?.device_connection_key) await handleGenerateKey();
-  };
-
-  const copyToClipboard = () => {
-    const key = businessData?.device_connection_key;
-    if (!key) return;
-    navigator.clipboard.writeText(key).then(() => toast.success('Key copied!')).catch(() => toast.error('Failed to copy'));
-  };
-
-  const handleDeleteDevice = async () => {
-    if (!businessId || !confirm('Are you sure you want to disconnect this device?')) return;
-    setLoading(true);
-    const res = await deleteBusinessDevice(businessId);
-    if (res.success) { 
-      setActiveDevice(null); 
-      setBusinessData((prev: any) => ({ ...prev, device_connection_key: null }));
-      toast.success('Device disconnected.'); 
-    }
-    else toast.error(res.message);
-    setLoading(false);
-  };
-
-  const handleOpenImportModal = async () => {
-    setImporting(true);
-    const res = await getVaultDataForImport('device');
-    if (res.success) { setVaultData(res.data); setIsImportModalOpen(true); }
-    else toast.error(res.message);
-    setImporting(false);
-  };
-
-  const handleConfirmImport = async () => {
-    if (!businessId) return;
-    setImporting(true);
-    const res = await importVaultDeviceToBusiness(businessId);
-    if (res.success) { toast.success(res.message); fetchBusinessData(businessId); setIsImportModalOpen(false); }
-    else toast.error(res.message);
-    setImporting(false);
-  };
-
-  const deviceKey = businessData?.device_connection_key || '';
-  const displayedKey = showKey ? deviceKey : maskKey(deviceKey);
-
-  if (loading) return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center">
-      <Loader2 className="animate-spin text-sky-500 mb-3" size={36} strokeWidth={2.5} />
-      <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Loading</p>
-    </div>
-  );
-
-  if (!businessId) return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
-      <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4"><Smartphone size={32} className="text-slate-400" /></div>
-      <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">No Workspace Selected</h2>
-      <p className="text-slate-500 mt-2 font-medium text-sm">Please select a business from the sidebar.</p>
-    </div>
-  );
-
-  return (
-    <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <Toaster position="top-center" richColors />
-
-      <div className="flex justify-between items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Devices</h1>
-          <p className="text-slate-500 font-bold text-[10px] md:text-sm mt-1 uppercase tracking-wider">Workspace Nodes</p>
-        </div>
-        <button onClick={() => setIsDownloadModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 md:py-3.5 rounded-xl font-black flex items-center justify-center gap-2 transition-all shadow-md text-xs uppercase tracking-widest shrink-0">
-          <Download size={16} strokeWidth={2.5} /> 
-          <span className="sm:hidden">App</span>
-          <span className="hidden sm:inline">Download App</span>
-        </button>
-      </div>
-
-      <div className="max-w-2xl mx-auto w-full">
-        <div className="bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800/80 rounded-[28px] overflow-hidden shadow-sm">
-          
-          <div className="p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/30">
-            <div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border shadow-sm ${activeDevice ? 'bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-500/20' : 'bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}>
-                {activeDevice ? <CheckCircle2 size={28} strokeWidth={2.5} /> : <Smartphone size={28} strokeWidth={2.5} />}
-              </div>
-              <div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                  {activeDevice ? 'Device Online' : 'Connect Device'}
-                </h2>
-                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">
-                  {activeDevice ? 'Workspace SMS automation is active.' : 'Link device for workspace automation.'}
-                </p>
-              </div>
-            </div>
-            
-            {activeDevice && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-sky-50 dark:bg-sky-500/10 border border-sky-100 dark:border-sky-500/20 rounded-full shrink-0">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
-                </span>
-                <span className="text-[10px] font-black text-sky-600 dark:text-sky-400 uppercase tracking-widest">Active Connection</span>
-              </div>
-            )}
-          </div>
-
-          {!activeDevice ? (
-            <div className="p-6 md:p-8">
-              <div className="space-y-6">
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
-                  <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-3">How to Connect</h4>
-                  <ol className="text-xs md:text-sm text-slate-600 dark:text-slate-300 space-y-3 list-decimal list-inside font-medium">
-                    <li>Install the Android app on your dedicated device.</li>
-                    <li>Ensure background running & ignore battery optimization.</li>
-                    <li>Click <b>Connect with Secret Key</b> or <b>Import</b>.</li>
-                  </ol>
-                </div>
-                
-                <div className="space-y-3">
-                  <button onClick={handleOpenManualModal} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-md flex items-center justify-center gap-2 transition-all">
-                    <Key size={16} /> Connect with Secret Key
-                  </button>
-                  <button onClick={handleOpenImportModal} disabled={importing} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-sm flex items-center justify-center gap-2 transition-all">
-                    <DownloadCloud size={16} strokeWidth={2.5} /> Import from Vault
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="p-6 md:p-8 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { label: 'Device Name', value: activeDevice.device_name || 'Unknown', icon: Smartphone },
-                  { label: 'Model', value: activeDevice.device_model || 'N/A', icon: Cpu },
-                  { label: 'Battery', value: `${activeDevice.battery_level ?? '?'}%`, icon: Battery },
-                  { label: 'Last Sync', value: activeDevice.last_sync ? new Date(activeDevice.last_sync).toLocaleTimeString() : 'N/A', icon: Clock },
-                  { label: 'Status', value: activeDevice.is_active ? 'Online' : 'Offline', icon: Wifi },
-                  { label: 'App Version', value: activeDevice.app_version || 'v1.0.0', icon: Info },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-                    <div className="w-12 h-12 bg-white dark:bg-slate-700 shadow-sm rounded-xl flex items-center justify-center shrink-0 border border-slate-100 dark:border-slate-600">
-                      <item.icon size={20} className="text-sky-600 dark:text-sky-400" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{item.label}</p>
-                      <p className="text-sm font-black text-slate-800 dark:text-white mt-0.5">{item.value}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button onClick={handleDeleteDevice} className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 font-black text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-800/50">
-                <Trash2 size={16} strokeWidth={2.5} /> Disconnect Device
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {isManualModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[28px] overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl text-indigo-600"><Key size={18} /></div>
-                <span className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Secret Key</span>
-              </div>
-              <button onClick={() => setIsManualModalOpen(false)} className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors rounded-xl">
-                <X size={16} strokeWidth={2.5} />
-              </button>
-            </div>
-            <div className="p-8">
-              {deviceKey && (
-                <>
-                  <div className="flex justify-center mb-6">
-                    <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200">
-                      <QRCodeSVG value={`xelpay://connect?key=${deviceKey}`} size={160} level="H" includeMargin={false} />
-                    </div>
-                  </div>
-
-                  <div className="flex items-stretch bg-slate-50 dark:bg-slate-800/80 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
-                    <div className="px-3 flex items-center justify-center bg-slate-100 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shrink-0">
-                      <Key size={16} className="text-slate-400" />
-                    </div>
-                    <div className="flex-1 py-4 px-3 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] font-mono text-sm tracking-wider font-bold text-slate-800 dark:text-slate-200">
-                      {displayedKey}
-                    </div>
-                    <button onClick={() => setShowKey(!showKey)} className="px-3 bg-slate-100 dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-600 transition-colors shrink-0">
-                      {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                    <button onClick={copyToClipboard} className="px-4 bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shrink-0 flex items-center justify-center">
-                      <Copy size={16} />
-                    </button>
-                  </div>
-                  <p className="text-center text-[10px] text-slate-400 mt-4 uppercase tracking-widest font-bold">Never share this key</p>
-                </>
-              )}
-              {/* Solid Premium Regenerate Button */}
-              <button onClick={handleGenerateKey} disabled={generating}
-                className="w-full py-4 mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 shadow-md">
-                <RefreshCw size={14} className={generating ? 'animate-spin' : ''} /> {generating ? 'Generating...' : 'Regenerate Key'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[28px] overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl text-emerald-600"><DownloadCloud size={18} /></div>
-                <span className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Import Device</span>
-              </div>
-              <button onClick={() => setIsImportModalOpen(false)} className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors rounded-xl">
-                <X size={16} strokeWidth={2.5} />
-              </button>
-            </div>
-            <div className="p-8 space-y-5">
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">This will copy the master device connection from your Vault to this workspace.</p>
-              {vaultData && (
-                <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white dark:bg-slate-700 rounded-full flex items-center justify-center shrink-0 border border-slate-100 dark:border-slate-600 shadow-sm">
-                    <Smartphone size={20} className="text-slate-500 dark:text-slate-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white mb-0.5">{vaultData.device_name || 'Unknown'}</h3>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{vaultData.device_model || 'N/A'}</p>
-                  </div>
-                </div>
-              )}
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setIsImportModalOpen(false)} disabled={importing} className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-black text-xs uppercase tracking-widest rounded-xl transition-all">
-                  Cancel
-                </button>
-                <button onClick={handleConfirmImport} disabled={importing} className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm">
-                  {importing ? <Loader2 size={16} className="animate-spin" /> : 'Confirm Import'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isDownloadModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-xs bg-white dark:bg-slate-900 rounded-[28px] overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl text-emerald-600"><Download size={18} /></div>
-                <span className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Download App</span>
-              </div>
-              <button onClick={() => setIsDownloadModalOpen(false)} className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors rounded-xl">
-                <X size={16} strokeWidth={2.5} />
-              </button>
-            </div>
-            <div className="p-8 space-y-4">
-              {downloadLinks.play_store && (
-                <a href={downloadLinks.play_store} target="_blank" rel="noopener noreferrer"
-                  className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-md rounded-xl">
-                  <PlayStoreIcon /> Google Play Store
-                </a>
-              )}
-              {downloadLinks.direct_apk && (
-                <a href={downloadLinks.direct_apk} target="_blank" rel="noopener noreferrer"
-                  className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md rounded-xl">
-                  <DownloadCloud size={16} /> Direct APK Download
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-</file>
-
 <file path="src/app/dashboard/transactions/page.tsx">
 'use client';
 
@@ -22040,6 +20750,1416 @@ return () => { supabase.removeChannel(channel); };
         </div>
       </div>
     </>
+  );
+}
+</file>
+
+<file path="src/components/dashboard/Sidebar.tsx">
+'use client';
+
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import {
+  LayoutDashboard, Receipt, MessageSquare, Wallet, Link as LinkIcon,
+  Settings, LineChart, Send, Users, Code, Headphones, LogOut,
+  ChevronDown, Building2, Plus, Check, Loader2, PlusCircle,
+  ServerCog, Smartphone, CreditCard, ShieldCheck,
+} from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
+
+type UserRole = 'owner' | 'admin' | 'developer' | 'support' | 'viewer';
+
+// Role-based menu — যে role-এ যে menu দেখা যাবে
+const ALL_MENU_ITEMS = [
+  { name: 'Dashboard',              icon: LayoutDashboard, path: '/dashboard',             roles: ['owner','admin','developer','support','viewer'] },
+  { name: 'Global Vault',           icon: ServerCog,       path: '/dashboard/vault',        roles: ['owner'] },
+  { name: 'New Business',           icon: PlusCircle,      path: '/dashboard/business/new', roles: ['owner'] },
+  { name: 'Brand Settings',         icon: Settings,        path: '/dashboard/brand',         roles: ['owner','admin'] },
+  { name: 'Transactions',           icon: Receipt,         path: '/dashboard/transactions',  roles: ['owner','admin','developer','support','viewer'] },
+  { name: 'Gateway Manager',        icon: Wallet,          path: '/dashboard/gateways',      roles: ['owner','admin'] },
+  { name: 'Devices Manager',        icon: Smartphone,      path: '/dashboard/devices',       roles: ['owner','admin'] },
+  { name: 'Telegram Alerts',        icon: Send,            path: '/dashboard/telegram',      roles: ['owner','admin'] },
+  { name: 'Payment Links',          icon: LinkIcon,        path: '/dashboard/links',         roles: ['owner','admin','developer','support','viewer'] },
+  { name: 'Reports',                icon: LineChart,       path: '/dashboard/reports',       roles: ['owner','admin','developer','support','viewer'] },
+  { name: 'SMS Data',               icon: MessageSquare,   path: '/dashboard/sms',           roles: ['owner','admin','support','viewer'] },
+  { name: 'Customers',              icon: Users,           path: '/dashboard/customers',     roles: ['owner','admin','support','viewer'] },
+  { name: 'System Settings',        icon: Settings,        path: '/dashboard/settings',      roles: ['owner','admin'] },
+  { name: 'Billing & Subscriptions',icon: CreditCard,      path: '/dashboard/subscriptions', roles: ['owner'] },
+  { name: 'API & Plugins',          icon: Code,            path: '/dashboard/api',           roles: ['owner','admin','developer'] },
+  { name: 'Support',                icon: Headphones,      path: '/dashboard/support',       roles: ['owner','admin','developer','support','viewer'] },
+];
+
+const ROLE_BADGE: Record<string, { label: string; color: string; bg: string }> = {
+  admin:     { label: 'Admin',     color: 'text-violet-400', bg: 'bg-violet-500/20' },
+  developer: { label: 'Developer', color: 'text-blue-400',   bg: 'bg-blue-500/20' },
+  support:   { label: 'Support',   color: 'text-emerald-400',bg: 'bg-emerald-500/20' },
+  viewer:    { label: 'Viewer',    color: 'text-slate-400',  bg: 'bg-slate-500/20' },
+};
+
+export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const [businesses, setBusinesses] = useState<any[]>([]);
+  const [activeBusiness, setActiveBusiness] = useState<any>(null);
+  const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userRole, setUserRole] = useState<UserRole>('owner');
+  const switcherRef = useRef<HTMLDivElement>(null);
+
+  // ✅ Realtime subscription — role update হলে instantly sidebar refresh হবে
+  useEffect(() => {
+    if (!merchant?.id) return;
+
+    const channel = supabase
+      .channel(`team-role-${merchant.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'business_team_members',
+          filter: `user_id=eq.${merchant.id}`,
+        },
+        (payload: any) => {
+          // Role update হলে নতুন role set করো — no logout needed
+          if (payload.new?.role) {
+            setUserRole(payload.new.role as UserRole);
+            toast.success(`Your role has been updated to ${payload.new.role}`);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [merchant?.id]);
+
+  // ✅ Business load
+  useEffect(() => {
+    if (!merchant?.id) return;
+    loadBusinesses();
+  }, [merchant?.id, merchant?.is_team_member]);
+
+  const loadBusinesses = async () => {
+    setIsLoading(true);
+    try {
+      if (merchant.is_team_member) {
+        // ✅ Team member — business_team_members থেকে assigned businesses নিয়ে নাও
+        const { data: memberships } = await supabase
+          .from('business_team_members')
+          .select('business_id, role, businesses(id, business_name, logo_url, slug)')
+          .eq('user_id', merchant.id);
+
+        if (memberships && memberships.length > 0) {
+          const assignedBusinesses = memberships
+            .map((m: any) => m.businesses)
+            .filter(Boolean);
+
+          setBusinesses(assignedBusinesses);
+
+          // Active business determine করো
+          const savedBizId = localStorage.getItem('active_business_id');
+          const active = assignedBusinesses.find((b: any) => b.id === savedBizId)
+            || assignedBusinesses[0];
+
+          if (active) {
+            setActiveBusiness(active);
+            localStorage.setItem('active_business_id', active.id);
+
+            // Role নিয়ে নাও active business-এর জন্য
+            const membership = memberships.find((m: any) => m.business_id === active.id);
+            if (membership?.role) setUserRole(membership.role as UserRole);
+          }
+        }
+      } else {
+        // ✅ Regular merchant — নিজের businesses
+        const { data } = await supabase
+          .from('businesses')
+          .select('id, business_name, logo_url, slug')
+          .eq('merchant_id', merchant.id)
+          .order('created_at', { ascending: true });
+
+        if (data && data.length > 0) {
+          setBusinesses(data);
+          const savedBizId = localStorage.getItem('active_business_id');
+          const saved = data.find((b: any) => b.id === savedBizId) || data[0];
+          setActiveBusiness(saved);
+          localStorage.setItem('active_business_id', saved.id);
+        }
+        setUserRole('owner');
+      }
+    } catch (e) {
+      console.error('Sidebar loadBusinesses error:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (switcherRef.current && !switcherRef.current.contains(event.target as Node)) {
+        setIsSwitcherOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // businessChanged event-এ reload
+  useEffect(() => {
+    const handle = () => loadBusinesses();
+    window.addEventListener('businessChanged', handle);
+    return () => window.removeEventListener('businessChanged', handle);
+  }, [merchant?.id]);
+
+  const handleBusinessChange = async (biz: any) => {
+    setActiveBusiness(biz);
+    localStorage.setItem('active_business_id', biz.id);
+    setIsSwitcherOpen(false);
+
+    // Team member হলে role update করো for new business
+    if (merchant.is_team_member) {
+      const { data: membership } = await supabase
+        .from('business_team_members')
+        .select('role')
+        .eq('user_id', merchant.id)
+        .eq('business_id', biz.id)
+        .maybeSingle();
+      if (membership?.role) setUserRole(membership.role as UserRole);
+    }
+
+    toast.loading(`Switching to ${biz.business_name}...`, { id: 'switch' });
+    await supabase.from('merchants').update({ active_business_id: biz.id }).eq('id', merchant.id);
+    window.dispatchEvent(new Event('businessChanged'));
+    router.refresh();
+    toast.success(`Switched to ${biz.business_name}`, { id: 'switch' });
+  };
+
+  const handleLogout = async () => {
+    localStorage.removeItem('active_business_id');
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
+
+  const visibleMenuItems = ALL_MENU_ITEMS.filter(item => item.roles.includes(userRole));
+  const roleBadge = userRole !== 'owner' ? ROLE_BADGE[userRole] : null;
+  const canAddBusiness = !merchant.is_team_member;
+
+  return (
+    <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#0B1120] border-r border-slate-800/80 flex flex-col transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+
+      {/* ── Logo ── */}
+      <div className="flex items-center h-[72px] px-5 border-b border-slate-800/80 shrink-0">
+        <Link href="/dashboard" className="flex items-center gap-1">
+          <span className="text-2xl font-black text-blue-500 tracking-tighter">X</span>
+          <span className="text-xl font-bold text-white tracking-tight -ml-0.5">elPay</span>
+        </Link>
+        {roleBadge && (
+          <span className={`ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold ${roleBadge.color} ${roleBadge.bg}`}>
+            <ShieldCheck size={9} />{roleBadge.label}
+          </span>
+        )}
+      </div>
+
+      {/* ── Business Switcher ── */}
+      <div className="px-4 pt-4 pb-3 border-b border-slate-800/80 shrink-0" ref={switcherRef}>
+        <div className="relative">
+          {/* Main button — সবসময় clickable, dropdown toggle করে */}
+          <button
+            onClick={() => setIsSwitcherOpen(v => !v)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 rounded-xl transition-all"
+          >
+            <div className="w-8 h-8 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0">
+              {activeBusiness?.logo_url
+                ? <img src={activeBusiness.logo_url} className="w-full h-full rounded-lg object-cover" alt="" />
+                : <Building2 size={14} className="text-blue-400" />}
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-xs font-black text-white truncate">
+                {isLoading ? 'Loading...' : (activeBusiness?.business_name || 'Select Business')}
+              </p>
+              {merchant.is_team_member && (
+                <p className="text-[9px] text-slate-500 font-medium mt-0.5">Team workspace</p>
+              )}
+            </div>
+            {isLoading
+              ? <Loader2 size={14} className="text-slate-500 animate-spin shrink-0" />
+              : <ChevronDown size={14} className={`text-slate-400 shrink-0 transition-transform duration-200 ${isSwitcherOpen ? 'rotate-180' : ''}`} />
+            }
+          </button>
+
+          {/* ✅ Dropdown — businesses list + add new */}
+          {isSwitcherOpen && (
+            <div className="absolute top-full left-0 w-full mt-2 bg-[#111827] border border-slate-800 rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200 max-h-72 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+
+              <div className="px-3 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                {merchant.is_team_member ? 'Your Workspaces' : 'Your Businesses'}
+              </div>
+
+              {isLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 size={16} className="animate-spin text-slate-500" />
+                </div>
+              ) : businesses.length === 0 ? (
+                <div className="px-4 py-3 text-sm font-medium text-slate-400">
+                  {merchant.is_team_member ? 'No workspaces found.' : 'No business found.'}
+                </div>
+              ) : (
+                businesses.map((biz) => (
+                  <button
+                    key={biz.id}
+                    onClick={() => handleBusinessChange(biz)}
+                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-[#0B1120] transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-md bg-slate-800 flex items-center justify-center text-slate-400 shrink-0">
+                        {biz.logo_url
+                          ? <img src={biz.logo_url} className="w-full h-full object-cover rounded-md" alt="" />
+                          : <Building2 size={12} />}
+                      </div>
+                      <span className={`text-sm font-bold truncate max-w-[140px] ${activeBusiness?.id === biz.id ? 'text-blue-500' : 'text-slate-300 group-hover:text-white'}`}>
+                        {biz.business_name}
+                      </span>
+                    </div>
+                    {activeBusiness?.id === biz.id && <Check size={16} className="text-blue-500 shrink-0" />}
+                  </button>
+                ))
+              )}
+
+              {/* ✅ Add new business — only for owners */}
+              {canAddBusiness && (
+                <>
+                  <div className="h-px bg-slate-800 my-2" />
+                  <Link
+                    href="/dashboard/business/new"
+                    onClick={() => { setIsSwitcherOpen(false); setIsOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-slate-400 hover:bg-[#0B1120] hover:text-blue-500 transition-colors"
+                  >
+                    <div className="w-6 h-6 rounded-md border border-dashed border-slate-600 flex items-center justify-center shrink-0">
+                      <Plus size={14} />
+                    </div>
+                    Create New Business
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Navigation ── */}
+      <div className="flex-1 overflow-y-auto p-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="space-y-1">
+          {visibleMenuItems.map((item) => {
+            const isActive = item.path === '/dashboard'
+              ? pathname === item.path
+              : pathname === item.path || pathname.startsWith(`${item.path}/`);
+            return (
+              <Link
+                key={item.name}
+                href={item.path}
+                onClick={() => setIsOpen(false)}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold text-sm transition-all group ${
+                  isActive
+                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                    : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                }`}
+              >
+                <item.icon size={16} strokeWidth={2} className={`${isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'} transition-colors`} />
+                {item.name}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Footer ── */}
+      <div className="p-4 border-t border-slate-800/80 shrink-0">
+        <div className="flex items-center gap-3 px-3 py-2 mb-3">
+          <div className="w-8 h-8 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-xs font-black text-blue-400 shrink-0">
+            {merchant?.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || 'M'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-black text-white truncate">{merchant?.name || 'Merchant'}</p>
+            <p className="text-[10px] text-slate-500 font-medium truncate">{merchant?.email || ''}</p>
+          </div>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-900/20 rounded-xl transition-colors"
+        >
+          <LogOut size={14} /> Sign Out
+        </button>
+      </div>
+    </aside>
+  );
+}
+</file>
+
+<file path="src/app/dashboard/devices/page.tsx">
+'use client';
+
+import { useState, useEffect } from 'react';
+import {
+  Smartphone, Download, Battery, Cpu, Copy, Loader2, X, RefreshCw,
+  Trash2, Key, Eye, EyeOff, CheckCircle2, DownloadCloud, Wifi, Clock, Info
+} from 'lucide-react';
+import { toast, Toaster } from 'sonner';
+import { QRCodeSVG } from 'qrcode.react';
+import {
+  getBusinessSettings, generateBusinessDeviceKey, getBusinessConnectedDevice,
+  deleteBusinessDevice, importVaultDeviceToBusiness, getVaultDataForImport
+} from '@/lib/business_actions';
+import { getAppDownloadLinks } from '@/lib/vault_actions';
+
+function maskKey(key: string): string {
+  if (!key || key.length <= 8) return key;
+  const show = 4;
+  return key.slice(0, show) + '•'.repeat(Math.max(key.length - show * 2, 4)) + key.slice(-show);
+}
+
+// PlayStore অরিজিনাল আইকন যুক্ত করা হলো
+const PlayStoreIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M3 20.5V3.5C3 2.91 3.34 2.39 3.86 2.15L14.74 12L3.86 21.85C3.34 21.61 3 21.09 3 20.5Z" fill="#00E676"/>
+    <path d="M14.74 12L17.5 9.42L20.4 11.05C21.2 11.5 21.2 12.5 20.4 12.95L17.5 14.58L14.74 12Z" fill="#FFC107"/>
+    <path d="M3.86 2.15C4.05 2.06 4.27 2 4.5 2C4.83 2 5.14 2.1 5.4 2.25L17.5 9.42L14.74 12L3.86 2.15Z" fill="#FF3D00"/>
+    <path d="M3.86 21.85L14.74 12L17.5 14.58L5.4 21.75C5.14 21.9 4.83 22 4.5 22C4.27 22 4.05 21.94 3.86 21.85Z" fill="#F50057"/>
+  </svg>
+);
+
+export default function BusinessDevicesPage() {
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [showKey, setShowKey] = useState(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  const [businessId, setBusinessId] = useState<string | null>(null);
+  const [businessData, setBusinessData] = useState<any>(null);
+  const [activeDevice, setActiveDevice] = useState<any>(null);
+  const [downloadLinks, setDownloadLinks] = useState({ play_store: '', direct_apk: '' });
+  const [vaultData, setVaultData] = useState<any>(null);
+
+  useEffect(() => {
+    const loadActiveBusiness = () => {
+      const activeId = localStorage.getItem('active_business_id');
+      if (activeId) { setBusinessId(activeId); fetchBusinessData(activeId); }
+      else { setLoading(false); }
+    };
+    loadActiveBusiness();
+    window.addEventListener('businessChanged', loadActiveBusiness);
+    return () => window.removeEventListener('businessChanged', loadActiveBusiness);
+  }, []);
+
+  const fetchBusinessData = async (id: string) => {
+    setLoading(true);
+    const [bizRes, deviceRes, linksRes] = await Promise.all([
+      getBusinessSettings(id),
+      getBusinessConnectedDevice(id),
+      getAppDownloadLinks()
+    ]);
+    if (bizRes.success) setBusinessData(bizRes.data);
+    if (deviceRes.success && deviceRes.data) setActiveDevice(deviceRes.data);
+    if (linksRes.success) setDownloadLinks(linksRes.links);
+    setLoading(false);
+  };
+
+  const handleGenerateKey = async () => {
+    if (!businessId) return;
+    setGenerating(true);
+    const res = await generateBusinessDeviceKey(businessId);
+    if (res.success) {
+      setBusinessData((prev: any) => ({ ...prev, device_connection_key: res.key }));
+      toast.success('New key generated!');
+    } else toast.error('Failed to generate key.');
+    setGenerating(false);
+  };
+
+  const handleOpenManualModal = async () => {
+    setIsManualModalOpen(true);
+    if (!businessData?.device_connection_key) await handleGenerateKey();
+  };
+
+  const copyToClipboard = () => {
+    const key = businessData?.device_connection_key;
+    if (!key) return;
+    navigator.clipboard.writeText(key).then(() => toast.success('Key copied!')).catch(() => toast.error('Failed to copy'));
+  };
+
+  const handleDeleteDevice = async () => {
+    if (!businessId || !confirm('Are you sure you want to disconnect this device?')) return;
+    setLoading(true);
+    const res = await deleteBusinessDevice(businessId);
+    if (res.success) { 
+      setActiveDevice(null); 
+      setBusinessData((prev: any) => ({ ...prev, device_connection_key: null }));
+      toast.success('Device disconnected.'); 
+    }
+    else toast.error(res.message);
+    setLoading(false);
+  };
+
+  const handleOpenImportModal = async () => {
+    setImporting(true);
+    const res = await getVaultDataForImport('device');
+    if (res.success) { setVaultData(res.data); setIsImportModalOpen(true); }
+    else toast.error(res.message);
+    setImporting(false);
+  };
+
+  const handleConfirmImport = async () => {
+    if (!businessId) return;
+    setImporting(true);
+    const res = await importVaultDeviceToBusiness(businessId);
+    if (res.success) { toast.success(res.message); fetchBusinessData(businessId); setIsImportModalOpen(false); }
+    else toast.error(res.message);
+    setImporting(false);
+  };
+
+  const deviceKey = businessData?.device_connection_key || '';
+  const displayedKey = showKey ? deviceKey : maskKey(deviceKey);
+
+  if (loading) return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center">
+      <Loader2 className="animate-spin text-sky-500 mb-3" size={36} strokeWidth={2.5} />
+      <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Loading</p>
+    </div>
+  );
+
+  if (!businessId) return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center">
+      <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4"><Smartphone size={32} className="text-slate-400" /></div>
+      <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">No Workspace Selected</h2>
+      <p className="text-slate-500 mt-2 font-medium text-sm">Please select a business from the sidebar.</p>
+    </div>
+  );
+
+  return (
+    <div className="w-full space-y-6 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <Toaster position="top-center" richColors />
+
+      <div className="flex justify-between items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Devices</h1>
+          <p className="text-slate-500 font-bold text-[10px] md:text-sm mt-1 uppercase tracking-wider">Workspace Nodes</p>
+        </div>
+        <button onClick={() => setIsDownloadModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 md:py-3.5 rounded-xl font-black flex items-center justify-center gap-2 transition-all shadow-md text-xs uppercase tracking-widest shrink-0">
+          <Download size={16} strokeWidth={2.5} /> 
+          <span className="sm:hidden">App</span>
+          <span className="hidden sm:inline">Download App</span>
+        </button>
+      </div>
+
+      <div className="max-w-2xl mx-auto w-full">
+        <div className="bg-white dark:bg-[#0B1120] border border-slate-200 dark:border-slate-800/80 rounded-[28px] overflow-hidden shadow-sm">
+          
+          <div className="p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/30">
+            <div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border shadow-sm ${activeDevice ? 'bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-100 dark:border-sky-500/20' : 'bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}>
+                {activeDevice ? <CheckCircle2 size={28} strokeWidth={2.5} /> : <Smartphone size={28} strokeWidth={2.5} />}
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                  {activeDevice ? 'Device Online' : 'Connect Device'}
+                </h2>
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wider">
+                  {activeDevice ? 'Workspace SMS automation is active.' : 'Link device for workspace automation.'}
+                </p>
+              </div>
+            </div>
+            
+            {activeDevice && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-sky-50 dark:bg-sky-500/10 border border-sky-100 dark:border-sky-500/20 rounded-full shrink-0">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                </span>
+                <span className="text-[10px] font-black text-sky-600 dark:text-sky-400 uppercase tracking-widest">Active Connection</span>
+              </div>
+            )}
+          </div>
+
+          {!activeDevice ? (
+            <div className="p-6 md:p-8">
+              <div className="space-y-6">
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest mb-3">How to Connect</h4>
+                  <ol className="text-xs md:text-sm text-slate-600 dark:text-slate-300 space-y-3 list-decimal list-inside font-medium">
+                    <li>Install the Android app on your dedicated device.</li>
+                    <li>Ensure background running & ignore battery optimization.</li>
+                    <li>Click <b>Connect with Secret Key</b> or <b>Import</b>.</li>
+                  </ol>
+                </div>
+                
+                <div className="space-y-3">
+                  <button onClick={handleOpenManualModal} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-md flex items-center justify-center gap-2 transition-all">
+                    <Key size={16} /> Connect with Secret Key
+                  </button>
+                  <button onClick={handleOpenImportModal} disabled={importing} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-sm flex items-center justify-center gap-2 transition-all">
+                    <DownloadCloud size={16} strokeWidth={2.5} /> Import from Vault
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-6 md:p-8 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { label: 'Device Name', value: activeDevice.device_name || 'Unknown', icon: Smartphone },
+                  { label: 'Model', value: activeDevice.device_model || 'N/A', icon: Cpu },
+                  { label: 'Battery', value: `${activeDevice.battery_level ?? '?'}%`, icon: Battery },
+                  { label: 'Last Sync', value: activeDevice.last_sync ? new Date(activeDevice.last_sync).toLocaleTimeString() : 'N/A', icon: Clock },
+                  { label: 'Status', value: activeDevice.is_active ? 'Online' : 'Offline', icon: Wifi },
+                  { label: 'App Version', value: activeDevice.app_version || 'v1.0.0', icon: Info },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <div className="w-12 h-12 bg-white dark:bg-slate-700 shadow-sm rounded-xl flex items-center justify-center shrink-0 border border-slate-100 dark:border-slate-600">
+                      <item.icon size={20} className="text-sky-600 dark:text-sky-400" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{item.label}</p>
+                      <p className="text-sm font-black text-slate-800 dark:text-white mt-0.5">{item.value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={handleDeleteDevice} className="w-full py-4 bg-slate-100 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 font-black text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-800/50">
+                <Trash2 size={16} strokeWidth={2.5} /> Disconnect Device
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {isManualModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[28px] overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl text-indigo-600"><Key size={18} /></div>
+                <span className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Secret Key</span>
+              </div>
+              <button onClick={() => setIsManualModalOpen(false)} className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors rounded-xl">
+                <X size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+            <div className="p-8">
+              {deviceKey && (
+                <>
+                  <div className="flex justify-center mb-6">
+                    <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200">
+                      <QRCodeSVG value={`xelpay://connect?key=${deviceKey}`} size={160} level="H" includeMargin={false} />
+                    </div>
+                  </div>
+
+                  <div className="flex items-stretch bg-slate-50 dark:bg-slate-800/80 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700">
+                    <div className="px-3 flex items-center justify-center bg-slate-100 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shrink-0">
+                      <Key size={16} className="text-slate-400" />
+                    </div>
+                    <div className="flex-1 py-4 px-3 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] font-mono text-sm tracking-wider font-bold text-slate-800 dark:text-slate-200">
+                      {displayedKey}
+                    </div>
+                    <button onClick={() => setShowKey(!showKey)} className="px-3 bg-slate-100 dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-600 transition-colors shrink-0">
+                      {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                    <button onClick={copyToClipboard} className="px-4 bg-indigo-600 hover:bg-indigo-700 text-white transition-colors shrink-0 flex items-center justify-center">
+                      <Copy size={16} />
+                    </button>
+                  </div>
+                  <p className="text-center text-[10px] text-slate-400 mt-4 uppercase tracking-widest font-bold">Never share this key</p>
+                </>
+              )}
+              {/* Solid Premium Regenerate Button */}
+              <button onClick={handleGenerateKey} disabled={generating}
+                className="w-full py-4 mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 shadow-md">
+                <RefreshCw size={14} className={generating ? 'animate-spin' : ''} /> {generating ? 'Generating...' : 'Regenerate Key'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-[28px] overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl text-emerald-600"><DownloadCloud size={18} /></div>
+                <span className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Import Device</span>
+              </div>
+              <button onClick={() => setIsImportModalOpen(false)} className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors rounded-xl">
+                <X size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+            <div className="p-8 space-y-5">
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">This will copy the master device connection from your Vault to this workspace.</p>
+              {vaultData && (
+                <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 p-5 rounded-2xl flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white dark:bg-slate-700 rounded-full flex items-center justify-center shrink-0 border border-slate-100 dark:border-slate-600 shadow-sm">
+                    <Smartphone size={20} className="text-slate-500 dark:text-slate-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white mb-0.5">{vaultData.device_name || 'Unknown'}</h3>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{vaultData.device_model || 'N/A'}</p>
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setIsImportModalOpen(false)} disabled={importing} className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-black text-xs uppercase tracking-widest rounded-xl transition-all">
+                  Cancel
+                </button>
+                <button onClick={handleConfirmImport} disabled={importing} className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm">
+                  {importing ? <Loader2 size={16} className="animate-spin" /> : 'Confirm Import'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDownloadModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-xs bg-white dark:bg-slate-900 rounded-[28px] overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl text-emerald-600"><Download size={18} /></div>
+                <span className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Download App</span>
+              </div>
+              <button onClick={() => setIsDownloadModalOpen(false)} className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors rounded-xl">
+                <X size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+            <div className="p-8 space-y-4">
+              {downloadLinks.play_store && (
+                <a href={downloadLinks.play_store} target="_blank" rel="noopener noreferrer"
+                  className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-md rounded-xl">
+                  <PlayStoreIcon /> Google Play Store
+                </a>
+              )}
+              {downloadLinks.direct_apk && (
+                <a href={downloadLinks.direct_apk} target="_blank" rel="noopener noreferrer"
+                  className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md rounded-xl">
+                  <DownloadCloud size={16} /> Direct APK Download
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/dashboard/subscriptions/page.tsx">
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import {
+  CreditCard, CheckCircle, Clock, Loader2, ArrowLeft, 
+  Shield, Copy, Info, History, Lock, Crown, Download
+} from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { toast, Toaster } from 'sonner';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
+// ── Types ─────────────────────────────────────────────────────
+type Plan = {
+  id: string; name: string; price: number; yearly_price: number | null;
+  serial: number; tag: string | null; features: any; transaction_limit_monthly: number;
+  business_limit: number; allowed_method: any; is_team_allowed: boolean;
+  allowed_team_members: number; device_limit: number; allowed_telegram_group: boolean;
+  is_custom_bot_allowed: boolean;
+};
+
+type Subscription = {
+  id: string; plan_id: string; billing_cycle: string; amount_paid: number;
+  status: string; started_at: string; expires_at: string | null;
+  payment_method: string | null; payment_reference: string | null;
+};
+
+type AdminGateway = {
+  id: string; provider: string; provider_name: string; account_number: string;
+  account_type: string; branch_name: string | null;
+};
+
+type PaymentLogo = { method_name: string; logo_url: string; method_color: string | null };
+
+type AdminOrder = {
+  merchant_id: any;
+  id: string; order_no: string; amount: number; billing_cycle: string;
+  payment_method: string; payment_reference: string; status: string;
+  created_at: string; plan_id: string; sender_number: string | null;
+};
+
+type Merchant = {
+  id: string; plan_id: string; business_count: number;
+  transaction_count: number; team_member_count: number; device_count: number;
+  business_name?: string;
+  email?: string;
+};
+
+// ── Helpers ───────────────────────────────────────────────────
+const fmtBDT = (n: number) => `৳${n.toLocaleString('en-IN')}`;
+const fmtDate = (d: string | null) => d ?
+  new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+const daysLeft = (exp: string | null) => {
+  if (!exp) return null;
+  const diff = new Date(exp).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diff / 86400000));
+};
+
+const METHOD_ICONS: Record<string, string> = {
+  bkash: '💜', nagad: '🟠', rocket: '🟣', upay: '🟡', bank: '🏦',
+};
+
+// Theme Generator for Tags
+const getColorTheme = (colorName: string) => {
+  const themes: Record<string, any> = {
+    blue: { border: 'border-blue-600', bg: 'bg-blue-600', text: 'text-blue-600 dark:text-blue-400', hover: 'hover:bg-blue-700', lightBg: 'bg-blue-50 dark:bg-blue-900/10' },
+    emerald: { border: 'border-emerald-600', bg: 'bg-emerald-600', text: 'text-emerald-600 dark:text-emerald-400', hover: 'hover:bg-emerald-700', lightBg: 'bg-emerald-50 dark:bg-emerald-900/10' },
+    purple: { border: 'border-purple-600', bg: 'bg-purple-600', text: 'text-purple-600 dark:text-purple-400', hover: 'hover:bg-purple-700', lightBg: 'bg-purple-50 dark:bg-purple-900/10' },
+    amber: { border: 'border-amber-500', bg: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-500', hover: 'hover:bg-amber-600', lightBg: 'bg-amber-50 dark:bg-amber-900/10' },
+    slate: { border: 'border-slate-700', bg: 'bg-slate-800', text: 'text-slate-700 dark:text-slate-400', hover: 'hover:bg-slate-900', lightBg: 'bg-slate-100 dark:bg-slate-800/50' }
+  };
+  return themes[colorName?.toLowerCase()] || themes.blue;
+};
+
+// ── Usage Bar Component ───────────────────────────────────────
+function CustomUsageBar({ label, used = 0, limit = 0 }: { label: string, used: number, limit: number }) {
+  const isUnlimited = limit === 0;
+  const percentage = isUnlimited ? 0 : Math.min(100, (used / limit) * 100);
+  const displayLimit = isUnlimited ? 'Unlimited' : limit.toLocaleString();
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-slate-500 dark:text-slate-400 font-medium">{label}</span>
+        <span className="font-bold text-slate-900 dark:text-white">
+          {used.toLocaleString()} / {displayLimit} {!isUnlimited && <span className="text-slate-400 text-xs ml-1 font-medium">({Math.round(percentage)}%)</span>}
+        </span>
+      </div>
+      <div className={`h-2.5 w-full rounded-full overflow-hidden ${isUnlimited ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
+         <div 
+           className={`h-full rounded-full transition-all duration-500 ${isUnlimited ? 'bg-emerald-500' : 'bg-blue-600 dark:bg-blue-500'}`} 
+           style={{ width: isUnlimited ? '100%' : `${percentage}%` }} 
+         />
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page Layout ──────────────────────────────────────────
+export default function SubscriptionsPage() {
+  const [loading, setLoading] = useState(true);
+  const [merchant, setMerchant] = useState<Merchant | null>(null);
+  const [allPlans, setAllPlans] = useState<Plan[]>([]);
+  const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [orderHistory, setOrderHistory] = useState<AdminOrder[]>([]);
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
+  const [yearlyDiscount, setYearlyDiscount] = useState(20);
+  const [adminGateways, setAdminGateways] = useState<AdminGateway[]>([]);
+  const [paymentLogos, setPaymentLogos] = useState<PaymentLogo[]>([]);
+
+  // Working View State 
+  const [currentView, setCurrentView] = useState<"billing" | "checkout" | "pending_view">("billing");
+  const [checkoutPlan, setCheckoutPlan] = useState<Plan | null>(null);
+  const [checkoutPrice, setCheckoutPrice] = useState<number>(0);
+
+  // Checkout Form States
+  const [selectedGateway, setSelectedGateway] = useState<AdminGateway | null>(null);
+  const [trxId, setTrxId] = useState('');
+  const [senderNumber, setSenderNumber] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const [plansRes, merchantRes, subRes, settingsRes, gatewaysRes, ordersRes, logosRes] = await Promise.all([
+        supabase.from('plans').select('*').order('serial', { ascending: true }),
+        supabase.from('merchants').select('*, business_name, email').eq('id', user.id).single(),
+        supabase.from('merchant_subscriptions').select('*').eq('merchant_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('site_settings').select('key_name, value').eq('key_name', 'subscription_discount_yearly').maybeSingle(),
+        supabase.from('admin_gateways').select('*').eq('status', 'active'),
+        supabase.from('admin_orders').select('*').eq('merchant_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('payment_logos').select('*'),
+      ]);
+
+      setMerchant(merchantRes.data);
+      setAllPlans(plansRes.data || []);
+      setSubscription(subRes.data || null);
+      setAdminGateways(gatewaysRes.data || []);
+      setOrderHistory(ordersRes.data || []);
+      setPaymentLogos(logosRes.data || []);
+      if (settingsRes.data?.value) setYearlyDiscount(parseInt(settingsRes.data.value) || 20);
+      
+      const activePlanId = subRes.data?.plan_id || merchantRes.data?.plan_id;
+      if (activePlanId && plansRes.data) {
+        setCurrentPlan(plansRes.data.find((p: Plan) => p.id === activePlanId) || null);
+      }
+    } catch (e: any) { 
+      toast.error('Failed to load: ' + e.message);
+    } finally { 
+      setLoading(false); 
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const getLogoUrl = (provider: string) => {
+    const found = paymentLogos.find((l: any) => l.method_name.toLowerCase() === provider.toLowerCase() || l.method_name.toLowerCase() === provider.toLowerCase().replace(/\s/g, ''));
+    return found?.logo_url || null;
+  };
+
+  const handleSelectPlan = (plan: Plan) => {
+    const price = billing === 'yearly' 
+      ? (plan.yearly_price ?? Math.round((plan.price ?? 0) * 12 * (1 - yearlyDiscount / 100))) 
+      : (plan.price ?? 0);
+    
+    setCheckoutPlan(plan);
+    setCheckoutPrice(price);
+    setSelectedGateway(null);
+    setTrxId('');
+    setSenderNumber('');
+    setCurrentView("checkout");
+  };
+
+  // ── Database Store Logic (Exactly as requested) ─────────────
+  const handlePaymentSubmit = async () => {
+    if (!selectedGateway || !checkoutPlan || !merchant) return;
+    if (!trxId.trim()) { toast.error('Transaction ID is required.'); return; }
+    if (selectedGateway.account_type !== 'corporate' && !senderNumber.trim()) { 
+      toast.error('Sender number is required.'); 
+      return; 
+    }
+    
+    setSubmitting(true);
+    try {
+      const now = new Date();
+      const expiresAt = billing === 'yearly' ?
+        new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000) : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const orderNo = `ADM-${Date.now().toString(36).toUpperCase()}`;
+
+      // Insert into merchant_subscriptions
+      const { data: newSub, error: subError } = await supabase.from('merchant_subscriptions').insert({
+        merchant_id: merchant.id, 
+        plan_id: checkoutPlan.id, 
+        billing_cycle: billing, 
+        amount_paid: checkoutPrice,
+        currency: 'BDT', 
+        status: 'pending', 
+        started_at: now.toISOString(), 
+        expires_at: expiresAt.toISOString(),
+        next_billing_at: expiresAt.toISOString(), 
+        payment_method: selectedGateway.provider, 
+        payment_reference: trxId.trim(),
+      }).select('*').single();
+      
+      if (subError) throw subError;
+
+      // Insert into admin_orders
+      const { error: orderError } = await supabase.from('admin_orders').insert({
+        merchant_id: merchant.id, 
+        plan_id: checkoutPlan.id, 
+        subscription_id: newSub?.id, 
+        order_no: orderNo,
+        amount: checkoutPrice, 
+        currency: 'BDT', 
+        billing_cycle: billing, 
+        payment_method: selectedGateway.provider,
+        payment_reference: trxId.trim(), 
+        gateway_used: selectedGateway.provider, 
+        status: 'pending',
+        sender_number: senderNumber.trim() || null, 
+        notes: `Gateway: ${selectedGateway.provider_name} | Account: ${selectedGateway.account_number}`,
+      });
+
+      if (orderError) throw orderError;
+
+      setCurrentView("pending_view");
+      load();
+    } catch (e: any) {
+      toast.error('Submission failed: ' + e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ── PDF Invoice Generation Logic ────────────────────────────
+  const downloadInvoice = (order: AdminOrder) => {
+    try {
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFontSize(22);
+      doc.setTextColor(37, 99, 235); // Blue 600
+      doc.text("XelPay Invoice", 14, 20);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text("Automated Billing System", 14, 26);
+      
+      // Invoice Details
+      doc.setFontSize(11);
+      doc.setTextColor(0);
+      doc.text(`Invoice No: ${order.order_no}`, 140, 20);
+      doc.text(`Date: ${fmtDate(order.created_at)}`, 140, 26);
+      doc.text(`Status: ${order.status.toUpperCase()}`, 140, 32);
+
+      // Billed To
+      doc.setFontSize(12);
+      doc.text("Billed To:", 14, 45);
+      doc.setFontSize(10);
+      doc.setTextColor(80);
+      doc.text(`Merchant ID: ${order.merchant_id}`, 14, 52);
+      if (merchant?.business_name) doc.text(`Business: ${merchant.business_name}`, 14, 58);
+      if (merchant?.email) doc.text(`Email: ${merchant.email}`, 14, 64);
+
+      // Table Data
+      const tableData = [
+        [
+          "Subscription Plan", 
+          order.billing_cycle === 'yearly' ? 'Annual' : 'Monthly',
+          order.payment_method.toUpperCase(),
+          order.payment_reference,
+          `${order.amount} BDT`
+        ]
+      ];
+
+      (doc as any).autoTable({
+        startY: 75,
+        head: [['Description', 'Cycle', 'Method', 'TrxID', 'Total']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [37, 99, 235] },
+        styles: { fontSize: 10, cellPadding: 5 },
+      });
+
+      // Footer
+      const finalY = (doc as any).lastAutoTable.finalY || 100;
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text("Thank you for using XelPay services.", 14, finalY + 20);
+
+      doc.save(`${order.order_no}.pdf`);
+      toast.success("Invoice downloaded successfully!");
+    } catch (err) {
+      toast.error("Failed to generate PDF. Make sure jspdf is installed.");
+    }
+  };
+
+  const days = daysLeft(subscription?.expires_at || null);
+  const isActive = subscription?.status === 'active';
+  const canDowngradeDays = days !== null && days <= 3;
+
+  if (loading) return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <Loader2 size={36} className="animate-spin text-blue-600" />
+    </div>
+  );
+
+  // ── VIEW: SECURE CHECKOUT ───
+  if (currentView === "checkout" && checkoutPlan) {
+    const localProviders = ['bkash', 'nagad', 'rocket', 'upay'];
+    const bdLocalGateways = adminGateways.filter(g => localProviders.includes(g.provider.toLowerCase()));
+    const globalGateways = adminGateways.filter(g => !localProviders.includes(g.provider.toLowerCase()));
+
+    return (
+      <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 p-2 md:p-0">
+        <div className="max-w-5xl mx-auto">
+          <button onClick={() => setCurrentView("billing")} className="flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-blue-600 mb-6 transition-colors">
+            <ArrowLeft size={16} /> Back to Billing
+          </button>
+
+          <div className="grid lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white dark:bg-[#111827] rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Secure Checkout</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-8">Complete your purchase securely. All transactions are manually audited.</p>
+                  
+                {/* Native Custom Android Selection Style */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Lock className="size-4 text-slate-400" />
+                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">Select Provider</label>
+                  </div>
+
+                  <div className="space-y-3">
+                    {bdLocalGateways.map((gw) => {
+                      const logoUrl = getLogoUrl(gw.provider);
+                      const isSelected = selectedGateway?.id === gw.id;
+                      return (
+                        <div 
+                          key={gw.id} 
+                          onClick={() => setSelectedGateway(gw)}
+                          className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all border-2 ${isSelected ? "border-blue-600 bg-blue-50 dark:bg-blue-900/10 shadow-sm" : "border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] hover:border-blue-300 dark:hover:border-blue-800/50"}`}
+                        >
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'border-blue-600' : 'border-slate-300 dark:border-slate-600'}`}>
+                            {isSelected && <div className="w-2.5 h-2.5 bg-blue-600 rounded-full" />}
+                          </div>
+
+                          <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 dark:bg-[#0B1120] border border-slate-100 dark:border-slate-800 overflow-hidden shrink-0">
+                            {logoUrl ? <img src={logoUrl} alt={gw.provider_name} className="w-8 h-8 object-contain" /> : <span className="text-xl">{METHOD_ICONS[gw.provider] || '💳'}</span>}
+                          </div>
+                          
+                          <div className="flex-1">
+                            <p className="font-bold text-base text-slate-900 dark:text-white">{gw.provider_name}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{gw.account_type} Account</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {globalGateways.length > 0 && (
+                     <div className="space-y-3 mt-6">
+                        <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest mb-2">Bank / Global Payment</h4>
+                        {globalGateways.map((gw) => {
+                          const isSelected = selectedGateway?.id === gw.id;
+                          return (
+                            <div 
+                              key={gw.id} 
+                              onClick={() => setSelectedGateway(gw)}
+                              className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all border-2 ${isSelected ? "border-blue-600 bg-blue-50 dark:bg-blue-900/10 shadow-sm" : "border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827] hover:border-blue-300 dark:hover:border-blue-800/50"}`}
+                            >
+                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'border-blue-600' : 'border-slate-300 dark:border-slate-600'}`}>
+                                {isSelected && <div className="w-2.5 h-2.5 bg-blue-600 rounded-full" />}
+                              </div>
+
+                              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-50 dark:bg-[#0B1120] border border-slate-100 dark:border-slate-800 shrink-0">
+                                <span className="text-xl">{METHOD_ICONS[gw.provider] || '🏦'}</span>
+                              </div>
+                              
+                              <div className="flex-1">
+                                <p className="font-bold text-base text-slate-900 dark:text-white">{gw.provider_name}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{gw.account_type}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                     </div>
+                  )}
+                </div>
+
+                {/* ── Payment Details Input Fields ── */}
+                {selectedGateway && (
+                  <div className="mt-8 space-y-4 p-6 bg-slate-50 dark:bg-[#0B1120] rounded-2xl border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-300">
+                    <div className="flex justify-between items-start border-b border-slate-200 dark:border-slate-800 pb-4 mb-4">
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Send Payment To</p>
+                        <p className="text-lg font-bold text-slate-900 dark:text-white mt-1">{selectedGateway.provider_name} ({selectedGateway.account_type})</p>
+                        <p className="text-2xl font-mono font-black text-blue-600 tracking-wide mt-1">{selectedGateway.account_number}</p>
+                      </div>
+                      <button onClick={() => { navigator.clipboard.writeText(selectedGateway.account_number); toast.success('Account number copied!'); }} className="px-3 py-1.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 hover:text-blue-600 transition-colors shadow-sm">
+                        <Copy size={14} /> Copy
+                      </button>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-5 pt-2">
+                      {selectedGateway.account_type !== 'corporate' && (
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest block">Sender Wallet Number *</label>
+                          <input type="tel" placeholder="e.g. 01XXXXXXXXX" value={senderNumber} onChange={e => setSenderNumber(e.target.value)} className="w-full px-4 py-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm text-slate-900 dark:text-white font-medium" />
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest block">Transaction ID / Reference *</label>
+                        <input placeholder="e.g. 8N7AB23KC1" value={trxId} onChange={e => setTrxId(e.target.value)} className="w-full px-4 py-3 bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-blue-500 text-sm font-mono uppercase font-bold text-slate-900 dark:text-white" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Order Invoice Sidebar */}
+            <div className="lg:col-span-1">
+              <div className="bg-white dark:bg-[#111827] rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm sticky top-24">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-6 uppercase tracking-widest">Order Summary</h3>
+                
+                <div className="space-y-4 mb-6">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Plan Selected</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{checkoutPlan.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">Billing Cycle</span>
+                    <span className="font-bold text-slate-900 dark:text-white capitalize">{billing}</span>
+                  </div>
+                </div>
+
+                <div className="h-px bg-slate-100 dark:bg-slate-800 w-full mb-6" />
+
+                <div className="flex items-center justify-between mb-8">
+                  <span className="text-base font-bold text-slate-900 dark:text-white">Total Amount</span>
+                  <span className="text-2xl font-black text-blue-600">{fmtBDT(checkoutPrice)}</span>
+                </div>
+
+                <button 
+                  onClick={handlePaymentSubmit} 
+                  disabled={submitting || !selectedGateway || !trxId.trim()}
+                  className="w-full bg-blue-600 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-sm hover:bg-blue-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30"
+                >
+                  {submitting ? <><Loader2 className="size-4 animate-spin" /> Verifying...</> : <><Shield className="size-4" /> Complete Purchase</>}
+                </button>
+
+                <p className="text-xs text-center text-slate-400 mt-4 font-medium leading-relaxed">
+                  By completing this purchase, your transaction will be securely audited.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── VIEW: PENDING SCREEN ───────────
+  if (currentView === "pending_view") {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center animate-in zoom-in-95 duration-500">
+        <div className="bg-white dark:bg-[#111827] w-full max-w-md rounded-3xl p-8 text-center shadow-xl border border-slate-200 dark:border-slate-800">
+          <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Clock size={40} className="text-amber-500" />
+          </div>
+          <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">Verification Pending</h3>
+          <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-8">
+            Your transaction has been submitted and is under manual audit. Features will activate shortly.
+          </p>
+          <button onClick={() => setCurrentView("billing")} className="w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 py-3.5 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">
+            Return to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── VIEW: MAIN BILLING DASHBOARD ────────
+  return (
+    <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+      <Toaster position="top-center" richColors />
+        
+      <div>
+        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+          <CreditCard className="size-8 text-blue-600" /> Billing & Subscription
+        </h1>
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Manage your active plan, view usage, and track payment history.</p>
+      </div>
+
+      <div className="bg-white dark:bg-[#111827] rounded-3xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+              <Crown className="size-5 text-blue-600" /> Current Plan: {currentPlan?.name || 'Free Tier'}
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Subscription renews on <span className="font-bold text-slate-700 dark:text-slate-300">{fmtDate(subscription?.expires_at || null)}</span>
+            </p>
+          </div>
+          <div className={`px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest ${isActive ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700"}`}>
+            {isActive ? "Active" : "Free / Expired"}
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8">
+          <div className="md:col-span-1 border-r-0 md:border-r border-slate-100 dark:border-slate-800 pr-0 md:pr-8">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Paid This Cycle</p>
+            <span className="text-4xl font-black text-blue-600">{fmtBDT(subscription?.amount_paid || 0)}</span>
+            
+            {canDowngradeDays && (
+              <div className="mt-6 flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400">
+                <Info size={16} className="shrink-0 mt-0.5" />
+                <p className="text-xs font-medium">Downgrade is available as your subscription expires within 3 days.</p>
+              </div>
+            )}
+          </div>
+          
+          <div className="md:col-span-2">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 uppercase tracking-widest">Live Usage Overview</h3>
+            <div className="grid sm:grid-cols-2 gap-6">
+              {currentPlan && merchant ? (
+                <>
+                  <CustomUsageBar label="Monthly Transactions" used={merchant.transaction_count} limit={currentPlan.transaction_limit_monthly} />
+                  <CustomUsageBar label="Registered Businesses" used={merchant.business_count} limit={currentPlan.business_limit} />
+                  <CustomUsageBar label="Team Members" used={merchant.team_member_count} limit={currentPlan.allowed_team_members} />
+                  <CustomUsageBar label="Connected Devices" used={merchant.device_count} limit={currentPlan.device_limit} />
+                </>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">Select a plan to view usage limits.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Pricing Grid (With Dynamic Tags & Colors) ── */}
+      <div>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Upgrade Your Plan</h2>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+            <button
+              onClick={() => setBilling('monthly')}
+              className={`px-5 py-2 rounded-lg transition-all text-sm font-bold ${
+                billing === "monthly"
+                  ? "bg-white dark:bg-[#111827] text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200 dark:border-slate-700"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBilling('yearly')}
+              className={`px-5 py-2 rounded-lg transition-all text-sm font-bold flex items-center gap-2 ${
+                billing === "yearly"
+                  ? "bg-white dark:bg-[#111827] text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200 dark:border-slate-700"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+            >
+              Yearly
+              <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider border border-emerald-200 dark:border-emerald-800">
+                Save {yearlyDiscount}%
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          {allPlans.map(plan => {
+            const isCurrentPlan = currentPlan?.id === plan.id && isActive;
+            const isDowngrade = plan.serial < (currentPlan?.serial ?? 0);
+            const isFreePlan = (plan.price ?? 0) === 0;
+
+            const monthlyPrice = plan.price ?? 0;
+            const yearlyPrice = plan.yearly_price ?? Math.round(monthlyPrice * 12 * (1 - yearlyDiscount / 100));
+            const targetedPrice = billing === 'yearly' ? yearlyPrice : monthlyPrice;
+
+            // ── Dynamic Tags Setup (Same as your old code) ──
+            const tagParts = plan.tag ? plan.tag.split(':') : [];
+            const tagLabel = tagParts[0] || null;
+            const tagColor = tagParts[1] || 'blue';
+            const theme = getColorTheme(tagColor);
+
+            const methods = Array.isArray(plan.allowed_method) ? plan.allowed_method : ['mobile'];
+            const methodLabels: Record<string, string> = { mobile: 'Mobile Wallets', bank: 'Bank Transfer', crypto: 'Crypto Terminal' };
+
+            return (
+              <div key={plan.id} className={`relative flex flex-col justify-between p-8 rounded-3xl transition-all duration-300 bg-white dark:bg-[#111827] border-2 ${isCurrentPlan ? `border-blue-600 ring-4 ring-blue-600/10 shadow-xl scale-[1.02]` : tagLabel ? theme.border : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"}`}>
+                
+                {tagLabel && (
+                  <div className={`absolute -top-3 left-1/2 -translate-x-1/2 ${theme.bg} text-white px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-md`}>
+                    {tagLabel}
+                  </div>
+                )}
+
+                <div className="text-center pt-4 mb-6">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-3">{plan.name}</h3>
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className={`text-4xl font-black ${isCurrentPlan ? 'text-blue-600' : theme.text}`}>{fmtBDT(targetedPrice)}</span>
+                    <span className="text-sm font-medium text-slate-400">/{billing === 'yearly' ? 'yr' : 'mo'}</span>
+                  </div>
+                </div>
+
+                <div className="h-px bg-slate-100 dark:bg-slate-800 w-full mb-6" />
+
+                <ul className="space-y-4 mb-8 flex-1">
+                  <li className="flex items-start gap-3 text-sm font-medium text-slate-600 dark:text-slate-300"><CheckCircle size={18} className={`${theme.text} shrink-0 mt-0.5`} /> <span className="leading-snug">{plan.transaction_limit_monthly === 0 ? 'Unlimited transactions' : `${plan.transaction_limit_monthly.toLocaleString()} Transactions / month`}</span></li>
+                  <li className="flex items-start gap-3 text-sm font-medium text-slate-600 dark:text-slate-300"><CheckCircle size={18} className={`${theme.text} shrink-0 mt-0.5`} /> <span className="leading-snug">{plan.business_limit} Workspaces Allowed</span></li>
+                  {plan.is_team_allowed && <li className="flex items-start gap-3 text-sm font-medium text-slate-600 dark:text-slate-300"><CheckCircle size={18} className={`${theme.text} shrink-0 mt-0.5`} /> <span className="leading-snug">Up to {plan.allowed_team_members} Team Members</span></li>}
+                  <li className="flex items-start gap-3 text-sm font-medium text-slate-600 dark:text-slate-300"><CheckCircle size={18} className={`${theme.text} shrink-0 mt-0.5`} /> <span className="leading-snug">{plan.device_limit} Devices Allowed</span></li>
+                  {plan.allowed_telegram_group && <li className="flex items-start gap-3 text-sm font-medium text-slate-600 dark:text-slate-300"><CheckCircle size={18} className={`${theme.text} shrink-0 mt-0.5`} /> <span className="leading-snug">Telegram Alerts</span></li>}
+                  {plan.is_custom_bot_allowed && <li className="flex items-start gap-3 text-sm font-medium text-slate-600 dark:text-slate-300"><CheckCircle size={18} className={`${theme.text} shrink-0 mt-0.5`} /> <span className="leading-snug">Custom API Bot Integration</span></li>}
+                  {methods.map((m: string) => <li key={m} className="flex items-start gap-3 text-sm font-medium text-slate-600 dark:text-slate-300"><CheckCircle size={18} className={`${theme.text} shrink-0 mt-0.5`} /> <span className="leading-snug">{methodLabels[m] || m} Allowed</span></li>)}
+                </ul>
+
+                <div>
+                  {isCurrentPlan ? (
+                    <button className="w-full py-3.5 rounded-xl font-bold text-sm bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-200 dark:border-slate-700" disabled>Current Active Plan</button>
+                  ) : isFreePlan ? (
+                    <button className="w-full py-3.5 rounded-xl font-bold text-sm bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-200 dark:border-slate-700" disabled>Free Tier</button>
+                  ) : (isDowngrade && !canDowngradeDays) ? (
+                    <button className="w-full py-3.5 rounded-xl font-bold text-sm bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-200 dark:border-slate-700" disabled>Downgrade Locked</button>
+                  ) : (
+                    <button className={`w-full py-3.5 rounded-xl font-black text-sm text-white shadow-lg ${theme.bg} ${theme.hover} hover:-translate-y-0.5 transition-all`} onClick={() => handleSelectPlan(plan)}>
+                      {isDowngrade ? 'Downgrade' : 'Select Plan'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Billing History Table with PDF Download ── */}
+      <div className="bg-white dark:bg-[#111827] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="p-6 md:p-8 border-b border-slate-100 dark:border-slate-800">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <History className="size-5 text-blue-600" /> Payment History
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">View and download your past invoices and receipts.</p>
+        </div>
+        
+        {orderHistory.length === 0 ? (
+          <div className="py-16 text-center text-slate-400 dark:text-slate-600">
+            <History size={40} className="mx-auto opacity-30 mb-3" />
+            <p className="text-sm font-bold">No history available</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[700px]">
+              <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+                <tr>
+                  <th className="px-6 py-4">Invoice ID</th>
+                  <th className="px-6 py-4">Date</th>
+                  <th className="px-6 py-4">Cycle</th>
+                  <th className="px-6 py-4">Amount</th>
+                  <th className="px-6 py-4 text-center">Status</th>
+                  <th className="px-6 py-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {orderHistory.map((order) => (
+                  <tr key={order.id} className="hover:bg-slate-50 dark:hover:bg-[#0B1120]/50 transition-colors">
+                    <td className="px-6 py-4 font-mono text-sm font-bold text-slate-900 dark:text-white">{order.order_no}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-slate-500 dark:text-slate-400">{fmtDate(order.created_at)}</td>
+                    <td className="px-6 py-4 text-sm font-medium capitalize text-slate-700 dark:text-slate-300">{order.billing_cycle}</td>
+                    <td className="px-6 py-4 text-sm font-black text-blue-600">{fmtBDT(order.amount)}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${order.status === 'paid' || order.status === 'active' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 border border-amber-200 dark:border-amber-800'}`}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => downloadInvoice(order)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                      >
+                        <Download size={14} /> PDF
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+    </div>
   );
 }
 </file>
@@ -23147,468 +23267,6 @@ export async function PATCH(req: Request) {
 }
 </file>
 
-<file path="src/app/api/telegram/webhook/route.ts">
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-const BOT_TOKEN = process.env.XELPAY_BOT_TOKEN;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com';
-const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'xelpay_alert_bot';
-
-function generateComplexString(length: number): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    const bytes = crypto.randomBytes(length);
-    return Array.from(bytes).map(b => chars[b % chars.length]).join('');
-}
-
-function escapeHTML(text: string | null | undefined): string {
-    if (!text) return '';
-    return text.toString()
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-}
-
-export async function GET() {
-    return NextResponse.json({ status: "success", message: "Webhook API is Secure & Running! 🚀" });
-}
-
-async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
-    if (!BOT_TOKEN) return;
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-    try {
-        await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
-        });
-    } catch (err) {
-        console.error("Fetch Error:", err);
-    }
-}
-
-async function editTelegramMessage(chatId: string | number, messageId: number, text: string, replyMarkup?: any) {
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`;
-    await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
-    });
-}
-
-async function answerCallbackQuery(callbackQueryId: string, text: string, showAlert: boolean = true) {
-    const url = `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`;
-    await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ callback_query_id: callbackQueryId, text: text, show_alert: showAlert }),
-    });
-}
-
-async function isGroupAdmin(chatId: string | number, userId: string | number): Promise<boolean> {
-    try {
-        const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${chatId}&user_id=${userId}`;
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        if (data.ok && data.result) {
-            const status = data.result.status;
-            return status === 'creator' || status === 'administrator';
-        }
-        return false;
-    } catch (error) {
-        return false;
-    }
-}
-
-async function connectTelegram(
-    code: string, 
-    chatId: string | number, 
-    username: string | null, 
-    displayName: string | null, 
-    forceTakeover: boolean = false
-): Promise<{ text: string, replyMarkup?: any }> {
-    const chatStr = chatId.toString();
-
-    const { data: targetMerchant } = await supabase.from('merchants').select('id').eq('telegram_link_code', code).single();
-    const { data: targetBusiness } = await supabase.from('businesses').select('id, merchant_id, business_name').eq('telegram_link_code', code).single();
-
-    if (!targetMerchant && !targetBusiness) {
-        return { text: "❌ <b>Connection Failed</b>\nলিংকটি মেয়াদোত্তীর্ণ বা ভুল। নতুন করে জেনারেট করুন।" };
-    }
-
-    const currentMerchantId = targetMerchant ? targetMerchant.id : targetBusiness!.merchant_id;
-    let takeoverNotice = '';
-
-    const { data: existingMerchant } = await supabase.from('merchants').select('id').eq('telegram_chat_id', chatStr).single();
-    const { data: existingBusinesses } = await supabase.from('businesses').select('id, merchant_id').eq('telegram_chat_id', chatStr);
-
-    const isOwnedByOtherMerchant = (existingMerchant && existingMerchant.id !== currentMerchantId) || 
-                                   (existingBusinesses && existingBusinesses.some(b => b.merchant_id !== currentMerchantId));
-
-    if (isOwnedByOtherMerchant) {
-        if (!forceTakeover) {
-            const otherMerchantId = (existingMerchant && existingMerchant.id !== currentMerchantId) 
-                ? existingMerchant.id 
-                : existingBusinesses?.find(b => b.merchant_id !== currentMerchantId)?.merchant_id;
-            
-            let maskedEmail = 'Another Account';
-            if (otherMerchantId) {
-                const { data: authData } = await supabase.auth.admin.getUserById(otherMerchantId);
-                if (authData?.user?.email) {
-                    const parts = authData.user.email.split('@');
-                    if (parts.length === 2) {
-                        maskedEmail = `${parts[0].substring(0, 2)}***@${parts[1]}`;
-                    }
-                }
-            }
-
-            return {
-                text: `⚠️ <b>Already Connected</b>\n\nThis group/chat is currently connected to another account (<code>${maskedEmail}</code>).\n\nDo you want to disconnect it from that account and take over?`,
-                replyMarkup: {
-                    inline_keyboard: [[{ text: "Confirm Takeover 🔄", callback_data: `takeover_${code}` }]]
-                }
-            };
-        } else {
-            const dummyCode = generateComplexString(12);
-            await supabase.from('merchants').update({ telegram_chat_id: null, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
-            await supabase.from('businesses').update({ telegram_chat_id: null, is_telegram_enabled: false, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
-            takeoverNotice = `\n⚠️ <i>Unlinked from previous account.</i>`;
-        }
-    }
-
-    if (targetMerchant) {
-        const newCode = generateComplexString(12);
-        await supabase.from('merchants').update({ 
-            telegram_chat_id: chatStr,
-            telegram_username: username,
-            telegram_display_name: displayName,
-            telegram_link_code: newCode 
-        }).eq('id', targetMerchant.id).select();
-
-        return {
-            text: `✅ <b>Master Vault Connected</b>\n<b>মাস্টার ভল্ট সংযোগ সফল</b>${takeoverNotice}\n\nYour master alerts will now be routed here.`,
-            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_m_${targetMerchant.id}` }]] }
-        };
-    }
-
-    if (targetBusiness) {
-        if (existingMerchant && existingMerchant.id === currentMerchantId && !forceTakeover) {
-            return { 
-                text: `⚠️ <b>Already in Vault</b>\n\nএই চ্যাটটি অলরেডি আপনার Master Vault-এ যুক্ত আছে।\nনতুন করে কানেক্ট করার প্রয়োজন নেই, দয়া করে ড্যাশবোর্ড থেকে <b>"Import from Vault"</b> বাটনে ক্লিক করুন।` 
-            };
-        }
-
-        const newCode = generateComplexString(12);
-        await supabase.from('businesses').update({ 
-            telegram_chat_id: chatStr,
-            telegram_username: username,
-            telegram_display_name: displayName,
-            telegram_link_code: newCode,
-            is_telegram_enabled: true
-        }).eq('id', targetBusiness.id).select();
-
-        return {
-            text: `✅ <b>Workspace Connected</b>\n<b>ওয়ার্কস্পেস সংযোগ সফল</b>${takeoverNotice}\n\n🔹 <b>Workspace:</b> ${escapeHTML(targetBusiness.business_name)}\n\nWorkspace alerts will now be routed here.`,
-            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_b_${targetBusiness.id}` }]] }
-        };
-    }
-
-    return { text: "❌ <b>Unknown Error Occurred</b>" };
-}
-
-async function getOrderTargets(merchantId?: string | null, businessId?: string | null) {
-    let targets: { chatId: string, accountName: string }[] = [];
-
-    if (businessId) {
-        const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
-        if (data?.telegram_chat_id && data.is_telegram_enabled) {
-            targets.push({ chatId: data.telegram_chat_id, accountName: data.business_name });
-            return targets; 
-        }
-    }
-
-    if (merchantId) {
-        const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
-        if (data?.telegram_chat_id) {
-            targets.push({ chatId: data.telegram_chat_id, accountName: data.display_name || 'Master Vault' });
-        }
-    }
-
-    return targets; 
-}
-
-async function getNotificationTargets(merchantId?: string | null, businessId?: string | null) {
-    let targets: { chatId: string, accountName: string }[] = [];
-
-    if (!merchantId && !businessId) {
-        const { data: merchants } = await supabase.from('merchants').select('telegram_chat_id').not('telegram_chat_id', 'is', null);
-        const { data: businesses } = await supabase.from('businesses').select('telegram_chat_id').not('telegram_chat_id', 'is', null).eq('is_telegram_enabled', true);
-        
-        const uniqueChats = new Map<string, string>();
-        merchants?.forEach(m => uniqueChats.set(m.telegram_chat_id, 'System Notice'));
-        businesses?.forEach(b => uniqueChats.set(b.telegram_chat_id, 'System Notice'));
-        
-        uniqueChats.forEach((accountName, chatId) => {
-            targets.push({ chatId, accountName });
-        });
-        return targets;
-    }
-
-    let bChatId: string | null = null;
-    let bAccountName: string = '';
-    if (businessId) {
-        const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
-        if (data?.telegram_chat_id && data.is_telegram_enabled) {
-            bChatId = data.telegram_chat_id;
-            bAccountName = data.business_name;
-        }
-    }
-
-    let mChatId: string | null = null;
-    let mAccountName: string = '';
-    if (merchantId) {
-        const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
-        if (data?.telegram_chat_id) {
-            mChatId = data.telegram_chat_id;
-            mAccountName = data.display_name || 'Master Vault';
-        }
-    }
-
-    if (mChatId && bChatId && mChatId === bChatId) {
-        targets.push({ chatId: mChatId, accountName: `${mAccountName} (Vault & Workspace)` });
-    } else {
-        if (mChatId) targets.push({ chatId: mChatId, accountName: mAccountName });
-        if (bChatId) targets.push({ chatId: bChatId, accountName: bAccountName });
-    }
-
-    return targets;
-}
-
-async function handleSupabaseWebhook(body: any) {
-    const { type, table, record } = body;
-
-    if (table === 'orders' && type === 'UPDATE' && (record.status === 'success' || record.status === 'paid')) {
-        const targets = await getOrderTargets(record.merchant_id, record.business_id);
-        
-        if (targets.length > 0) {
-            const payMethod = record.method ? record.method.toUpperCase() : 'GATEWAY';
-            const currency = record.currency || 'BDT';
-
-            const message = `
-🟢 <b>Payment Received Successfully</b>
-<b>পেমেন্ট সফলভাবে গ্রহণ করা হয়েছে</b>
-
-━━━━━━━━━━━━━━━━━━━━
-▪️ <b>Account :</b> ${escapeHTML(targets[0].accountName)}
-▪️ <b>Amount  :</b> ${record.amount} ${currency}
-▪️ <b>Method  :</b> ${escapeHTML(payMethod)}
-▪️ <b>Product :</b> ${escapeHTML(record.product_name) || 'N/A'}
-▪️ <b>Trx ID  :</b> <code>${escapeHTML(record.trx_id) || 'N/A'}</code>
-▪️ <b>Order # :</b> <code>${escapeHTML(record.order_no) || record.id}</code>
-━━━━━━━━━━━━━━━━━━━━
-<i>This transaction has been automatically verified.</i>`;
-
-            const replyMarkup = {
-                inline_keyboard: [[{ text: "View Transaction ➔", url: `${SITE_URL}/dashboard/transactions` }]]
-            };
-
-            for (const target of targets) {
-                await sendTelegramMessage(target.chatId, message, replyMarkup);
-            }
-        }
-    }
-
-    if (table === 'notifications' && type === 'INSERT') {
-        const targets = await getNotificationTargets(record.merchant_id, record.business_id);
-        
-        if (targets.length > 0) {
-            const message = `📢 <b>System Notice</b>\n\n<b>${escapeHTML(record.title)}</b>\n${escapeHTML(record.message)}`;
-
-            const replyMarkup: any = { inline_keyboard: [] };
-            
-            if (record.action_url) {
-                const actionUrl = record.action_url.startsWith('http') ? record.action_url : `${SITE_URL}${record.action_url}`;
-                replyMarkup.inline_keyboard.push([
-                    { text: "View Details ➔", url: actionUrl }
-                ]);
-            }
-
-            for (const target of targets) {
-                await sendTelegramMessage(target.chatId, message, replyMarkup.inline_keyboard.length > 0 ? replyMarkup : undefined);
-            }
-        }
-    }
-
-    return NextResponse.json({ status: 'webhook_processed' });
-}
-
-export async function POST(req: Request) {
-    try {
-        const body = await req.json();
-
-        // ─── 1. Supabase Webhook Authorization ───
-        if (body.type && body.table && body.record) {
-            const expectedSupabaseSecret = process.env.SUPABASE_WEBHOOK_SECRET;
-            if (expectedSupabaseSecret) {
-                const incomingSecret = req.headers.get('x-supabase-webhook-secret');
-                if (incomingSecret !== expectedSupabaseSecret) {
-                    return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
-                }
-            }
-            return await handleSupabaseWebhook(body);
-        }
-
-        // ─── 2. Telegram Webhook Authorization ───
-        const expectedTelegramSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
-        if (expectedTelegramSecret) {
-            const incomingTelegramSecret = req.headers.get('x-telegram-bot-api-secret-token');
-            if (incomingTelegramSecret !== expectedTelegramSecret) {
-                return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
-            }
-        }
-
-        // ─── 3. Event Handlers ───
-        if (body.my_chat_member) {
-            const newStatus = body.my_chat_member.new_chat_member.status;
-            if (newStatus === 'left' || newStatus === 'kicked') {
-                const chatId = body.my_chat_member.chat.id.toString();
-                const newCode = generateComplexString(12);
-
-                await supabase.from('merchants').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode }).eq('telegram_chat_id', chatId);
-                await supabase.from('businesses').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode, is_telegram_enabled: false }).eq('telegram_chat_id', chatId);
-
-                return NextResponse.json({ status: 'unlinked_on_kick' });
-            }
-        }
-
-        if (body.callback_query) {
-            const callbackQuery = body.callback_query;
-            const chatId = callbackQuery.message.chat.id;
-            const messageId = callbackQuery.message.message_id;
-            const data = callbackQuery.data;
-
-            const fromUser = callbackQuery.from || {};
-            const userId = fromUser.id;
-            const username = fromUser.username ? `@${fromUser.username}` : null;
-            const displayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
-            const chatType = callbackQuery.message.chat.type;
-
-            if (data.startsWith('takeover_')) {
-                const code = data.replace('takeover_', '');
-
-                if (chatType === 'group' || chatType === 'supergroup') {
-                    // Check if clicked anonymously or as normal user
-                    const isAnonymousAdminClick = fromUser.username === 'GroupAnonymousBot';
-                    let isAdmin = false;
-                    
-                    if (isAnonymousAdminClick) {
-                        isAdmin = true;
-                    } else {
-                        isAdmin = await isGroupAdmin(chatId, userId);
-                    }
-
-                    if (!isAdmin) {
-                        await answerCallbackQuery(callbackQuery.id, "⚠️ Access Denied: Only admins can confirm this takeover.");
-                        return NextResponse.json({ status: 'not_admin' });
-                    }
-                }
-
-                const result = await connectTelegram(code, chatId, username, displayName, true);
-                await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
-                return NextResponse.json({ status: 'success' });
-            }
-
-            if (data.startsWith('connect_dm_')) {
-                const code = data.replace('connect_dm_', '');
-                const result = await connectTelegram(code, chatId, username, displayName, false);
-                await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
-            }
-            else if (data.startsWith('disconnect_m_')) {
-                const id = data.replace('disconnect_m_', '');
-                const newCode = generateComplexString(12);
-                await supabase.from('merchants').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode }).eq('id', id);
-                await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Master Vault alerts.");
-            }
-            else if (data.startsWith('disconnect_b_')) {
-                const id = data.replace('disconnect_b_', '');
-                const newCode = generateComplexString(12);
-                await supabase.from('businesses').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode, is_telegram_enabled: false }).eq('id', id);
-                await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Workspace alerts.");
-            }
-
-            return NextResponse.json({ status: 'success' });
-        }
-
-        if (body.message) {
-            const chat = body.message.chat;
-            const chatId = chat.id;
-            const chatType = chat.type;
-            const text = body.message.text ? body.message.text.trim() : '';
-            const userId = body.message.from?.id;
-
-            if (text.startsWith('/start')) {
-                const parts = text.split(/\s+/);
-                const code = parts.length > 1 ? parts[1] : null; 
-
-                if (!code) {
-                    if (chatType === 'private') {
-                        await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\n<b>ভুল কমান্ড!</b>\nPlease generate a valid connection link from your dashboard.");
-                    }
-                    return NextResponse.json({ status: 'no_code' });
-                }
-
-                if (chatType === 'group' || chatType === 'supergroup') {
-                    // ফিক্সড: যদি Sender Chat (চ্যানেল/অ্যানোনিমাস) থাকে, তবে সে নিশ্চিত এডমিন
-                    const isAnonymousOrChannelAdmin = !!body.message.sender_chat || body.message.from?.username === 'GroupAnonymousBot';
-                    
-                    let isAdmin = false;
-                    
-                    if (isAnonymousOrChannelAdmin) {
-                        isAdmin = true; // অটোমেটিক অ্যাডমিন এক্সেস 
-                    } else if (userId) {
-                        isAdmin = await isGroupAdmin(chatId, userId);
-                    }
-
-                    if (!isAdmin) {
-                        await sendTelegramMessage(chatId, "⚠️ <b>Access Denied</b>\n\nOnly group administrators can connect or configure this bot. Please ask an admin to send the connection command.");
-                        return NextResponse.json({ status: 'not_admin' });
-                    }
-
-                    const groupTitle = chat.title || 'Connected Group';
-                    const groupUsername = chat.username ? `@${chat.username}` : null;
-                    
-                    const result = await connectTelegram(code, chatId, groupUsername, groupTitle, false);
-                    await sendTelegramMessage(chatId, result.text, result.replyMarkup);
-                    return NextResponse.json({ status: 'connected_group' });
-                }
-
-                const replyMarkup = {
-                    inline_keyboard: [
-                        [{ text: "Connect to THIS Chat ➔", callback_data: `connect_dm_${code}` }],
-                        [{ text: "Add to a GROUP instead ➔", url: `https://t.me/${BOT_USERNAME}?startgroup=${code}` }]
-                    ]
-                };
-
-                await sendTelegramMessage(chatId, "<b>Where do you want to receive alerts?</b>\n<b>আপনি কোথায় এলার্ট পেতে চান?</b>\n\nYou can receive alerts directly in this chat, or add me to a group.", replyMarkup);
-                return NextResponse.json({ status: 'asked_user' });
-            }
-        }
-
-        return NextResponse.json({ status: 'ignored' });
-
-    } catch (error) {
-        console.error("Webhook Error Exception:", error);
-        return NextResponse.json({ status: 'error_logged_but_ok' }, { status: 200 });
-    }
-}
-</file>
-
 <file path="src/app/dashboard/page.tsx">
 'use client';
 
@@ -24381,6 +24039,468 @@ export default function DashboardHome() {
       </div>
     </>
   );
+}
+</file>
+
+<file path="src/app/api/telegram/webhook/route.ts">
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const BOT_TOKEN = process.env.XELPAY_BOT_TOKEN;
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://yourdomain.com';
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'xelpay_alert_bot';
+
+function generateComplexString(length: number): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const bytes = crypto.randomBytes(length);
+    return Array.from(bytes).map(b => chars[b % chars.length]).join('');
+}
+
+function escapeHTML(text: string | null | undefined): string {
+    if (!text) return '';
+    return text.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+export async function GET() {
+    return NextResponse.json({ status: "success", message: "Webhook API is Secure & Running! 🚀" });
+}
+
+async function sendTelegramMessage(chatId: string | number, text: string, replyMarkup?: any) {
+    if (!BOT_TOKEN) return;
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+    try {
+        await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
+        });
+    } catch (err) {
+        console.error("Fetch Error:", err);
+    }
+}
+
+async function editTelegramMessage(chatId: string | number, messageId: number, text: string, replyMarkup?: any) {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`;
+    await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, message_id: messageId, text: text, parse_mode: 'HTML', reply_markup: replyMarkup }),
+    });
+}
+
+async function answerCallbackQuery(callbackQueryId: string, text: string, showAlert: boolean = true) {
+    const url = `https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`;
+    await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callback_query_id: callbackQueryId, text: text, show_alert: showAlert }),
+    });
+}
+
+async function isGroupAdmin(chatId: string | number, userId: string | number): Promise<boolean> {
+    try {
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${chatId}&user_id=${userId}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.ok && data.result) {
+            const status = data.result.status;
+            return status === 'creator' || status === 'administrator';
+        }
+        return false;
+    } catch (error) {
+        return false;
+    }
+}
+
+async function connectTelegram(
+    code: string, 
+    chatId: string | number, 
+    username: string | null, 
+    displayName: string | null, 
+    forceTakeover: boolean = false
+): Promise<{ text: string, replyMarkup?: any }> {
+    const chatStr = chatId.toString();
+
+    const { data: targetMerchant } = await supabase.from('merchants').select('id').eq('telegram_link_code', code).single();
+    const { data: targetBusiness } = await supabase.from('businesses').select('id, merchant_id, business_name').eq('telegram_link_code', code).single();
+
+    if (!targetMerchant && !targetBusiness) {
+        return { text: "❌ <b>Connection Failed</b>\nলিংকটি মেয়াদোত্তীর্ণ বা ভুল। নতুন করে জেনারেট করুন।" };
+    }
+
+    const currentMerchantId = targetMerchant ? targetMerchant.id : targetBusiness!.merchant_id;
+    let takeoverNotice = '';
+
+    const { data: existingMerchant } = await supabase.from('merchants').select('id').eq('telegram_chat_id', chatStr).single();
+    const { data: existingBusinesses } = await supabase.from('businesses').select('id, merchant_id').eq('telegram_chat_id', chatStr);
+
+    const isOwnedByOtherMerchant = (existingMerchant && existingMerchant.id !== currentMerchantId) || 
+                                   (existingBusinesses && existingBusinesses.some(b => b.merchant_id !== currentMerchantId));
+
+    if (isOwnedByOtherMerchant) {
+        if (!forceTakeover) {
+            const otherMerchantId = (existingMerchant && existingMerchant.id !== currentMerchantId) 
+                ? existingMerchant.id 
+                : existingBusinesses?.find(b => b.merchant_id !== currentMerchantId)?.merchant_id;
+            
+            let maskedEmail = 'Another Account';
+            if (otherMerchantId) {
+                const { data: authData } = await supabase.auth.admin.getUserById(otherMerchantId);
+                if (authData?.user?.email) {
+                    const parts = authData.user.email.split('@');
+                    if (parts.length === 2) {
+                        maskedEmail = `${parts[0].substring(0, 2)}***@${parts[1]}`;
+                    }
+                }
+            }
+
+            return {
+                text: `⚠️ <b>Already Connected</b>\n\nThis group/chat is currently connected to another account (<code>${maskedEmail}</code>).\n\nDo you want to disconnect it from that account and take over?`,
+                replyMarkup: {
+                    inline_keyboard: [[{ text: "Confirm Takeover 🔄", callback_data: `takeover_${code}` }]]
+                }
+            };
+        } else {
+            const dummyCode = generateComplexString(12);
+            await supabase.from('merchants').update({ telegram_chat_id: null, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
+            await supabase.from('businesses').update({ telegram_chat_id: null, is_telegram_enabled: false, telegram_link_code: dummyCode }).eq('telegram_chat_id', chatStr);
+            takeoverNotice = `\n⚠️ <i>Unlinked from previous account.</i>`;
+        }
+    }
+
+    if (targetMerchant) {
+        const newCode = generateComplexString(12);
+        await supabase.from('merchants').update({ 
+            telegram_chat_id: chatStr,
+            telegram_username: username,
+            telegram_display_name: displayName,
+            telegram_link_code: newCode 
+        }).eq('id', targetMerchant.id).select();
+
+        return {
+            text: `✅ <b>Master Vault Connected</b>\n<b>মাস্টার ভল্ট সংযোগ সফল</b>${takeoverNotice}\n\nYour master alerts will now be routed here.`,
+            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_m_${targetMerchant.id}` }]] }
+        };
+    }
+
+    if (targetBusiness) {
+        if (existingMerchant && existingMerchant.id === currentMerchantId && !forceTakeover) {
+            return { 
+                text: `⚠️ <b>Already in Vault</b>\n\nএই চ্যাটটি অলরেডি আপনার Master Vault-এ যুক্ত আছে।\nনতুন করে কানেক্ট করার প্রয়োজন নেই, দয়া করে ড্যাশবোর্ড থেকে <b>"Import from Vault"</b> বাটনে ক্লিক করুন।` 
+            };
+        }
+
+        const newCode = generateComplexString(12);
+        await supabase.from('businesses').update({ 
+            telegram_chat_id: chatStr,
+            telegram_username: username,
+            telegram_display_name: displayName,
+            telegram_link_code: newCode,
+            is_telegram_enabled: true
+        }).eq('id', targetBusiness.id).select();
+
+        return {
+            text: `✅ <b>Workspace Connected</b>\n<b>ওয়ার্কস্পেস সংযোগ সফল</b>${takeoverNotice}\n\n🔹 <b>Workspace:</b> ${escapeHTML(targetBusiness.business_name)}\n\nWorkspace alerts will now be routed here.`,
+            replyMarkup: { inline_keyboard: [[{ text: "Disconnect ❌", callback_data: `disconnect_b_${targetBusiness.id}` }]] }
+        };
+    }
+
+    return { text: "❌ <b>Unknown Error Occurred</b>" };
+}
+
+async function getOrderTargets(merchantId?: string | null, businessId?: string | null) {
+    let targets: { chatId: string, accountName: string }[] = [];
+
+    if (businessId) {
+        const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
+        if (data?.telegram_chat_id && data.is_telegram_enabled) {
+            targets.push({ chatId: data.telegram_chat_id, accountName: data.business_name });
+            return targets; 
+        }
+    }
+
+    if (merchantId) {
+        const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
+        if (data?.telegram_chat_id) {
+            targets.push({ chatId: data.telegram_chat_id, accountName: data.display_name || 'Master Vault' });
+        }
+    }
+
+    return targets; 
+}
+
+async function getNotificationTargets(merchantId?: string | null, businessId?: string | null) {
+    let targets: { chatId: string, accountName: string }[] = [];
+
+    if (!merchantId && !businessId) {
+        const { data: merchants } = await supabase.from('merchants').select('telegram_chat_id').not('telegram_chat_id', 'is', null);
+        const { data: businesses } = await supabase.from('businesses').select('telegram_chat_id').not('telegram_chat_id', 'is', null).eq('is_telegram_enabled', true);
+        
+        const uniqueChats = new Map<string, string>();
+        merchants?.forEach(m => uniqueChats.set(m.telegram_chat_id, 'System Notice'));
+        businesses?.forEach(b => uniqueChats.set(b.telegram_chat_id, 'System Notice'));
+        
+        uniqueChats.forEach((accountName, chatId) => {
+            targets.push({ chatId, accountName });
+        });
+        return targets;
+    }
+
+    let bChatId: string | null = null;
+    let bAccountName: string = '';
+    if (businessId) {
+        const { data } = await supabase.from('businesses').select('telegram_chat_id, business_name, is_telegram_enabled').eq('id', businessId).single();
+        if (data?.telegram_chat_id && data.is_telegram_enabled) {
+            bChatId = data.telegram_chat_id;
+            bAccountName = data.business_name;
+        }
+    }
+
+    let mChatId: string | null = null;
+    let mAccountName: string = '';
+    if (merchantId) {
+        const { data } = await supabase.from('merchants').select('telegram_chat_id, display_name').eq('id', merchantId).single();
+        if (data?.telegram_chat_id) {
+            mChatId = data.telegram_chat_id;
+            mAccountName = data.display_name || 'Master Vault';
+        }
+    }
+
+    if (mChatId && bChatId && mChatId === bChatId) {
+        targets.push({ chatId: mChatId, accountName: `${mAccountName} (Vault & Workspace)` });
+    } else {
+        if (mChatId) targets.push({ chatId: mChatId, accountName: mAccountName });
+        if (bChatId) targets.push({ chatId: bChatId, accountName: bAccountName });
+    }
+
+    return targets;
+}
+
+async function handleSupabaseWebhook(body: any) {
+    const { type, table, record } = body;
+
+    if (table === 'orders' && type === 'UPDATE' && (record.status === 'success' || record.status === 'paid')) {
+        const targets = await getOrderTargets(record.merchant_id, record.business_id);
+        
+        if (targets.length > 0) {
+            const payMethod = record.method ? record.method.toUpperCase() : 'GATEWAY';
+            const currency = record.currency || 'BDT';
+
+            const message = `
+🟢 <b>Payment Received Successfully</b>
+<b>পেমেন্ট সফলভাবে গ্রহণ করা হয়েছে</b>
+
+━━━━━━━━━━━━━━━━━━━━
+▪️ <b>Account :</b> ${escapeHTML(targets[0].accountName)}
+▪️ <b>Amount  :</b> ${record.amount} ${currency}
+▪️ <b>Method  :</b> ${escapeHTML(payMethod)}
+▪️ <b>Product :</b> ${escapeHTML(record.product_name) || 'N/A'}
+▪️ <b>Trx ID  :</b> <code>${escapeHTML(record.trx_id) || 'N/A'}</code>
+▪️ <b>Order # :</b> <code>${escapeHTML(record.order_no) || record.id}</code>
+━━━━━━━━━━━━━━━━━━━━
+<i>This transaction has been automatically verified.</i>`;
+
+            const replyMarkup = {
+                inline_keyboard: [[{ text: "View Transaction ➔", url: `${SITE_URL}/dashboard/transactions` }]]
+            };
+
+            for (const target of targets) {
+                await sendTelegramMessage(target.chatId, message, replyMarkup);
+            }
+        }
+    }
+
+    if (table === 'notifications' && type === 'INSERT') {
+        const targets = await getNotificationTargets(record.merchant_id, record.business_id);
+        
+        if (targets.length > 0) {
+            const message = `📢 <b>System Notice</b>\n\n<b>${escapeHTML(record.title)}</b>\n${escapeHTML(record.message)}`;
+
+            const replyMarkup: any = { inline_keyboard: [] };
+            
+            if (record.action_url) {
+                const actionUrl = record.action_url.startsWith('http') ? record.action_url : `${SITE_URL}${record.action_url}`;
+                replyMarkup.inline_keyboard.push([
+                    { text: "View Details ➔", url: actionUrl }
+                ]);
+            }
+
+            for (const target of targets) {
+                await sendTelegramMessage(target.chatId, message, replyMarkup.inline_keyboard.length > 0 ? replyMarkup : undefined);
+            }
+        }
+    }
+
+    return NextResponse.json({ status: 'webhook_processed' });
+}
+
+export async function POST(req: Request) {
+    try {
+        const body = await req.json();
+
+        // ─── 1. Supabase Webhook Authorization ───
+        if (body.type && body.table && body.record) {
+            const expectedSupabaseSecret = process.env.SUPABASE_WEBHOOK_SECRET;
+            if (expectedSupabaseSecret) {
+                const incomingSecret = req.headers.get('x-supabase-webhook-secret');
+                if (incomingSecret !== expectedSupabaseSecret) {
+                    return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
+                }
+            }
+            return await handleSupabaseWebhook(body);
+        }
+
+        // ─── 2. Telegram Webhook Authorization ───
+        const expectedTelegramSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+        if (expectedTelegramSecret) {
+            const incomingTelegramSecret = req.headers.get('x-telegram-bot-api-secret-token');
+            if (incomingTelegramSecret !== expectedTelegramSecret) {
+                return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
+            }
+        }
+
+        // ─── 3. Event Handlers ───
+        if (body.my_chat_member) {
+            const newStatus = body.my_chat_member.new_chat_member.status;
+            if (newStatus === 'left' || newStatus === 'kicked') {
+                const chatId = body.my_chat_member.chat.id.toString();
+                const newCode = generateComplexString(12);
+
+                await supabase.from('merchants').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode }).eq('telegram_chat_id', chatId);
+                await supabase.from('businesses').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode, is_telegram_enabled: false }).eq('telegram_chat_id', chatId);
+
+                return NextResponse.json({ status: 'unlinked_on_kick' });
+            }
+        }
+
+        if (body.callback_query) {
+            const callbackQuery = body.callback_query;
+            const chatId = callbackQuery.message.chat.id;
+            const messageId = callbackQuery.message.message_id;
+            const data = callbackQuery.data;
+
+            const fromUser = callbackQuery.from || {};
+            const userId = fromUser.id;
+            const username = fromUser.username ? `@${fromUser.username}` : null;
+            const displayName = [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || null;
+            const chatType = callbackQuery.message.chat.type;
+
+            if (data.startsWith('takeover_')) {
+                const code = data.replace('takeover_', '');
+
+                if (chatType === 'group' || chatType === 'supergroup') {
+                    // Check if clicked anonymously or as normal user
+                    const isAnonymousAdminClick = fromUser.username === 'GroupAnonymousBot';
+                    let isAdmin = false;
+                    
+                    if (isAnonymousAdminClick) {
+                        isAdmin = true;
+                    } else {
+                        isAdmin = await isGroupAdmin(chatId, userId);
+                    }
+
+                    if (!isAdmin) {
+                        await answerCallbackQuery(callbackQuery.id, "⚠️ Access Denied: Only admins can confirm this takeover.");
+                        return NextResponse.json({ status: 'not_admin' });
+                    }
+                }
+
+                const result = await connectTelegram(code, chatId, username, displayName, true);
+                await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
+                return NextResponse.json({ status: 'success' });
+            }
+
+            if (data.startsWith('connect_dm_')) {
+                const code = data.replace('connect_dm_', '');
+                const result = await connectTelegram(code, chatId, username, displayName, false);
+                await editTelegramMessage(chatId, messageId, result.text, result.replyMarkup);
+            }
+            else if (data.startsWith('disconnect_m_')) {
+                const id = data.replace('disconnect_m_', '');
+                const newCode = generateComplexString(12);
+                await supabase.from('merchants').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode }).eq('id', id);
+                await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Master Vault alerts.");
+            }
+            else if (data.startsWith('disconnect_b_')) {
+                const id = data.replace('disconnect_b_', '');
+                const newCode = generateComplexString(12);
+                await supabase.from('businesses').update({ telegram_chat_id: null, telegram_display_name: null, telegram_username: null, telegram_link_code: newCode, is_telegram_enabled: false }).eq('id', id);
+                await editTelegramMessage(chatId, messageId, "❌ <b>Disconnected Successfully</b>\n<b>সফলভাবে বিচ্ছিন্ন করা হয়েছে</b>\n\nThis chat will no longer receive Workspace alerts.");
+            }
+
+            return NextResponse.json({ status: 'success' });
+        }
+
+        if (body.message) {
+            const chat = body.message.chat;
+            const chatId = chat.id;
+            const chatType = chat.type;
+            const text = body.message.text ? body.message.text.trim() : '';
+            const userId = body.message.from?.id;
+
+            if (text.startsWith('/start')) {
+                const parts = text.split(/\s+/);
+                const code = parts.length > 1 ? parts[1] : null; 
+
+                if (!code) {
+                    if (chatType === 'private') {
+                        await sendTelegramMessage(chatId, "⚠️ <b>Invalid Command!</b>\n<b>ভুল কমান্ড!</b>\nPlease generate a valid connection link from your dashboard.");
+                    }
+                    return NextResponse.json({ status: 'no_code' });
+                }
+
+                if (chatType === 'group' || chatType === 'supergroup') {
+                    // ফিক্সড: যদি Sender Chat (চ্যানেল/অ্যানোনিমাস) থাকে, তবে সে নিশ্চিত এডমিন
+                    const isAnonymousOrChannelAdmin = !!body.message.sender_chat || body.message.from?.username === 'GroupAnonymousBot';
+                    
+                    let isAdmin = false;
+                    
+                    if (isAnonymousOrChannelAdmin) {
+                        isAdmin = true; // অটোমেটিক অ্যাডমিন এক্সেস 
+                    } else if (userId) {
+                        isAdmin = await isGroupAdmin(chatId, userId);
+                    }
+
+                    if (!isAdmin) {
+                        await sendTelegramMessage(chatId, "⚠️ <b>Access Denied</b>\n\nOnly group administrators can connect or configure this bot. Please ask an admin to send the connection command.");
+                        return NextResponse.json({ status: 'not_admin' });
+                    }
+
+                    const groupTitle = chat.title || 'Connected Group';
+                    const groupUsername = chat.username ? `@${chat.username}` : null;
+                    
+                    const result = await connectTelegram(code, chatId, groupUsername, groupTitle, false);
+                    await sendTelegramMessage(chatId, result.text, result.replyMarkup);
+                    return NextResponse.json({ status: 'connected_group' });
+                }
+
+                const replyMarkup = {
+                    inline_keyboard: [
+                        [{ text: "Connect to THIS Chat ➔", callback_data: `connect_dm_${code}` }],
+                        [{ text: "Add to a GROUP instead ➔", url: `https://t.me/${BOT_USERNAME}?startgroup=${code}` }]
+                    ]
+                };
+
+                await sendTelegramMessage(chatId, "<b>Where do you want to receive alerts?</b>\n<b>আপনি কোথায় এলার্ট পেতে চান?</b>\n\nYou can receive alerts directly in this chat, or add me to a group.", replyMarkup);
+                return NextResponse.json({ status: 'asked_user' });
+            }
+        }
+
+        return NextResponse.json({ status: 'ignored' });
+
+    } catch (error) {
+        console.error("Webhook Error Exception:", error);
+        return NextResponse.json({ status: 'error_logged_but_ok' }, { status: 200 });
+    }
 }
 </file>
 
