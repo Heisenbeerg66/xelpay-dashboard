@@ -14,8 +14,18 @@ const supabase = createClient(
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    // ফ্রন্টএন্ড থেকে userEmail পাঠানো হয়েছে, তাই merchant টেবিলের ইমেইলের দরকার নেই
-    const { merchant, plan, gateway, trxId, senderNumber, amount, billingCycle, discountAmount, userEmail } = body;
+    
+    const { 
+      merchant, 
+      plan, 
+      gateway, 
+      trxId, 
+      senderNumber, 
+      amount, 
+      billingCycle, 
+      discountAmount, 
+      userEmail 
+    } = body;
 
     const finalAmount = amount - (discountAmount || 0);
     let paymentStatus = 'pending'; // admin_orders এর জন্য
@@ -47,7 +57,7 @@ export async function POST(req: Request) {
       }
       // যদি পেমেন্ট অ্যামাউন্ট প্ল্যানের দামের চেয়ে কম হয়
       if (Number(smsData.amount) < finalAmount) {
-        return NextResponse.json({ error: `Amount ${smsData.amount} is less than required ${finalAmount}!` }, { status: 400 });
+        return NextResponse.json({ error: `Transaction amount ${smsData.amount} BDT is less than required ${finalAmount} BDT!` }, { status: 400 });
       }
       // কর্পোরেট না হলে সেন্ডার নাম্বার চেক করবে
       if (gateway.account_type !== 'corporate' && smsData.sender_number && !smsData.sender_number.includes(senderNumber.trim())) {
@@ -172,7 +182,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // Return final response
+    // Return final response to Frontend
     return NextResponse.json({ success: true, order: newOrder, status: paymentStatus });
     
   } catch (error: any) {
@@ -180,4 +190,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }
-
