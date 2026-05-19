@@ -262,7 +262,7 @@ export function ApiSection({ merchant, onUpdate }: ApiSectionProps) {
               <div className="flex items-center gap-2">
                 <SettingsInput
                   value={webhookUrl}
-                  onChange={e => setWebhookUrl(e.target.value)}
+                  onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setWebhookUrl(e.target.value)}
                   placeholder="https://yourdomain.com/api/webhooks/xelpay"
                   type="url"
                   className="flex-1"
@@ -297,7 +297,9 @@ export function ApiSection({ merchant, onUpdate }: ApiSectionProps) {
               <FormField label="Success URL" hint="Redirect after successful payment.">
                 <SettingsInput
                   value={successUrl}
-                  onChange={e => setSuccessUrl(e.target.value)}
+                  onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => {
+                    return setSuccessUrl(e.target.value);
+                  }}
                   placeholder="https://yourdomain.com/thank-you"
                   type="url"
                 />
@@ -305,7 +307,7 @@ export function ApiSection({ merchant, onUpdate }: ApiSectionProps) {
               <FormField label="Cancel URL" hint="Redirect when payment is cancelled.">
                 <SettingsInput
                   value={cancelUrl}
-                  onChange={e => setCancelUrl(e.target.value)}
+                  onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setCancelUrl(e.target.value)}
                   placeholder="https://yourdomain.com/checkout"
                   type="url"
                 />
