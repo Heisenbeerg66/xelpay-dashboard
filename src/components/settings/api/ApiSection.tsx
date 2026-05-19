@@ -262,7 +262,7 @@ export function ApiSection({ merchant, onUpdate }: ApiSectionProps) {
               <div className="flex items-center gap-2">
                 <SettingsInput
                   value={webhookUrl}
-                  onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setWebhookUrl(e.target.value)}
+                  onChange={(e: { target: { value: React.SetStateAction<string>; }; }): void => setWebhookUrl(e.target.value)}
                   placeholder="https://yourdomain.com/api/webhooks/xelpay"
                   type="url"
                   className="flex-1"

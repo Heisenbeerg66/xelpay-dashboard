@@ -317,14 +317,14 @@ export function PaymentPreferencesSection() {
             <FormField label="Default Currency">
               <SettingsSelect
                 value={settings.currency}
-                onChange={(v) => setSettings(p => ({ ...p, currency: v }))}
+                onChange={(v: any) => setSettings(p => ({ ...p, currency: v }))}
                 options={CURRENCIES}
               />
             </FormField>
             <FormField label="Exchange Rate" hint="Rate relative to your base currency">
               <SettingsInput
                 value={settings.exchange_rate}
-                onChange={(v) => setSettings(p => ({ ...p, exchange_rate: v }))}
+                onChange={(v: any) => setSettings(p => ({ ...p, exchange_rate: v }))}
                 placeholder="1.0"
                 type="number"
               />
@@ -336,7 +336,7 @@ export function PaymentPreferencesSection() {
               <FormField label="Success Redirect URL" hint="Where to redirect after successful payment">
                 <SettingsInput
                   value={settings.success_url}
-                  onChange={(v) => setSettings(p => ({ ...p, success_url: v }))}
+                  onChange={(v: any) => setSettings(p => ({ ...p, success_url: v }))}
                   placeholder="https://yoursite.com/success"
                 />
               </FormField>
@@ -344,7 +344,7 @@ export function PaymentPreferencesSection() {
               <FormField label="Cancel Redirect URL" hint="Where to redirect if payment is cancelled">
                 <SettingsInput
                   value={settings.cancel_url}
-                  onChange={(v) => setSettings(p => ({ ...p, cancel_url: v }))}
+                  onChange={(v: any) => setSettings(p => ({ ...p, cancel_url: v }))}
                   placeholder="https://yoursite.com/cancel"
                 />
               </FormField>
@@ -354,7 +354,7 @@ export function PaymentPreferencesSection() {
           <FormField label="Webhook URL" hint="Receive real-time payment event notifications">
             <SettingsInput
               value={settings.webhook_url}
-              onChange={(v) => setSettings(p => ({ ...p, webhook_url: v }))}
+              onChange={(v: any) => setSettings(p => ({ ...p, webhook_url: v }))}
               placeholder="https://yoursite.com/api/webhooks/xelpay"
             />
           </FormField>
