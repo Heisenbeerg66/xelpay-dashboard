@@ -82,7 +82,7 @@ export function ActivitySection({ merchant }: ActivitySectionProps) {
         .limit(20);
 
       if (data) {
-        setLogs(data.map(d => ({
+        setLogs(data.map((d: { id: any; action: any; ip_address: any; created_at: any; details: any; }) => ({
           id: d.id,
           action: d.action,
           category: 'general',

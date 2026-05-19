@@ -168,10 +168,7 @@ export interface AppearancePrefs {
   font_size: 'sm' | 'md' | 'lg';
 }
 
-export interface SaveState {
-  status: 'idle' | 'saving' | 'saved' | 'error';
-  message?: string;
-}
+export type SaveState = 'idle' | 'saving' | 'saved' | 'error' | { status: 'idle' | 'saving' | 'saved' | 'error'; message?: string };
 
 export type Role = 'admin' | 'developer' | 'support' | 'viewer';
 

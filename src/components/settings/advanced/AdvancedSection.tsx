@@ -335,7 +335,7 @@ export function AdvancedSection() {
           <FormField label="Display Language" hint="Language shown to customers on checkout pages">
             <SettingsSelect
               value={data.language}
-              onChange={(v) => setData(prev => ({ ...prev, language: v }))}
+              onChange={(v: any) => setData(prev => ({ ...prev, language: v }))}
               options={LANGUAGES}
             />
           </FormField>
@@ -345,7 +345,7 @@ export function AdvancedSection() {
               <Tag size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
               <SettingsInput
                 value={data.gtm_id}
-                onChange={(v) => setData(prev => ({ ...prev, gtm_id: v }))}
+                onChange={(v: any) => setData(prev => ({ ...prev, gtm_id: v }))}
                 placeholder="GTM-XXXXXXX"
                 className="pl-8 font-mono text-sm"
               />
@@ -367,7 +367,7 @@ export function AdvancedSection() {
           <FormField label="Street Address">
             <SettingsInput
               value={data.street_address}
-              onChange={(v) => setData(prev => ({ ...prev, street_address: v }))}
+              onChange={(v: any) => setData(prev => ({ ...prev, street_address: v }))}
               placeholder="123 Main Street, Suite 100"
             />
           </FormField>
@@ -376,21 +376,21 @@ export function AdvancedSection() {
             <FormField label="City">
               <SettingsInput
                 value={data.city}
-                onChange={(v) => setData(prev => ({ ...prev, city: v }))}
+                onChange={(v: any) => setData(prev => ({ ...prev, city: v }))}
                 placeholder="Dhaka"
               />
             </FormField>
             <FormField label="ZIP / Postal Code">
               <SettingsInput
                 value={data.zip_code}
-                onChange={(v) => setData(prev => ({ ...prev, zip_code: v }))}
+                onChange={(v: any) => setData(prev => ({ ...prev, zip_code: v }))}
                 placeholder="1200"
               />
             </FormField>
             <FormField label="Country">
               <SettingsInput
                 value={data.country}
-                onChange={(v) => setData(prev => ({ ...prev, country: v }))}
+                onChange={(v: any) => setData(prev => ({ ...prev, country: v }))}
                 placeholder="Bangladesh"
               />
             </FormField>
@@ -478,7 +478,7 @@ export function AdvancedSection() {
               <FormField label="Pixel ID" hint="Found in Meta Events Manager">
                 <SettingsInput
                   value={data.meta_pixel.pixel_id}
-                  onChange={(v) => updatePixel('pixel_id', v)}
+                  onChange={(v: any) => updatePixel('pixel_id', v)}
                   placeholder="123456789012345"
                   className="font-mono"
                 />
@@ -487,7 +487,7 @@ export function AdvancedSection() {
               <FormField label="Access Token" hint="Conversions API access token (optional)">
                 <SettingsInput
                   value={data.meta_pixel.access_token}
-                  onChange={(v) => updatePixel('access_token', v)}
+                  onChange={(v: any) => updatePixel('access_token', v)}
                   placeholder="EAAxxxxxxxxx..."
                   className="font-mono text-xs"
                   type="password"
@@ -497,7 +497,7 @@ export function AdvancedSection() {
               <FormField label="Test Event Code" hint="For testing events in Events Manager (optional)">
                 <SettingsInput
                   value={data.meta_pixel.test_event_code}
-                  onChange={(v) => updatePixel('test_event_code', v)}
+                  onChange={(v: any) => updatePixel('test_event_code', v)}
                   placeholder="TEST12345"
                   className="font-mono"
                 />
@@ -506,7 +506,7 @@ export function AdvancedSection() {
               <FormField label="Trigger Event On">
                 <SettingsSelect
                   value={data.meta_pixel.trigger_on}
-                  onChange={(v) => updatePixel('trigger_on', v)}
+                  onChange={(v: any) => updatePixel('trigger_on', v)}
                   options={PIXEL_TRIGGERS}
                 />
               </FormField>

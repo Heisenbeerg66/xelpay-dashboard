@@ -452,7 +452,7 @@ export function BrandingSection() {
             <FormField label="Business Display Name">
               <SettingsInput
                 value={data.businessName}
-                onChange={(v) => setData(p => ({ ...p, businessName: v }))}
+                onChange={(v: any) => setData(p => ({ ...p, businessName: v }))}
                 placeholder="XelPay Store"
               />
             </FormField>
@@ -460,7 +460,9 @@ export function BrandingSection() {
             <FormField label="Brand Name" hint="Shown on checkout pages and receipts">
               <SettingsInput
                 value={data.brandName}
-                onChange={(v) => setData(p => ({ ...p, brandName: v }))}
+                onChange={(v: any) => {
+                  return setData(p => ({ ...p, brandName: v }));
+                }}
                 placeholder="Your Brand"
               />
             </FormField>
@@ -471,7 +473,7 @@ export function BrandingSection() {
               <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)]" />
               <SettingsInput
                 value={data.websiteUrl}
-                onChange={(v) => setData(p => ({ ...p, websiteUrl: v }))}
+                onChange={(v: React.ChangeEvent<HTMLInputElement>) => setData(p => ({ ...p, websiteUrl: v.target.value }))}
                 placeholder="https://yourbrand.com"
                 className="pl-8"
               />

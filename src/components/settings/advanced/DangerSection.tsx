@@ -90,14 +90,13 @@ export function DangerSection({ merchant }: DangerSectionProps) {
       </SettingsCard>
 
       {/* Delete Account */}
-      <SettingsCard danger>
+      <SettingsCard >
         <SettingsCardHeader
           icon={Trash2}
           iconColor="text-red-600 dark:text-red-400"
           iconBg="bg-red-50 dark:bg-red-950/40"
           title="Delete Account"
           description="Permanently delete your XelPay account and all associated data."
-          danger
         />
         <SettingsCardBody>
           <div className="space-y-4">
