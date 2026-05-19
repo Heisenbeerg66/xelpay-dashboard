@@ -106,7 +106,7 @@ export function SecuritySection({ merchant, onUpdate }: SecuritySectionProps) {
                 <SettingsInput
                   type={showPw ? 'text' : 'password'}
                   value={newPw}
-                  onChange={e => setNewPw(e.target.value)}
+                  onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setNewPw(e.target.value)}
                   placeholder="Enter new password"
                   autoComplete="new-password"
                 />
@@ -137,7 +137,7 @@ export function SecuritySection({ merchant, onUpdate }: SecuritySectionProps) {
               <SettingsInput
                 type={showPw ? 'text' : 'password'}
                 value={confirmPw}
-                onChange={e => setConfirmPw(e.target.value)}
+                onChange={(e: { target: { value: React.SetStateAction<string>; }; }) => setConfirmPw(e.target.value)}
                 placeholder="Confirm new password"
                 autoComplete="new-password"
                 error={confirmPw.length > 0 && newPw !== confirmPw}
