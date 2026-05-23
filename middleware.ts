@@ -14,7 +14,13 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Pass-through: auth callbacks and API routes — never intercept these.
-  if (pathname.startsWith('/auth/') || pathname.startsWith('/api/')) {
+  // Pass-through: auth, api (internal), v1 routes, telegram webhook
+  if (
+    pathname.startsWith('/auth/') ||
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/v1/') ||
+    pathname.startsWith('/telegram/')
+  ) {
     return response;
   }
 

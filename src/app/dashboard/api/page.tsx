@@ -94,7 +94,7 @@ export default function ApiDocsPage() {
     load();
   }, []);
 
-  const API_BASE = `${baseUrl}/api/v1`;
+  const API_BASE = `${baseUrl}/v1`;
 
   const navItem = (id: Section, label: string, Icon: any) => (
     <button key={id} onClick={() => setActiveSection(id)}
@@ -143,7 +143,7 @@ export default function ApiDocsPage() {
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {[
-                      { icon: Globe, title: 'Base URL', value: `${baseUrl}/api/v1` },
+                      { icon: Globe, title: 'Base URL', value: `${baseUrl}/v1` },
                       { icon: Shield, title: 'Auth', value: 'Bearer Token' },
                       { icon: Layers, title: 'Format', value: 'JSON' },
                     ].map(item => (
@@ -161,7 +161,7 @@ export default function ApiDocsPage() {
                   <div className="space-y-3">
                     {[
                       { step: '1', text: 'Get your API credentials from Brand Settings → API & Webhooks' },
-                      { step: '2', text: 'Create a payment session with POST /api/v1/payment/create' },
+                      { step: '2', text: 'Create a payment session with POST /v1/payment/create' },
                       { step: '3', text: 'Redirect your customer to the returned payment_url' },
                       { step: '4', text: 'Receive webhook event when payment is verified' },
                       { step: '5', text: 'Verify the webhook signature and fulfill the order' },
@@ -209,7 +209,7 @@ export default function ApiDocsPage() {
               <div className="space-y-5">
                 <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
                   <h2 className="text-lg font-black text-slate-900 dark:text-white mb-5">Create Payment</h2>
-                  <EndpointHeader method="POST" path="/api/v1/payment/create"
+                  <EndpointHeader method="POST" path="/v1/payment/create"
                     desc="Creates a new payment session and returns a hosted checkout URL to redirect your customer to." />
 
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Request Body</h3>
@@ -299,7 +299,7 @@ header('Location: ' . $response->payment_url);`} />
               <div className="space-y-5">
                 <div className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
                   <h2 className="text-lg font-black text-slate-900 dark:text-white mb-5">Verify Payment Status</h2>
-                  <EndpointHeader method="GET" path="/api/v1/payment/verify?order_id={order_id}"
+                  <EndpointHeader method="GET" path="/v1/payment/verify?order_id={order_id}"
                     desc="Check the current status of a payment by your order ID. Use this to poll or verify after webhook delivery." />
 
                   <CodeBlock language="Node.js" code={`const response = await axios.get('${API_BASE}/payment/verify', {
