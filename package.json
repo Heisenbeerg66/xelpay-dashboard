@@ -22,6 +22,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
+    "jose": "^6.2.3",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.564.0",
@@ -37,20 +38,24 @@
     "resend": "^6.12.3",
     "sonner": "^2.0.7",
     "sooner": "^1.1.1",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/mailparser": "^3.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-google-recaptcha": "^2.1.9",
+    "@types/ws": "^8.18.1",
     "autoprefixer": "^10.4.24",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^4.1.1",
     "eslint-config-next": "^0.2.4",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
+    "tsx": "^4.22.3",
     "typescript": "^5"
   }
 }
