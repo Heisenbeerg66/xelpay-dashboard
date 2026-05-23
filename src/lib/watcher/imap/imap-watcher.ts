@@ -3,7 +3,7 @@
 // Uses imapflow for modern IMAP with IDLE support.
 // On new email → parse → store to email_transactions.
 
-import { ImapFlow, type ImapFlowOptions } from 'imapflow';
+import { ImapFlow, type FetchMessageObject, type ImapFlowOptions } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import { getDb } from '../shared/db';
 import { log } from '../shared/logger';
@@ -91,7 +91,6 @@ export class ImapWatcher {
         gateway_id: this.credentials.id,
         watcher_type: 'imap',
         error_message: `Connected to IMAP: ${imap_email}`,
-        severity: 'info',
       });
 
       await this.updateConnectionState(true);
@@ -188,7 +187,7 @@ export class ImapWatcher {
         let processedCount = 0;
 
         for await (const msg of messages) {
-          if (!msg.flags.has('\\Seen')) {
+          if (!msg.flags?.has('\\Seen') && msg.source) {
             try {
               await this.processMessage(msg, db);
               processedCount++;
@@ -233,9 +232,10 @@ export class ImapWatcher {
 
   // ── Process a single email message ───────────────────────────
   private async processMessage(
-    msg: { uid: number; source: Buffer; envelope?: { subject?: string; from?: Array<{ address?: string }>; date?: Date } },
+    msg: FetchMessageObject,
     db: ReturnType<typeof getDb>
   ): Promise<void> {
+    if (!msg.source) return;
     const emailUid = String(msg.uid);
 
     // Filter by bank email sender if configured
@@ -251,7 +251,7 @@ export class ImapWatcher {
     const subject = parsed.subject ?? msg.envelope?.subject ?? '';
     const date = parsed.date ?? msg.envelope?.date ?? new Date();
     const bodyText = parsed.text ?? '';
-    const bodyHtml = parsed.html ?? '';
+    const bodyHtml = typeof parsed.html === 'string' ? parsed.html : '';
     const body = bodyText || bodyHtml;
 
     // Check duplicate

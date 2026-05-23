@@ -1,9 +1,3 @@
-// ============================================================
-// src/app/api/mobile/disconnect-device/route.ts
-// POST — Deactivate device and revoke session
-// Requires valid mobile JWT
-// ============================================================
-
 import { NextRequest, NextResponse } from 'next/server';
 import { withMobileAuth, type AuthContext } from '@/lib/mobile/auth-middleware';
 import { getMobileDb } from '@/lib/mobile/db';
@@ -12,7 +6,6 @@ import { auditLog, AUDIT } from '@/lib/mobile/audit';
 async function handler(req: NextRequest, ctx: AuthContext) {
   const db = getMobileDb();
 
-  // ── Mark device inactive ──────────────────────────────────
   if (ctx.connection_type === 'merchant') {
     await db
       .from('merchant_devices_vault')

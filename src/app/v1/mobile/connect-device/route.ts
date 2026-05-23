@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
   }
 
   const { data, error } = validate(connectDeviceSchema, body);
-  if (error) {
-    return NextResponse.json({ success: false, message: error }, { status: 400 });
+  if (error || !data) {
+    return NextResponse.json({ success: false, message: error ?? 'Invalid request body' }, { status: 400 });
   }
 
   const {

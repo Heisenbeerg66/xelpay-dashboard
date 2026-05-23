@@ -33,8 +33,8 @@ async function handler(req: NextRequest, ctx: AuthContext) {
   }
 
   const { data, error } = validate(smsSyncSchema, body);
-  if (error) {
-    return NextResponse.json({ success: false, message: error }, { status: 400 });
+  if (error || !data) {
+    return NextResponse.json({ success: false, message: error ?? 'Invalid request body' }, { status: 400 });
   }
 
   // Timestamp check relaxed for pending sync (allow up to 24h old)

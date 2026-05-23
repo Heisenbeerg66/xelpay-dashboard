@@ -69,7 +69,7 @@ export const heartbeatSchema = z.object({
 const deviceLogEntrySchema = z.object({
   level: z.enum(['info', 'warn', 'error']),
   message: z.string().min(1).max(1000),
-  context: z.record(z.unknown()).optional(),
+  context: z.record(z.string(), z.unknown()).optional(),
   timestamp: z.string().datetime(),
 });
 
@@ -87,7 +87,7 @@ export function validate<T>(
   if (result.success) {
     return { data: result.data, error: null };
   }
-  const firstError = result.error.errors[0];
+  const firstError = result.error.issues[0];
   return {
     data: null,
     error: `${firstError.path.join('.')}: ${firstError.message}`,

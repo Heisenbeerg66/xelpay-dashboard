@@ -4,11 +4,14 @@
 // Uses service role key — bypasses RLS
 // ============================================================
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-let _adminClient: ReturnType<typeof createClient> | null = null;
+// Loose typing until generated Supabase types are wired in
+type MobileDb = SupabaseClient;
 
-export function getMobileDb() {
+let _adminClient: MobileDb | null = null;
+
+export function getMobileDb(): MobileDb {
   if (!_adminClient) {
     _adminClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

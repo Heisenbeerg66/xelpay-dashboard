@@ -8,6 +8,17 @@ import { getDb, decryptData } from './db';
 import { log } from './logger';
 import type { GatewayCredentials, WatcherType } from '@/types/watcher';
 
+function merchantIdFromBusinessJoin(businesses: unknown): string | null {
+  if (Array.isArray(businesses)) {
+    const first = businesses[0] as { merchant_id?: string } | undefined;
+    return first?.merchant_id ?? null;
+  }
+  if (businesses && typeof businesses === 'object' && 'merchant_id' in businesses) {
+    return String((businesses as { merchant_id: string }).merchant_id);
+  }
+  return null;
+}
+
 // ─── Load all IMAP credentials ───────────────────────────────
 
 export async function loadAllImapCredentials(): Promise<GatewayCredentials[]> {
@@ -66,7 +77,8 @@ export async function loadAllImapCredentials(): Promise<GatewayCredentials[]> {
         await log.warn({ error_message: `Could not decrypt IMAP password for business gateway ${row.id}`, gateway_id: row.id, error_code: 'DECRYPT_ERROR' });
         continue;
       }
-      const merchantId = (row.businesses as { merchant_id: string }).merchant_id;
+      const merchantId = merchantIdFromBusinessJoin(row.businesses);
+      if (!merchantId) continue;
       results.push({
         id: row.id,
         merchant_id: merchantId,
@@ -140,7 +152,8 @@ export async function loadAllBinanceCredentials(): Promise<GatewayCredentials[]>
         await log.warn({ error_message: `Could not decrypt Binance credentials for business gateway ${row.id}`, gateway_id: row.id, error_code: 'DECRYPT_ERROR' });
         continue;
       }
-      const merchantId = (row.businesses as { merchant_id: string }).merchant_id;
+      const merchantId = merchantIdFromBusinessJoin(row.businesses);
+      if (!merchantId) continue;
       results.push({
         id: row.id,
         merchant_id: merchantId,

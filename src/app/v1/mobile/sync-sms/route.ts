@@ -1,17 +1,3 @@
-// ============================================================
-// src/app/api/mobile/sync-sms/route.ts
-// POST — Upload parsed SMS transactions from mobile device
-//
-// Security checks:
-//   - JWT auth + active device
-//   - Request ID deduplication (replay protection)
-//   - Timestamp validation (±5 min)
-//   - Provider active check per gateway config
-//   - Duplicate trx_id check
-//   - OTP/personal SMS pattern blocking
-//   - Batch size limit: 100 per request
-// ============================================================
-
 import { NextRequest, NextResponse } from 'next/server';
 import { withMobileAuth, type AuthContext } from '@/lib/mobile/auth-middleware';
 import { processSmsTransactions } from '@/lib/mobile/sms-service';
@@ -19,7 +5,6 @@ import { rateLimit, LIMITS } from '@/lib/mobile/rate-limit';
 import { smsSyncSchema, validate } from '@/lib/mobile/validators';
 
 async function handler(req: NextRequest, ctx: AuthContext) {
-  // ── Rate limit per device ─────────────────────────────────
   const rl = rateLimit(
     `sms-sync:${ctx.device_id}`,
     LIMITS.SMS_SYNC.max,
@@ -32,7 +17,6 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     );
   }
 
-  // ── Parse & validate body ─────────────────────────────────
   let body: unknown;
   try {
     body = await req.json();
@@ -45,7 +29,10 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     return NextResponse.json({ success: false, message: error }, { status: 400 });
   }
 
-  // ── Timestamp validation (replay protection) ──────────────
+  if (!data) {
+    return NextResponse.json({ success: false, message: "No valid data provided" }, { status: 400 });
+  }
+
   const ageMs = Math.abs(Date.now() - data.timestamp);
   if (ageMs > 5 * 60 * 1000) {
     return NextResponse.json(
@@ -54,7 +41,6 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     );
   }
 
-  // ── Device fingerprint check ──────────────────────────────
   if (data.device_fingerprint !== ctx.device_fingerprint) {
     return NextResponse.json(
       { success: false, message: 'Device fingerprint mismatch.' },
@@ -62,7 +48,6 @@ async function handler(req: NextRequest, ctx: AuthContext) {
     );
   }
 
-  // ── Process transactions ──────────────────────────────────
   try {
     const result = await processSmsTransactions(data.transactions, ctx);
 

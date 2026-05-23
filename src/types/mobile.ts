@@ -56,7 +56,7 @@ export interface SmsTransactionInput {
   amount: number;
   balance?: number;
   received_at?: string;   // ISO timestamp
-  sms_hash: string;       // SHA-256(sender+message+timestamp_floor)
+  sms_hash?: string;      // SHA-256(sender+message+timestamp_floor)
 }
 
 export interface SmsSyncResponse {
