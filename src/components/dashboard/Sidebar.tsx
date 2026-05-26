@@ -29,7 +29,8 @@ const ALL_MENU_ITEMS = [
   { name: 'SMS Data',               icon: MessageSquare,   path: '/dashboard/sms',           roles: ['owner','admin','support','viewer'] },
   { name: 'Customers',              icon: Users,           path: '/dashboard/customers',     roles: ['owner','admin','support','viewer'] },
   { name: 'System Settings',        icon: Settings,        path: '/dashboard/settings',      roles: ['owner','admin'] },
-  { name: 'Billing & Subscriptions',icon: CreditCard,      path: '/dashboard/subscriptions', roles: ['owner'] },
+  // ✅ ONLY CHANGE: path updated from /dashboard/subscriptions → /dashboard/billing
+  { name: 'Billing & Subscriptions',icon: CreditCard,      path: '/dashboard/billing',       roles: ['owner'] },
   { name: 'API & Plugins',          icon: Code,            path: '/dashboard/api',           roles: ['owner','admin','developer'] },
   { name: 'Support',                icon: Headphones,      path: '/dashboard/support',       roles: ['owner','admin','developer','support','viewer'] },
 ];
@@ -209,7 +210,6 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
       {/* ── Business Switcher ── */}
       <div className="px-4 pt-4 pb-3 border-b border-slate-800/80 shrink-0" ref={switcherRef}>
         <div className="relative">
-          {/* Main button — সবসময় clickable, dropdown toggle করে */}
           <button
             onClick={() => setIsSwitcherOpen(v => !v)}
             className="w-full flex items-center gap-3 px-3 py-2.5 bg-slate-800/60 hover:bg-slate-800 border border-slate-700/50 rounded-xl transition-all"
@@ -233,7 +233,6 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
             }
           </button>
 
-          {/* ✅ Dropdown — businesses list + add new */}
           {isSwitcherOpen && (
             <div className="absolute top-full left-0 w-full mt-2 bg-[#111827] border border-slate-800 rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200 max-h-72 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 
@@ -271,7 +270,6 @@ export default function Sidebar({ merchant, isOpen, setIsOpen }: any) {
                 ))
               )}
 
-              {/* ✅ Add new business — only for owners */}
               {canAddBusiness && (
                 <>
                   <div className="h-px bg-slate-800 my-2" />
